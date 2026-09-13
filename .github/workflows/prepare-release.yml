@@ -120,20 +120,54 @@ jobs:
           
           if grep -q "^## \[${VERSION_NO_V}\]" CHANGELOG.md 2>/dev/null; then
             echo "changelog_exists=true" >> "$GITHUB_OUTPUT"
+            echo "from_unreleased=false" >> "$GITHUB_OUTPUT"
             echo "Changelog section for [${VERSION_NO_V}] already exists. Skipping generation."
             exit 0
           fi
           
-          echo "changelog_exists=false" >> "$GITHUB_OUTPUT"
+          # Prefer a curated [Unreleased] section when present: promote it to the release version
+          # instead of generating entries from the commit history.
+          FROM_UNRELEASED=false
+          if grep -q "^## \[Unreleased\]" CHANGELOG.md 2>/dev/null; then
+            FROM_UNRELEASED=true
+            echo "changelog_exists=true" >> "$GITHUB_OUTPUT"
+            echo "from_unreleased=true" >> "$GITHUB_OUTPUT"
+            echo "Found [Unreleased] section. Promoting it to [${VERSION_NO_V}]."
+          else
+            echo "changelog_exists=false" >> "$GITHUB_OUTPUT"
+            echo "from_unreleased=false" >> "$GITHUB_OUTPUT"
+          fi
+          export FROM_UNRELEASED
           
           export COMMITS=$(git log ${COMMIT_RANGE} --format='%s' --no-merges)
           export VERSION_NO_V="${{ steps.validate.outputs.version_no_v }}"
           
           node << 'SCRIPT'
           const fs = require('fs');
-          const commits = process.env.COMMITS.split('\n').filter(Boolean);
           const version = process.env.VERSION_NO_V;
           const today = new Date().toISOString().split('T')[0];
+          const fromUnreleased = process.env.FROM_UNRELEASED === 'true';
+
+          const changelog = fs.readFileSync('CHANGELOG.md', 'utf8');
+
+          // Promotion path: turn the curated [Unreleased] section into the new release section,
+          // assigning it the release version and date while preserving all of its entries.
+          if (fromUnreleased) {
+            const unreleasedHeading = /^## \[Unreleased\].*$/m;
+            if (!unreleasedHeading.test(changelog)) {
+              console.error('::error::from_unreleased was set but no [Unreleased] section was found.');
+              process.exit(1);
+            }
+
+            const releaseHeading = `## [${version}] - ${today}`;
+            const updated = changelog.replace(unreleasedHeading, releaseHeading);
+            fs.writeFileSync('CHANGELOG.md', updated.endsWith('\n') ? updated : `${updated}\n`);
+            console.log('Promoted [Unreleased] section to ' + releaseHeading);
+            process.exit(0);
+          }
+
+          // Fallback path: generate a release section from conventional commits.
+          const commits = process.env.COMMITS.split('\n').filter(Boolean);
           
           const sections = {
             added: [],
@@ -192,7 +226,6 @@ jobs:
             }
           }
           
-          const changelog = fs.readFileSync('CHANGELOG.md', 'utf8');
           const lines = changelog.split('\n');
           const header = lines.slice(0, 6).join('\n');
           const body = lines.slice(6).join('\n');
@@ -275,6 +308,7 @@ jobs:
         run: |
           PREV_TAG="${{ steps.changelog.outputs.prev_tag }}"
           CHANGELOG_EXISTS="${{ steps.changelog.outputs.changelog_exists }}"
+          FROM_UNRELEASED="${{ steps.changelog.outputs.from_unreleased }}"
           
           BODY=$(cat << EOF
           ## Release Preparation
@@ -284,7 +318,7 @@ jobs:
           ### Changes Included
 
           - Version bump to \`${VERSION_NO_V}\` in all package.json files
-          - Changelog update $(if [[ "${CHANGELOG_EXISTS}" == "true" ]]; then echo "(existing entry preserved)"; else echo "(auto-generated)"; fi)
+          - Changelog update $(if [[ "${FROM_UNRELEASED}" == "true" ]]; then echo "(promoted from [Unreleased])"; elif [[ "${CHANGELOG_EXISTS}" == "true" ]]; then echo "(existing entry preserved)"; else echo "(auto-generated)"; fi)
 
           ### Review Checklist
 

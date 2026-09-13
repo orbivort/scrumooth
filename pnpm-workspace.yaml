@@ -13,8 +13,8 @@ catalog:
   '@types/node': ^24.13.3
   '@typescript-eslint/eslint-plugin': ^8.67.0
   '@typescript-eslint/parser': ^8.67.0
-  '@vitest/coverage-v8': ^4.1.10
-  '@vitest/ui': ^4.1.10
+  '@vitest/coverage-v8': ^4.1.11
+  '@vitest/ui': ^4.1.11
   cross-env: ^10.1.0
   date-fns: ^4.4.0
   eslint: ^10.8.1
@@ -32,7 +32,7 @@ catalog:
   tsx: ^4.23.12
   typescript: ^6.0.3
   typescript-eslint: ^8.67.0
-  vitest: ^4.1.10
+  vitest: ^4.1.11
 
 # Build configuration for pnpm v11
 allowBuilds:
@@ -57,7 +57,8 @@ overrides:
   fast-uri: ^3.1.6 # Fixed: GHSA-v2hh-gcrm-f6hx, GHSA-4c8g-83qw-93j6, GHSA-7p8r-x3mc-p8w7, GHSA-5jgf-p345-68v8, GHSA-f65p-4m7j-42xc, GHSA-fph4-wmhf-6fwf, and GHSA-jqff-g426-hqxp high severity host confusion/SSRF vulnerabilities
   form-data: ^4.0.6 # Fixed: GHSA-hmw2-7cc7-3qxx CRLF injection vulnerability
   hono: ^4.12.34 # Fixed: GHSA-xgm2-5f3f-mvvc, GHSA-hvrm-45r6-mjfj, GHSA-w62v-xxxg-mg59, and GHSA-8j4g-w8fx-2239 moderate vulnerabilities
-  js-yaml: ^4.3.1 # Fixed: GHSA-52cp-r559-cp3m and CVE-2026-59870 high severity quadratic CPU consumption vulnerabilities (!!omap resolution)
+  js-yaml: ^4.3.2 # Fixed: GHSA-52cp-r559-cp3m, CVE-2026-59870 high (!!omap quadratic CPU), and GHSA-2883-xcg3-v3hh high (maxTotalMergeKeys does not limit CPU use for empty merge sources)
+  colord: ^2.9.4 # Fixed: GHSA-2wm5-q62r-hmrv moderate slow rejection of oversized malformed color strings
   nanoid: ^3.3.17 # Fixed: GHSA-2v37-7h3g-55p8 high severity DoS when custom generators run with size zero
   shell-quote: ^1.8.5 # Fixed: GHSA-395f-4hp3-45gv high severity DoS vulnerability
   body-parser: ^2.3.0 # Fixed: GHSA-v422-hmwv-36x6 low severity DoS vulnerability

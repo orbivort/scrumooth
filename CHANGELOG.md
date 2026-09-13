@@ -5,6 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Security
+
+- Remediate **high**- and **moderate**-severity dependency vulnerabilities
+  (8 findings: 2 high, 6 moderate):
+  - `nodemailer` 9.0.1 → 9.1.1 — **direct production dependency**. Fixes a quadratic (O(n²)) time
+    complexity in `addressparser` that allows a remote denial of service via a crafted address list
+    ([GHSA-2x7j-588g-ccc2](https://github.com/advisories/GHSA-2x7j-588g-ccc2)), a bypass of
+    `disableFileAccess`/`disableUrlAccess` when `resolveContent()` is called on a `MailMessage` with
+    the legacy signature ([GHSA-8m3c-c648-2xjj](https://github.com/advisories/GHSA-8m3c-c648-2xjj)),
+    an IDN/Punycode domain allow-list bypass that delivers mail to an attacker-controlled domain
+    ([GHSA-wmmp-3585-3rmp](https://github.com/advisories/GHSA-wmmp-3585-3rmp)), and a
+    recipient-domain validation bypass via RFC 5322 comment mis-parsing
+    ([GHSA-cc9r-2j5m-2m83](https://github.com/advisories/GHSA-cc9r-2j5m-2m83))
+  - `js-yaml` 4.3.1 → 4.3.2 — fixes `maxTotalMergeKeys` not limiting CPU use for empty merge sources
+    ([GHSA-2883-xcg3-v3hh](https://github.com/advisories/GHSA-2883-xcg3-v3hh)), on top of the
+    previously pinned `!!omap` quadratic CPU consumption fix (GHSA-52cp-r559-cp3m). It is pulled by
+    `cosmiconfig` through the commitlint and stylelint toolchains
+  - `colord` 2.9.3 → 2.10.0 — fixes slow rejection of oversized malformed color strings
+    ([GHSA-2wm5-q62r-hmrv](https://github.com/advisories/GHSA-2wm5-q62r-hmrv)). It is pulled by
+    `stylelint`
+  - `vitest` and `@vitest/mocker` 4.1.10 → 4.1.11 — fixes path traversal / arbitrary file read via
+    the `@vitest/mocker` redirect mock
+    ([GHSA-82fw-gwwq-j7x9](https://github.com/advisories/GHSA-82fw-gwwq-j7x9)). `@vitest/coverage-v8`
+    and `@vitest/ui` are bumped alongside to keep the Vitest family aligned
+
 ## [3.0.1] - 2026-09-05
 
 ### Security

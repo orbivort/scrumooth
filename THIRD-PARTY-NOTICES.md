@@ -4,7 +4,7 @@ This document contains the license information for third-party packages used in 
 
 **Project:** Scrumooth - Agile Scrum Lifecycle Management System
 **License:** Apache-2.0
-**Last Updated:** August 16, 2026
+**Last Updated:** September 13, 2026
 
 ---
 
@@ -31,7 +31,7 @@ This document contains the license information for third-party packages used in 
 | @prisma/adapter-pg        | 7.9.1   | Apache-2.0   | Prisma Data, Inc.             | https://github.com/prisma/prisma                                   |
 | @prisma/client            | 7.9.1   | Apache-2.0   | Prisma Data, Inc.             | https://github.com/prisma/prisma                                   |
 | bcrypt                    | 6.0.0   | MIT          | Nick Campbell                 | https://github.com/kelektiv/node.bcrypt.js                         |
-| compression               | 1.8.1   | MIT          | Jonathan Ong                  | https://github.com/expressjs/compression                           |
+| compression               | 1.8.2   | MIT          | Jonathan Ong                  | https://github.com/expressjs/compression                           |
 | cookie-parser             | 1.4.7   | MIT          | TJ Holowaychuk                | https://github.com/expressjs/cookie-parser                         |
 | cors                      | 2.8.6   | MIT          | Troy Goode                    | https://github.com/expressjs/cors                                  |
 | dotenv                    | 17.4.2  | BSD-2-Clause | Scott Motte                   | https://github.com/motdotla/dotenv                                 |
@@ -42,7 +42,7 @@ This document contains the license information for third-party packages used in 
 | intl-pluralrules          | 2.0.1   | ISC          | Eemeli Aro                    | https://github.com/eemeli/intl-pluralrules                         |
 | jsonwebtoken              | 9.0.3   | MIT          | Auth0, Inc.                   | https://github.com/auth0/node-jsonwebtoken                         |
 | node-cron                 | 4.6.0   | MIT          | Lucas Merencia                | https://github.com/merencia/node-cron                              |
-| nodemailer                | 9.0.5   | MIT          | Andris Reinman                | https://github.com/nodemailer/nodemailer                           |
+| nodemailer                | 9.1.1   | MIT-0        | Andris Reinman                | https://github.com/nodemailer/nodemailer                           |
 | resolve-accept-language   | 3.2.2   | MIT          | Nicolas Bouvrette             | https://github.com/resolve-accept-language/resolve-accept-language |
 | sanitize-html             | 2.17.7  | MIT          | Apostrophe Technologies, Inc. | https://github.com/apostrophecms/sanitize-html                     |
 | uuid                      | 14.0.1  | MIT          | uuidjs                        | https://github.com/uuidjs/uuid                                     |
@@ -71,7 +71,7 @@ This document contains the license information for third-party packages used in 
 | @types/supertest                 | 7.2.1   | MIT          | DefinitelyTyped       | https://github.com/DefinitelyTyped/DefinitelyTyped     |
 | @typescript-eslint/eslint-plugin | 8.67.0  | MIT          | TypeScript ESLint     | https://github.com/typescript-eslint/typescript-eslint |
 | @typescript-eslint/parser        | 8.67.0  | MIT          | TypeScript ESLint     | https://github.com/typescript-eslint/typescript-eslint |
-| @vitest/coverage-v8              | 4.1.10  | MIT          | Vladimir Sheremet     | https://github.com/vitest-dev/vitest                   |
+| @vitest/coverage-v8              | 4.1.11  | MIT          | Vladimir Sheremet     | https://github.com/vitest-dev/vitest                   |
 | cross-env                        | 10.1.0  | MIT          | Kent C. Dodds         | https://github.com/kentcdodds/cross-env                |
 | eslint                           | 10.8.1  | MIT          | OpenJS Foundation     | https://github.com/eslint/eslint                       |
 | eslint-config-prettier           | 10.1.8  | MIT          | Simon Lydell          | https://github.com/prettier/eslint-config-prettier     |
@@ -83,7 +83,7 @@ This document contains the license information for third-party packages used in 
 | supertest                        | 7.2.2   | MIT          | TJ Holowaychuk        | https://github.com/ladjs/supertest                     |
 | tsx                              | 4.23.12 | MIT          | Hiroki Osame          | https://github.com/privatenumber/tsx                   |
 | typescript                       | 6.0.3   | Apache-2.0   | Microsoft Corporation | https://github.com/microsoft/TypeScript                |
-| vitest                           | 4.1.10  | MIT          | Vladimir Sheremet     | https://github.com/vitest-dev/vitest                   |
+| vitest                           | 4.1.11  | MIT          | Vladimir Sheremet     | https://github.com/vitest-dev/vitest                   |
 
 ---
 
@@ -126,8 +126,8 @@ This document contains the license information for third-party packages used in 
 | @types/react                | 19.2.18 | MIT          | DefinitelyTyped            | https://github.com/DefinitelyTyped/DefinitelyTyped       |
 | @types/react-dom            | 19.2.4  | MIT          | DefinitelyTyped            | https://github.com/DefinitelyTyped/DefinitelyTyped       |
 | @vitejs/plugin-react        | 6.0.5   | MIT          | Vite                       | https://github.com/vitejs/vite-plugin-react              |
-| @vitest/coverage-v8         | 4.1.10  | MIT          | Vladimir Sheremet          | https://github.com/vitest-dev/vitest                     |
-| @vitest/ui                  | 4.1.10  | MIT          | Vladimir Sheremet          | https://github.com/vitest-dev/vitest                     |
+| @vitest/coverage-v8         | 4.1.11  | MIT          | Vladimir Sheremet          | https://github.com/vitest-dev/vitest                     |
+| @vitest/ui                  | 4.1.11  | MIT          | Vladimir Sheremet          | https://github.com/vitest-dev/vitest                     |
 | cross-env                   | 10.1.0  | MIT          | Kent C. Dodds              | https://github.com/kentcdodds/cross-env                  |
 | eslint                      | 10.8.1  | MIT          | OpenJS Foundation          | https://github.com/eslint/eslint                         |
 | eslint-config-prettier      | 10.1.8  | MIT          | Simon Lydell               | https://github.com/prettier/eslint-config-prettier       |
@@ -145,7 +145,7 @@ This document contains the license information for third-party packages used in 
 | typescript-eslint           | 8.67.0  | MIT          | TypeScript ESLint          | https://github.com/typescript-eslint/typescript-eslint   |
 | vi-axe                      | 1.0.0   | MIT          | Chan Zuckerberg Initiative | https://github.com/chanzuckerberg/vi-axe                 |
 | vite                        | 8.2.1   | MIT          | Vite                       | https://github.com/vitejs/vite                           |
-| vitest                      | 4.1.10  | MIT          | Vladimir Sheremet          | https://github.com/vitest-dev/vitest                     |
+| vitest                      | 4.1.11  | MIT          | Vladimir Sheremet          | https://github.com/vitest-dev/vitest                     |
 
 ---
 
@@ -178,7 +178,7 @@ This document contains the license information for third-party packages used in 
 | stylelint-no-unsupported-browser-features | 8.1.1   | MIT          | Cédric Delpoux         | https://github.com/RJWadley/stylelint-no-unsupported-browser-features |
 | typescript                                | 6.0.3   | Apache-2.0   | Microsoft Corporation  | https://github.com/microsoft/TypeScript                               |
 | typescript-eslint                         | 8.67.0  | MIT          | TypeScript ESLint      | https://github.com/typescript-eslint/typescript-eslint                |
-| vitest                                    | 4.1.10  | MIT          | Vladimir Sheremet      | https://github.com/vitest-dev/vitest                                  |
+| vitest                                    | 4.1.11  | MIT          | Vladimir Sheremet      | https://github.com/vitest-dev/vitest                                  |
 
 ---
 
@@ -188,7 +188,7 @@ This document contains the license information for third-party packages used in 
 | ---------------------- | ------- | ------------ | ---------------------- | -------------------------------------------------- |
 | @eslint/js             | 10.0.1  | MIT          | OpenJS Foundation      | https://github.com/eslint/eslint                   |
 | @types/node            | 24.13.3 | MIT          | DefinitelyTyped        | https://github.com/DefinitelyTyped/DefinitelyTyped |
-| @vitest/coverage-v8    | 4.1.10  | MIT          | Vladimir Sheremet      | https://github.com/vitest-dev/vitest               |
+| @vitest/coverage-v8    | 4.1.11  | MIT          | Vladimir Sheremet      | https://github.com/vitest-dev/vitest               |
 | date-fns               | 4.4.0   | MIT          | Sasha Koss, Lesha Koss | https://github.com/date-fns/date-fns               |
 | eslint                 | 10.8.1  | MIT          | OpenJS Foundation      | https://github.com/eslint/eslint                   |
 | eslint-config-prettier | 10.1.8  | MIT          | Simon Lydell           | https://github.com/prettier/eslint-config-prettier |
@@ -196,7 +196,7 @@ This document contains the license information for third-party packages used in 
 | prettier               | 3.9.6   | MIT          | Prettier               | https://github.com/prettier/prettier               |
 | rimraf                 | 6.1.3   | MIT          | Isaac Z. Schlueter     | https://github.com/isaacs/rimraf                   |
 | typescript             | 6.0.3   | Apache-2.0   | Microsoft Corporation  | https://github.com/microsoft/TypeScript            |
-| vitest                 | 4.1.10  | MIT          | Vladimir Sheremet      | https://github.com/vitest-dev/vitest               |
+| vitest                 | 4.1.11  | MIT          | Vladimir Sheremet      | https://github.com/vitest-dev/vitest               |
 
 ---
 
@@ -252,6 +252,29 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+```
+
+### MIT No Attribution License (MIT-0)
+
+Used by `nodemailer`.
+
+```
+MIT No Attribution
+
+Copyright <YEAR> <COPYRIGHT HOLDER>
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this
+software and associated documentation files (the "Software"), to deal in the Software
+without restriction, including without limitation the rights to use, copy, modify,
+merge, publish, distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
+INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
+PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF
+CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE
+OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```
 
 ### Apache License 2.0
@@ -450,10 +473,11 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
 
 | License Type       | Package Count | Percentage |
 | ------------------ | ------------- | ---------- |
-| MIT                | 125           | 89.3%      |
+| MIT                | 124           | 88.6%      |
 | Apache-2.0         | 9             | 6.4%       |
 | ISC                | 2             | 1.4%       |
 | BSD-2-Clause       | 2             | 1.4%       |
+| MIT-0              | 1             | 0.7%       |
 | OFL-1.1            | 1             | 0.7%       |
 | PostgreSQL License | 1             | 0.7%       |
 
@@ -463,7 +487,7 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
 
 ## Compliance Statement
 
-All dependencies listed in this document use OSI-approved open-source licenses that are compatible with the Apache-2.0 license under which Scrumooth is distributed. No copyleft licenses (GPL, LGPL, AGPL) are present in the dependency tree. The bundled Inter font is distributed under the SIL Open Font License 1.1, which permits bundling and redistribution with software and is compatible with Apache-2.0. The PostgreSQL server is distributed under the permissive PostgreSQL License, and nginx under the BSD-2-Clause license, both compatible with Apache-2.0.
+All dependencies listed in this document use OSI-approved open-source licenses that are compatible with the Apache-2.0 license under which Scrumooth is distributed. No copyleft licenses (GPL, LGPL, AGPL) are present in the dependency tree. `MIT-0` (MIT No Attribution), used by `nodemailer`, is the permissive MIT license with the attribution clause removed; it is OSI-approved and adds no obligations beyond those of MIT. The bundled Inter font is distributed under the SIL Open Font License 1.1, which permits bundling and redistribution with software and is compatible with Apache-2.0. The PostgreSQL server is distributed under the permissive PostgreSQL License, and nginx under the BSD-2-Clause license, both compatible with Apache-2.0.
 
 ### Transitive Dependencies
 
@@ -492,5 +516,5 @@ This document should be updated whenever:
 
 ---
 
-**Document Version:** 3.0  
-**Generated:** August 16, 2026
+**Document Version:** 3.1  
+**Generated:** September 13, 2026
