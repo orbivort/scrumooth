@@ -37,13 +37,13 @@ The Daily Scrum is **not**:
 
 ### Key Characteristics
 
-| Aspect           | Guideline                             |
-| ---------------- | ------------------------------------- |
-| **Duration**     | Maximum 15 minutes                    |
-| **Frequency**    | Every working day                     |
-| **Participants** | Developers (Scrum Master facilitates) |
-| **Location**     | Same place and time each day          |
-| **Format**       | Developers choose the structure       |
+| Aspect           | Guideline                                                                     |
+| ---------------- | ----------------------------------------------------------------------------- |
+| **Duration**     | Maximum 15 minutes                                                            |
+| **Frequency**    | Every working day                                                             |
+| **Participants** | Developers (Scrum Master facilitates; Product Owner and Scrum Master observe) |
+| **Location**     | Same place and time each day                                                  |
+| **Format**       | Developers choose the structure                                               |
 
 The Developers can select whatever structure and techniques they want, as long as the Daily Scrum focuses on progress toward the Sprint Goal and produces an actionable plan. Scrumooth supports this by letting the team choose its focus rather than mandating a fixed set of questions.
 
@@ -64,7 +64,7 @@ The Developers can select whatever structure and techniques they want, as long a
 
 The Daily Scrum is stored as a single **team-level record** per Sprint per day, jointly owned by the Developers. There is no per-user status report.
 
-Because the Daily Scrum is an event **for the Developers** (Scrum Guide), only team members with the **Developer** role can record or edit the shared inspect/adapt/plan content. The Product Owner and Scrum Master may attend and observe the record, but they cannot author or modify it — this keeps the Developers' plan self-managed. A non-Developer viewing the page sees a read-only notice instead of the record/edit actions.
+Because the Daily Scrum is an event **for the Developers** (Scrum Guide), only team members with the **Developers** role can record or edit the shared inspect/adapt/plan content. The Product Owner and Scrum Master may attend and observe the record, but they cannot author or modify it — this keeps the Developers' plan self-managed. A non-Developer viewing the page sees a read-only notice instead of the record/edit actions.
 
 ### Developer-Chosen Structure
 

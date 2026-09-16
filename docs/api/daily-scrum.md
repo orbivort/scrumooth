@@ -39,7 +39,7 @@ The team-level API provides:
 
 All daily scrum endpoints require authentication. Include the access token in your request:
 
-Reading endpoints are open to any team member. Because the Daily Scrum is an event for the Developers (Scrum Guide), the write endpoints that create, update, or record participation for a Daily Scrum require the caller to hold the **Developer** role in the sprint's team. A non-Developer (e.g. Product Owner or Scrum Master) receives `403 Forbidden` when attempting these operations.
+Reading endpoints are open to any team member. Because the Daily Scrum is an event for the Developers (Scrum Guide), the write endpoints that create, update, or record participation for a Daily Scrum require the caller to hold the **Developers** role in the sprint's team. A non-Developer (e.g. Product Owner or Scrum Master) receives `403 Forbidden` when attempting these operations.
 
 **Using Cookies (Recommended)**
 

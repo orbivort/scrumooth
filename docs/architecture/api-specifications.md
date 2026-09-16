@@ -670,7 +670,7 @@ All errors follow the consistent envelope structure:
 
 ### Error Handler Middleware
 
-The centralized `errorHandler` middleware (defined in [error.middleware.ts](file:///e:/ws1/ov/ce/scrumooth/packages/backend/src/middleware/error.middleware.ts)) processes errors in the following order:
+The centralized `errorHandler` middleware (defined in [error.middleware.ts](../../packages/backend/src/middleware/error.middleware.ts)) processes errors in the following order:
 
 ```
 Error enters middleware
@@ -747,7 +747,7 @@ Rate limiting protects the API from abuse and ensures fair resource allocation a
 
 ### Rate Limit Types
 
-The application defines four distinct rate limiters (defined in [rateLimit.middleware.ts](file:///e:/ws1/ov/ce/scrumooth/packages/backend/src/middleware/rateLimit.middleware.ts)):
+The application defines four distinct rate limiters (defined in [rateLimit.middleware.ts](../../packages/backend/src/middleware/rateLimit.middleware.ts)):
 
 | Limiter         | Limit | Window | Scope       | Applied To               |
 | --------------- | ----- | ------ | ----------- | ------------------------ |

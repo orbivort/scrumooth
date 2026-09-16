@@ -2,7 +2,7 @@
 
 First of all, thank you for considering contributing to Scrumooth! Every contribution — code, documentation, bug reports, translations, or feedback — helps make this project better.
 
-Scrumooth is a self-hosted Scrum tool designed to adhere strictly to the Scrum Guide. This guide will help you understand how to contribute effectively, whether you are fixing a typo or implementing a new feature.
+Scrumooth is a self-hosted, open-source Scrum Guide enforcement layer: it turns the rules of the **2020 Scrum Guide** into gates the backend enforces, and refuses to let a process violation pass silently. This guide will help you understand how to contribute effectively, whether you are fixing a typo or implementing a new feature.
 
 Please read our [Code of Conduct](./CODE_OF_CONDUCT.md) before participating.
 

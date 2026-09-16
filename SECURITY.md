@@ -2,7 +2,7 @@
 
 ## Security Policy Overview
 
-The Scrumooth team takes security seriously. We are committed to ensuring the security and privacy of our users' data and maintaining the integrity of our Agile Scrum Lifecycle Management System. This document outlines our security policy, supported versions, and the process for reporting security vulnerabilities.
+The Scrumooth team takes security seriously. We are committed to ensuring the security and privacy of our users' data and maintaining the integrity of Scrumooth, the self-hosted Scrum Guide enforcement layer. Because the rules of the 2020 Scrum Guide are enforced server-side, the security of the backend _is_ the integrity of the process. This document outlines our security policy, supported versions, and the process for reporting security vulnerabilities.
 
 ### Our Security Commitment
 

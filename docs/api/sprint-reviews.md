@@ -850,7 +850,7 @@ POST /api/v1/sprint-reviews/:reviewId/attendees
 {
   "name": "string (required, 1-100 chars)",
   "email": "string (optional, valid email or empty)",
-  "role": "string (required, one of: product_owner, scrum_master, developer, stakeholder)",
+  "role": "string (required, one of: product_owner, scrum_master, developers, stakeholder)",
   "attended": "boolean (optional, default: true)"
 }
 ```
@@ -948,7 +948,7 @@ PUT /api/v1/sprint-reviews/attendees/:id
 {
   "name": "string (optional, 1-100 chars)",
   "email": "string (optional, valid email or empty)",
-  "role": "string (optional, one of: product_owner, scrum_master, developer, stakeholder)",
+  "role": "string (optional, one of: product_owner, scrum_master, developers, stakeholder)",
   "attended": "boolean (optional)"
 }
 ```

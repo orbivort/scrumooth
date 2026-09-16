@@ -35,6 +35,8 @@ The Sprint Review is **not**:
 - A status meeting
 - A gate to pass
 
+> **Note**: "Not a gate" describes the Review's nature — a collaborative working session, not an approval checkpoint for the Increment. It does not mean the Review is optional in Scrumooth: the Sprint cannot be closed until the Sprint Review has been recorded.
+
 ### Key Characteristics
 
 | Aspect           | Guideline                           |
@@ -50,7 +52,7 @@ The Sprint Review is **not**:
 
 ### Preparation Checklist
 
-**Development Team:**
+**Developers:**
 
 - [ ] All "Done" items are ready to demonstrate
 - [ ] Demo environment is prepared
@@ -348,7 +350,7 @@ Document the review for future reference:
 - Communicate changes to stakeholders
 - Prepare for next sprint
 
-### For Development Teams
+### For Developers
 
 **Before:**
 

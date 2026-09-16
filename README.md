@@ -1,8 +1,12 @@
-# Scrumooth – Block the noise. Ship the smooth.
+# Scrumooth — the Scrum Guide, enforced.
 
-_The Linter for Scrum._
+**Judge a Scrum tool by the rules it keeps, not by the boards it draws.**
 
-_Self-hosted, open-source, and built to enforce the 2020 Scrum Guide._
+**Scrumooth** is a self-hosted, open-source web application for teams that run Scrum. It is built for Scrum Masters, Product Owners, and the engineering-led teams that want the process to hold itself to the Guide. It turns the rules of the **2020 Scrum Guide** into gates the backend enforces wherever a tool can — and declares the places where it deliberately does not.
+
+It is **not** a replacement for your issue tracker. As the Scrum Guide enforcement layer your tracker does not have, it owns the Sprint lifecycle, the roles, and the gates, and it refuses to let a process violation pass silently. Your tracker keeps your record; this keeps your rules. Every rule it enforces is listed in [What Scrumooth Enforces](#what-scrumooth-enforces) — and no rule outside that list is claimed.
+
+Running a second tool is a real cost — something else to deploy, secure, back up, and keep fed. Scrumooth is deliberately the smallest system that can carry it: a single Compose stack — reverse proxy, backend, frontend, PostgreSQL, and scheduled backups — and one database to look after.
 
 > **Languages:** [English](README.md) | [Deutsch](README.de.md) | [Español](README.es.md) | [Français](README.fr.md) | [Italiano](README.it.md)
 
@@ -36,61 +40,155 @@ Try Scrumooth instantly in your browser — no installation required. The demo r
 
 ---
 
-<a id="the-manifesto"></a>
-
-## 📜 The Manifesto — Why Scrumooth exists
-
-> Most project management tools are **passive tape recorders**.
-> They give you boards, they log your clicks, they draw beautiful charts—_after_ the Sprint fails.
-> They track your mistakes. They never stop you from making them.
->
-> **Scrumooth flips the script.** We are the **gatekeeper**, not the note-taker.
->
-> We embed the **2020 Scrum Guide** as executable code. We don't just suggest best practices—we **enforce** them natively, so your team spends less time arguing about process and more time shipping working software.
-
 ## Table of Contents
+
+**Understand Scrumooth**
 
 - [Live Demo](#live-demo)
 - [The Manifesto](#the-manifesto)
+- [What Scrumooth Enforces](#what-scrumooth-enforces)
+- [Who It's For](#who-its-for)
+- [Why You Can Trust It](#why-you-can-trust-it)
 - [Features](#features)
+
+**Self-host & develop**
+
 - [Tech Stack](#tech-stack)
+- [Project Structure](#project-structure)
 - [Quick Start](#quick-start)
 - [Prerequisites](#prerequisites)
 - [Installation](#installation)
+- [Common Development Commands](#development-commands)
 - [Testing](#testing)
+- [Load Testing (k6)](#load-testing-k6)
 - [Code Quality](#code-quality)
 - [Database Management](#database-management)
 - [Docker Support](#docker-support)
 - [Deployment](#deployment)
-- [Documentation](#documentation)
 - [Troubleshooting](#troubleshooting)
+
+**Project**
+
+- [Documentation](#documentation)
 - [Roadmap](#roadmap)
 - [Contributing](#contributing)
 - [License](#license)
+
+---
+
+<a id="the-manifesto"></a>
+
+## 📜 The Manifesto — Why Scrumooth exists
+
+> Most project management tools are built to **record** what happened. They give you boards, they log your clicks, they draw accurate charts — after the Sprint is over. Recording is genuinely useful, and those tools do it well.
+>
+> But a record is a description, not a decision. The 2020 Scrum Guide is full of rules a tool could hold you to: a Sprint closes only after its Review and its Retrospective, only the Developers size the work, one Product Owner owns the Product Backlog, and "Done" means the Definition of Done has been met. When one of them slips — a Sprint closed before its Retrospective ran, a Product Owner sizing work on the Developers' behalf, an item marked Done with its criteria unverified — the slip is usually invisible until the Sprint is over. In most tools those rules are advisory: a shared understanding the team is trusted to remember.
+>
+> **Scrumooth treats them as rules.**
+>
+> Discipline is not the missing ingredient — if it were enough on its own, no team would ever have closed a Sprint without a Retrospective. The Guide tells a team what to do; it cannot notice when the team stops doing it. So we embed the **2020 Scrum Guide** as executable code and **enforce** it server-side, where neither the interface nor a direct API call can bypass it. We are a **gatekeeper, not a note-taker**.
+>
+> Fewer process debates. More time shipping working software.
+
+<a id="what-scrumooth-enforces"></a>
+
+## 🔒 What Scrumooth Enforces
+
+These are gates, not warnings or hints. In every case below, the answer is no — and every answer holds in the backend service layer, so a frontend shortcut cannot get around it.
+
+| A 2020 Scrum Guide rule, asked as a question                  | Scrumooth's answer                                                                                                                                            |
+| ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Can a Sprint be closed before its Review and Retrospective?   | Sprint completion is refused until both events are recorded ([sprints API](docs/api/sprints.md)).                                                             |
+| Can an item be called Done without its Definition of Done?    | Completing a Sprint never marks items Done — each item must pass its Definition of Done checklist ([Definition of Done API](docs/api/definition-of-done.md)). |
+| Can a team hold more than one Product Owner or Scrum Master?  | Adding a second holder of either role is refused ([teams API](docs/api/teams.md)).                                                                            |
+| Can a team grow past Scrum Team size?                         | Team size is capped — `TEAM_MAX_SIZE`, default `10` ([teams API](docs/api/teams.md)).                                                                         |
+| Can someone other than a Developer size the work?             | Only Developers can size Product Backlog items — every other role receives `403 Forbidden` ([Product Backlog API](docs/api/product-backlog.md)).              |
+| Can the Product Owner or Scrum Master author the Daily Scrum? | Only Developers can author or join the daily record; the Product Owner and Scrum Master observe ([Daily Scrum API](docs/api/daily-scrum.md)).                 |
+| Can a Sprint be cancelled by anyone but the Product Owner?    | Cancellation is Product-Owner-only, and only while the Sprint is `ACTIVE` ([sprints API](docs/api/sprints.md)).                                               |
+| Can a delivered Increment be rewritten?                       | Delivered Increments are locked against further edits ([increments API](docs/api/increments.md)).                                                             |
+
+**Where Scrumooth deliberately does not enforce anything:** the Retrospective Prime Directive is left to the facilitator, and event timeboxes are surfaced through a shared team timer rather than forcibly terminating an event. The Guide asks for self-management in exactly those places, so Scrumooth does not decide for the team.
+
+**What a gate looks like in practice.** It is Friday, the Sprint is due to end, the increment is deployed — and the Retrospective was never scheduled. A recording tool closes the Sprint and the Retrospective slips to next week, which is the failure the Guide's final event exists to prevent; Scrumooth refuses the close until both events are recorded. The team then runs the Retrospective, or stops and discusses why not — the version of that decision the Guide expects a team to make consciously.
+
+Why will the tools you already use not simply add this? In our view, because a gate you can switch off is a setting, not a rule, and configurability is their selling point rather than their oversight. Nor can a hosted service easily promise that your process data never leaves your infrastructure. Scrumooth is not a feature they are missing; it is a trade-off they have already made the other way.
+
+The gates above are the entire claim: if a rule is not in the table, Scrumooth does not enforce it — and because a configuration that breaks the 2020 Scrum Guide is never offered, **the refusal is the product.**
+
+<a id="who-its-for"></a>
+
+## 🎯 Who It's For
+
+**Scrumooth is built for one situation in particular:** engineering-led organisations that have to be able to show how a Sprint was actually run, and for whom process data cannot leave their own infrastructure — regulated industries, their suppliers, and public-sector teams.
+
+**Scrumooth is for you if…**
+
+- You are a **Scrum Master or Product Owner** whose team finds it hard to hold to the 2020 Scrum Guide, and you want the tool to refuse the drift instead of quietly allowing it.
+- You lead an **engineering team** that wants to self-host its process data for privacy, compliance, or data-sovereignty reasons.
+- You need a **defensible, auditable record** of how each Sprint was actually run — who changed what, when, and under which role.
+- You want the Scrum Guide's boundaries encoded once, so new team members learn the process by using it.
+
+**Scrumooth is not for you if…**
+
+- You want a general-purpose issue tracker, roadmap planner, or Kanban board for non-Scrum work. Scrumooth refuses to be one.
+- You want every rule to be configurable. Scrumooth refuses configurations that break the Scrum Guide.
+- You want a fully managed SaaS. Scrumooth is self-hosted by design.
+- You need deep portfolio management, resource planning, or financial tracking across many unrelated projects.
+- You follow a scaled framework that adapts the Guide for a wider organisation, or Scrum is not yet how your team works. Scrumooth enforces the 2020 Scrum Guide as written, for a single Scrum Team.
+
+<a id="why-you-can-trust-it"></a>
+
+## 🛡 Why You Can Trust It
+
+**Why not a hosted service**
+
+- **Self-hosted by design.** Your process data never leaves your infrastructure.
+- **Data sovereignty built in.** GDPR data export, a 14-day deletion grace period, and consent tracking ship with the product.
+- **Auditable.** Every role change and state transition is written to a dedicated, compliance-separated audit log.
+- **Bounded access.** Concurrent sessions are capped, and the oldest sessions are revoked automatically.
+
+**Why not another self-hosted tool**
+
+- **Open and inspectable.** Apache-2.0, public CI, published coverage — an **80% line/branch/function/statement gate** is enforced in the pipeline.
+- **Tested under load, not just under unit tests.** 10 pre-built k6 scenarios, including a Sprint-planning peak. See [Load Testing](#load-testing-k6).
+- **Strict by construction.** TypeScript strict mode across backend, frontend, and shared packages.
+- **Localised where it matters.** The interface ships in English, German, Spanish, French, and Italian, with Scrum terminology sourced from the official Scrum Guide.
+
+**For those who have to approve it internally.** Deployment guidance, the security architecture, and the vulnerability-reporting process are all documented in the repository: [Deployment](#deployment), [`docs/architecture/security-architecture.md`](docs/architecture/security-architecture.md), and [`SECURITY.md`](SECURITY.md).
 
 <a id="features"></a>
 
 ## ✨ Features
 
-### Core Scrum Features
+### The Scrum workflow
 
-- **Product Goal** - Strategic alignment and goal tracking
-- **Product Backlog** - MoSCoW prioritization (Must, Should, Could, Won't)
-- **Sprint Planning** - Configurable sprint durations and capacity planning
-- **Sprint Execution** - Interactive Kanban board with drag-and-drop
-- **Daily Scrum** - Daily standup tracking and updates
-- **Impediment** - Blocker identification and resolution tracking
-- **Increment** - Product increment management
-- **Sprint Review** - Review meeting management and documentation
-- **Sprint Retrospective** - Team reflection and continuous improvement
+Everything needed to run the Sprint — the Guide's five events, three artifacts, and three commitments — with the rule it holds attached to each. Bold clauses repeat the gates in [What Scrumooth Enforces](#what-scrumooth-enforces); that table stays the only list of rules Scrumooth claims.
 
-### Advanced Features
+- **Product Goal** - Strategic alignment and goal tracking; the commitment the backlog serves
+- **Product Backlog** - MoSCoW prioritisation (Must, Should, Could, Won't); **only Developers size the work**
+- **Sprint Planning** - Configurable sprint durations and capacity planning; **only Developers save the Sprint Backlog**
+- **Sprint Execution** - Interactive Kanban board with drag-and-drop; **only the Product Owner can cancel, and only while the Sprint is `ACTIVE`**
+- **Daily Scrum** - Shared daily record, with impediment surfacing; **only Developers author it — the Product Owner and Scrum Master observe**
+- **Impediment** - Blocker identification and resolution tracking; **a Sprint cannot close before its Impediments are resolved**
+- **Increment** - Product increment management; **The moment a Product Backlog item meets the Definition of Done, an Increment is born**
+- **Sprint Review** - Review management, stakeholder feedback, and backlog adjustment; **a Sprint cannot close before its Review is recorded**
+- **Sprint Retrospective** - Team reflection and tracked improvement; **a Sprint cannot close before its Retrospective is recorded**
 
-- **Dashboard & Reporting** - Real-time metrics and visualizations
-- **Workflow Engine** - Role-based permissions and state transitions
-- **Definition of Done/Ready** - Customizable checklists
+### Governance and operations
+
+- **Workflow Engine** - Role-based permissions and gated state transitions, **enforced server-side**
+- **Definition of Done/Ready** - Customisable checklists; **nothing is Done until its checklist passes**
+- **Increment integrity** - **Delivered work cannot be silently rewritten**
+
+### Team and organisation
+
+- **Team composition** - One Product Owner and one Scrum Master; **team size capped** (`TEAM_MAX_SIZE`, default `10`)
+- **Audit Logging** - Dedicated, compliance-separated log; **every role change and state transition recorded**
+- **Dashboard & Reporting** - Real-time metrics and visualisations
 - **Team Communication** - Built-in notifications and messaging
-- **Audit Logging** - Comprehensive action tracking
+- **Team Health Check** - Periodic check-in against the five Scrum values
+- **Shared event timeboxes** - One clock for every participant; **timeboxes are surfaced, never force-closed**
+- **Privacy controls** - Data export and erasure rights, plus consent tracking
 
 <a id="tech-stack"></a>
 
@@ -112,9 +210,9 @@ Try Scrumooth instantly in your browser — no installation required. The demo r
 
 - **Framework:** React 19 with Vite
 - **Language:** TypeScript (strict mode)
-- **Routing:** React Router 6
+- **Routing:** React Router 8
 - **State Management:** TanStack Query (React Query) + Zustand
-- **Visualization:** Chart.js
+- **Visualisation:** Chart.js
 - **Styling:** CSS Modules with Design Tokens
 - **Error Tracking:** Sentry (optional, via `VITE_SENTRY_DSN`)
 
@@ -132,6 +230,8 @@ Try Scrumooth instantly in your browser — no installation required. The demo r
 - **Linting:** ESLint + Stylelint
 - **Formatting:** Prettier
 - **Git Hooks:** Husky + lint-staged
+
+<a id="project-structure"></a>
 
 ## 📁 Project Structure
 
@@ -176,7 +276,7 @@ scrumooth/
 ├── SECURITY.md               # Security policy and reporting
 ├── CONTRIBUTING.md           # Contributing guidelines
 ├── CODE_OF_CONDUCT.md        # Community code of conduct
-└── THIRD-PARTY-NOTICES.md    # Third-party license attributions
+└── THIRD-PARTY-NOTICES.md    # Third-party License attributions
 ```
 
 <a id="quick-start"></a>
@@ -296,7 +396,11 @@ pnpm run dev:backend    # Backend only (http://localhost:5001)
 pnpm run dev:frontend   # Frontend only (http://localhost:5173)
 ```
 
-## 🎯 Usage
+<a id="development-commands"></a>
+
+## 🛠 Common Development Commands
+
+For developers, the closest analogy is a linter for your Scrum process — with the difference that matters built in: a linter reports a violation, a gate refuses it.
 
 The most common commands for everyday development:
 
@@ -322,6 +426,8 @@ pnpm run test:watch        # Watch mode
 
 Coverage thresholds enforced: **80% lines, functions, statements, branches**.
 
+<a id="load-testing-k6"></a>
+
 ### Load Testing (k6)
 
 Pre-built load test scenarios live under [`k6/scripts/scenarios/`](k6/scripts/scenarios). Copy [`k6/.env.k6.example`](k6/.env.k6.example) to `k6/.env.k6`, configure your target, then run a scenario such as:
@@ -332,7 +438,7 @@ pnpm run loadtest:peak      # Sprint planning rush (worst-case concurrency)
 pnpm run loadtest:stress    # Push the system until it breaks
 ```
 
-> **Prerequisite:** Install [k6](https://k6.io/docs/get-started/installation/) and ensure your target backend is running. Additional scenarios (endurance, multi-team, daily-scrum, auth, db) are available via the `loadtest:*` scripts in [`package.json`](package.json).
+> **Prerequisite:** Install [k6](https://k6.io/docs/get-started/installation/) and ensure your target backend is running. Ten scenarios live in [`k6/scripts/scenarios/`](k6/scripts/scenarios); the `loadtest:*` scripts in [`package.json`](package.json) expose eight of them, including endurance, multi-team, daily-scrum, auth, and database stress.
 
 <a id="code-quality"></a>
 
@@ -484,10 +590,14 @@ Set `VITE_USE_MOCK_API=true` in `packages/frontend/.env` to use the same mock AP
 
 ## 🗺 Roadmap
 
-Scrumooth is under active development. Upcoming priorities include:
+Scrumooth is under active development. The priorities below deepen what Scrumooth enforces rather than widening it into a general-purpose tracker:
 
-- [ ] Enhanced reporting and analytics dashboards
-- [ ] Additional integrations and webhooks
+- [ ] **Scrum Guide conformance report** — a per-Sprint statement of which rules applied, and how each was met
+- [ ] **Exportable Sprint evidence pack** — a shareable record for audits and compliance reviews
+- [ ] **More enforceable rules** — expanding the covered surface of the 2020 Scrum Guide
+- [ ] **Deeper Definition of Done / Definition of Ready automation**
+- [ ] **Reporting that surfaces process drift**, not just delivery metrics
+- [ ] **Integrations and webhooks**, so Scrumooth can sit alongside the tools you already use
 - [ ] Performance and scalability hardening
 
 The project status and latest changes are tracked in the [CHANGELOG](CHANGELOG.md). Feedback and feature requests are welcome via [GitHub Issues](https://github.com/orbivort/scrumooth/issues).
@@ -503,3 +613,7 @@ Contributions are welcome! Please read [`CONTRIBUTING.md`](CONTRIBUTING.md) for 
 ## 📝 License
 
 This project is licensed under the [Apache License 2.0](LICENSE).
+
+---
+
+_Judge a Scrum tool by the rules it keeps, not by the boards it draws._

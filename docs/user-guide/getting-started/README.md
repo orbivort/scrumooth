@@ -1,6 +1,6 @@
 # Getting Started with Scrumooth
 
-Welcome to Scrumooth, your comprehensive Agile Scrum Lifecycle Management System. This guide will walk you through everything you need to know to get started, from creating your account to planning your first sprint.
+Welcome to Scrumooth, the self-hosted Scrum Guide enforcement layer. This guide will walk you through everything you need to know to get started, from creating your account to planning your first sprint.
 
 ## Table of Contents
 
@@ -17,7 +17,7 @@ Welcome to Scrumooth, your comprehensive Agile Scrum Lifecycle Management System
 
 ## What is Scrumooth?
 
-Scrumooth is a self-hosted web application designed to help teams manage their Agile Scrum processes. It faithfully follows the Scrum Guide and provides tools for:
+Scrumooth is a self-hosted, open-source web application for teams that run Scrum. It turns the rules of the 2020 Scrum Guide into gates the backend enforces — a Sprint cannot be closed before its Review and its Retrospective, only Developers size the work, and "Done" means the Definition of Done has been met. It provides tools for:
 
 - **Product Goals** - Define and track strategic objectives
 - **Product Backlog** - Manage and prioritize work items
@@ -33,7 +33,7 @@ This guide is designed for:
 
 - **Product Owners** - Who will manage the product backlog and goals
 - **Scrum Masters** - Who will facilitate ceremonies and remove impediments
-- **Development Team Members** - Who will execute the work
+- **Developers** - Who will execute the work
 
 ---
 
@@ -146,11 +146,11 @@ Once your team is created, invite members to join:
 
 3. **Member Roles**
 
-   | Role              | Permissions                                                    |
-   | ----------------- | -------------------------------------------------------------- |
-   | **Product Owner** | Manage backlog, goals, sprint planning, reviews, team settings |
-   | **Scrum Master**  | Facilitate ceremonies, manage impediments, retrospectives      |
-   | **Developer**     | Update tasks, daily scrum, view backlog                        |
+   | Role              | Permissions                                                              |
+   | ----------------- | ------------------------------------------------------------------------ |
+   | **Product Owner** | Manage backlog, goals, reviews, team settings, cancel a Sprint           |
+   | **Scrum Master**  | Facilitate ceremonies, manage impediments, retrospectives                |
+   | **Developers**    | Size work, save the Sprint Backlog, update tasks, author the Daily Scrum |
 
 4. **Invitation Process**
    - Invited members receive an email with registration instructions

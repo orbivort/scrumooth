@@ -1,6 +1,8 @@
 # Scrumooth User Guide
 
-Welcome to the Scrumooth User Guide. This comprehensive documentation will help you understand and effectively use Scrumooth, your Agile Scrum Lifecycle Management System.
+Welcome to the Scrumooth User Guide. This comprehensive documentation will help you understand and effectively use Scrumooth, the self-hosted Scrum Guide enforcement layer.
+
+> **Judge a Scrum tool by the rules it keeps, not by the boards it draws.**
 
 ---
 
@@ -8,7 +10,7 @@ Welcome to the Scrumooth User Guide. This comprehensive documentation will help 
 
 ### What is Scrumooth?
 
-Scrumooth is a self-hosted web application for managing Agile Scrum processes. It faithfully follows the Scrum Guide and provides tools for the entire Scrum lifecycle:
+Scrumooth is a self-hosted, open-source web application for teams that run Scrum. It is the **Scrum Guide enforcement layer**: it turns the rules of the 2020 Scrum Guide into gates the backend enforces — a Sprint cannot be closed before its Review and its Retrospective, only Developers size the work, one Product Owner owns the Product Backlog, and "Done" means the Definition of Done has been met. It provides tools for the entire Scrum lifecycle:
 
 - **Product Goals** - Define and track strategic objectives
 - **Product Backlog** - Manage and prioritize work items
@@ -17,6 +19,16 @@ Scrumooth is a self-hosted web application for managing Agile Scrum processes. I
 - **Daily Scrum** - Coordinate daily standups
 - **Sprint Reviews** - Gather feedback and demonstrate work
 - **Retrospectives** - Reflect and improve processes
+
+These are the features covered by this guide. The canonical, complete feature list — including Increments, Impediments, Definition of Done/Ready, the Workflow Engine, and Team Health Check — lives in the project README: [Features](../../README.md#features).
+
+Scrumooth is built for one situation in particular: engineering-led organisations that have to be able to show how a Sprint was actually run, and for whom process data cannot leave their own infrastructure — regulated industries, their suppliers, and public-sector teams. It is **self-hosted by design** (your process data never leaves your infrastructure), ships with GDPR data export and a 14-day deletion grace period, and writes every role change and state transition to a dedicated, compliance-separated audit log.
+
+### What Scrumooth Enforces
+
+Scrumooth does not treat the Scrum Guide as advice. It enforces the rules server-side, so they hold whether you use the interface or call the API directly: a Sprint cannot be closed before its Review and its Retrospective, only Developers size the work, one Product Owner owns the Product Backlog, and "Done" means the Definition of Done has been met.
+
+The canonical list of enforced rules — and the boundaries where Scrumooth deliberately does not enforce anything — lives in the project README: [What Scrumooth Enforces](../../README.md#what-scrumooth-enforces).
 
 ### Who Should Use This Guide?
 
@@ -78,7 +90,7 @@ user-guide/
 
 ## Scrum Framework Overview
 
-Scrumooth implements the Scrum framework as defined in the [Scrum Guide](https://scrumguides.org/).
+Scrumooth enforces the Scrum framework as defined in the [2020 Scrum Guide](https://scrumguides.org/).
 
 ### Scrum Events
 
@@ -114,21 +126,19 @@ Scrumooth implements the Scrum framework as defined in the [Scrum Guide](https:/
 
 ### Scrum Roles
 
-| Role              | Responsibility         | Scrumooth Permissions              |
-| ----------------- | ---------------------- | ---------------------------------- |
-| **Product Owner** | Maximize product value | Manage backlog, goals, planning    |
-| **Scrum Master**  | Facilitate Scrum       | Facilitate ceremonies, impediments |
-| **Developer**     | Create increment       | Execute work, update tasks         |
+| Role              | Responsibility         | Scrumooth Permissions                            |
+| ----------------- | ---------------------- | ------------------------------------------------ |
+| **Product Owner** | Maximize product value | Manage backlog, goals, reviews; cancel a Sprint  |
+| **Scrum Master**  | Facilitate Scrum       | Facilitate ceremonies, manage impediments        |
+| **Developers**    | Create the Increment   | Size work, save the Sprint Backlog, execute work |
 
 ### Scrum Artifacts
 
-| Artifact            | Description                                      |
-| ------------------- | ------------------------------------------------ |
-| **Product Backlog** | Ordered list of everything needed in the product |
-| **Sprint Backlog**  | Items selected for the current sprint            |
-| **Increment**       | Sum of all completed items                       |
-| **Product Goal**    | Long-term objective for the product              |
-| **Sprint Goal**     | Objective for the current sprint                 |
+| Artifact            | Description                                      | Commitment             |
+| ------------------- | ------------------------------------------------ | ---------------------- |
+| **Product Backlog** | Ordered list of everything needed in the product | **Product Goal**       |
+| **Sprint Backlog**  | Items selected for the current Sprint            | **Sprint Goal**        |
+| **Increment**       | Sum of all completed items                       | **Definition of Done** |
 
 ---
 

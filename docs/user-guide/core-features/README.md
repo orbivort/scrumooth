@@ -4,19 +4,19 @@ This section provides comprehensive guides for all core features of Scrumooth. E
 
 ## Feature Overview
 
-| Feature                                 | Purpose                                 | Primary Users       |
-| --------------------------------------- | --------------------------------------- | ------------------- |
-| [Product Goals](./product-goals.md)     | Strategic direction and objectives      | Product Owner       |
-| [Product Backlog](./product-backlog.md) | Work item management and prioritization | Product Owner, Team |
-| [Sprint Planning](./sprint-planning.md) | Sprint preparation and commitment       | Scrum Master, Team  |
-| [Sprint Board](./sprint-board.md)       | Daily work tracking (Kanban)            | Scrum Master, Team  |
-| [Daily Scrum](./daily-scrum.md)         | Daily synchronization                   | Scrum Master, Team  |
-| [Sprint Review](./sprint-review.md)     | Demonstration and feedback              | Product Owner, Team |
-| [Retrospectives](./retrospectives.md)   | Process improvement                     | Scrum Master, Team  |
+| Feature                                 | Purpose                                 | Primary Users             |
+| --------------------------------------- | --------------------------------------- | ------------------------- |
+| [Product Goals](./product-goals.md)     | Strategic direction and objectives      | Product Owner             |
+| [Product Backlog](./product-backlog.md) | Work item management and prioritization | Product Owner, Developers |
+| [Sprint Planning](./sprint-planning.md) | Sprint preparation and commitment       | Scrum Team (facilitated)  |
+| [Sprint Board](./sprint-board.md)       | Daily work tracking (Kanban)            | Developers                |
+| [Daily Scrum](./daily-scrum.md)         | Daily synchronization                   | Developers                |
+| [Sprint Review](./sprint-review.md)     | Demonstration and feedback              | Scrum Team + Stakeholders |
+| [Retrospectives](./retrospectives.md)   | Process improvement                     | Scrum Team (facilitated)  |
 
 ## Scrum Framework in Scrumooth
 
-Scrumooth implements the Scrum framework as defined in the [Scrum Guide](https://scrumguides.org/):
+Scrumooth enforces the Scrum framework as defined in the [2020 Scrum Guide](https://scrumguides.org/):
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
@@ -90,7 +90,7 @@ Each sprint follows this lifecycle:
 - [Sprint Review](./sprint-review.md) - Facilitate review meetings
 - [Retrospectives](./retrospectives.md) - Guide process improvement
 
-### For Development Team
+### For Developers
 
 - [Sprint Board](./sprint-board.md) - Track and update work
 - [Daily Scrum](./daily-scrum.md) - Participate in standups

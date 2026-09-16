@@ -1,6 +1,6 @@
 # scrumooth API Documentation
 
-Welcome to the scrumooth API documentation. This comprehensive guide provides detailed information about all available API endpoints, authentication methods, request/response formats, and error handling.
+Welcome to the scrumooth API documentation. Scrumooth is the self-hosted **Scrum Guide enforcement layer**: the rules of the 2020 Scrum Guide are enforced server-side, so the same gates that hold in the interface also hold when you call the API directly — a Sprint cannot close before its Review and Retrospective, only Developers size work, and nothing is Done until its Definition of Done passes. This comprehensive guide provides detailed information about all available API endpoints, authentication methods, request/response formats, and error handling.
 
 ## Table of Contents
 

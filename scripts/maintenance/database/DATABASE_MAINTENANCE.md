@@ -171,7 +171,7 @@ crontab -e
 
 ### Option 2: Using Backup Container
 
-The production `docker-compose.yml` already includes a fully configured backup service. See the [docker-compose.yml](file:///e:/ws1/ov/ce/scrumooth/docker-compose.yml) `backup` service definition (lines 278-308) for the actual configuration.
+The production `docker-compose.yml` already includes a fully configured backup service. See the [docker-compose.yml](../../../docker-compose.yml) `backup` service definition (lines 278-308) for the actual configuration.
 
 ---
 

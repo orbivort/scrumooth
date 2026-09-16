@@ -2,7 +2,7 @@
 
 This document contains the license information for third-party packages used in the Scrumooth project.
 
-**Project:** Scrumooth - Agile Scrum Lifecycle Management System
+**Project:** Scrumooth — The self-hosted Scrum Guide enforcement layer
 **License:** Apache-2.0
 **Last Updated:** September 13, 2026
 

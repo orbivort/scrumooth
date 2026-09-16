@@ -1,8 +1,12 @@
-# Scrumooth – Filtrez le bruit. Livrez en toute fluidité.
+# Scrumooth — le Scrum Guide, appliqué.
 
-_Le linter de Scrum._
+**Jugez un outil Scrum sur les règles qu'il fait respecter, non sur les tableaux qu'il dessine.**
 
-_Auto-hébergé, open source et conçu pour faire respecter le Scrum Guide 2020._
+**Scrumooth** est une application web auto-hébergée et open source destinée aux équipes qui pratiquent Scrum. Elle est conçue pour les Scrum Masters, les Product Owners et les équipes pilotées par l'ingénierie qui veulent que le processus se tienne au Guide. Elle transforme les règles du **Scrum Guide 2020** en barrières que le backend fait respecter partout où un outil le peut — et déclare les endroits où elle ne le fait délibérément pas.
+
+Elle **ne remplace pas** votre outil de suivi des tickets. En tant que couche d'application du Scrum Guide que votre outil n'a pas, elle est responsable du cycle de vie du Sprint, des rôles et des barrières, et elle refuse qu'une violation du processus passe sous silence. Votre outil conserve votre enregistrement ; Scrumooth conserve vos règles. Chaque règle qu'elle applique est listée dans [Ce que Scrumooth applique](#what-scrumooth-enforces) — et aucune règle en dehors de cette liste n'est revendiquée.
+
+Faire tourner un second outil a un coût réel — quelque chose de plus à déployer, sécuriser, sauvegarder et maintenir. Scrumooth est délibérément le plus petit système capable de le porter : une seule pile Compose —proxy inverse, backend, frontend, PostgreSQL et sauvegardes planifiées— et une seule base de données à surveiller.
 
 > **Langues :** [English](README.md) | [Deutsch](README.de.md) | [Español](README.es.md) | [Français](README.fr.md) | [Italiano](README.it.md)
 
@@ -36,75 +40,155 @@ Essayez Scrumooth instantanément dans votre navigateur — aucune installation 
 
 ---
 
-<a id="the-manifesto"></a>
-
-## 📜 Le manifeste — Pourquoi Scrumooth existe
-
-> La plupart des outils de gestion de projet sont des **magnétophones passifs**.
-> Ils vous fournissent des tableaux, ils enregistrent vos clics, ils dessinent de beaux graphiques—_après_ que le Sprint a échoué.
-> Ils suivent vos erreurs. Ils ne vous empêchent jamais de les commettre.
->
-> **Scrumooth renverse la situation.** Nous sommes le **gardien**, pas le secrétaire.
->
-> Nous intégrons le **Scrum Guide 2020** comme du code exécutable. Nous ne nous contentons pas de suggérer les bonnes pratiques—nous les **faisons respecter** nativement, afin que votre équipe passe moins de temps à débattre des processus et plus de temps à livrer des logiciels fonctionnels.
-
 ## Table des matières
+
+**Comprendre Scrumooth**
 
 - [Démo en ligne](#live-demo)
 - [Le manifeste](#the-manifesto)
+- [Ce que Scrumooth applique](#what-scrumooth-enforces)
+- [À qui elle s'adresse](#who-its-for)
+- [Pourquoi vous pouvez lui faire confiance](#why-you-can-trust-it)
 - [Fonctionnalités](#features)
+
+**Auto-hébergement et développement**
+
 - [Pile technologique](#tech-stack)
+- [Structure du projet](#project-structure)
 - [Démarrage rapide](#quick-start)
 - [Prérequis](#prerequisites)
 - [Installation](#installation)
+- [Commandes de développement courantes](#development-commands)
 - [Tests](#testing)
+- [Tests de charge (k6)](#load-testing-k6)
 - [Qualité du code](#code-quality)
 - [Gestion de la base de données](#database-management)
 - [Prise en charge de Docker](#docker-support)
 - [Déploiement](#deployment)
-- [Documentation](#documentation)
 - [Dépannage](#troubleshooting)
+
+**Projet**
+
+- [Documentation](#documentation)
 - [Feuille de route](#roadmap)
 - [Contribuer](#contributing)
 - [Licence](#license)
 
-<a id="live-demo"></a>
+---
 
-## 🚀 Démo en ligne
+<a id="the-manifesto"></a>
 
-Essayez Scrumooth instantanément dans votre navigateur — aucune installation requise. La démo s'exécute avec des données simulées (aucun backend nécessaire), ce qui vous permet d'explorer immédiatement l'ensemble du cycle de vie Scrum.
+## 📜 Le manifeste — Pourquoi Scrumooth existe
 
-<p align="center">
-  <a href="https://orbivort.github.io/scrumooth/" target="_blank" rel="noopener noreferrer">
-    <strong>👉 Lancer la démo en ligne sur GitHub Pages</strong>
-  </a>
-</p>
+> La plupart des outils de gestion de projet sont conçus pour **enregistrer** ce qui s'est passé. Ils vous fournissent des tableaux, ils consignent vos clics, ils dessinent des graphiques précis —une fois le Sprint terminé. Enregistrer est réellement utile, et ces outils le font bien.
+>
+> Mais un enregistrement est une description, pas une décision. Le Scrum Guide 2020 regorge de règles auxquelles un outil pourrait vous tenir : un Sprint ne se clôture qu'après son Sprint Review et sa Sprint Retrospective, seuls les Developers estiment le travail, un seul Product Owner possède le Product Backlog, et « Done » signifie que la Definition of Done a été satisfaite. Quand l'une d'elles passe entre les mailles —un Sprint clôturé avant que sa Sprint Retrospective n'ait eu lieu, un Product Owner estimant le travail au nom des Developers, un élément marqué Done sans que ses critères aient été vérifiés—, cet écart reste généralement invisible jusqu'à la fin du Sprint. Dans la plupart des outils, ces règles sont indicatives : une compréhension partagée dont on fait confiance à l'équipe pour se souvenir.
+>
+> **Scrumooth les traite comme des règles.**
+>
+> La discipline n'est pas l'ingrédient manquant —si elle suffisait à elle seule, aucune équipe n'aurait jamais clôturé un Sprint sans sa Sprint Retrospective. Le Guide dit à une équipe quoi faire ; il ne peut pas remarquer quand l'équipe cesse de le faire. C'est pourquoi nous intégrons le **Scrum Guide 2020** sous forme de code exécutable et le **faisons respecter** côté serveur, là où ni l'interface ni un appel direct à l'API ne peuvent le contourner. Nous sommes un **gardien, pas un preneur de notes**.
+>
+> Moins de débats sur les processus. Plus de temps à livrer des logiciels fonctionnels.
 
-> **Remarque :** La démo utilise des données simulées en mémoire — toute modification que vous apportez reste locale à votre session de navigateur et est réinitialisée lors du rafraîchissement. Pour des données persistantes et une collaboration multi-utilisateurs, suivez le guide d'[Installation](#installation) afin d'auto-héberger votre propre instance.
+<a id="what-scrumooth-enforces"></a>
+
+## 🔒 Ce que Scrumooth applique
+
+Ce sont des barrières, pas des avertissements ni des suggestions. Dans tous les cas ci-dessous, la réponse est non — et chaque réponse tient dans la couche de service du backend, de sorte qu'un raccourci côté frontend ne peut pas la contourner.
+
+| Une règle du Scrum Guide 2020, posée comme une question                             | La réponse de Scrumooth                                                                                                                                                                              |
+| ----------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Un Sprint peut-il être clôturé avant son Sprint Review et sa Sprint Retrospective ? | La clôture du Sprint est refusée tant que les deux événements ne sont pas enregistrés ([API sprints](docs/api/sprints.md)).                                                                          |
+| Un élément peut-il être déclaré Done sans sa Definition of Done ?                   | Terminer un Sprint ne marque jamais les éléments comme Done — chaque élément doit franchir sa liste de contrôle de la Definition of Done ([API Definition of Done](docs/api/definition-of-done.md)). |
+| Une équipe peut-elle avoir plus d'un Product Owner ou plus d'un Scrum Master ?      | L'ajout d'un second titulaire de l'un ou l'autre rôle est refusé ([API teams](docs/api/teams.md)).                                                                                                   |
+| Une équipe peut-elle dépasser la taille d'une Scrum Team ?                          | La taille de l'équipe est plafonnée — `TEAM_MAX_SIZE`, par défaut `10` ([API teams](docs/api/teams.md)).                                                                                             |
+| Quelqu'un d'autre qu'un Developer peut-il estimer le travail ?                      | Seuls les Developers peuvent estimer les éléments du Product Backlog — tout autre rôle reçoit `403 Forbidden` ([API Product Backlog](docs/api/product-backlog.md)).                                  |
+| Le Product Owner ou le Scrum Master peuvent-ils rédiger le Daily Scrum ?            | Seuls les Developers peuvent rédiger ou rejoindre l'enregistrement quotidien ; le Product Owner et le Scrum Master observent ([API Daily Scrum](docs/api/daily-scrum.md)).                           |
+| Un Sprint peut-il être annulé par quelqu'un d'autre que le Product Owner ?          | L'annulation est réservée au Product Owner, et uniquement tant que le Sprint est `ACTIVE` ([API sprints](docs/api/sprints.md)).                                                                      |
+| Un Increment livré peut-il être réécrit ?                                           | Les Increments livrés sont verrouillés contre toute modification ultérieure ([API increments](docs/api/increments.md)).                                                                              |
+
+**Là où Scrumooth n'applique délibérément rien :** la Prime Directive de la Sprint Retrospective reste du ressort de la facilitation, et les timeboxes des événements sont rendues visibles par un minuteur d'équipe partagé plutôt que de mettre fin à un événement de force. Le Guide demande l'autogestion exactement à ces endroits, Scrumooth ne décide donc pas à la place de l'équipe.
+
+**À quoi ressemble une barrière en pratique.** C'est vendredi, le Sprint doit se terminer, l'Increment est déployé — et la Sprint Retrospective n'a jamais été planifiée. Un outil d'enregistrement clôture le Sprint et la Sprint Retrospective glisse à la semaine suivante, ce qui est l'échec que le dernier événement du Guide existe pour prévenir ; Scrumooth refuse la clôture tant que les deux événements ne sont pas enregistrés. L'équipe tient alors sa Sprint Retrospective, ou s'arrête et débat de la raison de ne pas le faire —la version de cette décision que le Guide attend d'une équipe qu'elle prenne consciemment.
+
+Pourquoi les outils que vous utilisez déjà n'ajouteraient-ils pas simplement cela ? À notre avis, parce qu'une barrière que l'on peut désactiver est un réglage, pas une règle, et que la configurabilité est leur argument de vente et non leur omission. Pas plus qu'un service hébergé ne peut facilement promettre que vos données de processus ne quitteront jamais votre infrastructure. Scrumooth n'est pas une fonctionnalité qui leur manque ; c'est un compromis qu'ils ont déjà tranché dans l'autre sens.
+
+Les barrières ci-dessus constituent toute la revendication : si une règle ne figure pas dans le tableau, Scrumooth ne l'applique pas — et comme une configuration qui enfreint le Scrum Guide 2020 n'est jamais proposée, **le refus est le produit.**
+
+<a id="who-its-for"></a>
+
+## 🎯 À qui elle s'adresse
+
+**Scrumooth est conçue pour une situation en particulier :** les organisations pilotées par l'ingénierie qui doivent pouvoir démontrer comment un Sprint a réellement été mené, et pour lesquelles les données de processus ne peuvent pas quitter leur propre infrastructure — secteurs réglementés, leurs fournisseurs et équipes du secteur public.
+
+**Scrumooth est faite pour vous si…**
+
+- Vous êtes **Scrum Master ou Product Owner**, votre équipe a du mal à tenir le Scrum Guide 2020, et vous voulez que l'outil refuse la dérive au lieu de la tolérer en silence.
+- Vous dirigez une **équipe d'ingénierie** qui souhaite auto-héberger ses données de processus pour des raisons de confidentialité, de conformité ou de souveraineté des données.
+- Vous avez besoin d'un **enregistrement défendable et auditable** de la manière dont chaque Sprint a réellement été mené — qui a modifié quoi, quand et sous quel rôle.
+- Vous voulez que les limites du Scrum Guide soient codées une fois pour toutes, afin que les nouveaux membres de l'équipe apprennent le processus en l'utilisant.
+
+**Scrumooth n'est pas faite pour vous si…**
+
+- Vous cherchez un outil de suivi des tickets généraliste, un planificateur de feuille de route ou un tableau Kanban pour du travail hors Scrum. Scrumooth refuse d'être l'un d'eux.
+- Vous voulez que chaque règle soit configurable. Scrumooth refuse les configurations qui enfreignent le Scrum Guide.
+- Vous voulez un SaaS entièrement géré. Scrumooth est auto-hébergée par conception.
+- Vous avez besoin d'une gestion de portefeuille, d'une planification des ressources ou d'un suivi financier poussés sur de nombreux projets sans lien entre eux.
+- Vous suivez un framework à l'échelle qui adapte le Guide pour une organisation plus large, ou Scrum n'est pas encore la façon de travailler de votre équipe. Scrumooth applique le Scrum Guide 2020 tel qu'écrit, pour une seule Scrum Team.
+
+<a id="why-you-can-trust-it"></a>
+
+## 🛡 Pourquoi vous pouvez lui faire confiance
+
+**Pourquoi pas un service hébergé**
+
+- **Auto-hébergée par conception.** Vos données de processus ne quittent jamais votre infrastructure.
+- **Souveraineté des données intégrée.** L'export de données RGPD, un délai de grâce de 14 jours avant suppression et le suivi du consentement sont inclus dans le produit.
+- **Auditable.** Chaque changement de rôle et chaque transition d'état sont consignés dans un journal d'audit dédié et séparé pour la conformité.
+- **Accès borné.** Les sessions simultanées sont plafonnées et les plus anciennes sont révoquées automatiquement.
+
+**Pourquoi pas un autre outil auto-hébergé**
+
+- **Ouverte et inspectable.** Apache-2.0, CI publique, couverture publiée — une **barrière de 80 % sur les lignes, branches, fonctions et instructions** est appliquée dans la chaîne d'intégration.
+- **Testée sous charge, pas seulement en tests unitaires.** 10 scénarios k6 préconstruits, dont un pic de Sprint Planning. Voir [Tests de charge](#load-testing-k6).
+- **Stricte par construction.** Mode strict TypeScript sur le backend, le frontend et les paquets partagés.
+- **Localisée là où cela compte.** L'interface est disponible en anglais, allemand, espagnol, français et italien, avec une terminologie Scrum issue du Scrum Guide officiel.
+
+**Pour celles et ceux qui doivent l'approuver en interne.** Le guide de déploiement, l'architecture de sécurité et le processus de signalement des vulnérabilités sont documentés dans le dépôt : [Déploiement](#deployment), [`docs/architecture/security-architecture.md`](docs/architecture/security-architecture.md) et [`SECURITY.md`](SECURITY.md).
 
 <a id="features"></a>
 
 ## ✨ Fonctionnalités
 
-### Fonctionnalités Scrum principales
+### Le flux de travail Scrum
 
-- **Product Goal** — Alignement stratégique et suivi des objectifs
-- **Product Backlog** — Priorisation MoSCoW (Must, Should, Could, Won't)
-- **Sprint Planning** — Durées de sprint configurables et planification de la capacité
-- **Exécution du Sprint** — Tableau Kanban interactif avec glisser-déposer
-- **Daily Scrum** — Suivi et mise à jour du standup quotidien
-- **Impediment** — Identification des blocages et suivi de leur résolution
-- **Increment** — Gestion de l'incrément produit
-- **Sprint Review** — Gestion et documentation de la réunion de revue
-- **Sprint Retrospective** — Réflexion d'équipe et amélioration continue
+Tout ce qu'il faut pour mener le Sprint — les cinq événements, trois artefacts et trois engagements du Guide — avec la règle qu'il porte attachée à chacun. Les clauses en gras reprennent les barrières de [Ce que Scrumooth applique](#what-scrumooth-enforces) ; ce tableau reste la seule liste des règles que Scrumooth revendique.
 
-### Fonctionnalités avancées
+- **Product Goal** - Alignement stratégique et suivi des objectifs ; l'engagement au service du backlog
+- **Product Backlog** - Priorisation MoSCoW (Must, Should, Could, Won't) ; **seuls les Developers estiment le travail**
+- **Sprint Planning** - Durées de Sprint configurables et planification de la capacité ; **seuls les Developers enregistrent le Sprint Backlog**
+- **Sprint Execution** - Tableau Kanban interactif avec glisser-déposer ; **seul le Product Owner peut annuler, et uniquement tant que le Sprint est `ACTIVE`**
+- **Daily Scrum** - Enregistrement quotidien partagé, avec remontée des Impediments ; **seuls les Developers le rédigent — le Product Owner et le Scrum Master observent**
+- **Impediment** - Identification des blocages et suivi de leur résolution ; **un Sprint ne peut pas être clôturé avant que ses Impediments soient résolus**
+- **Increment** - Gestion des Increments du produit ; **dès qu'un élément du Product Backlog satisfait la Definition of Done, un Increment naît**
+- **Sprint Review** - Gestion de la revue, retours des parties prenantes et ajustement du backlog ; **un Sprint ne peut pas être clôturé avant que son Sprint Review ne soit enregistré**
+- **Sprint Retrospective** - Réflexion d'équipe et amélioration suivie ; **un Sprint ne peut pas être clôturé avant que sa Sprint Retrospective ne soit enregistrée**
 
-- **Tableau de bord et rapports** — Métriques et visualisations en temps réel
-- **Moteur de workflow** — Autorisations basées sur les rôles et transitions d'état
-- **Definition of Done/Ready** — Listes de contrôle personnalisables
-- **Communication d'équipe** — Notifications et messagerie intégrées
-- **Journalisation d'audit** — Suivi complet des actions
+### Gouvernance et exploitation
+
+- **Moteur de workflow** - Autorisations basées sur les rôles et transitions d'état contrôlées, **appliquées côté serveur**
+- **Definition of Done/Ready** - Listes de contrôle personnalisables ; **rien n'est Done tant que sa liste de contrôle n'est pas franchie**
+- **Intégrité des Increments** - **Le travail livré ne peut pas être réécrit en silence**
+
+### Équipe et organisation
+
+- **Composition de l'équipe** - Un Product Owner et un Scrum Master ; **taille de l'équipe plafonnée** (`TEAM_MAX_SIZE`, par défaut `10`)
+- **Journalisation d'audit** - Journal dédié et séparé pour la conformité ; **chaque changement de rôle et chaque transition d'état enregistrés**
+- **Tableau de bord et rapports** - Métriques et visualisations en temps réel
+- **Communication d'équipe** - Notifications et messagerie intégrées
+- **Team Health Check** - Point périodique sur les cinq valeurs Scrum
+- **Timeboxes d'événements partagées** - Une horloge pour tous les participants ; **les timeboxes sont affichées, jamais closes de force**
+- **Contrôles de confidentialité** - Droits d'export et d'effacement des données, plus suivi du consentement
 
 <a id="tech-stack"></a>
 
@@ -126,7 +210,7 @@ Essayez Scrumooth instantanément dans votre navigateur — aucune installation 
 
 - **Framework :** React 19 avec Vite
 - **Langage :** TypeScript (mode strict)
-- **Routage :** React Router 6
+- **Routage :** React Router 8
 - **Gestion d'état :** TanStack Query (React Query) + Zustand
 - **Visualisation :** Chart.js
 - **Styles :** CSS Modules avec Design Tokens
@@ -146,6 +230,8 @@ Essayez Scrumooth instantanément dans votre navigateur — aucune installation 
 - **Linting :** ESLint + Stylelint
 - **Formatage :** Prettier
 - **Git Hooks :** Husky + lint-staged
+
+<a id="project-structure"></a>
 
 ## 📁 Structure du projet
 
@@ -243,10 +329,10 @@ pnpm install
 Copiez les fichiers d'environnement d'exemple et configurez vos paramètres :
 
 ```bash
-# Configuration du backend
+# Backend configuration
 cp packages/backend/.env.example packages/backend/.env
 
-# Configuration du frontend
+# Frontend configuration
 cp packages/frontend/.env.example packages/frontend/.env
 ```
 
@@ -264,9 +350,9 @@ JWT_SECRET=your-64-character-secret-key-here
 # CORS Configuration
 CORS_ORIGIN=http://localhost:5173
 
-# Facultatif : limitez l'inscription de nouveaux comptes à des domaines de messagerie spécifiques.
-# Laissez vide ou non défini pour une inscription ouverte. Appliqué côté serveur (HTTP 403 pour les
-# domaines non autorisés). Uniquement un contrôle au niveau du tenant, pas une vérification d'e-mail.
+# Optional: restrict new-account registration to specific email domains.
+# Leave empty/unset for open registration. Enforced server-side (HTTP 403 on
+# disallowed domains). Tenant-control gate only, not email verification.
 REGISTRATION_ALLOWED_EMAIL_DOMAINS=example.com,example.eu
 ```
 
@@ -285,13 +371,13 @@ VITE_USE_MOCK_API=false
 Générez le client Prisma, puis créez votre schéma de base de données. Pour le développement local, vous pouvez utiliser l'une ou l'autre approche :
 
 ```bash
-# Générer le client Prisma (toujours requis)
+# Generate Prisma client (always required)
 pnpm run db:generate
 
-# Option A : Pousser le schéma directement (itération rapide, sans fichiers de migration)
+# Option A: Push schema directly (fast iteration, no migration files)
 pnpm run db:push
 
-# Option B : Créer et appliquer une migration (recommandé pour les changements suivis)
+# Option B: Create and apply a migration (recommended for tracked changes)
 pnpm run db:migrate
 ```
 
@@ -306,11 +392,15 @@ pnpm run dev
 Cela démarrera les serveurs backend et frontend simultanément. Pour les exécuter indépendamment :
 
 ```bash
-pnpm run dev:backend    # Backend uniquement (http://localhost:5001)
-pnpm run dev:frontend   # Frontend uniquement (http://localhost:5173)
+pnpm run dev:backend    # Backend only (http://localhost:5001)
+pnpm run dev:frontend   # Frontend only (http://localhost:5173)
 ```
 
-## 🎯 Utilisation
+<a id="development-commands"></a>
+
+## 🛠 Commandes de développement courantes
+
+Pour les développeurs, l'analogie la plus proche est un linter pour votre processus Scrum — avec la différence qui compte : un linter signale une infraction, une barrière la refuse.
 
 Les commandes les plus courantes pour le développement quotidien :
 
@@ -334,19 +424,21 @@ pnpm run test:e2e          # End-to-end (backend Vitest + frontend Playwright)
 pnpm run test:watch        # Mode watch
 ```
 
-Seuils de couverture imposés : **80 % lignes, fonctions, instructions et branches**.
+Seuils de couverture imposés : **80 % de lignes, fonctions, instructions et branches**.
+
+<a id="load-testing-k6"></a>
 
 ### Tests de charge (k6)
 
 Les scénarios de tests de charge préconstruits se trouvent dans [`k6/scripts/scenarios/`](k6/scripts/scenarios). Copiez [`k6/.env.k6.example`](k6/.env.k6.example) vers `k6/.env.k6`, configurez votre cible, puis exécutez un scénario tel que :
 
 ```bash
-pnpm run loadtest:normal    # Charge quotidienne réaliste
-pnpm run loadtest:peak      # Affluence de Sprint Planning (concurrence dans le pire des cas)
-pnpm run loadtest:stress    # Pousser le système jusqu'à la rupture
+pnpm run loadtest:normal    # Realistic everyday load
+pnpm run loadtest:peak      # Sprint planning rush (worst-case concurrency)
+pnpm run loadtest:stress    # Push the system until it breaks
 ```
 
-> **Prérequis :** Installez [k6](https://k6.io/docs/get-started/installation/) et assurez-vous que votre backend cible est en cours d'exécution. Des scénarios supplémentaires (endurance, multi-team, daily-scrum, auth, db) sont disponibles via les scripts `loadtest:*` dans [`package.json`](package.json).
+> **Prérequis :** Installez [k6](https://k6.io/docs/get-started/installation/) et assurez-vous que votre backend cible est en cours d'exécution. Dix scénarios se trouvent dans [`k6/scripts/scenarios/`](k6/scripts/scenarios) ; les scripts `loadtest:*` de [`package.json`](package.json) en exposent huit, dont endurance, multi-team, daily-scrum, auth et database stress.
 
 <a id="code-quality"></a>
 
@@ -361,7 +453,7 @@ pnpm run loadtest:stress    # Pousser le système jusqu'à la rupture
 | Vérification des types         | `pnpm run typecheck` |
 | Audit de sécurité              | `pnpm run audit`     |
 
-Consultez [`CONTRIBUTING.md`](CONTRIBUTING.md) pour le flux de travail de développement complet et les contrôles qualité.
+Consultez [`CONTRIBUTING.md`](CONTRIBUTING.md) pour le flux de travail de développement complet et les barrières qualité.
 
 <a id="database-management"></a>
 
@@ -385,13 +477,13 @@ Le projet inclut une configuration Docker pour le développement et le déploiem
 ### Utiliser Docker Compose
 
 ```bash
-# Environnement de développement (avec rechargement à chaud)
+# Development environment (with hot reload)
 docker compose -f docker-compose.dev.yml up
 
-# Environnement de production (détaché)
+# Production environment (detached)
 docker compose up -d
 
-# Démonter
+# Tear down
 docker compose down
 ```
 
@@ -400,11 +492,11 @@ docker compose down
 > **Remarque :** Tous les Dockerfiles référencent des chemins relatifs à la racine du dépôt (fichiers du workspace monorepo tels que `package.json`, `pnpm-lock.yaml` et `packages/shared/`). Vous devez les construire depuis la **racine du dépôt** et utiliser `-f` pour pointer vers le Dockerfile — passer le répertoire du paquet comme contexte de build échouera.
 
 ```bash
-# Images de développement (avec dépendances de développement et mode watch)
+# Development images (with dev dependencies and watch mode)
 docker build -t scrumooth-backend:dev -f packages/backend/Dockerfile.dev .
 docker build -t scrumooth-frontend:dev -f packages/frontend/Dockerfile.dev .
 
-# Images de production (construire depuis la racine du dépôt)
+# Production images (build from the repo root)
 docker build -t scrumooth-backend -f packages/backend/Dockerfile .
 docker build -t scrumooth-frontend -f packages/frontend/Dockerfile .
 ```
@@ -419,7 +511,7 @@ Si vous êtes derrière un réseau qui nécessite un registry npm ou un miroir a
 $env:NPM_REGISTRY="https://your_mirror_url"
 $env:APT_MIRROR="your_mirror_url"
 
-# Build manuel
+# Manual build
 docker build --build-arg NPM_REGISTRY=https://your_mirror_url --build-arg APT_MIRROR=your_mirror_url .
 ```
 
@@ -498,10 +590,14 @@ Définissez `VITE_USE_MOCK_API=true` dans `packages/frontend/.env` pour utiliser
 
 ## 🗺 Feuille de route
 
-Scrumooth est en développement actif. Les priorités à venir incluent :
+Scrumooth est en développement actif. Les priorités ci-dessous approfondissent ce que Scrumooth applique plutôt que de l'élargir à un outil de suivi généraliste :
 
-- [ ] Tableaux de bord de reporting et d'analyse améliorés
-- [ ] Intégrations et webhooks supplémentaires
+- [ ] **Rapport de conformité au Scrum Guide** — un état par Sprint des règles qui s'appliquaient et de la manière dont chacune a été satisfaite
+- [ ] **Pack de preuves de Sprint exportable** — un enregistrement partageable pour les audits et les revues de conformité
+- [ ] **Davantage de règles applicables** — étendre la surface couverte du Scrum Guide 2020
+- [ ] **Automatisation plus poussée de la Definition of Done / Definition of Ready**
+- [ ] **Des rapports qui font remonter la dérive du processus**, et pas seulement les métriques de livraison
+- [ ] **Intégrations et webhooks**, pour que Scrumooth cohabite avec les outils que vous utilisez déjà
 - [ ] Renforcement des performances et de l'évolutivité
 
 L'état du projet et les dernières modifications sont suivis dans le [CHANGELOG](CHANGELOG.md). Les retours et les demandes de fonctionnalités sont les bienvenus via [GitHub Issues](https://github.com/orbivort/scrumooth/issues).
@@ -517,3 +613,7 @@ Les contributions sont les bienvenues ! Veuillez lire [`CONTRIBUTING.md`](CONTRI
 ## 📝 Licence
 
 Ce projet est sous licence [Apache License 2.0](LICENSE).
+
+---
+
+_Jugez un outil Scrum sur les règles qu'il fait respecter, non sur les tableaux qu'il dessine._

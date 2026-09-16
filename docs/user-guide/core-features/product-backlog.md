@@ -29,11 +29,11 @@ The Product Backlog is:
 
 ### Backlog Ownership
 
-| Role                 | Responsibility                                                    |
-| -------------------- | ----------------------------------------------------------------- |
-| **Product Owner**    | Owns the backlog, prioritizes items, ensures value                |
-| **Development Team** | Estimates items, clarifies requirements, adds technical items     |
-| **Scrum Master**     | Facilitates refinement, removes impediments to backlog management |
+| Role              | Responsibility                                                    |
+| ----------------- | ----------------------------------------------------------------- |
+| **Product Owner** | Owns the backlog, prioritizes items, ensures value                |
+| **Developers**    | Size the items, clarify requirements, add technical items         |
+| **Scrum Master**  | Facilitates refinement, removes impediments to backlog management |
 
 ---
 

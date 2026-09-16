@@ -12,7 +12,7 @@ Welcome to the Scrumooth Architecture Documentation. This comprehensive guide pr
 
 ## Overview
 
-Scrumooth is an **Agile Scrum Lifecycle Management System** built with modern technologies and following industry best practices. The architecture is designed to be:
+Scrumooth is a **self-hosted Scrum Guide enforcement layer** — a web application that turns the rules of the 2020 Scrum Guide into gates the backend enforces. It is built with modern technologies and follows industry best practices. The architecture is designed to be:
 
 - **Scalable**: Horizontal scaling capability for growing user bases
 - **Maintainable**: Clean separation of concerns and modular design
@@ -22,7 +22,7 @@ Scrumooth is an **Agile Scrum Lifecycle Management System** built with modern te
 
 ### System Context
 
-Scrumooth operates as a web-based application that enables teams to manage their Agile Scrum processes, from product goals to sprint retrospectives.
+Scrumooth operates as a web-based application that enables teams to run Scrum, from Product Goals to Sprint Retrospectives, while the backend enforces the rules of the 2020 Scrum Guide.
 
 ```
 ┌────────────────────────────────────────────────────────────┐
@@ -34,7 +34,7 @@ Scrumooth operates as a web-based application that enables teams to manage their
                               ▼
 ┌────────────────────────────────────────────────────────────┐
 │                      Scrumooth                             │
-│  Agile Scrum Lifecycle Management System                   │
+│  Scrum Guide enforcement layer                             │
 │                                                            │
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐      │
 │  │   Frontend   │  │   Backend    │  │   Database   │      │

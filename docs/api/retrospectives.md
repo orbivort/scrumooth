@@ -1216,7 +1216,7 @@ POST /api/v1/retrospectives/:retroId/attendees
 {
   "name": "string (required, 1-100 chars)",
   "email": "string (optional, valid email)",
-  "role": "string (required, one of: product_owner, scrum_master, developer, stakeholder)",
+  "role": "string (required, one of: product_owner, scrum_master, developers, stakeholder)",
   "attended": "boolean (optional, default: true)"
 }
 ```
@@ -1314,7 +1314,7 @@ PUT /api/v1/retrospectives/attendees/:attendeeId
 {
   "name": "string (optional, 1-100 chars)",
   "email": "string (optional, valid email)",
-  "role": "string (optional, one of: product_owner, scrum_master, developer, stakeholder)",
+  "role": "string (optional, one of: product_owner, scrum_master, developers, stakeholder)",
   "attended": "boolean (optional)"
 }
 ```
@@ -1332,7 +1332,7 @@ Content-Type: application/json
       "id": "550e8400-e29b-41d4-a716-446655440030",
       "name": "Jane Smith",
       "email": "jane.smith@example.com",
-      "role": "developer",
+      "role": "developers",
       "attended": true,
       "retroId": "550e8400-e29b-41d4-a716-446655440000"
     }
@@ -1361,7 +1361,7 @@ curl -X PUT https://api.scrumooth.dev/api/v1/retrospectives/attendees/550e8400-e
   -H "Content-Type: application/json" \
   -b cookies.txt \
   -d '{
-    "role": "developer",
+    "role": "developers",
     "email": "jane.smith@example.com"
   }'
 ```

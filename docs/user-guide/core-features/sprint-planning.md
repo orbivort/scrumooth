@@ -29,11 +29,11 @@ Sprint Planning answers:
 
 ### Participants
 
-| Role                 | Responsibility                                             |
-| -------------------- | ---------------------------------------------------------- |
-| **Product Owner**    | Presents backlog, clarifies requirements, negotiates scope |
-| **Development Team** | Estimates, commits to work, identifies how to achieve goal |
-| **Scrum Master**     | Facilitates, ensures Scrum practices are followed          |
+| Role              | Responsibility                                             |
+| ----------------- | ---------------------------------------------------------- |
+| **Product Owner** | Presents backlog, clarifies requirements, negotiates scope |
+| **Developers**    | Size the work, plan how to achieve the Sprint Goal         |
+| **Scrum Master**  | Facilitates, ensures Scrum practices are followed          |
 
 ### Time Box
 
@@ -54,7 +54,7 @@ Sprint Planning answers:
 - [ ] Dependencies are identified
 - [ ] Product Goal is clear
 
-**Development Team:**
+**Developers:**
 
 - [ ] Previous sprint is complete or near complete
 - [ ] Team capacity is known

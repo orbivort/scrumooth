@@ -54,18 +54,18 @@ Authorization: Bearer eyJhbGc...
 
 Scrumooth uses role-based access control (RBAC) with three distinct roles:
 
-| Role              | Permissions                                                           |
-| ----------------- | --------------------------------------------------------------------- |
-| **Product Owner** | Full team management, product backlog, sprint planning, product goals |
-| **Scrum Master**  | Manage sprints, team members, DoD/DoR, retrospectives                 |
-| **Developer**     | View and update assigned tasks, participate in sprints                |
+| Role              | Permissions                                                                    |
+| ----------------- | ------------------------------------------------------------------------------ |
+| **Product Owner** | Full team management, product backlog, product goals, sprint cancellation      |
+| **Scrum Master**  | Manage team members, DoD/DoR, facilitate ceremonies                            |
+| **Developers**    | Size work, save the Sprint Backlog, author the Daily Scrum, update board tasks |
 
 ### Role Hierarchy
 
 ```
 Product Owner
     └── Scrum Master
-            └── Developer
+            └── Developers
 ```
 
 ## Endpoints

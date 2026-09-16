@@ -3,7 +3,7 @@
   "version": "3.0.2",
   "private": true,
   "license": "Apache-2.0",
-  "description": "Scrumooth - Self-hosted Scrum tool, faithful to the Scrum Guide",
+  "description": "Scrumooth - The self-hosted Scrum Guide enforcement layer",
   "keywords": [
     "scrum",
     "scrum-tool",

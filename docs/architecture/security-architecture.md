@@ -173,24 +173,29 @@ Scrumooth implements a three-role RBAC model with hierarchical permissions:
 
 ### Role Permission Matrix
 
-| Permission                   | Product Owner | Scrum Master | Developer |
-| ---------------------------- | :-----------: | :----------: | :-------: |
-| Manage users/teams           |      Yes      |      No      |    No     |
-| Configure system settings    |      Yes      |      No      |    No     |
-| Create/edit product goals    |      Yes      |      No      |    No     |
-| Manage backlog (create/edit) |      Yes      |  View only   | View only |
-| Prioritize backlog (MoSCoW)  |      Yes      |      No      |    No     |
-| Plan sprints                 |      Yes      |      No      |    No     |
-| Start/end sprints            |      Yes      |     Yes      |    No     |
-| Manage sprint board          |      Yes      |     Yes      |    No     |
-| Update task status           |      Yes      |     Yes      | Yes (own) |
-| Log impediments              |      Yes      |     Yes      |    Yes    |
-| Resolve impediments          |      Yes      |     Yes      |    No     |
-| Conduct retrospectives       |      Yes      |     Yes      |    No     |
-| Record daily updates         |      Yes      |     Yes      |    Yes    |
-| View dashboards/reports      |      Yes      |     Yes      |    Yes    |
-| Export data                  |      Yes      |      No      |    No     |
-| Delete data                  |      Yes      |      No      |    No     |
+| Permission                         | Product Owner | Scrum Master | Developers |
+| ---------------------------------- | :-----------: | :----------: | :--------: |
+| Manage users/teams                 |      Yes      |      No      |     No     |
+| Configure system settings          |      Yes      |      No      |     No     |
+| Create/edit product goals          |      Yes      |      No      |     No     |
+| Create/edit backlog items          |      Yes      |     Yes      |    Yes     |
+| Size backlog items (story points)  |      No       |      No      |    Yes     |
+| Prioritize backlog (MoSCoW)        |      Yes      |      No      |     No     |
+| Plan sprints / save Sprint Backlog |      No       |      No      |    Yes     |
+| Start/complete sprint              |      Yes      |     Yes      |    Yes     |
+| Cancel sprint (ACTIVE only)        |      Yes      |      No      |     No     |
+| Manage sprint board / task status  |      No       |      No      |    Yes     |
+| Log impediments                    |      Yes      |     Yes      |    Yes     |
+| Resolve impediments                |      Yes      |     Yes      |    Yes     |
+| Conduct retrospectives             |      Yes      |     Yes      |    Yes     |
+| Author the Daily Scrum record      |     No \*     |    No \*     |    Yes     |
+| View dashboards/reports            |      Yes      |     Yes      |    Yes     |
+| Export data                        |      Yes      |      No      |     No     |
+| Delete data                        |      Yes      |      No      |     No     |
+
+> \* The Product Owner and Scrum Master may attend and observe the Daily Scrum, but only the Developers can author or edit the shared team record (Scrum Guide 2020).
+>
+> **Note:** This matrix reflects the roles enforced in the backend service layer, which is the authoritative source. The Scrum Guide rules that Scrumooth gates — sizing, saving the Sprint Backlog, authoring the Daily Scrum, cancelling a Sprint, and the Sprint-closure gates — are enforced there, so neither the interface nor a direct API call can bypass them. Where a row and the service layer disagree, the service layer wins.
 
 ### Authorization Enforcement
 
@@ -231,7 +236,7 @@ router.post(
 );
 ```
 
-**Role inheritance** is implicit: a Product Owner inherits all Scrum Master and Developer permissions, and a Scrum Master inherits all Developer permissions. The `authorize` middleware checks if the user's role is at or above the required role in the hierarchy.
+**Role inheritance** is implicit: a Product Owner inherits all Scrum Master and Developers permissions, and a Scrum Master inherits all Developers permissions. The `authorize` middleware checks if the user's role is at or above the required role in the hierarchy. Note that the Scrum Guide gates are _not_ inherited away — they are role-specific: only the **Developers** may size work, save the Sprint Backlog, author the Daily Scrum, or move board tasks, and only the **Product Owner** may cancel a Sprint.
 
 ## Data Protection
 
