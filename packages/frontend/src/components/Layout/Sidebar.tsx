@@ -192,7 +192,9 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
       <aside className={styles.sidebar} ref={sidebarRef}>
         <div className={styles['sidebar-header']}>
           <h1 className={styles.logo}>
-            <ScrumoothIcon size={40} />
+            <span className={styles['logo-mark']}>
+              <ScrumoothIcon size={30} />
+            </span>
             {/* eslint-disable-next-line no-literal-jsx-string/no-literal-jsx-string -- App brand name should not be translated */}
             <span className={styles['logo-text']}>Scrumooth</span>
           </h1>

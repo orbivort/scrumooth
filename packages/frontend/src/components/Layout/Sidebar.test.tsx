@@ -21,6 +21,7 @@ vi.mock('./Layout.module.css', () => ({
     sidebar: 'sidebar',
     'sidebar-header': 'sidebar-header',
     logo: 'logo',
+    'logo-mark': 'logo-mark',
     'logo-text': 'logo-text',
     'sidebar-toggle': 'sidebar-toggle',
     'sidebar-nav': 'sidebar-nav',

@@ -102,30 +102,99 @@
   letter-spacing: var(--letter-spacing-tight);
 }
 
-/* Give the brand mark a distinct elevated pill so it reads as a separate badge
-   against the dark sidebar gradient, instead of blending into the background.
-   Sized a little larger than the 18px wordmark so the icon leads the eye
-   without overwhelming the text (standard brand-lockup proportion). */
-.logo svg {
+/* Brand mark -----------------------------------------------------------------
+   The mark is self-contained: it already draws a closed orbit ring. The old
+   rounded badge behind it (border + gradient + 12px radius on a 30px box)
+   therefore stacked a second, near-concentric outline right on top of that
+   ring — the "two circles" artefact at sidebar scale. The mark now sits
+   directly on the header gradient and is separated from it by a soft bloom
+   instead of a hard edge, leaving the orbit ring as the only circle in the
+   lockup. The 30px footprint is unchanged, so the wordmark keeps its room. */
+.logo-mark {
+  position: relative;
+  display: inline-flex;
   flex-shrink: 0;
-  color: var(--color-primary-400);
+  align-items: center;
+  justify-content: center;
   width: 30px;
   height: 30px;
-  min-width: 30px;
-  min-height: 30px;
-  padding: 2px;
-  background: linear-gradient(180deg, var(--color-gray-700) 0%, var(--color-gray-800) 100%);
-  border: var(--border-width-1) solid var(--color-gray-600);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-sm);
 }
 
+/* Bloom — the mark's own tri-tone, blurred past its radius so it spills as
+   light rather than reading as another disc. Painted before the svg in DOM
+   order, so the mark always sits on top of its glow. */
+.logo-mark::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: var(--radius-full);
+  background: linear-gradient(
+    135deg,
+    var(--color-accent-cyan-400) 0%,
+    var(--color-primary-500) 55%,
+    var(--color-accent-purple-500) 100%
+  );
+  filter: blur(8px);
+  opacity: 0.4;
+  pointer-events: none;
+  animation: brand-bloom-in 700ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.logo-mark svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  animation: brand-mark-in 700ms cubic-bezier(0.16, 1, 0.3, 1) 80ms both;
+}
+
+/* One orchestrated arrival: the bloom opens first, the mark settles into it. */
+@keyframes brand-bloom-in {
+  from {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+
+  to {
+    opacity: 0.4;
+    transform: none;
+  }
+}
+
+@keyframes brand-mark-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px) scale(0.92);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Wordmark — the gradient opens on the mark's cyan and lands on its blue so
+   lockup and symbol read as one material. Shrinkable with an ellipsis: the
+   header is a fixed 224px, and an unshrinkable wordmark would otherwise paint
+   over the collapse toggle on narrow viewports or high zoom levels. */
 .logo-text {
-  overflow: visible;
-  flex-shrink: 0;
-  background: linear-gradient(135deg, var(--color-primary-400) 0%, var(--color-primary-300) 100%);
+  flex-shrink: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  background: linear-gradient(
+    135deg,
+    var(--color-accent-cyan-400) 0%,
+    var(--color-primary-400) 100%
+  );
   background-clip: text;
   -webkit-text-fill-color: transparent;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .logo-mark::before,
+  .logo-mark svg {
+    animation: none;
+  }
 }
 
 .sidebar-collapsed .logo {
@@ -136,8 +205,9 @@
   display: none;
 }
 
-/* Hide logo icon in collapsed state to prevent overlap with toggle button */
-.sidebar-collapsed .logo svg {
+/* Hide the whole lockup mark (bloom included) in collapsed state to prevent
+   overlap with the toggle button. */
+.sidebar-collapsed .logo-mark {
   display: none;
 }
 
