@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { AxiosError } from 'axios';
-import { formatLocaleDate } from '@scrumooth/shared';
+import { formatLocaleDate, GATE_CODES } from '@scrumooth/shared';
 
 import { apiService, healthCheckService } from '../../services';
 import { useTeamStore, useAuthStore } from '../../store';
@@ -289,12 +289,12 @@ export const TeamManagement: React.FC = () => {
 
       if (
         error instanceof AxiosError &&
-        error.response?.data?.error?.code === 'TEAM_SIZE_LIMIT_REACHED'
+        error.response?.data?.error?.code === GATE_CODES.TEAM_SIZE_LIMIT
       ) {
         setInviteError(t('inviteErrors.teamSizeLimit', { max: maxSize ?? 10 }));
       } else if (
         error instanceof AxiosError &&
-        error.response?.data?.error?.code === 'ROLE_ALREADY_TAKEN'
+        error.response?.data?.error?.code === GATE_CODES.LEADERSHIP_ROLE_TAKEN
       ) {
         setInviteError(
           t('inviteErrors.roleAlreadyTaken', {

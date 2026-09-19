@@ -1,11 +1,16 @@
 {
   "databaseError": "A database error occurred",
   "developerOnlySizing": "Only Developers can set story points, as the Developers who perform the work are responsible for sizing.",
+  "dodNotVerified": "This item cannot be marked Done until every active Definition of Done item is verified. {{count}} active item(s) still need verification.",
   "emailAlreadyExists": "An account with email {{email}} already exists",
   "entityNotFound": "{{entity}} not found",
   "fieldAlreadyExists": "{{field}} already exists",
   "fieldAlreadyTaken": "{{field}} is already taken",
   "forbidden": "You do not have permission to perform this action",
+  "increment": {
+    "alreadyDelivered": "This Increment has already been delivered and cannot be delivered again.",
+    "deliveredLocked": "This Increment has been delivered and can no longer be changed."
+  },
   "invalidCredentials": "Invalid email or password",
   "invalidReference": "Invalid reference",
   "invalidRelation": "Invalid relation",
@@ -18,11 +23,18 @@
   "sprint": {
     "anotherActive": "Another sprint is already active",
     "cancelRequiresProductOwner": "Only the Product Owner can cancel a Sprint",
+    "eventSprintRetrospective": "Sprint Retrospective",
+    "eventSprintReview": "Sprint Review",
+    "impedimentsUnresolved": "The Sprint cannot be completed while it still has unresolved impediments: {{impediments}}. Resolve or close them before closing the Sprint.",
     "missingGoal": "The sprint cannot be started without a Sprint Goal",
     "notPlanned": "Only planned sprints can be started",
     "notReadyToStart": "The Sprint Backlog must be saved before the sprint can be started",
     "pbiAlreadyCommitted": "Backlog item \"{{pbiTitle}}\" is already committed to another sprint ({{sprintName}}). A Product Backlog Item can be worked in only one sprint at a time.",
-    "pbiConflictAtStart": "The Sprint cannot be started: the following backlog items are already committed to another sprint: {{items}}."
+    "pbiConflictAtStart": "The Sprint cannot be started: the following backlog items are already committed to another sprint: {{items}}.",
+    "prerequisiteEventsMissing": "The Sprint cannot be completed because the following event(s) have not concluded: {{events}}. Record them before closing the Sprint."
+  },
+  "sprintBacklog": {
+    "developersOnly": "Only Developers can save the Sprint Backlog, as the Developers who perform the work own the Sprint Backlog."
   },
   "task": {
     "assigneeMustBeDeveloper": "Only Developers on the team can be assigned. Product Owners and Scrum Masters cannot assign tasks.",

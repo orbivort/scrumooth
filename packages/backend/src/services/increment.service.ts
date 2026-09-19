@@ -1,5 +1,6 @@
 import prisma from '../utils/prisma';
-import { NotFoundError, BadRequestError } from '../utils/errors';
+import { NotFoundError, BadRequestError, localizedError } from '../utils/errors';
+import { GATE_CODES } from '@scrumooth/shared';
 import { generateUUIDv7 } from '../utils/uuid';
 import { incrementIntegrationService } from './incrementIntegration.service';
 import { logger } from '../utils/logger';
@@ -204,7 +205,12 @@ export const incrementService = {
     }
 
     if (existing.status === 'DELIVERED') {
-      throw new BadRequestError('Cannot update a delivered increment');
+      throw localizedError(
+        'errors:increment.deliveredLocked',
+        {},
+        400,
+        GATE_CODES.INCREMENT_LOCKED
+      );
     }
 
     const updateData: {
@@ -361,7 +367,12 @@ export const incrementService = {
     }
 
     if (existing.status === 'DELIVERED') {
-      throw new BadRequestError('Increment is already delivered');
+      throw localizedError(
+        'errors:increment.alreadyDelivered',
+        {},
+        400,
+        GATE_CODES.INCREMENT_LOCKED
+      );
     }
 
     // A DRAFT increment must have its integration with all prior Increments

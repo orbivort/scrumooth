@@ -1,11 +1,16 @@
 {
   "databaseError": "Ocurrió un error de base de datos",
   "developerOnlySizing": "Solo los desarrolladores pueden establecer puntos de historia, ya que los desarrolladores que realizan el trabajo son responsables de la estimación.",
+  "dodNotVerified": "Este elemento no puede marcarse como Terminado hasta que se verifique cada criterio activo de la Definición de Terminado. Aún deben verificarse {{count}} criterio(s) activo(s).",
   "emailAlreadyExists": "Ya existe una cuenta con el correo electrónico {{email}}",
   "entityNotFound": "{{entity}} no encontrado",
   "fieldAlreadyExists": "{{field}} ya existe",
   "fieldAlreadyTaken": "{{field}} ya está en uso",
   "forbidden": "No tiene permiso para realizar esta acción",
+  "increment": {
+    "alreadyDelivered": "Este incremento ya ha sido entregado y no puede entregarse de nuevo.",
+    "deliveredLocked": "Este incremento ha sido entregado y ya no puede modificarse."
+  },
   "invalidCredentials": "Correo electrónico o contraseña inválidos",
   "invalidReference": "Referencia inválida",
   "invalidRelation": "Relación inválida",
@@ -18,11 +23,18 @@
   "sprint": {
     "anotherActive": "Ya hay otro sprint activo",
     "cancelRequiresProductOwner": "Solo el Product Owner puede cancelar un sprint",
+    "eventSprintRetrospective": "Retrospectiva del Sprint",
+    "eventSprintReview": "Revisión del Sprint",
+    "impedimentsUnresolved": "El Sprint no puede completarse mientras tenga impedimentos sin resolver: {{impediments}}. Resuélvelos o ciérralos antes de cerrar el Sprint.",
     "missingGoal": "El sprint no se puede iniciar sin un objetivo de sprint",
     "notPlanned": "Solo se pueden iniciar sprints planificados",
     "notReadyToStart": "El backlog del sprint debe guardarse antes de poder iniciar el sprint",
     "pbiAlreadyCommitted": "El elemento del backlog \"{{pbiTitle}}\" ya está comprometido con otro sprint ({{sprintName}}). Un elemento del Product Backlog solo puede trabajarse en un sprint a la vez.",
-    "pbiConflictAtStart": "El sprint no puede iniciarse: los siguientes elementos del backlog ya están comprometidos con otro sprint: {{items}}."
+    "pbiConflictAtStart": "El sprint no puede iniciarse: los siguientes elementos del backlog ya están comprometidos con otro sprint: {{items}}.",
+    "prerequisiteEventsMissing": "El Sprint no puede completarse porque los siguientes eventos no han concluido: {{events}}. Regístralos antes de cerrar el Sprint."
+  },
+  "sprintBacklog": {
+    "developersOnly": "Solo los desarrolladores pueden guardar el Sprint Backlog, ya que los desarrolladores que realizan el trabajo son responsables de él."
   },
   "task": {
     "assigneeMustBeDeveloper": "Solo los desarrolladores del equipo pueden ser asignados. Los Product Owners y Scrum Masters no pueden asignar tareas.",

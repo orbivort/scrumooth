@@ -1,5 +1,6 @@
 import prisma from '../utils/prisma';
-import { NotFoundError, BadRequestError, ConflictError, ForbiddenError } from '../utils/errors';
+import { NotFoundError, BadRequestError, ConflictError, localizedError } from '../utils/errors';
+import { GATE_CODES } from '@scrumooth/shared';
 import { generateUUIDv7 } from '../utils/uuid';
 import {
   NotificationType,
@@ -140,7 +141,12 @@ class DailyScrumService {
     });
 
     if (membership?.role !== UserRole.DEVELOPERS) {
-      throw new ForbiddenError(t('validation:dailyScrum.developersOnly'));
+      throw localizedError(
+        'validation:dailyScrum.developersOnly',
+        {},
+        403,
+        GATE_CODES.DEVELOPER_ONLY_DAILY_SCRUM
+      );
     }
   }
 

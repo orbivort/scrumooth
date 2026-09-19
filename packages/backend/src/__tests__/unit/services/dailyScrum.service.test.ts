@@ -75,7 +75,8 @@ vi.mock('../../../services/notification.service', () => ({
 import { dailyScrumService } from '../../../services/dailyScrum.service';
 import { notificationService } from '../../../services/notification.service';
 import prisma from '../../../utils/prisma';
-import { NotFoundError, ConflictError, ForbiddenError } from '../../../utils/errors';
+import { NotFoundError, ConflictError } from '../../../utils/errors';
+import { GATE_CODES } from '@scrumooth/shared';
 import { UserRole, NotificationType } from '../../../generated/prisma/client';
 
 const baseInclude = {
@@ -265,7 +266,7 @@ describe('DailyScrumService', () => {
   });
 
   describe('Developers-only access (Scrum Guide)', () => {
-    it('throws ForbiddenError when a non-Developer tries to create the Daily Scrum', async () => {
+    it('throws a 403 gate refusal when a non-Developer tries to create the Daily Scrum', async () => {
       (prisma.sprint.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue({
         id: 'sprint-1',
         teamId: 'team-1',
@@ -276,10 +277,13 @@ describe('DailyScrumService', () => {
 
       await expect(
         dailyScrumService.createDailyScrum('po-user', { sprintId: 'sprint-1' })
-      ).rejects.toBeInstanceOf(ForbiddenError);
+      ).rejects.toMatchObject({
+        statusCode: 403,
+        code: GATE_CODES.DEVELOPER_ONLY_DAILY_SCRUM,
+      });
     });
 
-    it('throws ForbiddenError when a non-Developer tries to update the Daily Scrum', async () => {
+    it('throws a 403 gate refusal when a non-Developer tries to update the Daily Scrum', async () => {
       (prisma.dailyScrum.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue(mockScrum);
       (prisma.teamMember.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue({
         role: UserRole.SCRUM_MASTER,
@@ -287,19 +291,25 @@ describe('DailyScrumService', () => {
 
       await expect(
         dailyScrumService.updateDailyScrum('scrum-1', 'sm-user', { planForNextDay: 'Plan' })
-      ).rejects.toBeInstanceOf(ForbiddenError);
+      ).rejects.toMatchObject({
+        statusCode: 403,
+        code: GATE_CODES.DEVELOPER_ONLY_DAILY_SCRUM,
+      });
     });
 
-    it('throws ForbiddenError when a non-Developer tries to record participation', async () => {
+    it('throws a 403 gate refusal when a non-Developer tries to record participation', async () => {
       (prisma.dailyScrum.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue(mockScrum);
       (prisma.teamMember.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue(null);
 
       await expect(
         dailyScrumService.recordParticipation('scrum-1', 'outsider')
-      ).rejects.toBeInstanceOf(ForbiddenError);
+      ).rejects.toMatchObject({
+        statusCode: 403,
+        code: GATE_CODES.DEVELOPER_ONLY_DAILY_SCRUM,
+      });
     });
 
-    it('throws ForbiddenError when a non-Developer tries to promote an impediment', async () => {
+    it('throws a 403 gate refusal when a non-Developer tries to promote an impediment', async () => {
       (prisma.dailyScrum.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue({
         ...mockScrum,
         sprint: { id: 'sprint-1', teamId: 'team-1' },
@@ -313,7 +323,10 @@ describe('DailyScrumService', () => {
           title: 'Blocked',
           description: 'Blocked on access',
         })
-      ).rejects.toBeInstanceOf(ForbiddenError);
+      ).rejects.toMatchObject({
+        statusCode: 403,
+        code: GATE_CODES.DEVELOPER_ONLY_DAILY_SCRUM,
+      });
     });
   });
 

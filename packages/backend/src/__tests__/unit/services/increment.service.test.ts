@@ -49,6 +49,7 @@ vi.mock('../../../utils/uuid', () => ({
 import { incrementService } from '../../../services/increment.service';
 import prisma from '../../../utils/prisma';
 import { NotFoundError, BadRequestError } from '../../../utils/errors';
+import { GATE_CODES } from '@scrumooth/shared';
 
 describe('IncrementService', () => {
   beforeEach(() => {
@@ -312,7 +313,7 @@ describe('IncrementService', () => {
       ).rejects.toThrow(NotFoundError);
     });
 
-    it('should throw BadRequestError when increment is already delivered', async () => {
+    it('should refuse with GATE_INCREMENT_LOCKED when increment is already delivered', async () => {
       const incrementId = 'increment-1';
       const existingIncrement = {
         id: incrementId,
@@ -324,7 +325,10 @@ describe('IncrementService', () => {
 
       await expect(
         incrementService.updateIncrement(incrementId, { name: 'New Name' })
-      ).rejects.toThrow(BadRequestError);
+      ).rejects.toMatchObject({
+        statusCode: 400,
+        code: GATE_CODES.INCREMENT_LOCKED,
+      });
     });
   });
 
@@ -458,7 +462,7 @@ describe('IncrementService', () => {
       );
     });
 
-    it('should throw BadRequestError when increment is already delivered', async () => {
+    it('should refuse with GATE_INCREMENT_LOCKED when increment is already delivered', async () => {
       const incrementId = 'increment-1';
       const existingIncrement = {
         id: incrementId,
@@ -468,9 +472,12 @@ describe('IncrementService', () => {
 
       vi.mocked(prisma.increment.findUnique).mockResolvedValue(existingIncrement as any);
 
-      await expect(incrementService.deliverIncrement(incrementId, 'sprint_review')).rejects.toThrow(
-        BadRequestError
-      );
+      await expect(
+        incrementService.deliverIncrement(incrementId, 'sprint_review')
+      ).rejects.toMatchObject({
+        statusCode: 400,
+        code: GATE_CODES.INCREMENT_LOCKED,
+      });
     });
 
     it('should throw BadRequestError when a DRAFT increment is not integration verified', async () => {

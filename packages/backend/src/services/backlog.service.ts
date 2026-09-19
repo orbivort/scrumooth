@@ -8,6 +8,7 @@ import {
   localizedError,
 } from '../utils/errors';
 import { generateUUIDv7 } from '../utils/uuid';
+import { GATE_CODES } from '@scrumooth/shared';
 import { workflowService } from './workflow.service';
 import { incrementService } from './increment.service';
 import { logger } from '../utils/logger';
@@ -265,7 +266,7 @@ class ProductBacklogService {
     // rejected even though they may update every other field on the item.
     const isSizingAttempt = data.storyPoints !== undefined;
     if (isSizingAttempt && teamMember.role !== 'DEVELOPERS') {
-      throw localizedError('errors:developerOnlySizing', {}, 403, 'FORBIDDEN');
+      throw localizedError('errors:developerOnlySizing', {}, 403, GATE_CODES.DEVELOPER_ONLY_SIZING);
     }
 
     const userRoles = [teamMember.role];
@@ -411,7 +412,7 @@ class ProductBacklogService {
     // against direct API/bypass requests, not a common UX path).
     const hasSizingAttempt = items.some((item) => item.storyPoints !== undefined);
     if (hasSizingAttempt && teamMember?.role !== 'DEVELOPERS') {
-      throw localizedError('errors:developerOnlySizing', {}, 403, 'FORBIDDEN');
+      throw localizedError('errors:developerOnlySizing', {}, 403, GATE_CODES.DEVELOPER_ONLY_SIZING);
     }
 
     // Check for duplicate titles within the batch
@@ -609,7 +610,8 @@ class ProductBacklogService {
    * Definition of Done is the gate to "Done". Before an item may transition to DONE, every
    * active DoD item must be verified for it. A team with no active DoD items has no gate to
    * satisfy (vacuously compliant), so the transition is allowed.
-   * @throws BadRequestError when the active DoD checklist is not fully verified.
+   * @throws AppError (400, `GATE_DOD_NOT_VERIFIED`) when the active DoD checklist is not
+   * fully verified.
    */
   private async assertFullDoDVerified(pbi: ProductBacklogItem): Promise<void> {
     const dod = await prisma.definitionOfDone.findUnique({
@@ -640,8 +642,11 @@ class ProductBacklogService {
     const unverified = activeDodItemIds.filter((id) => !verifiedDodItemIds.has(id));
 
     if (unverified.length > 0) {
-      throw new BadRequestError(
-        `Item cannot be marked Done until all Definition of Done items are verified. Missing verification for ${unverified.length} active DoD item(s).`
+      throw localizedError(
+        'errors:dodNotVerified',
+        { count: unverified.length },
+        400,
+        GATE_CODES.DOD_NOT_VERIFIED
       );
     }
   }
@@ -666,7 +671,7 @@ class ProductBacklogService {
     });
 
     if (isSizingAttempt && teamMember?.role !== 'DEVELOPERS') {
-      throw localizedError('errors:developerOnlySizing', {}, 403, 'FORBIDDEN');
+      throw localizedError('errors:developerOnlySizing', {}, 403, GATE_CODES.DEVELOPER_ONLY_SIZING);
     }
 
     return teamMember;

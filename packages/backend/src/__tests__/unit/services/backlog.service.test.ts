@@ -57,6 +57,7 @@ import { incrementService } from '../../../services/increment.service';
 import prisma from '../../../utils/prisma';
 import { workflowService } from '../../../services/workflow.service';
 import { NotFoundError, BadRequestError, ForbiddenError, AppError } from '../../../utils/errors';
+import { GATE_CODES } from '@scrumooth/shared';
 import { isBacklogLimitEnabled, BACKLOG_CONFIG } from '../../../config/backlog.config';
 
 describe('ProductBacklogService', () => {
@@ -309,7 +310,7 @@ describe('ProductBacklogService', () => {
           title: 'New PBI',
           storyPoints: 5,
         })
-      ).rejects.toMatchObject({ statusCode: 403, code: 'FORBIDDEN' });
+      ).rejects.toMatchObject({ statusCode: 403, code: GATE_CODES.DEVELOPER_ONLY_SIZING });
 
       expect(prisma.productBacklogItem.create).not.toHaveBeenCalled();
     });
@@ -567,7 +568,7 @@ describe('ProductBacklogService', () => {
       expect(result.status).toBe('DONE');
     });
 
-    it('should throw BadRequestError when DONE transition attempted without full DoD verification', async () => {
+    it('should refuse with GATE_DOD_NOT_VERIFIED when DONE transition attempted without full DoD verification', async () => {
       const userId = 'test-user-id';
       const pbiId = 'pbi-id';
       const mockPBI = {
@@ -598,7 +599,10 @@ describe('ProductBacklogService', () => {
 
       await expect(
         productBacklogService.updatePBI(pbiId, userId, { status: 'DONE' })
-      ).rejects.toThrow(BadRequestError);
+      ).rejects.toMatchObject({
+        statusCode: 400,
+        code: GATE_CODES.DOD_NOT_VERIFIED,
+      });
       expect(prisma.productBacklogItem.update).not.toHaveBeenCalled();
     });
 
@@ -624,7 +628,7 @@ describe('ProductBacklogService', () => {
 
       await expect(
         productBacklogService.updatePBI(pbiId, userId, { storyPoints: 8 })
-      ).rejects.toMatchObject({ statusCode: 403, code: 'FORBIDDEN' });
+      ).rejects.toMatchObject({ statusCode: 403, code: GATE_CODES.DEVELOPER_ONLY_SIZING });
 
       expect(prisma.productBacklogItem.update).not.toHaveBeenCalled();
     });
@@ -754,7 +758,10 @@ describe('ProductBacklogService', () => {
 
       await expect(
         productBacklogService.updatePBI(pbiId, userId, { status: 'DONE' })
-      ).rejects.toThrow(BadRequestError);
+      ).rejects.toMatchObject({
+        statusCode: 400,
+        code: GATE_CODES.DOD_NOT_VERIFIED,
+      });
       // Composition must not run when the DoD gate rejects the transition.
       expect(incrementService.composeDonePBI).not.toHaveBeenCalled();
     });
@@ -1103,7 +1110,7 @@ describe('ProductBacklogService', () => {
 
       await expect(
         productBacklogService.createPBIBulk(userId, itemsWithSizing)
-      ).rejects.toMatchObject({ statusCode: 403, code: 'FORBIDDEN' });
+      ).rejects.toMatchObject({ statusCode: 403, code: GATE_CODES.DEVELOPER_ONLY_SIZING });
 
       expect(prisma.$transaction).not.toHaveBeenCalled();
       expect(prisma.productBacklogItem.create).not.toHaveBeenCalled();

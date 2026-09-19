@@ -1,6 +1,7 @@
 // Sprint Service
 import prisma from '../utils/prisma';
-import { NotFoundError, BadRequestError, ForbiddenError } from '../utils/errors';
+import { NotFoundError, BadRequestError, ForbiddenError, localizedError } from '../utils/errors';
+import { GATE_CODES, type GateCode } from '@scrumooth/shared';
 import { generateUUIDv7 } from '../utils/uuid';
 import { workflowService } from './workflow.service';
 import {
@@ -10,6 +11,7 @@ import {
 } from '../utils/dbTransaction';
 import {
   NotificationType,
+  ImpedimentStatus,
   type Sprint,
   type Task,
   type TaskStatus,
@@ -422,7 +424,10 @@ class SprintService {
     }
 
     // DEVELOPERS-only decomposition: only DEVELOPERS-role members may plan/save the backlog.
-    await this.assertDeveloperRole(sprint.teamId, userId);
+    await this.assertDeveloperRole(sprint.teamId, userId, {
+      messageKey: 'errors:sprintBacklog.developersOnly',
+      gateCode: GATE_CODES.DEVELOPER_ONLY_SPRINT_BACKLOG,
+    });
 
     const items = data?.items ?? [];
     const tasks = data?.tasks ?? [];
@@ -539,7 +544,10 @@ class SprintService {
     }
 
     // DEVELOPERS-only: the Scrum Team's Developers select and decompose the work.
-    await this.assertDeveloperRole(sprint.teamId, userId);
+    await this.assertDeveloperRole(sprint.teamId, userId, {
+      messageKey: 'errors:sprintBacklog.developersOnly',
+      gateCode: GATE_CODES.DEVELOPER_ONLY_SPRINT_BACKLOG,
+    });
 
     const items = data?.items ?? [];
     const tasks = data?.tasks ?? [];
@@ -1253,11 +1261,14 @@ class SprintService {
       await this.assertTeamMember(sprint.teamId, userId);
     }
 
-    // Prerequisite events gate: per the Scrum Guide (2020), the Sprint Review is the
+    // Prerequisite gates: per the Scrum Guide (2020), the Sprint Review is the
     // second-to-last event and the Sprint Retrospective concludes the Sprint. A Sprint cannot
-    // be closed until both are completed. This is enforced server-side (fail-fast, outside the
-    // transaction) so a direct API call cannot bypass the frontend checks.
-    const [sprintReview, sprintRetrospective] = await Promise.all([
+    // be closed until both are completed. The Guide also holds that impediments are re-ordered
+    // or resolved so they do not consume the team's capacity, so an unresolved impediment is
+    // treated as a blocking prerequisite of Sprint close (see the enforcement table in the
+    // README). Both checks are enforced server-side (fail-fast, outside the transaction) so a
+    // direct API call cannot bypass the frontend checks.
+    const [sprintReview, sprintRetrospective, unresolvedImpediments] = await Promise.all([
       prisma.sprintReview.findUnique({
         where: { sprintId },
         select: { id: true, status: true },
@@ -1266,19 +1277,41 @@ class SprintService {
         where: { sprintId },
         select: { id: true, status: true },
       }),
+      prisma.impediment.findMany({
+        where: {
+          sprintId,
+          status: { in: [ImpedimentStatus.OPEN, ImpedimentStatus.IN_PROGRESS] },
+        },
+        select: { title: true },
+        orderBy: { createdAt: 'asc' },
+      }),
     ]);
 
     const missingPrerequisites: string[] = [];
     if (sprintReview?.status !== 'completed') {
-      missingPrerequisites.push('Sprint Review');
+      missingPrerequisites.push(requestT('errors:sprint.eventSprintReview'));
     }
     if (sprintRetrospective?.status !== 'COMPLETED') {
-      missingPrerequisites.push('Sprint Retrospective');
+      missingPrerequisites.push(requestT('errors:sprint.eventSprintRetrospective'));
     }
 
     if (missingPrerequisites.length > 0) {
-      throw new BadRequestError(
-        `Sprint cannot be completed because the following prerequisite event(s) are not completed: ${missingPrerequisites.join(', ')}. Complete them before closing the sprint.`
+      throw localizedError(
+        'errors:sprint.prerequisiteEventsMissing',
+        { events: missingPrerequisites.join(', ') },
+        400,
+        GATE_CODES.SPRINT_EVENTS_MISSING
+      );
+    }
+
+    if (unresolvedImpediments.length > 0) {
+      throw localizedError(
+        'errors:sprint.impedimentsUnresolved',
+        {
+          impediments: unresolvedImpediments.map((impediment) => impediment.title).join(', '),
+        },
+        400,
+        GATE_CODES.IMPEDIMENTS_UNRESOLVED
       );
     }
 
@@ -1458,8 +1491,16 @@ class SprintService {
    * Assert that the acting user is a `DEVELOPERS`-role team member for the given team.
    * Resolves the user's `TeamMember` role and throws `ForbiddenError` when the role is
    * not `DEVELOPERS`. This is the backbone of Developers-only task decomposition.
+   *
+   * @param options.messageKey - i18n key for the refusal (defaults to task decomposition).
+   * @param options.gateCode - when set, the refusal carries this stable gate code so the
+   *   call is accounted as a Scrum Guide gate refusal rather than a generic 403.
    */
-  private async assertDeveloperRole(teamId: string, userId: string): Promise<void> {
+  private async assertDeveloperRole(
+    teamId: string,
+    userId: string,
+    options?: { messageKey?: string; gateCode?: GateCode }
+  ): Promise<void> {
     const teamMember = await prisma.teamMember.findFirst({
       where: { teamId, userId },
       select: { role: true },
@@ -1470,7 +1511,11 @@ class SprintService {
     }
 
     if (teamMember.role !== 'DEVELOPERS') {
-      throw new ForbiddenError(requestT('errors:task.creationRequiresDeveloper'));
+      const messageKey = options?.messageKey ?? 'errors:task.creationRequiresDeveloper';
+      if (options?.gateCode) {
+        throw localizedError(messageKey, {}, 403, options.gateCode);
+      }
+      throw new ForbiddenError(requestT(messageKey));
     }
   }
 
@@ -1491,7 +1536,12 @@ class SprintService {
     }
 
     if (teamMember.role !== 'PRODUCT_OWNER') {
-      throw new ForbiddenError(requestT('errors:sprint.cancelRequiresProductOwner'));
+      throw localizedError(
+        'errors:sprint.cancelRequiresProductOwner',
+        {},
+        403,
+        GATE_CODES.PRODUCT_OWNER_ONLY_CANCELLATION
+      );
     }
   }
 

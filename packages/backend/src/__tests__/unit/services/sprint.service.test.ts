@@ -5,6 +5,7 @@ import {
   incrementSprintService,
 } from '../../../services/sprint.service';
 import { NotFoundError, BadRequestError, ForbiddenError } from '../../../utils/errors';
+import { GATE_CODES } from '@scrumooth/shared';
 
 // Mock prisma
 vi.mock('../../../utils/prisma', () => ({
@@ -70,6 +71,9 @@ vi.mock('../../../utils/prisma', () => ({
     },
     sprintRetrospective: {
       findUnique: vi.fn(),
+    },
+    impediment: {
+      findMany: vi.fn(),
     },
     user: {
       findUnique: vi.fn(),
@@ -175,6 +179,9 @@ import { withTransaction } from '../../../utils/dbTransaction';
 describe('SprintService', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // The Sprint-close impediment gate queries the sprint's unresolved impediments. Default
+    // to none so happy-path tests are not blocked; gate-specific tests override this.
+    (prisma.impediment.findMany as any).mockResolvedValue([]);
   });
 
   describe('getSprints', () => {
@@ -694,7 +701,7 @@ describe('SprintService', () => {
       expect(result.status).toBe('COMPLETED');
     });
 
-    it('should throw BadRequestError when the Sprint Review is missing', async () => {
+    it('should refuse with GATE_SPRINT_EVENTS_MISSING when the Sprint Review is missing', async () => {
       const mockSprint = {
         id: 'sprint-1',
         teamId: 'team-1',
@@ -711,12 +718,13 @@ describe('SprintService', () => {
         status: 'COMPLETED',
       });
 
-      await expect(sprintService.completeSprint('sprint-1', 'user-1')).rejects.toThrow(
-        BadRequestError
-      );
+      await expect(sprintService.completeSprint('sprint-1', 'user-1')).rejects.toMatchObject({
+        statusCode: 400,
+        code: GATE_CODES.SPRINT_EVENTS_MISSING,
+      });
     });
 
-    it('should throw BadRequestError when the Sprint Review is not completed', async () => {
+    it('should refuse with GATE_SPRINT_EVENTS_MISSING when the Sprint Review is not completed', async () => {
       const mockSprint = {
         id: 'sprint-1',
         teamId: 'team-1',
@@ -736,12 +744,13 @@ describe('SprintService', () => {
         status: 'COMPLETED',
       });
 
-      await expect(sprintService.completeSprint('sprint-1', 'user-1')).rejects.toThrow(
-        BadRequestError
-      );
+      await expect(sprintService.completeSprint('sprint-1', 'user-1')).rejects.toMatchObject({
+        statusCode: 400,
+        code: GATE_CODES.SPRINT_EVENTS_MISSING,
+      });
     });
 
-    it('should throw BadRequestError when the Sprint Retrospective is missing', async () => {
+    it('should refuse with GATE_SPRINT_EVENTS_MISSING when the Sprint Retrospective is missing', async () => {
       const mockSprint = {
         id: 'sprint-1',
         teamId: 'team-1',
@@ -758,12 +767,13 @@ describe('SprintService', () => {
       });
       (prisma.sprintRetrospective.findUnique as any).mockResolvedValue(null);
 
-      await expect(sprintService.completeSprint('sprint-1', 'user-1')).rejects.toThrow(
-        BadRequestError
-      );
+      await expect(sprintService.completeSprint('sprint-1', 'user-1')).rejects.toMatchObject({
+        statusCode: 400,
+        code: GATE_CODES.SPRINT_EVENTS_MISSING,
+      });
     });
 
-    it('should throw BadRequestError when the Sprint Retrospective is not completed', async () => {
+    it('should refuse with GATE_SPRINT_EVENTS_MISSING when the Sprint Retrospective is not completed', async () => {
       const mockSprint = {
         id: 'sprint-1',
         teamId: 'team-1',
@@ -783,9 +793,41 @@ describe('SprintService', () => {
         status: 'DRAFT',
       });
 
-      await expect(sprintService.completeSprint('sprint-1', 'user-1')).rejects.toThrow(
-        BadRequestError
-      );
+      await expect(sprintService.completeSprint('sprint-1', 'user-1')).rejects.toMatchObject({
+        statusCode: 400,
+        code: GATE_CODES.SPRINT_EVENTS_MISSING,
+      });
+    });
+
+    it('should refuse with GATE_IMPEDIMENTS_UNRESOLVED while the Sprint has unresolved impediments', async () => {
+      const mockSprint = {
+        id: 'sprint-1',
+        teamId: 'team-1',
+        name: 'Sprint 1',
+        status: 'ACTIVE',
+        sprintBacklogItems: [],
+      };
+
+      (prisma.sprint.findUnique as any).mockResolvedValue(mockSprint);
+      (prisma.teamMember.findFirst as any).mockResolvedValue({ role: 'DEVELOPERS' });
+      (prisma.sprintReview.findUnique as any).mockResolvedValue({
+        id: 'review-1',
+        status: 'completed',
+      });
+      (prisma.sprintRetrospective.findUnique as any).mockResolvedValue({
+        id: 'retro-1',
+        status: 'COMPLETED',
+      });
+      (prisma.impediment.findMany as any).mockResolvedValue([
+        { title: 'CI pipeline is red' },
+        { title: 'Staging access blocked' },
+      ]);
+
+      await expect(sprintService.completeSprint('sprint-1', 'user-1')).rejects.toMatchObject({
+        statusCode: 400,
+        code: GATE_CODES.IMPEDIMENTS_UNRESOLVED,
+      });
+      expect(prisma.sprint.update).not.toHaveBeenCalled();
     });
 
     it('should throw NotFoundError when sprint not found', async () => {
@@ -901,7 +943,7 @@ describe('SprintService', () => {
       expect(result.status).toBe('CANCELLED');
     });
 
-    it('should throw ForbiddenError when a Developer tries to cancel', async () => {
+    it('should refuse with GATE_PRODUCT_OWNER_ONLY_CANCELLATION when a Developer tries to cancel', async () => {
       const mockSprint = {
         id: 'sprint-1',
         teamId: 'team-1',
@@ -913,12 +955,15 @@ describe('SprintService', () => {
       (prisma.sprint.findUnique as any).mockResolvedValue(mockSprint);
       (prisma.teamMember.findFirst as any).mockResolvedValue({ role: 'DEVELOPERS' });
 
-      await expect(sprintService.cancelSprint('sprint-1', 'Reason', 'dev-1')).rejects.toThrow(
-        ForbiddenError
+      await expect(sprintService.cancelSprint('sprint-1', 'Reason', 'dev-1')).rejects.toMatchObject(
+        {
+          statusCode: 403,
+          code: GATE_CODES.PRODUCT_OWNER_ONLY_CANCELLATION,
+        }
       );
     });
 
-    it('should throw ForbiddenError when a Scrum Master tries to cancel', async () => {
+    it('should refuse with GATE_PRODUCT_OWNER_ONLY_CANCELLATION when a Scrum Master tries to cancel', async () => {
       const mockSprint = {
         id: 'sprint-1',
         teamId: 'team-1',
@@ -930,9 +975,10 @@ describe('SprintService', () => {
       (prisma.sprint.findUnique as any).mockResolvedValue(mockSprint);
       (prisma.teamMember.findFirst as any).mockResolvedValue({ role: 'SCRUM_MASTER' });
 
-      await expect(sprintService.cancelSprint('sprint-1', 'Reason', 'sm-1')).rejects.toThrow(
-        ForbiddenError
-      );
+      await expect(sprintService.cancelSprint('sprint-1', 'Reason', 'sm-1')).rejects.toMatchObject({
+        statusCode: 403,
+        code: GATE_CODES.PRODUCT_OWNER_ONLY_CANCELLATION,
+      });
     });
 
     it('should throw ForbiddenError when a non-team member tries to cancel', async () => {
@@ -1739,6 +1785,8 @@ describe('incrementSprintService', () => {
 describe('SprintService - Additional Coverage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // See the Sprint-close impediment gate default above.
+    (prisma.impediment.findMany as any).mockResolvedValue([]);
   });
 
   describe('startSprint with backlog items and tasks', () => {
@@ -2472,7 +2520,7 @@ describe('SprintService - Additional Coverage', () => {
       expect(result.taskIds).toHaveLength(1);
     });
 
-    it('should throw ForbiddenError for a non-Developer', async () => {
+    it('should refuse with GATE_DEVELOPER_ONLY_SPRINT_BACKLOG for a non-Developer', async () => {
       (prisma.sprint.findUnique as any).mockResolvedValue({
         id: 'sprint-1',
         teamId: 'team-1',
@@ -2482,7 +2530,10 @@ describe('SprintService - Additional Coverage', () => {
 
       await expect(
         sprintService.saveSprintBacklog('sprint-1', 'user-1', { items: [] })
-      ).rejects.toThrow(ForbiddenError);
+      ).rejects.toMatchObject({
+        statusCode: 403,
+        code: GATE_CODES.DEVELOPER_ONLY_SPRINT_BACKLOG,
+      });
     });
 
     it('should accept a save whose task is assigned to another Developer on the team', async () => {
@@ -2834,7 +2885,7 @@ describe('SprintService - Additional Coverage', () => {
       expect(taskDeleteMany).not.toHaveBeenCalled();
     });
 
-    it('should throw ForbiddenError for a non-Developer', async () => {
+    it('should refuse with GATE_DEVELOPER_ONLY_SPRINT_BACKLOG for a non-Developer', async () => {
       (prisma.sprint.findUnique as any).mockResolvedValue({
         id: 'sprint-1',
         teamId: 'team-1',
@@ -2845,7 +2896,10 @@ describe('SprintService - Additional Coverage', () => {
 
       await expect(
         sprintService.saveSprintPlanningDraft('sprint-1', 'user-1', { items: [] })
-      ).rejects.toThrow(ForbiddenError);
+      ).rejects.toMatchObject({
+        statusCode: 403,
+        code: GATE_CODES.DEVELOPER_ONLY_SPRINT_BACKLOG,
+      });
     });
 
     it('should reject a task whose PBI is not in the selected backlog', async () => {

@@ -1,11 +1,16 @@
 {
   "databaseError": "Si è verificato un errore del database",
   "developerOnlySizing": "Solo gli sviluppatori possono impostare gli story point, poiché gli sviluppatori che eseguono il lavoro sono responsabili della stima.",
+  "dodNotVerified": "Questo elemento non può essere contrassegnato come Completato finché ogni criterio attivo della Definition of Done non è verificato. {{count}} criterio/i attivo/i deve ancora essere verificato.",
   "emailAlreadyExists": "Un account con l'email {{email}} esiste già",
   "entityNotFound": "{{entity}} non trovato",
   "fieldAlreadyExists": "{{field}} esiste già",
   "fieldAlreadyTaken": "{{field}} è già utilizzato",
   "forbidden": "Non hai il permesso di eseguire questa azione",
+  "increment": {
+    "alreadyDelivered": "Questo incremento è già stato consegnato e non può essere consegnato di nuovo.",
+    "deliveredLocked": "Questo incremento è stato consegnato e non può più essere modificato."
+  },
   "invalidCredentials": "Email o password non corrette",
   "invalidReference": "Riferimento non valido",
   "invalidRelation": "Relazione non valida",
@@ -18,11 +23,18 @@
   "sprint": {
     "anotherActive": "Un altro sprint è già attivo",
     "cancelRequiresProductOwner": "Solo il Product Owner può annullare uno sprint",
+    "eventSprintRetrospective": "Retrospettiva dello Sprint",
+    "eventSprintReview": "Revisione dello Sprint",
+    "impedimentsUnresolved": "Lo Sprint non può essere completato finché presenta impedimenti non risolti: {{impediments}}. Risolvili o chiudili prima di chiudere lo Sprint.",
     "missingGoal": "Lo sprint non può essere avviato senza un obiettivo di sprint",
     "notPlanned": "Solo gli sprint pianificati possono essere avviati",
     "notReadyToStart": "Il backlog dello sprint deve essere salvato prima di poter avviare lo sprint",
     "pbiAlreadyCommitted": "L'elemento del backlog \"{{pbiTitle}}\" è già impegnato in un altro sprint ({{sprintName}}). Un elemento del Product Backlog può essere lavorato in un solo sprint alla volta.",
-    "pbiConflictAtStart": "Lo sprint non può essere avviato: i seguenti elementi del backlog sono già impegnati in un altro sprint: {{items}}."
+    "pbiConflictAtStart": "Lo sprint non può essere avviato: i seguenti elementi del backlog sono già impegnati in un altro sprint: {{items}}.",
+    "prerequisiteEventsMissing": "Lo Sprint non può essere completato perché i seguenti eventi non sono conclusi: {{events}}. Registrali prima di chiudere lo Sprint."
+  },
+  "sprintBacklog": {
+    "developersOnly": "Solo gli sviluppatori possono salvare lo Sprint Backlog, poiché gli sviluppatori che svolgono il lavoro ne sono responsabili."
   },
   "task": {
     "assigneeMustBeDeveloper": "Possono essere assegnati solo gli sviluppatori del team. I Product Owner e gli Scrum Master non possono assegnare attività.",

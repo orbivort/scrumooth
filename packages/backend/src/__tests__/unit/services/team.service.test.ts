@@ -840,7 +840,7 @@ describe('TeamService', () => {
         teamService.addMember(teamId, userId, { email: memberEmail, role: 'PRODUCT_OWNER' })
       ).rejects.toMatchObject({
         statusCode: 409,
-        code: 'ROLE_ALREADY_TAKEN',
+        code: 'GATE_LEADERSHIP_ROLE_TAKEN',
       });
 
       expect(prisma.teamMember.create).not.toHaveBeenCalled();
@@ -875,7 +875,7 @@ describe('TeamService', () => {
         teamService.addMember(teamId, userId, { email: memberEmail, role: 'SCRUM_MASTER' })
       ).rejects.toMatchObject({
         statusCode: 409,
-        code: 'ROLE_ALREADY_TAKEN',
+        code: 'GATE_LEADERSHIP_ROLE_TAKEN',
       });
 
       expect(prisma.teamMember.create).not.toHaveBeenCalled();
@@ -968,7 +968,7 @@ describe('TeamService', () => {
         teamService.addMember(teamId, userId, { email: memberEmail, role: 'DEVELOPERS' })
       ).rejects.toMatchObject({
         statusCode: 409,
-        code: 'TEAM_SIZE_LIMIT_REACHED',
+        code: 'GATE_TEAM_SIZE_LIMIT',
       });
 
       expect(prisma.teamMember.create).not.toHaveBeenCalled();
@@ -1068,7 +1068,7 @@ describe('TeamService', () => {
         teamService.updateMemberRole(teamId, userId, memberId, 'SCRUM_MASTER')
       ).rejects.toMatchObject({
         statusCode: 409,
-        code: 'ROLE_ALREADY_TAKEN',
+        code: 'GATE_LEADERSHIP_ROLE_TAKEN',
       });
 
       expect(prisma.teamMember.update).not.toHaveBeenCalled();

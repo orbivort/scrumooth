@@ -2998,7 +2998,7 @@ describe('TeamManagement - Multiple Teams', () => {
       });
     });
 
-    it('should show role already taken error when invite API rejects with ROLE_ALREADY_TAKEN', async () => {
+    it('should show role already taken error when invite API rejects with GATE_LEADERSHIP_ROLE_TAKEN', async () => {
       const user = userEvent.setup();
       const members = [
         createMember('member-1', 'user-2', 'developers', 'dev@example.com', 'Dev', 'Eloper'),
@@ -3010,7 +3010,7 @@ describe('TeamManagement - Multiple Teams', () => {
         'ERR_BAD_REQUEST'
       );
       roleTakenError.response = {
-        data: { error: { code: 'ROLE_ALREADY_TAKEN' } },
+        data: { error: { code: 'GATE_LEADERSHIP_ROLE_TAKEN' } },
         status: 409,
         statusText: 'Conflict',
         headers: {},

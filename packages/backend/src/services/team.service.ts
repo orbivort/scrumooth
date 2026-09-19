@@ -2,6 +2,7 @@
 import prisma from '../utils/prisma';
 import config from '../config';
 import { NotFoundError, ForbiddenError, ConflictError, localizedError } from '../utils/errors';
+import { GATE_CODES } from '@scrumooth/shared';
 import { generateUUIDv7 } from '../utils/uuid';
 import { NotificationService } from './notification.service';
 import {
@@ -491,7 +492,7 @@ class TeamService {
         'errors:teamSizeLimitReached',
         { max: config.team.maxSize },
         409,
-        'TEAM_SIZE_LIMIT_REACHED'
+        GATE_CODES.TEAM_SIZE_LIMIT
       );
     }
 
@@ -651,7 +652,7 @@ class TeamService {
         'errors:roleAlreadyTaken',
         { role: roleLabel },
         409,
-        'ROLE_ALREADY_TAKEN'
+        GATE_CODES.LEADERSHIP_ROLE_TAKEN
       );
     }
   }
