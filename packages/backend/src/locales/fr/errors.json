@@ -27,8 +27,8 @@
   "sprint": {
     "anotherActive": "Un autre sprint est déjà actif",
     "cancelRequiresProductOwner": "Seul le Product Owner peut annuler un sprint",
-    "eventSprintRetrospective": "Rétrospective de Sprint",
-    "eventSprintReview": "Revue de Sprint",
+    "eventSprintRetrospective": "Sprint Retrospective",
+    "eventSprintReview": "Sprint Review",
     "impedimentsUnresolved": "Le Sprint ne peut pas être clôturé tant qu'il reste des obstacles non résolus : {{impediments}}. Résolvez-les ou clôturez-les avant de clôturer le Sprint.",
     "missingGoal": "Le sprint ne peut pas démarrer sans un objectif de sprint",
     "notPlanned": "Seuls les sprints planifiés peuvent démarrer",
