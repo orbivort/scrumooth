@@ -502,6 +502,15 @@ describe('Sprint Configuration Integration Tests', () => {
 
       const team = await createTestTeam(teamName);
       await addTeamMember(team.id, user.id, 'SCRUM_MASTER');
+      // A Sprint cannot start until it is linked to a Product Goal.
+      await prisma.productGoal.create({
+        data: {
+          id: generateUUIDv7(),
+          teamId: team.id,
+          title: 'Test Product Goal',
+          status: 'ACTIVE',
+        },
+      });
       const sprint = await createTestSprint(team.id, 'Sprint To Start');
 
       // A Sprint Backlog must be saved before the sprint can start.

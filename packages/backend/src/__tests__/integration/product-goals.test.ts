@@ -301,6 +301,39 @@ describe('Product Goals Integration Tests', () => {
       expect(goal).not.toBeNull();
     });
 
+    it('should refuse creation by a non-Product-Owner member', async () => {
+      const email = `create-goal-denied-${uniqueId()}@example.com`;
+      testEmails.push(email);
+
+      const user = await createTestUserInDb(email);
+      const teamName = `Create Goal Denied Team ${uniqueId()}`;
+      testTeams.push(teamName);
+
+      const team = await createTestTeam(teamName);
+      await addTeamMember(team.id, user.id, 'DEVELOPERS');
+
+      const cookies = await loginAndGetCookies(email);
+      const { csrfToken } = extractCsrfFromCookies(cookies);
+
+      const response = await request(app)
+        .post('/api/v1/product-goals')
+        .set('Cookie', cookies)
+        .set(CSRF_CONSTANTS.HEADER_NAME, csrfToken)
+        .send({
+          teamId: team.id,
+          title: 'Not Allowed Goal',
+        })
+        .expect(403);
+
+      expect(response.body.error.code).toBe('GATE_PRODUCT_OWNER_ONLY_PRODUCT_GOAL');
+
+      // The refused goal must not have been persisted.
+      const goal = await prisma.productGoal.findFirst({
+        where: { title: 'Not Allowed Goal' },
+      });
+      expect(goal).toBeNull();
+    });
+
     it('should return 422 with invalid goal data', async () => {
       const email = `invalid-goal-${uniqueId()}@example.com`;
       testEmails.push(email);
@@ -431,6 +464,38 @@ describe('Product Goals Integration Tests', () => {
       expect(updatedGoal?.title).toBe('Updated Goal');
     });
 
+    it('should refuse activating a second Product Goal for the same team', async () => {
+      const email = `activate-conflict-${uniqueId()}@example.com`;
+      testEmails.push(email);
+
+      const user = await createTestUserInDb(email);
+      const teamName = `Activate Conflict Team ${uniqueId()}`;
+      testTeams.push(teamName);
+
+      const team = await createTestTeam(teamName);
+      await addTeamMember(team.id, user.id, 'PRODUCT_OWNER');
+      await createTestGoal(team.id, 'Already Active Goal', 'ACTIVE');
+      const secondGoal = await createTestGoal(team.id, 'Second Goal');
+
+      const cookies = await loginAndGetCookies(email);
+      const { csrfToken } = extractCsrfFromCookies(cookies);
+
+      const response = await request(app)
+        .put(`/api/v1/product-goals/${secondGoal.id}`)
+        .set('Cookie', cookies)
+        .set(CSRF_CONSTANTS.HEADER_NAME, csrfToken)
+        .send({ status: 'ACTIVE' })
+        .expect(409);
+
+      expect(response.body.error.code).toBe('GATE_PRODUCT_GOAL_ALREADY_ACTIVE');
+
+      // The refused activation must not have changed the goal's status.
+      const unchangedGoal = await prisma.productGoal.findUnique({
+        where: { id: secondGoal.id },
+      });
+      expect(unchangedGoal?.status).toBe('NEW');
+    });
+
     it('should return 422 with invalid status', async () => {
       const email = `invalid-status-${uniqueId()}@example.com`;
       testEmails.push(email);
@@ -502,7 +567,7 @@ describe('Product Goals Integration Tests', () => {
       expect(deletedGoal).toBeNull();
     });
 
-    it('should allow any team member to delete goal', async () => {
+    it('should refuse deletion by a non-Product-Owner member', async () => {
       const email = `delete-member-${uniqueId()}@example.com`;
       testEmails.push(email);
 
@@ -512,7 +577,7 @@ describe('Product Goals Integration Tests', () => {
 
       const team = await createTestTeam(teamName);
       await addTeamMember(team.id, user.id, 'DEVELOPERS');
-      const goal = await createTestGoal(team.id, 'Deletable Goal');
+      const goal = await createTestGoal(team.id, 'Undeletable Goal');
 
       const cookies = await loginAndGetCookies(email);
 
@@ -522,14 +587,15 @@ describe('Product Goals Integration Tests', () => {
         .delete(`/api/v1/product-goals/${goal.id}`)
         .set('Cookie', cookies)
         .set(CSRF_CONSTANTS.HEADER_NAME, csrfToken)
-        .expect(200);
+        .expect(403);
 
-      expect(response.body.success).toBe(true);
+      expect(response.body.error.code).toBe('GATE_PRODUCT_OWNER_ONLY_PRODUCT_GOAL');
 
-      const deletedGoal = await prisma.productGoal.findUnique({
+      // The refused deletion must leave the goal in place.
+      const remainingGoal = await prisma.productGoal.findUnique({
         where: { id: goal.id },
       });
-      expect(deletedGoal).toBeNull();
+      expect(remainingGoal).not.toBeNull();
     });
   });
 

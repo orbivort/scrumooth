@@ -342,6 +342,7 @@ describe('SprintService', () => {
         startDate: new Date(),
         endDate: new Date(),
         sprintGoal: 'Goal',
+        goalId: 'goal-active-1',
       };
 
       (prisma.sprint.findUnique as any).mockResolvedValue(mockSprint);
@@ -406,6 +407,7 @@ describe('SprintService', () => {
         startDate: new Date(),
         endDate: new Date(),
         sprintGoal: 'Goal',
+        goalId: 'goal-active-1',
       };
 
       (prisma.sprint.findUnique as any).mockResolvedValue(mockSprint);
@@ -469,6 +471,7 @@ describe('SprintService', () => {
         startDate: new Date(),
         endDate: new Date(),
         sprintGoal: 'Goal',
+        goalId: 'goal-active-1',
       };
 
       (prisma.sprint.findUnique as any).mockResolvedValue(mockSprint);
@@ -561,6 +564,7 @@ describe('SprintService', () => {
         name: 'Sprint 1',
         status: 'PLANNED',
         sprintGoal: 'Goal',
+        goalId: 'goal-active-1',
       };
 
       (prisma.sprint.findUnique as any).mockResolvedValue(mockSprint);
@@ -619,6 +623,7 @@ describe('SprintService', () => {
         startDate: new Date(),
         endDate: new Date(),
         sprintGoal: null,
+        goalId: 'goal-active-1',
       };
       const mockReconciledSprint = { ...mockSprint, sprintGoal: 'Adopted Goal' };
 
@@ -644,6 +649,106 @@ describe('SprintService', () => {
       expect(prisma.sprint.update).toHaveBeenCalledWith({
         where: { id: 'sprint-1' },
         data: { sprintGoal: 'Adopted Goal' },
+      });
+    });
+
+    it('should refuse with GATE_PRODUCT_GOAL_REQUIRED when the Sprint has no Product Goal', async () => {
+      const mockSprint = {
+        id: 'sprint-1',
+        teamId: 'team-1',
+        name: 'Sprint 1',
+        status: 'PLANNED',
+        startDate: new Date(),
+        endDate: new Date(),
+        sprintGoal: 'Goal',
+        goalId: null,
+      };
+
+      (prisma.sprint.findUnique as any).mockResolvedValue(mockSprint);
+      // No ACTIVE Product Goal exists for the team, so nothing can be adopted.
+      (prisma.productGoal.findFirst as any).mockResolvedValueOnce(null);
+
+      await expect(sprintService.startSprint('sprint-1', 'user-1')).rejects.toMatchObject({
+        statusCode: 400,
+        code: GATE_CODES.PRODUCT_GOAL_REQUIRED,
+      });
+
+      expect(prisma.productGoal.findFirst).toHaveBeenCalledWith({
+        where: { teamId: 'team-1', status: 'ACTIVE' },
+        select: { id: true },
+        orderBy: { createdAt: 'desc' },
+      });
+      expect(prisma.sprint.update).not.toHaveBeenCalled();
+    });
+
+    it('should adopt the team active Product Goal and start the Sprint', async () => {
+      const mockSprint = {
+        id: 'sprint-1',
+        teamId: 'team-1',
+        name: 'Sprint 1',
+        status: 'PLANNED',
+        startDate: new Date(),
+        endDate: new Date(),
+        sprintGoal: 'Goal',
+        goalId: null,
+      };
+      const mockAdoptedSprint = { ...mockSprint, goalId: 'goal-active-1' };
+
+      (prisma.sprint.findUnique as any).mockResolvedValue(mockSprint);
+      (prisma.productGoal.findFirst as any).mockResolvedValueOnce({ id: 'goal-active-1' });
+      (prisma.sprint.update as any).mockResolvedValue(mockAdoptedSprint);
+      (prisma.sprint.findFirst as any).mockResolvedValue(null);
+      (prisma.sprintBacklogItem.findMany as any)
+        .mockResolvedValueOnce([{ pbiId: 'pbi-1' }])
+        .mockResolvedValueOnce([]);
+      (prisma.task.findMany as any).mockResolvedValue([{ estimatedHours: 8 }]);
+
+      const mockUpdatedSprint = { ...mockAdoptedSprint, status: 'ACTIVE' };
+      (withTransaction as any).mockImplementation(async (callback: any) => {
+        return callback({
+          sprint: {
+            findUnique: vi.fn().mockResolvedValue(mockAdoptedSprint),
+            update: vi.fn().mockResolvedValue(mockUpdatedSprint),
+          },
+          generatedSprint: {
+            updateMany: vi.fn(),
+          },
+          sprintBacklogItem: {
+            findMany: vi.fn().mockResolvedValue([]),
+            createMany: vi.fn(),
+          },
+          productBacklogItem: {
+            update: vi.fn(),
+            updateMany: vi.fn(),
+          },
+          task: {
+            createMany: vi.fn(),
+          },
+          burndownData: {
+            deleteMany: vi.fn(),
+            createMany: vi.fn(),
+          },
+          workflow: {
+            findFirst: vi.fn(),
+          },
+          workflowState: {
+            findMany: vi.fn(),
+          },
+          statusChangeHistory: {
+            create: vi.fn(),
+          },
+          user: {
+            findMany: vi.fn().mockResolvedValue([]),
+          },
+        });
+      });
+
+      const result = await sprintService.startSprint('sprint-1', 'user-1');
+
+      expect(result.status).toBe('ACTIVE');
+      expect(prisma.sprint.update).toHaveBeenCalledWith({
+        where: { id: 'sprint-1' },
+        data: { goalId: 'goal-active-1' },
       });
     });
   });
@@ -1799,6 +1904,7 @@ describe('SprintService - Additional Coverage', () => {
         startDate: new Date(),
         endDate: new Date(),
         sprintGoal: 'Goal',
+        goalId: 'goal-active-1',
       };
 
       const mockPBI = {
@@ -1880,6 +1986,7 @@ describe('SprintService - Additional Coverage', () => {
         startDate: new Date(),
         endDate: new Date(),
         sprintGoal: 'Goal',
+        goalId: 'goal-active-1',
       };
 
       const mockTaskWorkflow = {
@@ -1954,6 +2061,7 @@ describe('SprintService - Additional Coverage', () => {
         startDate: new Date(),
         endDate: new Date(),
         sprintGoal: 'Goal',
+        goalId: 'goal-active-1',
       };
 
       (prisma.sprint.findUnique as any).mockResolvedValue(mockSprint);

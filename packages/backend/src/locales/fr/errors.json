@@ -17,6 +17,10 @@
   "invalidToken": "Jeton invalide",
   "notTeamMember": "Vous n'êtes pas membre de cette équipe",
   "pleaseLoginAgain": "Veuillez vous reconnecter pour continuer",
+  "productGoal": {
+    "alreadyActive": "Un objectif de produit actif existe déjà pour cette équipe. Accomplissez-le ou abandonnez-le avant d'en activer un autre.",
+    "productOwnerOnly": "Seul le Product Owner peut créer, modifier ou supprimer un objectif de produit."
+  },
   "recordNotFound": "Enregistrement introuvable",
   "roleAlreadyTaken": "Un {{role}} existe déjà pour cette équipe. Chaque équipe ne peut avoir qu'un seul {{role}}.",
   "routeNotFound": "{{method}} {{path}} introuvable",
@@ -31,7 +35,8 @@
     "notReadyToStart": "Le backlog du sprint doit être enregistré avant de pouvoir démarrer le sprint",
     "pbiAlreadyCommitted": "L'élément du backlog « {{pbiTitle}} » est déjà engagé dans un autre sprint ({{sprintName}}). Un élément du Product Backlog ne peut être travaillé que dans un seul sprint à la fois.",
     "pbiConflictAtStart": "Le sprint ne peut pas démarrer : les éléments du backlog suivants sont déjà engagés dans un autre sprint : {{items}}.",
-    "prerequisiteEventsMissing": "Le Sprint ne peut pas être clôturé car les événements suivants ne sont pas terminés : {{events}}. Enregistrez-les avant de clôturer le Sprint."
+    "prerequisiteEventsMissing": "Le Sprint ne peut pas être clôturé car les événements suivants ne sont pas terminés : {{events}}. Enregistrez-les avant de clôturer le Sprint.",
+    "productGoalRequired": "Le sprint ne peut pas démarrer sans un objectif de produit lié. Liez d'abord le sprint à l'objectif de produit de l'équipe."
   },
   "sprintBacklog": {
     "developersOnly": "Seuls les développeurs peuvent enregistrer le Sprint Backlog, car les développeurs qui effectuent le travail en sont responsables."

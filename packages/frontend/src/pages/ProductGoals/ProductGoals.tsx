@@ -3,7 +3,7 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { formatLocaleDate } from '@scrumooth/shared';
+import { formatLocaleDate, GATE_CODES } from '@scrumooth/shared';
 
 import { apiService } from '../../services';
 import { useTeamStore } from '../../store';
@@ -42,6 +42,23 @@ function getTranslatedErrorMessage(message: string): string {
     return i18nInstance.t('common:permission.transitionError');
   }
   return message;
+}
+
+/**
+ * Resolve the `backlog` namespace key for a backend Product Goal gate refusal. Returns null when
+ * the code is not a Product Goal gate so callers can fall back to their generic error handling.
+ * The key is translated by the calling component so it follows the active request locale.
+ */
+type ProductGoalGateKey = 'productGoals.gateAlreadyActive' | 'productGoals.gateProductOwnerOnly';
+
+function getProductGoalGateKey(code: string | undefined): ProductGoalGateKey | null {
+  if (code === GATE_CODES.PRODUCT_GOAL_ALREADY_ACTIVE) {
+    return 'productGoals.gateAlreadyActive';
+  }
+  if (code === GATE_CODES.PRODUCT_OWNER_ONLY_PRODUCT_GOAL) {
+    return 'productGoals.gateProductOwnerOnly';
+  }
+  return null;
 }
 
 import { StatusChangeModal } from './components/StatusChangeModal';
@@ -112,12 +129,19 @@ const PRODUCT_GOAL_STATUS_CONFIG_BASE = {
 } as const;
 
 export const ProductGoalsPage: React.FC = () => {
-  const { currentTeam } = useTeamStore();
+  const { currentTeam, userRoleInCurrentTeam } = useTeamStore();
   const { locale } = useI18nStore();
   const queryClient = useQueryClient();
   const { handleError } = useApiError();
   const { t } = useTranslation('backlog');
   const teamId = currentTeam?.id;
+
+  /**
+   * The Product Owner is accountable for developing and communicating the Product Goal, so
+   * authoring a goal is a Product Owner action. Everyone else keeps read access; the backend
+   * enforces the same rule, this only prevents users from hitting a refusal.
+   */
+  const isProductOwner = userRoleInCurrentTeam === 'PRODUCT_OWNER';
 
   // Status label i18n key mapping for product goals
   const GOAL_STATUS_LABEL_KEYS: Record<string, string> = {
@@ -304,11 +328,17 @@ export const ProductGoalsPage: React.FC = () => {
       });
     },
     onError: (error: unknown) => {
-      const err = error as { response?: { data?: { error?: { message?: string } } } };
-      const userMessage = handleError(
-        error,
-        `${t('productGoals.failedToCreateGoal') as string}: ${err.response?.data?.error?.message}`
-      );
+      const err = error as {
+        response?: { data?: { error?: { message?: string; code?: string } } };
+      };
+      const backendError = err.response?.data?.error;
+      const gateKey = getProductGoalGateKey(backendError?.code);
+      const userMessage =
+        (gateKey ? (t(gateKey) as string) : null) ??
+        handleError(
+          error,
+          `${t('productGoals.failedToCreateGoal') as string}: ${backendError?.message}`
+        );
       setModalErrorMessage(userMessage);
       showErrorToast(userMessage);
     },
@@ -343,11 +373,17 @@ export const ProductGoalsPage: React.FC = () => {
       });
     },
     onError: (error: unknown) => {
-      const err = error as { response?: { data?: { error?: { message?: string } } } };
-      const userMessage = handleError(
-        error,
-        `${t('productGoals.failedToUpdateGoal') as string}: ${err.response?.data?.error?.message}`
-      );
+      const err = error as {
+        response?: { data?: { error?: { message?: string; code?: string } } };
+      };
+      const backendError = err.response?.data?.error;
+      const gateKey = getProductGoalGateKey(backendError?.code);
+      const userMessage =
+        (gateKey ? (t(gateKey) as string) : null) ??
+        handleError(
+          error,
+          `${t('productGoals.failedToUpdateGoal') as string}: ${backendError?.message}`
+        );
       setModalErrorMessage(userMessage);
       showErrorToast(userMessage);
     },
@@ -365,11 +401,17 @@ export const ProductGoalsPage: React.FC = () => {
       setPageErrorMessage(null);
     },
     onError: (error: unknown) => {
-      const err = error as { response?: { data?: { error?: { message?: string } } } };
-      const userMessage = handleError(
-        error,
-        `${t('productGoals.failedToDeleteGoal') as string}: ${err.response?.data?.error?.message}`
-      );
+      const err = error as {
+        response?: { data?: { error?: { message?: string; code?: string } } };
+      };
+      const backendError = err.response?.data?.error;
+      const gateKey = getProductGoalGateKey(backendError?.code);
+      const userMessage =
+        (gateKey ? (t(gateKey) as string) : null) ??
+        handleError(
+          error,
+          `${t('productGoals.failedToDeleteGoal') as string}: ${backendError?.message}`
+        );
       setPageErrorMessage(userMessage);
       showErrorToast(userMessage);
     },
@@ -389,11 +431,18 @@ export const ProductGoalsPage: React.FC = () => {
       success(t('productGoals.statusUpdatedSuccess') as string);
     },
     onError: (error: unknown) => {
-      const err = error as { response?: { data?: { error?: { message?: string } } } };
-      const backendMessage = err.response?.data?.error?.message ?? '';
+      const err = error as {
+        response?: { data?: { error?: { message?: string; code?: string } } };
+      };
+      const backendError = err.response?.data?.error;
+      const backendMessage = backendError?.message ?? '';
       // Translate the backend error message if it's a known pattern
       const translatedDetail = backendMessage ? getTranslatedErrorMessage(backendMessage) : '';
-      const userMessage = translatedDetail || (t('productGoals.failedToChangeStatus') as string);
+      const gateKey = getProductGoalGateKey(backendError?.code);
+      const userMessage =
+        (gateKey ? (t(gateKey) as string) : null) ??
+        (translatedDetail !== '' ? translatedDetail : null) ??
+        (t('productGoals.failedToChangeStatus') as string);
       setStatusChangeError(userMessage);
       showErrorToast(userMessage);
     },
@@ -407,6 +456,10 @@ export const ProductGoalsPage: React.FC = () => {
   }, [formData, showCreateModal, saveDraft]);
 
   const handleOpenCreate = () => {
+    if (!isProductOwner) {
+      setPageErrorMessage(t('productGoals.productOwnerOnly') as string);
+      return;
+    }
     setModalErrorMessage(null);
     setFormData(INITIAL_FORM_DATA);
     setTouchedFields({
@@ -419,6 +472,10 @@ export const ProductGoalsPage: React.FC = () => {
   };
 
   const handleOpenEdit = (goal: ProductGoal) => {
+    if (!isProductOwner) {
+      setPageErrorMessage(t('productGoals.productOwnerOnly') as string);
+      return;
+    }
     if (!canEditGoal(goal)) {
       setPageErrorMessage(
         t('productGoals.cannotEditGoalStatus', { status: goal.status.toLowerCase() }) as string
@@ -997,6 +1054,12 @@ export const ProductGoalsPage: React.FC = () => {
             <button
               className={`${styles.button} ${styles['button-primary']}`}
               onClick={handleOpenCreate}
+              disabled={!isProductOwner}
+              title={
+                isProductOwner
+                  ? (t('productGoals.newGoal') as string)
+                  : (t('productGoals.productOwnerOnly') as string)
+              }
             >
               <PlusIcon size={14} strokeWidth={2.5} />
               {t('productGoals.newGoal') as string}
@@ -1176,9 +1239,11 @@ export const ProductGoalsPage: React.FC = () => {
                         className={styles['action-btn']}
                         onClick={() => handleOpenEdit(goal)}
                         title={
-                          canEditGoal(goal)
-                            ? (t('productGoals.edit') as string)
-                            : (t('productGoals.cannotEditCompletedAbandoned') as string)
+                          !isProductOwner
+                            ? (t('productGoals.productOwnerOnly') as string)
+                            : canEditGoal(goal)
+                              ? (t('productGoals.edit') as string)
+                              : (t('productGoals.cannotEditCompletedAbandoned') as string)
                         }
                         aria-label={
                           canEditGoal(goal)
@@ -1188,7 +1253,7 @@ export const ProductGoalsPage: React.FC = () => {
                                 status: goal.status.toLowerCase(),
                               }) as string)
                         }
-                        disabled={!canEditGoal(goal)}
+                        disabled={!canEditGoal(goal) || !isProductOwner}
                       >
                         <EditIcon size={14} />
                       </button>
@@ -1196,11 +1261,13 @@ export const ProductGoalsPage: React.FC = () => {
                         className={`${styles['action-btn']} ${styles.delete}`}
                         onClick={() => handleDelete(goal)}
                         title={
-                          !canDeleteGoal(goal)
-                            ? (t('productGoals.cannotDeleteActiveCompleted') as string)
-                            : hasAssociatedBacklogItems(goal.id)
-                              ? (t('productGoals.cannotDeleteHasItems') as string)
-                              : (t('productGoals.delete') as string)
+                          !isProductOwner
+                            ? (t('productGoals.productOwnerOnly') as string)
+                            : !canDeleteGoal(goal)
+                              ? (t('productGoals.cannotDeleteActiveCompleted') as string)
+                              : hasAssociatedBacklogItems(goal.id)
+                                ? (t('productGoals.cannotDeleteHasItems') as string)
+                                : (t('productGoals.delete') as string)
                         }
                         aria-label={
                           !canDeleteGoal(goal)
@@ -1216,7 +1283,11 @@ export const ProductGoalsPage: React.FC = () => {
                                   title: goal.title,
                                 }) as string)
                         }
-                        disabled={!canDeleteGoal(goal) || hasAssociatedBacklogItems(goal.id)}
+                        disabled={
+                          !canDeleteGoal(goal) ||
+                          hasAssociatedBacklogItems(goal.id) ||
+                          !isProductOwner
+                        }
                       >
                         <TrashIcon size={14} />
                       </button>
@@ -1402,9 +1473,11 @@ export const ProductGoalsPage: React.FC = () => {
                               className={styles['btn-icon']}
                               onClick={() => handleOpenEdit(goal)}
                               title={
-                                canEditGoal(goal)
-                                  ? (t('productGoals.edit') as string)
-                                  : (t('productGoals.cannotEditCompletedAbandoned') as string)
+                                !isProductOwner
+                                  ? (t('productGoals.productOwnerOnly') as string)
+                                  : canEditGoal(goal)
+                                    ? (t('productGoals.edit') as string)
+                                    : (t('productGoals.cannotEditCompletedAbandoned') as string)
                               }
                               aria-label={
                                 canEditGoal(goal)
@@ -1416,7 +1489,7 @@ export const ProductGoalsPage: React.FC = () => {
                                       status: goal.status.toLowerCase(),
                                     }) as string)
                               }
-                              disabled={!canEditGoal(goal)}
+                              disabled={!canEditGoal(goal) || !isProductOwner}
                             >
                               <EditIcon size={14} />
                             </button>
@@ -1424,11 +1497,13 @@ export const ProductGoalsPage: React.FC = () => {
                               className={`${styles['btn-icon']} ${styles.delete}`}
                               onClick={() => handleDelete(goal)}
                               title={
-                                !canDeleteGoal(goal)
-                                  ? (t('productGoals.cannotDeleteActiveCompleted') as string)
-                                  : hasAssociatedBacklogItems(goal.id)
-                                    ? (t('productGoals.cannotDeleteHasItems') as string)
-                                    : (t('productGoals.delete') as string)
+                                !isProductOwner
+                                  ? (t('productGoals.productOwnerOnly') as string)
+                                  : !canDeleteGoal(goal)
+                                    ? (t('productGoals.cannotDeleteActiveCompleted') as string)
+                                    : hasAssociatedBacklogItems(goal.id)
+                                      ? (t('productGoals.cannotDeleteHasItems') as string)
+                                      : (t('productGoals.delete') as string)
                               }
                               aria-label={
                                 !canDeleteGoal(goal)
@@ -1444,7 +1519,11 @@ export const ProductGoalsPage: React.FC = () => {
                                         title: goal.title,
                                       }) as string)
                               }
-                              disabled={!canDeleteGoal(goal) || hasAssociatedBacklogItems(goal.id)}
+                              disabled={
+                                !canDeleteGoal(goal) ||
+                                hasAssociatedBacklogItems(goal.id) ||
+                                !isProductOwner
+                              }
                             >
                               <TrashIcon size={14} />
                             </button>
@@ -1635,7 +1714,7 @@ export const ProductGoalsPage: React.FC = () => {
             isHistoryLoading={isHistoryLoading}
             error={statusChangeError ?? historyError}
             validationMessage={statusChangeValidationMessage}
-            isViewOnly={!canEditGoal(selectedGoal)}
+            isViewOnly={!canEditGoal(selectedGoal) || !isProductOwner}
           />
         )}
 

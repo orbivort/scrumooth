@@ -37,6 +37,10 @@ A Product Goal describes a future state of the product that provides value to cu
 
 ### Step-by-Step
 
+> **Note**: Creating, editing, and deleting a Product Goal is a **Product Owner** action. The
+> Product Owner is accountable for developing and explicitly communicating the Product Goal.
+> Every team member can still view goals, their progress, and their status history.
+
 1. **Navigate to Product Goals**
    - Click "Product Goals" in the sidebar
    - The goals page displays existing goals
@@ -91,19 +95,24 @@ Description: Make it better
 
 Product goals progress through these states:
 
-| Status        | When to Use                               | Actions Available         |
-| ------------- | ----------------------------------------- | ------------------------- |
-| **New**       | Goal is defined but work hasn't started   | Edit, Activate, Delete    |
-| **Active**    | Team is actively working toward this goal | Edit, Complete, Abandon   |
-| **Completed** | Goal has been successfully completed      | View, Archive             |
-| **Abandoned** | Goal is no longer being pursued           | View, Reactivate, Archive |
+| Status        | When to Use                               | Actions Available       |
+| ------------- | ----------------------------------------- | ----------------------- |
+| **New**       | Goal is defined but work hasn't started   | Edit, Activate, Delete  |
+| **Active**    | Team is actively working toward this goal | Edit, Complete, Abandon |
+| **Completed** | Goal has been successfully completed      | View                    |
+| **Abandoned** | Goal is no longer being pursued           | View                    |
+
+> **Note**: `Completed` and `Abandoned` are terminal states — a goal cannot be reactivated. To
+> pursue the objective again, create a new goal.
 
 ### Changing Goal Status
+
+Only the Product Owner can change a goal's status.
 
 1. **Activate a Goal**
    - Click on the goal to view details
    - Click "Activate" or change status to "Active"
-   - Only one goal should typically be active at a time
+   - Only one goal can be active at a time — fulfil or abandon the active goal first
 
 2. **Complete a Goal**
    - When success metrics are met
@@ -112,7 +121,7 @@ Product goals progress through these states:
 
 3. **Abandon a Goal**
    - If circumstances change or goal is no longer relevant
-   - Click "Abandon" and provide a reason
+   - Click "Abandon"
    - This helps maintain history for future reference
 
 ### Editing Goals
@@ -204,8 +213,8 @@ The goal progress bar shows:
    - Document the "why" behind each goal
 
 4. **Limit Active Goals**
-   - Focus on 1-3 active goals at a time
-   - Too many goals dilute focus
+   - Focus on one active goal at a time
+   - The team must fulfil or abandon an objective before taking on the next
    - Complete goals before starting new ones
 
 ### Goal Management
@@ -229,7 +238,7 @@ The goal progress bar shows:
 
 | Mistake                     | Better Approach                      |
 | --------------------------- | ------------------------------------ |
-| Too many active goals       | Focus on 1-3 goals maximum           |
+| Too many active goals       | Focus on one active goal at a time   |
 | Vague success metrics       | Define specific, measurable outcomes |
 | Never updating goals        | Review and adjust each sprint        |
 | Goals without backlog items | Ensure goals have supporting work    |

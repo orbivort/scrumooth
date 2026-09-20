@@ -17,6 +17,10 @@
   "invalidToken": "Token inválido",
   "notTeamMember": "No es miembro de este equipo",
   "pleaseLoginAgain": "Inicie sesión nuevamente para continuar",
+  "productGoal": {
+    "alreadyActive": "Ya existe un objetivo de producto activo para este equipo. Cúmplelo o abandónalo antes de activar otro.",
+    "productOwnerOnly": "Solo el Product Owner puede crear, editar o eliminar un objetivo de producto."
+  },
   "recordNotFound": "Registro no encontrado",
   "roleAlreadyTaken": "Ya existe un {{role}} para este equipo. Cada equipo puede tener exactamente un {{role}}.",
   "routeNotFound": "{{method}} {{path}} no encontrado",
@@ -31,7 +35,8 @@
     "notReadyToStart": "El backlog del sprint debe guardarse antes de poder iniciar el sprint",
     "pbiAlreadyCommitted": "El elemento del backlog \"{{pbiTitle}}\" ya está comprometido con otro sprint ({{sprintName}}). Un elemento del Product Backlog solo puede trabajarse en un sprint a la vez.",
     "pbiConflictAtStart": "El sprint no puede iniciarse: los siguientes elementos del backlog ya están comprometidos con otro sprint: {{items}}.",
-    "prerequisiteEventsMissing": "El Sprint no puede completarse porque los siguientes eventos no han concluido: {{events}}. Regístralos antes de cerrar el Sprint."
+    "prerequisiteEventsMissing": "El Sprint no puede completarse porque los siguientes eventos no han concluido: {{events}}. Regístralos antes de cerrar el Sprint.",
+    "productGoalRequired": "El sprint no puede iniciarse sin un objetivo de producto vinculado. Vincula primero el sprint al objetivo de producto del equipo."
   },
   "sprintBacklog": {
     "developersOnly": "Solo los desarrolladores pueden guardar el Sprint Backlog, ya que los desarrolladores que realizan el trabajo son responsables de él."

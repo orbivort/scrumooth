@@ -17,6 +17,10 @@
   "invalidToken": "Ungültiges Token",
   "notTeamMember": "Sie sind kein Mitglied dieses Teams",
   "pleaseLoginAgain": "Bitte melden Sie sich erneut an, um fortzufahren",
+  "productGoal": {
+    "alreadyActive": "Für dieses Team existiert bereits ein aktives Produktziel. Erfülle oder verwirf es, bevor du ein weiteres aktivierst.",
+    "productOwnerOnly": "Nur der Product Owner kann ein Produktziel erstellen, bearbeiten oder löschen."
+  },
   "recordNotFound": "Datensatz nicht gefunden",
   "roleAlreadyTaken": "Für dieses Team existiert bereits ein {{role}}. Jedes Team kann genau einen {{role}} haben.",
   "routeNotFound": "{{method}} {{path}} nicht gefunden",
@@ -31,7 +35,8 @@
     "notReadyToStart": "Das Sprint-Backlog muss gespeichert werden, bevor der Sprint gestartet werden kann",
     "pbiAlreadyCommitted": "Backlog-Element \"{{pbiTitle}}\" ist bereits einem anderen Sprint zugeordnet ({{sprintName}}). Ein Produkt-Backlog-Element kann jeweils nur in einem Sprint bearbeitet werden.",
     "pbiConflictAtStart": "Der Sprint kann nicht gestartet werden: Die folgenden Backlog-Elemente sind bereits einem anderen Sprint zugeordnet: {{items}}.",
-    "prerequisiteEventsMissing": "Der Sprint kann nicht abgeschlossen werden, da die folgenden Ereignisse noch nicht beendet sind: {{events}}. Zeichne sie auf, bevor der Sprint abgeschlossen wird."
+    "prerequisiteEventsMissing": "Der Sprint kann nicht abgeschlossen werden, da die folgenden Ereignisse noch nicht beendet sind: {{events}}. Zeichne sie auf, bevor der Sprint abgeschlossen wird.",
+    "productGoalRequired": "Der Sprint kann nicht ohne ein verknüpftes Produktziel gestartet werden. Verknüpfe den Sprint zuerst mit dem Produktziel des Teams."
   },
   "sprintBacklog": {
     "developersOnly": "Nur Entwickler können das Sprint-Backlog speichern, da die Entwickler, die die Arbeit ausführen, das Sprint-Backlog besitzen."

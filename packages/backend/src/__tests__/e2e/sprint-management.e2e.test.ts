@@ -12,6 +12,7 @@ import {
   addTeamMember,
   createTestSprintInDb,
   createTestPBIInDb,
+  createTestProductGoalInDb,
   createTestTaskInDb,
   createTestIncrementInDb,
   createTestSprintReviewInDb,
@@ -346,6 +347,9 @@ describe('E2E: Sprint Management', () => {
       testEmails.push(email);
 
       const { team, user } = await setupTeamWithUser(email, ROLES.SCRUM_MASTER);
+
+      // A Sprint cannot start until it is linked to a Product Goal.
+      await createTestProductGoalInDb(team.id, `Goal ${uniqueTestId()}`, 'ACTIVE');
 
       const sprint = await createTestSprintInDb(
         team.id,

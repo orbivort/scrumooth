@@ -628,6 +628,22 @@ Content-Type: application/json
 }
 ```
 
+**400 Bad Request - Sprint Has No Product Goal**
+
+```json
+{
+  "success": false,
+  "error": {
+    "code": "GATE_PRODUCT_GOAL_REQUIRED",
+    "message": "The Sprint cannot be started without a linked Product Goal. Link the Sprint to the team's Product Goal first."
+  }
+}
+```
+
+> If the Sprint has no linked Product Goal, the start first adopts the team's active Product
+> Goal. The refusal is returned only when the team has no active Product Goal to adopt, because
+> the Product Backlog's commitment is the Product Goal (Scrum Guide, 2020).
+
 **409 Conflict - Team Already Has Active Sprint**
 
 ```json

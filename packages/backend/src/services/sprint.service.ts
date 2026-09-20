@@ -908,6 +908,35 @@ class SprintService {
       throw new BadRequestError(requestT('errors:sprint.missingGoal'));
     }
 
+    // Scrum Guide: the Product Backlog's commitment is the Product Goal, and the rest of the
+    // Backlog emerges to define what will fulfil it. Reconciliation mirrors the Sprint Goal
+    // adoption above — adopt the team's single ACTIVE Product Goal onto the Sprint first, so
+    // genuinely in-flight Sprints are not stranded by this gate. Only when the Sprint is still
+    // unlinked is the start refused.
+    if (!sprint.goalId) {
+      const activeGoal = await prisma.productGoal.findFirst({
+        where: { teamId: sprint.teamId, status: 'ACTIVE' },
+        select: { id: true },
+        orderBy: { createdAt: 'desc' },
+      });
+
+      if (activeGoal) {
+        sprint = await prisma.sprint.update({
+          where: { id: sprint.id },
+          data: { goalId: activeGoal.id },
+        });
+      }
+    }
+
+    if (!sprint.goalId) {
+      throw localizedError(
+        'errors:sprint.productGoalRequired',
+        {},
+        400,
+        GATE_CODES.PRODUCT_GOAL_REQUIRED
+      );
+    }
+
     const savedBacklog = await prisma.sprintBacklogItem.findMany({
       where: { sprintId: sprint.id },
       select: { pbiId: true },

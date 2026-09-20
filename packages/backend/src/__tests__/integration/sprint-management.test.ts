@@ -115,6 +115,28 @@ describe('Sprint Management Integration Tests', () => {
     return sprint;
   };
 
+  // Helper to create a product goal. A Sprint cannot start until it is linked to a Product
+  // Goal, so tests that start a Sprint create the team's active goal first (the start then
+  // adopts it, mirroring the reconciliation the service performs).
+  const createTestProductGoal = async (
+    teamId: string,
+    title: string,
+    status: 'NEW' | 'ACTIVE' = 'ACTIVE'
+  ) => {
+    const goalId = generateUUIDv7();
+    const goal = await prisma.productGoal.create({
+      data: {
+        id: goalId,
+        teamId,
+        title,
+        description: 'Test product goal',
+        status,
+        successMetrics: 'Measurable outcomes',
+      },
+    });
+    return goal;
+  };
+
   // Helper to create a PBI
   const createTestPBI = async (
     teamId: string,
@@ -469,6 +491,7 @@ describe('Sprint Management Integration Tests', () => {
 
       const team = await createTestTeam(teamName);
       await addTeamMember(team.id, user.id, 'SCRUM_MASTER');
+      await createTestProductGoal(team.id, 'Test Product Goal');
       const sprint = await createTestSprint(team.id, 'Sprint to Start', 'PLANNED');
 
       // Create a ready PBI to add to sprint
@@ -716,6 +739,7 @@ describe('Sprint Management Integration Tests', () => {
 
       const team = await createTestTeam(teamName);
       await addTeamMember(team.id, user.id, 'DEVELOPERS');
+      await createTestProductGoal(team.id, 'Test Product Goal');
       const sprint = await createTestSprint(team.id, 'Sprint to Plan', 'PLANNED');
       const pbi = await createTestPBI(team.id, 'Planned PBI', 'READY');
 
@@ -1063,6 +1087,8 @@ describe('Sprint Management Integration Tests', () => {
       await addTeamMember(team.id, user.id, 'DEVELOPERS');
       const pbi = await createTestPBI(team.id, 'Shared PBI', 'READY');
 
+      await createTestProductGoal(team.id, 'Test Product Goal');
+
       // A COMPLETED sprint already committed the PBI (so the per-team "active" guard does not
       // trigger — this specifically exercises the PBI-exclusivity check).
       const completedSprint = await createTestSprint(team.id, 'Completed Sprint A', 'COMPLETED');
@@ -1099,6 +1125,8 @@ describe('Sprint Management Integration Tests', () => {
       const team = await createTestTeam(teamName);
       await addTeamMember(team.id, user.id, 'DEVELOPERS');
       const pbi = await createTestPBI(team.id, 'Shared PBI', 'READY');
+
+      await createTestProductGoal(team.id, 'Test Product Goal');
 
       // Draft B (to be started) and Draft C (stale) both include the PBI.
       const draftB = await createTestSprint(team.id, 'Draft Sprint B', 'DRAFT', {
@@ -1789,6 +1817,7 @@ describe('Sprint Management Integration Tests', () => {
 
         const team = await createTestTeam(teamName);
         await addTeamMember(team.id, user.id, 'SCRUM_MASTER');
+        await createTestProductGoal(team.id, 'Test Product Goal');
         const sprint = await createTestSprint(team.id, 'Sprint to Start', 'PLANNED');
 
         // Create a ready PBI to add to sprint

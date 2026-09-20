@@ -44,15 +44,25 @@ vi.mock('../../../utils/uuid', () => ({
   generateUUIDv7: vi.fn().mockReturnValue('test-goal-uuid'),
 }));
 
+// The update path wraps its check-and-set in a transaction. Run the callback against the
+// same mocked Prisma client so existing assertions on prisma.productGoal.* keep holding.
+vi.mock('../../../utils/dbTransaction', () => ({
+  withTransaction: vi.fn(),
+  TRANSACTION_CONFIG: { DEFAULT: { timeout: 10000 } },
+}));
+
 // Now import the service and other dependencies
 import { productGoalService } from '../../../services/goals.service';
 import prisma from '../../../utils/prisma';
 import { workflowService } from '../../../services/workflow.service';
+import { withTransaction } from '../../../utils/dbTransaction';
 import { NotFoundError, BadRequestError, ForbiddenError } from '../../../utils/errors';
+import { GATE_CODES } from '@scrumooth/shared';
 
 describe('ProductGoalService', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(withTransaction).mockImplementation((callback: any) => callback(prisma));
   });
 
   describe('getProductGoals', () => {
@@ -186,7 +196,7 @@ describe('ProductGoalService', () => {
       ).rejects.toThrow(ForbiddenError);
     });
 
-    it('should throw BadRequestError if status transition is invalid', async () => {
+    it('should refuse creation by a non-Product-Owner member with the Product Owner gate code', async () => {
       const userId = 'test-user-id';
 
       vi.mocked(prisma.team.findUnique).mockResolvedValue({ id: 'team-1' } as any);
@@ -195,6 +205,28 @@ describe('ProductGoalService', () => {
         teamId: 'team-1',
         userId,
         role: 'DEVELOPERS',
+      } as any);
+
+      await expect(
+        productGoalService.createProductGoal(userId, { teamId: 'team-1', title: 'New Goal' })
+      ).rejects.toMatchObject({
+        statusCode: 403,
+        code: GATE_CODES.PRODUCT_OWNER_ONLY_PRODUCT_GOAL,
+      });
+
+      expect(prisma.productGoal.create).not.toHaveBeenCalled();
+      expect(workflowService.validateTransition).not.toHaveBeenCalled();
+    });
+
+    it('should throw BadRequestError if status transition is invalid', async () => {
+      const userId = 'test-user-id';
+
+      vi.mocked(prisma.team.findUnique).mockResolvedValue({ id: 'team-1' } as any);
+      vi.mocked(prisma.teamMember.findFirst).mockResolvedValue({
+        id: 'member-1',
+        teamId: 'team-1',
+        userId,
+        role: 'PRODUCT_OWNER',
       } as any);
       vi.mocked(workflowService.validateTransition).mockResolvedValue({
         isValid: false,
@@ -219,7 +251,7 @@ describe('ProductGoalService', () => {
         id: 'member-1',
         teamId: 'team-1',
         userId,
-        role: 'DEVELOPERS',
+        role: 'PRODUCT_OWNER',
       } as any);
       vi.mocked(workflowService.validateTransition).mockResolvedValue({
         isValid: true,
@@ -244,7 +276,7 @@ describe('ProductGoalService', () => {
         id: 'member-1',
         teamId: 'team-1',
         userId,
-        role: 'DEVELOPERS',
+        role: 'PRODUCT_OWNER',
       } as any);
       vi.mocked(workflowService.validateTransition).mockResolvedValue({
         isValid: true,
@@ -364,6 +396,136 @@ describe('ProductGoalService', () => {
       ).rejects.toThrow(ForbiddenError);
     });
 
+    it('should refuse edits by a non-Product-Owner member with the Product Owner gate code', async () => {
+      const userId = 'test-user-id';
+      const goalId = 'goal-1';
+      const mockGoal = {
+        id: goalId,
+        teamId: 'team-1',
+        title: 'Test Goal',
+        status: 'NEW',
+        createdBy: userId,
+      };
+
+      vi.mocked(prisma.productGoal.findUnique).mockResolvedValue(mockGoal as any);
+      vi.mocked(prisma.teamMember.findFirst).mockResolvedValue({
+        id: 'member-1',
+        teamId: 'team-1',
+        userId,
+        role: 'SCRUM_MASTER',
+      } as any);
+
+      await expect(
+        productGoalService.updateProductGoal(goalId, userId, { title: 'Updated Title' })
+      ).rejects.toMatchObject({
+        statusCode: 403,
+        code: GATE_CODES.PRODUCT_OWNER_ONLY_PRODUCT_GOAL,
+      });
+
+      expect(prisma.productGoal.update).not.toHaveBeenCalled();
+    });
+
+    it('should refuse activation when another Product Goal is already active', async () => {
+      const userId = 'test-user-id';
+      const goalId = 'goal-1';
+      const mockGoal = {
+        id: goalId,
+        teamId: 'team-1',
+        title: 'Test Goal',
+        status: 'NEW',
+        createdBy: userId,
+      };
+
+      vi.mocked(prisma.productGoal.findUnique).mockResolvedValue(mockGoal as any);
+      vi.mocked(prisma.teamMember.findFirst).mockResolvedValue({
+        id: 'member-1',
+        teamId: 'team-1',
+        userId,
+        role: 'PRODUCT_OWNER',
+      } as any);
+      vi.mocked(workflowService.validateTransition).mockResolvedValue({
+        isValid: true,
+        allowed: true,
+      } as any);
+      vi.mocked(prisma.productGoal.count).mockResolvedValue(1 as any);
+
+      await expect(
+        productGoalService.updateProductGoal(goalId, userId, { status: 'ACTIVE' })
+      ).rejects.toMatchObject({
+        statusCode: 409,
+        code: GATE_CODES.PRODUCT_GOAL_ALREADY_ACTIVE,
+      });
+
+      expect(prisma.productGoal.count).toHaveBeenCalledWith({
+        where: { teamId: 'team-1', status: 'ACTIVE', id: { not: goalId } },
+      });
+      expect(prisma.productGoal.update).not.toHaveBeenCalled();
+    });
+
+    it('should activate when no other Product Goal is active', async () => {
+      const userId = 'test-user-id';
+      const goalId = 'goal-1';
+      const mockGoal = {
+        id: goalId,
+        teamId: 'team-1',
+        title: 'Test Goal',
+        status: 'NEW',
+        createdBy: userId,
+      };
+
+      vi.mocked(prisma.productGoal.findUnique).mockResolvedValue(mockGoal as any);
+      vi.mocked(prisma.teamMember.findFirst).mockResolvedValue({
+        id: 'member-1',
+        teamId: 'team-1',
+        userId,
+        role: 'PRODUCT_OWNER',
+      } as any);
+      vi.mocked(workflowService.validateTransition).mockResolvedValue({
+        isValid: true,
+        allowed: true,
+      } as any);
+      vi.mocked(prisma.productGoal.count).mockResolvedValue(0 as any);
+      vi.mocked(prisma.productGoal.update).mockResolvedValue({
+        ...mockGoal,
+        status: 'ACTIVE',
+      } as any);
+
+      const result = await productGoalService.updateProductGoal(goalId, userId, {
+        status: 'ACTIVE',
+      });
+
+      expect(result.status).toBe('ACTIVE');
+      expect(prisma.productGoal.count).toHaveBeenCalledTimes(1);
+    });
+
+    it('should skip the active-goal conflict check when the status is not becoming ACTIVE', async () => {
+      const userId = 'test-user-id';
+      const goalId = 'goal-1';
+      const mockGoal = {
+        id: goalId,
+        teamId: 'team-1',
+        title: 'Test Goal',
+        status: 'NEW',
+        createdBy: userId,
+      };
+
+      vi.mocked(prisma.productGoal.findUnique).mockResolvedValue(mockGoal as any);
+      vi.mocked(prisma.teamMember.findFirst).mockResolvedValue({
+        id: 'member-1',
+        teamId: 'team-1',
+        userId,
+        role: 'PRODUCT_OWNER',
+      } as any);
+      vi.mocked(prisma.productGoal.update).mockResolvedValue({
+        ...mockGoal,
+        title: 'Updated Title',
+      } as any);
+
+      await productGoalService.updateProductGoal(goalId, userId, { title: 'Updated Title' });
+
+      expect(prisma.productGoal.count).not.toHaveBeenCalled();
+    });
+
     it('should throw BadRequestError if status transition is invalid on update', async () => {
       const userId = 'test-user-id';
       const goalId = 'goal-1';
@@ -380,7 +542,7 @@ describe('ProductGoalService', () => {
         id: 'member-1',
         teamId: 'team-1',
         userId,
-        role: 'DEVELOPERS',
+        role: 'PRODUCT_OWNER',
       } as any);
       vi.mocked(workflowService.validateTransition).mockResolvedValue({
         isValid: false,
@@ -408,7 +570,7 @@ describe('ProductGoalService', () => {
         id: 'member-1',
         teamId: 'team-1',
         userId,
-        role: 'DEVELOPERS',
+        role: 'PRODUCT_OWNER',
       } as any);
       vi.mocked(workflowService.validateTransition).mockResolvedValue({
         isValid: true,
@@ -497,6 +659,32 @@ describe('ProductGoalService', () => {
       await expect(productGoalService.deleteProductGoal(goalId, userId)).rejects.toThrow(
         ForbiddenError
       );
+    });
+
+    it('should refuse deletion by a non-Product-Owner member with the Product Owner gate code', async () => {
+      const userId = 'test-user-id';
+      const goalId = 'goal-1';
+      const mockGoal = {
+        id: goalId,
+        teamId: 'team-1',
+        title: 'Test Goal',
+        createdBy: userId,
+      };
+
+      vi.mocked(prisma.productGoal.findUnique).mockResolvedValue(mockGoal as any);
+      vi.mocked(prisma.teamMember.findFirst).mockResolvedValue({
+        id: 'member-1',
+        teamId: 'team-1',
+        userId,
+        role: 'DEVELOPERS',
+      } as any);
+
+      await expect(productGoalService.deleteProductGoal(goalId, userId)).rejects.toMatchObject({
+        statusCode: 403,
+        code: GATE_CODES.PRODUCT_OWNER_ONLY_PRODUCT_GOAL,
+      });
+
+      expect(prisma.productGoal.delete).not.toHaveBeenCalled();
     });
   });
 

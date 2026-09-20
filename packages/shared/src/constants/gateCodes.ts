@@ -31,6 +31,12 @@ export const GATE_CODES = {
   INCREMENT_LOCKED: 'GATE_INCREMENT_LOCKED',
   /** Only Developers save the Sprint Backlog. */
   DEVELOPER_ONLY_SPRINT_BACKLOG: 'GATE_DEVELOPER_ONLY_SPRINT_BACKLOG',
+  /** A team can pursue only one Product Goal at a time. */
+  PRODUCT_GOAL_ALREADY_ACTIVE: 'GATE_PRODUCT_GOAL_ALREADY_ACTIVE',
+  /** Only the Product Owner creates, edits, or deletes a Product Goal. */
+  PRODUCT_OWNER_ONLY_PRODUCT_GOAL: 'GATE_PRODUCT_OWNER_ONLY_PRODUCT_GOAL',
+  /** A Sprint cannot start until it is linked to a Product Goal. */
+  PRODUCT_GOAL_REQUIRED: 'GATE_PRODUCT_GOAL_REQUIRED',
 } as const;
 
 export type GateCode = (typeof GATE_CODES)[keyof typeof GATE_CODES];
@@ -115,6 +121,21 @@ export const GATE_DEFINITIONS: Record<GateCode, GateDefinition> = {
     code: GATE_CODES.DEVELOPER_ONLY_SPRINT_BACKLOG,
     httpStatus: 403,
     i18nKey: 'developerOnlySprintBacklog',
+  },
+  [GATE_CODES.PRODUCT_GOAL_ALREADY_ACTIVE]: {
+    code: GATE_CODES.PRODUCT_GOAL_ALREADY_ACTIVE,
+    httpStatus: 409,
+    i18nKey: 'productGoalAlreadyActive',
+  },
+  [GATE_CODES.PRODUCT_OWNER_ONLY_PRODUCT_GOAL]: {
+    code: GATE_CODES.PRODUCT_OWNER_ONLY_PRODUCT_GOAL,
+    httpStatus: 403,
+    i18nKey: 'productOwnerOnlyProductGoal',
+  },
+  [GATE_CODES.PRODUCT_GOAL_REQUIRED]: {
+    code: GATE_CODES.PRODUCT_GOAL_REQUIRED,
+    httpStatus: 400,
+    i18nKey: 'productGoalRequired',
   },
 };
 

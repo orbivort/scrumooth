@@ -1,10 +1,12 @@
 // Product Goal Service
 import prisma from '../utils/prisma';
-import { NotFoundError, BadRequestError, ForbiddenError } from '../utils/errors';
+import { NotFoundError, BadRequestError, ForbiddenError, localizedError } from '../utils/errors';
+import { GATE_CODES } from '@scrumooth/shared';
 import { generateUUIDv7 } from '../utils/uuid';
 import { logger } from '../utils/logger';
 import type { ProductGoal } from '../generated/prisma/client';
 import { workflowService } from './workflow.service';
+import { withTransaction, TRANSACTION_CONFIG } from '../utils/dbTransaction';
 
 // Product Goal with relations
 export type ProductGoalWithRelations = ProductGoal & {
@@ -105,6 +107,10 @@ class ProductGoalService {
       throw new ForbiddenError('You are not a member of this team');
     }
 
+    // Only the Product Owner authors the Product Goal (Scrum Guide: the Product Owner is
+    // accountable for developing and explicitly communicating the Product Goal).
+    this.assertProductOwner(teamMember.role);
+
     // Get user roles
     const userRoles = [teamMember.role];
 
@@ -198,6 +204,10 @@ class ProductGoalService {
       throw new ForbiddenError('You are not a member of this team');
     }
 
+    // Only the Product Owner edits the Product Goal, including its content. Team members
+    // without the role retain read access (Transparency).
+    this.assertProductOwner(teamMember.role);
+
     // Get user roles
     const userRoles = [teamMember.role];
 
@@ -220,18 +230,48 @@ class ProductGoalService {
       }
     }
 
-    const goal = await prisma.productGoal.update({
-      where: { id },
-      data: {
-        ...data,
-        updatedAt: new Date(),
+    // Scrum Guide: the team must fulfil (or abandon) one objective before taking on the
+    // next. Only a transition into ACTIVE can introduce a second active goal, so the
+    // conflict count is scoped to that transition and runs in the same transaction as the
+    // write, which keeps the check-and-set atomic.
+    const isActivating = data.status === 'ACTIVE' && existing.status !== 'ACTIVE';
+
+    const goal = await withTransaction(
+      async (tx) => {
+        if (isActivating) {
+          const otherActiveGoals = await tx.productGoal.count({
+            where: {
+              teamId: existing.teamId,
+              status: 'ACTIVE',
+              id: { not: id },
+            },
+          });
+
+          if (otherActiveGoals > 0) {
+            throw localizedError(
+              'errors:productGoal.alreadyActive',
+              {},
+              409,
+              GATE_CODES.PRODUCT_GOAL_ALREADY_ACTIVE
+            );
+          }
+        }
+
+        return tx.productGoal.update({
+          where: { id },
+          data: {
+            ...data,
+            updatedAt: new Date(),
+          },
+          include: {
+            creator: {
+              select: { id: true, firstName: true, lastName: true },
+            },
+          },
+        });
       },
-      include: {
-        creator: {
-          select: { id: true, firstName: true, lastName: true },
-        },
-      },
-    });
+      { ...TRANSACTION_CONFIG.DEFAULT, operationName: 'updateProductGoal' }
+    );
 
     // Record status change in workflow history if status changed
     if (data.status && data.status !== existing.status) {
@@ -282,6 +322,9 @@ class ProductGoalService {
       throw new ForbiddenError('You are not a member of this team');
     }
 
+    // Only the Product Owner retires a Product Goal, mirroring the create/edit restriction.
+    this.assertProductOwner(teamMember.role);
+
     // Check if goal has associated backlog items
     const backlogItemsCount = await prisma.productBacklogItem.count({
       where: { goalId: id },
@@ -313,9 +356,29 @@ class ProductGoalService {
           select: { backlogItems: true },
         },
       },
+      // The single-active-goal gate guarantees at most one ACTIVE goal per team; the
+      // ordering keeps the lookup deterministic should legacy data ever hold more.
+      orderBy: { createdAt: 'desc' },
     });
 
     return goal;
+  }
+
+  /**
+   * Assert that the acting team member holds the `PRODUCT_OWNER` role. The Product Owner is
+   * accountable for developing and explicitly communicating the Product Goal (Scrum Guide),
+   * so authoring a goal is a Product Owner action; reading remains open to every team member
+   * to preserve Transparency.
+   */
+  private assertProductOwner(role: string | undefined): void {
+    if (role !== 'PRODUCT_OWNER') {
+      throw localizedError(
+        'errors:productGoal.productOwnerOnly',
+        {},
+        403,
+        GATE_CODES.PRODUCT_OWNER_ONLY_PRODUCT_GOAL
+      );
+    }
   }
 }
 

@@ -317,14 +317,14 @@ Content-Type: application/json
 }
 ```
 
-**403 Forbidden - Insufficient Permissions**
+**403 Forbidden - Product Owner Role Required**
 
 ```json
 {
   "success": false,
   "error": {
-    "code": "AUTHORIZATION_ERROR",
-    "message": "Product Owner role required"
+    "code": "GATE_PRODUCT_OWNER_ONLY_PRODUCT_GOAL",
+    "message": "Only the Product Owner can create, edit, or delete a Product Goal."
   }
 }
 ```
@@ -335,8 +335,8 @@ Content-Type: application/json
 {
   "success": false,
   "error": {
-    "code": "CONFLICT",
-    "message": "An active product goal already exists for this team"
+    "code": "GATE_PRODUCT_GOAL_ALREADY_ACTIVE",
+    "message": "An active Product Goal already exists for this team. Fulfil or abandon it before activating another."
   }
 }
 ```
@@ -522,14 +522,14 @@ Content-Type: application/json
 }
 ```
 
-**403 Forbidden - Insufficient Permissions**
+**403 Forbidden - Product Owner Role Required**
 
 ```json
 {
   "success": false,
   "error": {
-    "code": "AUTHORIZATION_ERROR",
-    "message": "Product Owner role required"
+    "code": "GATE_PRODUCT_OWNER_ONLY_PRODUCT_GOAL",
+    "message": "Only the Product Owner can create, edit, or delete a Product Goal."
   }
 }
 ```
@@ -552,8 +552,8 @@ Content-Type: application/json
 {
   "success": false,
   "error": {
-    "code": "CONFLICT",
-    "message": "An active product goal already exists for this team"
+    "code": "GATE_PRODUCT_GOAL_ALREADY_ACTIVE",
+    "message": "An active Product Goal already exists for this team. Fulfil or abandon it before activating another."
   }
 }
 ```
@@ -612,14 +612,14 @@ Content-Type: application/json
 
 **Error Responses**
 
-**403 Forbidden - Insufficient Permissions**
+**403 Forbidden - Product Owner Role Required**
 
 ```json
 {
   "success": false,
   "error": {
-    "code": "AUTHORIZATION_ERROR",
-    "message": "Product Owner role required"
+    "code": "GATE_PRODUCT_OWNER_ONLY_PRODUCT_GOAL",
+    "message": "Only the Product Owner can create, edit, or delete a Product Goal."
   }
 }
 ```
@@ -737,7 +737,7 @@ curl -X GET https://api.scrumooth.dev/api/v1/product-goals/660e8400-e29b-41d4-a7
 
 ### Goal Management
 
-1. **One Active Goal**: Only one product goal should be active per team at a time
+1. **One Active Goal**: Only one Product Goal can be active per team at a time — enforced by the API
 2. **Clear Metrics**: Define measurable success metrics when creating goals
 3. **Strategic Alignment**: Tag goals with strategic alignment for reporting
 4. **Target Dates**: Set realistic target dates to maintain team focus
