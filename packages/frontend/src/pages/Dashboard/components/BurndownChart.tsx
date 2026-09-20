@@ -88,7 +88,7 @@ export const BurndownChart: React.FC<BurndownChartProps> = ({ data }) => {
         labels: [],
         datasets: [
           {
-            label: t('burndown.ideal'),
+            label: t('burndown.forecast'),
             data: [],
             borderColor: '#9CA3AF',
             backgroundColor: 'transparent',
@@ -115,7 +115,7 @@ export const BurndownChart: React.FC<BurndownChartProps> = ({ data }) => {
         labels: [],
         datasets: [
           {
-            label: t('burndown.ideal'),
+            label: t('burndown.forecast'),
             data: [],
             borderColor: '#9CA3AF',
             backgroundColor: 'transparent',
@@ -138,7 +138,7 @@ export const BurndownChart: React.FC<BurndownChartProps> = ({ data }) => {
       labels: dates.map((d) => formatChartDate(d, locale)),
       datasets: [
         {
-          label: t('burndown.ideal'),
+          label: t('burndown.forecast'),
           data: ideal,
           borderColor: '#9CA3AF',
           backgroundColor: 'transparent',

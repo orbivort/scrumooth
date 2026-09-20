@@ -1,8 +1,8 @@
 {
   "accountDeletionCancelled": "[Àccóúnt délétíón càncélléddddddddd]",
   "accountDeletionCancelledMessage": "[Thé schédúléd àccóúnt délétíón hàs béén càncéllédddddddddddddddd.]",
-  "accountDeletionReminderMessage": "[À Pródúct Ównér ín yóúr téàm wíll hàvé théír àccóúnt pér máñéñtly délétéd ínnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn {{daysText}}. Pléàsé àssígn à néw Pródúct Ównér íf néédédddddddddddd.]",
-  "accountDeletionReminderTitle": "[Àccóúnt délétíón rémíndééééééér]",
+  "accountDeletionReminderMessage": "[À Pródúct Ównér ín yóúr téàm wíll hàvé théír àccóúnt pérmànéntly délétéd ínnnnnnnnnnnnnnnnnnnnnnnn {{daysText}}. Pléàsé àssígn à néw Pródúct Ównér íf néédéddddddddddddddd.]",
+  "accountDeletionReminderTitle": "[Àccóúnt délétíón rémíndérrrrrrrrr]",
   "accountDeletionScheduled": "[Téàm mémbér schédúléd àccóúnt délétíónnnnnnnnnnnnn]",
   "accountDeletionScheduledMessage": "[À Pródúct Ównér ín yóúr téàm hàs schédúléd théír àccóúnt délétíón. Thé àccóúnt wíll bé pérmànéntly délétéd ónnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn {{deletionDate}}. Pléàsé àssígn à néw Pródúct Ównér béfóré thénnnnnnnnnnnnnnnn.]",
   "ariaLabels": {
@@ -16,16 +16,16 @@
   },
   "backlogAdjustmentRequired": "[Néw Bàcklóg Àdjústmént Réqúírés Yóúr Àctíónnnnnnnnnnnnnn]",
   "backlogAdjustmentRequiredMessage": "[Yóú hàvé béén àssígnéd às thé ównér óf à bàcklóg àdjústméntttttttttttttttttttt: {{action}} - \"{{description}}\"]",
-  "dailyScrumSignalMessage": "[Thé Dàíly Scrúm fóóóóóóó \"{{sprintName}}\" ís stàrtíng. Dévélópérs, pléàsé gàthér tó ínsféct prógréss tówàrd thé Sprínt Góàl ànd àdàpt thé Sprínt Bàcklógggggggggg.]",
-  "dailyScrumSignalTitle": "[Dàíly Scrúm stàrtíngggg]",
+  "dailyScrumSignalMessage": "[Thé Dàíly Scrúm fórrrrrrrr \"{{sprintName}}\" ís stàrtíng. Dévélópérs, pléàsé gàthér tó ínspéct prógréss tówàrd thé Sprínt Góàl ànd àdàpt thé Sprínt Bàcklóggggggggggggggggggggggggggggggggggg.]",
+  "dailyScrumSignalTitle": "[Dàíly Scrúm stàrtínggggggg]",
   "dateGroups": {
     "older": "[Óldérrr]",
     "thisWeek": "[Thís Wéékkkk]",
     "today": "[Tódàyyy]",
     "yesterday": "[Yéstérdàyyyy]"
   },
-  "directMessageBody": "{{message}}",
-  "directMessageTitle": "[Méssàgé frómmmmmmmm {{senderName}}]",
+  "directMessageBody": "[{{message}}]",
+  "directMessageTitle": "[Méssàgé frómmmmm {{senderName}}]",
   "empty": {
     "message": "[Yóú wíll séé nótífícàtíóns héré whén théré ís àctívítyyyyyyyyyyyyyyyyyy]",
     "title": "[Nó nótífícàtíóns yéttttttt]"
@@ -49,27 +49,27 @@
     "unread": "[Únréàddd]"
   },
   "impedimentAssigned": "[Néw ímpédímént àssígnéddddddddd: \"{{impedimentTitle}}\"]",
-  "impedimentAssignedMessage": "[Répórtéd byyyyyy {{reporterName}}]",
+  "impedimentAssignedMessage": "[Répórtéd byyyyy {{reporterName}}]",
   "loading": {
     "ariaLabel": "[Lóàdíng nótífícàtíónssssssss]",
     "title": "[Lóàdíng nótífícàtíónsssssssss...]"
   },
   "markAllAsRead": "[Màrk Àll às Réàdddddd]",
   "marking": "[Màrkíngggg...]",
-  "newTaskAssignedMessage": "[Ín sprínttttttttt \"{{sprintName}}\"]",
-  "newTaskAssignedTitle": "[Néw tàsk àssígnédddddddddd: \"{{taskTitle}}\"]",
+  "newTaskAssignedMessage": "[ÍÍnn sspprríínnt \"{{sprintName}}\"]",
+  "newTaskAssignedTitle": "[Néw tàsk àssígnéddddddd: \"{{taskTitle}}\"]",
   "pagination": {
     "next": "[NNééxxt]",
     "pageInfo": "[PPààggé {{current}} óóff {{total}}]",
     "previous": "[Prévíóússss]"
   },
-  "remindersNone": "[Nó rémíndérs sénttttt]",
+  "remindersNone": "[Nó rémíndérs sénttttttt]",
   "remindersSent": "[Rémíndérs sént tóóóóóóó {{count}} téàm mémbérrrrr]",
   "remindersSent_plural": "[Rémíndérs sént tóóóóóóó {{count}} téàm mémbérsssss]",
   "skipToMainContent": "[Skíp tó màín cónténttttttt]",
   "subtitle": "[Stày úpdàtéd wíth téàm àctívítíés ànd ímpórtànt úpdàtéssssssssssssssssss]",
-  "taskReassignedMessage": "[Ín sprínttttttttt \"{{sprintName}}\"]",
-  "taskReassignedTitle": "[Tàsk réàssígnéd tó yóúùùùùùùùùùùùù: \"{{taskTitle}}\"]",
+  "taskReassignedMessage": "[ÍÍnn sspprríínnt \"{{sprintName}}\"]",
+  "taskReassignedTitle": "[Tàsk réàssígnéd tó yóúúúúúúúúú: \"{{taskTitle}}\"]",
   "teamCreated": "[Téàm créàtédddddd: \"{{teamName}}\"]",
   "teamCreatedMessage": "[Yóú hàvé súccéssfúlly créàtéd thé téàmmmmmmmmmmmmm]",
   "teamDeleted": "[Téàm délétédddddd: \"{{teamName}}\"]",

@@ -1,7 +1,7 @@
 {
   "dod": {
-    "empty": "[Nó Défínítíón óf Dóné défínéd. Àdd óné tó énsúré cónsístént quáàlítyyyyyyy.]",
-    "title": "[Défínítíón óf Dónééé]"
+    "empty": "[Nó Défínítíón óf Dóné défínéd. Àdd óné tó énsúré cónsístént qúàlítyyyyyyyyyyyyyyyyyyyyyy.]",
+    "title": "[Défínítíón óf Dónééééééé]"
   },
   "error": {
     "message": "[Únàblé tó lóàd répórt dàtà. Pléàsé try àgàín làtérrrrrrrrrrrrrrrrr.]",
@@ -24,8 +24,8 @@
       "unit": "[Stóry Póínts pér Spríntttttttt]"
     },
     "completionRate": {
-      "title": "[Sprínt Bácklógg Cómmplétíón Ràtééééééé]",
-      "unit": "[Sprínts Fúlly Délívéééééé]"
+      "title": "[Sprínt Bàcklóg Cómplétíón Ràtéééééééééé]",
+      "unit": "[Sprínts Fúlly Délívérédddddddd]"
     },
     "impediments": {
       "openCount": "[ópén ímpédímént(sssssss)]",
@@ -34,15 +34,15 @@
     }
   },
   "productGoal": {
-    "empty": "[Nó àctívé pródúct góàl. Défíné à góàl tó gívé thé téàm à cléàr táàrgggggggggggg.]",
-    "title": "[Pródúct Góàl]",
-    "viewLink": "[Víéw góàlsssss]"
+    "empty": "[Nó àctívé pródúct góàl. Défíné à góàl tó gívé thé téàm à cléàr tàrgétttttttttttttttttttttt.]",
+    "title": "[Pródúct Góàlllll]",
+    "viewLink": "[Víéw góàlssss]"
   },
   "pts": "[ptss]",
   "skipToMainContent": "[Skíp tó màín cónténttttttt]",
   "sprintHistory": {
     "empty": "[Nó sprínt hístóry àvàílàbléééééééééé.]",
-    "sprintGoalLabel": "[Sprínt Góàl]",
+    "sprintGoalLabel": "[Sprínt Góàlllll]",
     "stats": {
       "completed": "[Cómplétédddd]",
       "impediments": "[Ímpédíméntsssss]",
@@ -59,10 +59,10 @@
   "subtitle": "[Tràck téàm pérfórmàncé ànd sprínt métrícssssssssssssss]",
   "title": "[Répórtssss]",
   "velocityChart": {
-    "accessibilityDescription": "[Bár chàrt cómpàríng plànnéd ànd cómplétéd stóry póínts pér sprínttttttt.]",
-    "ariaLabel": "[Sprínt vélócíty chàrt cómpàríng plànnéd ànd cómplétéd stóry póíntsssss.]",
-    "ariaTableCaption": "[Sprínt vélócíty dàtà]",
-    "ariaTableLabel": "[Sprínt vélócíty dàtà tábléééé]",
+    "accessibilityDescription": "[Bàr chàrt cómpàríng plànnéd ànd cómplétéd stóry póínts pér sprínttttttttttttttttttttt.]",
+    "ariaLabel": "[Sprínt vélócíty chàrt cómpàríng plànnéd ànd cómplétéd stóry póíntssssssssssssssssssssss.]",
+    "ariaTableCaption": "[Sprínt vélócíty dàtààààààà]",
+    "ariaTableLabel": "[Sprínt vélócíty dàtà tàblééééééééé]",
     "ariaTableSprint": "[Sprínttt]",
     "completed": "[Cómplétédddd]",
     "planned": "[Plànnédddd]",

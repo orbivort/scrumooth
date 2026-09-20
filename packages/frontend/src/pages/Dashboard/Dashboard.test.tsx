@@ -26,6 +26,10 @@ vi.mock('../../services', () => ({
     getDailyScrumParticipation: vi.fn(),
     getImpediments: vi.fn(),
     getProductGoals: vi.fn(),
+    getProductBacklog: vi.fn(),
+    getBacklogItemCountByGoal: vi.fn(),
+    getIncrements: vi.fn(),
+    getDoDComplianceReport: vi.fn(),
   },
 }));
 
@@ -246,6 +250,33 @@ describe('Dashboard Component', () => {
       success: true,
       data: mockEmptyParticipation,
     });
+
+    // Artifacts band: exact counts come from limit:1 requests reading
+    // pagination.total, never from a page of items.
+    (apiService.getProductBacklog as ReturnType<typeof vi.fn>).mockImplementation(
+      async (_teamId: string, params?: { status?: string }) => ({
+        success: true,
+        data: [],
+        pagination: { page: 1, limit: 1, total: params?.status ? 2 : 12, totalPages: 1 },
+      })
+    );
+    (apiService.getBacklogItemCountByGoal as ReturnType<typeof vi.fn>).mockResolvedValue(5);
+    (apiService.getIncrements as ReturnType<typeof vi.fn>).mockResolvedValue({
+      success: true,
+      data: [],
+    });
+    (apiService.getDoDComplianceReport as ReturnType<typeof vi.fn>).mockResolvedValue({
+      success: true,
+      data: {
+        sprintId: 'sprint-1',
+        totalPBIs: 0,
+        dodCompliantPBIs: 0,
+        pendingVerification: 0,
+        failedCompliance: 0,
+        complianceRate: 0,
+        pbiDetails: [],
+      },
+    });
   });
 
   describe('No Team Selected State', () => {
@@ -269,6 +300,22 @@ describe('Dashboard Component', () => {
 
       const emptyState = screen.getByRole('status');
       expect(emptyState).toHaveAttribute('aria-live', 'polite');
+    });
+  });
+
+  describe('Formal artifacts band', () => {
+    it('makes the Product Backlog, the Increment and the Definition of Done visible alongside the Sprint Backlog', async () => {
+      (apiService.getActiveSprint as ReturnType<typeof vi.fn>).mockResolvedValue({
+        success: true,
+        data: mockSprint,
+      });
+
+      renderWithProviders(<Dashboard />);
+
+      expect(await screen.findByTestId('artifact-product-backlog')).toBeInTheDocument();
+      expect(screen.getByTestId('artifact-product-goal')).toBeInTheDocument();
+      expect(screen.getByTestId('artifact-increment')).toBeInTheDocument();
+      expect(screen.getByTestId('artifact-dod')).toBeInTheDocument();
     });
   });
 

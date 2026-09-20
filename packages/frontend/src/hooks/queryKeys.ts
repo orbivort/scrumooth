@@ -204,6 +204,9 @@ export const queryKeys = {
   // Increment queries
   increment: {
     all: ['increments'] as const,
+    lists: () => [...queryKeys.increment.all, 'list'] as const,
+    list: (filters: { teamId?: string; sprintId?: string } = {}) =>
+      [...queryKeys.increment.lists(), filters] as const,
     detail: (id: string) => ['increment', id] as const,
   },
 

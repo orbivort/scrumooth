@@ -381,6 +381,11 @@ class MockApiService {
     };
   }
 
+  async getBacklogItemCountByGoal(goalId: string): Promise<number> {
+    await delay(200);
+    return mockProductBacklogItems.filter((item) => item.goalId === goalId).length;
+  }
+
   async createProductBacklogItem(
     item: Partial<ProductBacklogItem>
   ): Promise<ApiResponse<ProductBacklogItem>> {

@@ -35,6 +35,10 @@ vi.mock('../../services', () => ({
     getDailyScrumParticipation: vi.fn(),
     getImpediments: vi.fn(),
     getProductGoals: vi.fn(),
+    getProductBacklog: vi.fn(),
+    getBacklogItemCountByGoal: vi.fn(),
+    getIncrements: vi.fn(),
+    getDoDComplianceReport: vi.fn(),
   },
 }));
 
@@ -133,6 +137,8 @@ describe('Dashboard - Loading State Tests', () => {
       user: mockUser,
       isAuthenticated: true,
     });
+
+    mockApiService.getProductGoals.mockResolvedValue({ success: true, data: [] });
   });
 
   afterEach(() => {

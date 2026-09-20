@@ -91,6 +91,8 @@ class ApiService {
     productBacklogService.updateProductBacklogItem.bind(productBacklogService);
   updateBacklogItemPriority =
     productBacklogService.updateBacklogItemPriority.bind(productBacklogService);
+  getBacklogItemCountByGoal =
+    productBacklogService.getBacklogItemCountByGoal.bind(productBacklogService);
   deleteProductBacklogItem =
     productBacklogService.deleteProductBacklogItem.bind(productBacklogService);
 
@@ -226,6 +228,7 @@ class ApiService {
 
   // Definition of Done endpoints
   getDefinitionOfDone = definitionService.getDefinitionOfDone.bind(definitionService);
+  getDoDComplianceReport = definitionService.getDoDComplianceReport.bind(definitionService);
 
   // Data Export endpoints (GDPR Article 20)
   initiateDataExport = dataExportService.initiateExport.bind(dataExportService);

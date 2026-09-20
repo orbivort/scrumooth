@@ -34,7 +34,8 @@ import { EmptyState } from '../../components/EmptyState';
 import { LoadingState } from '../../components/common/Loading';
 
 import { BurndownInsight, type BurndownStatus } from './components/BurndownInsight';
-import { TaskList, DailyScrumSummary, ImpedimentList } from './components';
+import { TaskList, DailyScrumSummary, ImpedimentList, ArtifactsBand } from './components';
+import { useDashboardArtifacts } from './hooks/useDashboardArtifacts';
 import {
   MAX_DISPLAY_ITEMS,
   STALE_TIME_SHORT,
@@ -165,6 +166,12 @@ export const Dashboard: React.FC = () => {
     retry: 1,
   });
 
+  // Formal artifacts (Product Backlog + Product Goal, Increment, Definition of
+  // Done). Loaded separately from the Sprint so one unavailable source cannot
+  // blank the page, and visible to every role.
+  const artifacts = useDashboardArtifacts(teamId, sprintData?.data?.id, isAuthenticated);
+  const { refetch: refetchArtifacts } = artifacts;
+
   // Authentication redirect useEffect - must be after all hooks
   useEffect(() => {
     if (!isAuthenticated) {
@@ -199,7 +206,12 @@ export const Dashboard: React.FC = () => {
     return { progress, daysRemaining, completedTasks, totalTasks };
   }, [sprintData]);
 
-  // Task 3.4: Calculate burndown insight status and percentage
+  // Task 3.4: Compare remaining work with the linear forecast.
+  //
+  // The Guide's empirical stance is observe → inspect → adapt, so this is
+  // deliberately framed as an observation of variance against a straight-line
+  // forecast over estimated hours — never as a prediction about the Sprint's
+  // outcome. The BurndownInsight component states that framing in the UI.
   const burndownInsight = useMemo((): {
     status: BurndownStatus;
     percentage: number;
@@ -210,25 +222,22 @@ export const Dashboard: React.FC = () => {
     const { ideal, actual } = burndownData.data;
     if (!ideal.length || !actual.length) return null;
 
-    const lastIdeal = ideal[ideal.length - 1] ?? 0;
+    const lastForecast = ideal[ideal.length - 1] ?? 0;
     const lastActual = actual[actual.length - 1] ?? 0;
     const startPoints = ideal[0] ?? 0;
 
-    // Calculate percentage difference
-    // Positive = ahead (actual < ideal), Negative = behind (actual > ideal)
-    const diff = lastIdeal - lastActual;
+    // Percentage variance against the forecast start.
+    // Positive = remaining work is below the forecast, negative = above it.
+    const diff = lastForecast - lastActual;
     const percentageDiff = startPoints > 0 ? Math.round((diff / startPoints) * 100) : 0;
 
-    // Determine status based on difference
-    // diff <= 0: Behind (actual > ideal)
-    // diff <= 10% of ideal: On track
-    // diff > 10%: Ahead
-    const tenPercentOfIdeal = lastIdeal * 0.1;
+    // Within +/-10% of the forecast is treated as level with it.
+    const tenPercentOfForecast = lastForecast * 0.1;
 
     let status: BurndownStatus;
     let message: string;
 
-    if (diff > tenPercentOfIdeal) {
+    if (diff > tenPercentOfForecast) {
       status = 'ahead';
       message = t('burndownInsight.aheadDescription', { percentage: percentageDiff });
     } else if (diff >= 0) {
@@ -316,6 +325,7 @@ export const Dashboard: React.FC = () => {
     setIsRefreshing(true);
     try {
       await refetchSprint();
+      refetchArtifacts();
       // Announce refresh completion after a short delay
       setTimeout(() => {
         setRefreshAnnouncement(t('dataRefreshed'));
@@ -328,7 +338,7 @@ export const Dashboard: React.FC = () => {
     } finally {
       setIsRefreshing(false);
     }
-  }, [refetchSprint, showSuccessToast, t]);
+  }, [refetchSprint, refetchArtifacts, showSuccessToast, t]);
 
   // Early return for unauthenticated users - must be after all hooks
   if (!isAuthenticated || !currentUserId) {
@@ -517,6 +527,9 @@ export const Dashboard: React.FC = () => {
           <EmptyState type="no-active-sprint" variant="default" />
         )}
 
+        {/* Formal artifacts: Product Backlog (+ Product Goal), Increment, DoD */}
+        <ArtifactsBand artifacts={artifacts} />
+
         {sprint && burndownData && !burndownError && (
           <section
             className={`${styles['chart-section']} ${styles['animate-fade-in']} ${styles['stagger-1']}`}
@@ -548,7 +561,7 @@ export const Dashboard: React.FC = () => {
             <div className={styles['chart-legend']}>
               <div className={styles['legend-item']}>
                 <span className={`${styles['legend-line']} ${styles['legend-ideal']}`} />
-                <span className={styles['legend-label']}>{t('idealBurndown')}</span>
+                <span className={styles['legend-label']}>{t('forecastBurndown')}</span>
               </div>
               <div className={styles['legend-item']}>
                 <span className={`${styles['legend-line']} ${styles['legend-actual']}`} />
