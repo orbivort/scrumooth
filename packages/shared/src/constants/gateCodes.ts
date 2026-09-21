@@ -37,6 +37,13 @@ export const GATE_CODES = {
   DEVELOPER_ONLY_SIZING: 'GATE_DEVELOPER_ONLY_SIZING',
   /** Only Developers author or join the Daily Scrum. */
   DEVELOPER_ONLY_DAILY_SCRUM: 'GATE_DEVELOPER_ONLY_DAILY_SCRUM',
+  /**
+   * The purpose of the Daily Scrum is to "adapt the Sprint Backlog", so a record must declare
+   * its adaptation outcome: at least one Sprint Backlog adjustment, or an explicit
+   * acknowledgement that none was needed. A record that declares neither leaves the event's
+   * stated purpose unproven, which is what made the adaptation loop optional.
+   */
+  DAILY_SCRUM_ADAPTATION_REQUIRED: 'GATE_DAILY_SCRUM_ADAPTATION_REQUIRED',
   /** Only the Product Owner can cancel an `ACTIVE` Sprint. */
   PRODUCT_OWNER_ONLY_CANCELLATION: 'GATE_PRODUCT_OWNER_ONLY_CANCELLATION',
   /**
@@ -188,6 +195,11 @@ export const GATE_DEFINITIONS: Record<GateCode, GateDefinition> = {
     code: GATE_CODES.DEVELOPER_ONLY_DAILY_SCRUM,
     httpStatus: 403,
     i18nKey: 'developerOnlyDailyScrum',
+  },
+  [GATE_CODES.DAILY_SCRUM_ADAPTATION_REQUIRED]: {
+    code: GATE_CODES.DAILY_SCRUM_ADAPTATION_REQUIRED,
+    httpStatus: 400,
+    i18nKey: 'dailyScrumAdaptationRequired',
   },
   [GATE_CODES.PRODUCT_OWNER_ONLY_CANCELLATION]: {
     code: GATE_CODES.PRODUCT_OWNER_ONLY_CANCELLATION,

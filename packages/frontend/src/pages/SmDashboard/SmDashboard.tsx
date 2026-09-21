@@ -92,6 +92,7 @@ const SmDashboardContent: React.FC = () => {
                 <th>{t('common:name')}</th>
                 <th>{t('smDashboard.completedEvents')}</th>
                 <th>{t('smDashboard.dailyScrumCount')}</th>
+                <th>{t('smDashboard.adaptation')}</th>
               </tr>
             </thead>
             <tbody>
@@ -100,12 +101,64 @@ const SmDashboardContent: React.FC = () => {
                   (event.sprintPlanningCompleted ? 1 : 0) +
                   (event.sprintReviewCompleted ? 1 : 0) +
                   (event.retrospectiveCompleted ? 1 : 0);
+                const missedCount = event.dailyScrumMissedDates.length;
                 return (
                   <tr key={event.sprintId}>
                     <td>{event.sprintName}</td>
                     <td>{completed}/3</td>
                     <td>
-                      {event.dailyScrumHeld}/{event.dailyScrumExpected}
+                      {/* Counted against the team's own working days and only up to today, so a
+                          Sprint still running is not shown as having fallen behind. */}
+                      <span className={styles['cadence-figure']}>
+                        {t('smDashboard.cadenceHeldOfDue', {
+                          held: event.dailyScrumHeld,
+                          due: event.dailyScrumDue,
+                        })}
+                      </span>
+                      <span className={styles['cadence-expected']}>
+                        {t('smDashboard.cadenceExpectedTotal', {
+                          expected: event.dailyScrumExpected,
+                        })}
+                      </span>
+                      {missedCount > 0 ? (
+                        <details className={styles['missed-days']}>
+                          <summary>{t('smDashboard.missedDays', { count: missedCount })}</summary>
+                          <ul className={styles['missed-days-list']}>
+                            {event.dailyScrumMissedDates.map((date) => (
+                              <li key={date}>{date}</li>
+                            ))}
+                          </ul>
+                        </details>
+                      ) : (
+                        event.dailyScrumOnSchedule === true && (
+                          <span className={styles['cadence-badge']}>
+                            {t('smDashboard.onSchedule')}
+                          </span>
+                        )
+                      )}
+                    </td>
+                    <td>
+                      {event.adaptationDeclared === 0 ? (
+                        <span className={styles['cadence-expected']}>
+                          {t('smDashboard.adaptationNone')}
+                        </span>
+                      ) : (
+                        <>
+                          <span className={styles['cadence-figure']}>
+                            {t('smDashboard.adaptationSummary', {
+                              reflected: event.adaptationReflected,
+                              declared: event.adaptationDeclared,
+                            })}
+                          </span>
+                          {event.adaptationPending > 0 && (
+                            <span className={styles['adaptation-pending']}>
+                              {t('smDashboard.adaptationPending', {
+                                count: event.adaptationPending,
+                              })}
+                            </span>
+                          )}
+                        </>
+                      )}
                     </td>
                   </tr>
                 );

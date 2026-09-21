@@ -21,8 +21,23 @@
     "termsRequired": "Deve accettare la Politica di Utilizzo Accettabile e la Politica di Protezione dei Dati aziendale"
   },
   "dailyScrum": {
+    "adaptationExclusive": "Un Daily Scrum non può elencare adattamenti e allo stesso tempo dichiarare che nessuno era necessario.",
+    "adaptationRequired": "Un Daily Scrum deve dichiarare l'esito dell'adattamento dello Sprint Backlog: almeno un adattamento oppure il riconoscimento esplicito che nessuno era necessario.",
+    "adjustmentItemNotInSprint": "Un adattamento può riferirsi solo a un elemento dello Sprint Backlog di questo Sprint.",
     "developersOnly": "Il Daily Scrum è un evento per gli Sviluppatori. Solo gli Sviluppatori possono registrare o modificare il Daily Scrum.",
     "planRequired": "È richiesto un piano attuabile per il giorno successivo per il Daily Scrum."
+  },
+  "dailyScrumSchedule": {
+    "dateDuplicate": "Quel giorno è già registrato come non lavorativo.",
+    "dateInvalid": "Inserisci una data valida nel formato AAAA-MM-GG.",
+    "locationUrlInvalid": "Il link della riunione deve essere un indirizzo http o https valido.",
+    "nameTooLong": "La descrizione non può superare i 120 caratteri.",
+    "placeRequired": "Registra una sala, un link della riunione o entrambi.",
+    "placeTooLong": "Il luogo non può superare i 200 caratteri.",
+    "startMinuteInvalid": "L'ora di inizio deve essere compresa tra 00:00 e 23:59.",
+    "timezoneInvalid": "Scegli un fuso orario riconosciuto dal sistema.",
+    "windowTooWide": "L'intervallo richiesto è troppo ampio; il massimo è un anno.",
+    "workingDaysInvalid": "Seleziona almeno un giorno lavorativo valido (da lunedì a domenica)."
   },
   "fieldRequired": "Questo campo è obbligatorio",
   "fieldTooLong": "Questo campo è troppo lungo",

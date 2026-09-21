@@ -20,6 +20,73 @@
       "nameRequired": "Le nom de l'équipe est obligatoire"
     }
   },
+  "dailyScrumSchedule": {
+    "backToDailyScrum": "Retour au Daily Scrum",
+    "cadence": {
+      "location": "Salle ou lieu",
+      "locationPlaceholder": "ex. Salle de réunion 4",
+      "locationUrl": "Lien de réunion",
+      "nextMeeting": "Prochain Daily Scrum : {{date}} à {{time}} ({{timezone}})",
+      "noWorkingDays": "Sélectionnez au moins un jour travaillé pour voir quand l'équipe se réunit ensuite.",
+      "placeHint": "Renseignez une salle, un lien, ou les deux. L'un des deux est requis.",
+      "preview": "L'événement commence à {{time}} (heure locale).",
+      "startTime": "Heure de début",
+      "timezone": "Fuseau horaire",
+      "timezoneHint": "L'heure de début est l'heure locale dans ce fuseau.",
+      "title": "Heure et lieu"
+    },
+    "exceptions": {
+      "add": "Ajouter un jour",
+      "date": "Date",
+      "empty": "Aucune exception enregistrée pour cette année. Ajoutez-en une uniquement lorsqu'un jour diffère du rythme hebdomadaire ci-dessus : un jour férié, un jour de fermeture ou un séminaire d'équipe.",
+      "name": "Libellé",
+      "namePlaceholder": "ex. Jour férié",
+      "removeLabel": "Supprimer l'exception du {{date}}",
+      "title": "Jours non travaillés en {{year}}",
+      "unnamed": "Jour non travaillé"
+    },
+    "footnote": "Le Daily Scrum dure 15 minutes : seule son heure de début est configurable. L'équipe peut toujours tenir l'événement n'importe quel jour ; le calendrier informe, il ne contraint pas.",
+    "loading": "Chargement du calendrier du Daily Scrum de l'équipe…",
+    "readOnlyNote": "Seul le Scrum Master peut modifier ce calendrier. Vous consultez l'engagement sur lequel travaille l'équipe.",
+    "saveBar": {
+      "reset": "Réinitialiser",
+      "save": "Enregistrer le calendrier",
+      "saved": "Aucune modification en attente",
+      "unsaved": "Modifications non enregistrées"
+    },
+    "subtitle": "Le Daily Scrum se tient à la même heure et au même endroit chaque jour travaillé. Consignez cet engagement ici pour que l'équipe — et ses rapports — partent du même calendrier.",
+    "title": "Calendrier du Daily Scrum",
+    "toast": {
+      "exceptionAddFailed": "Ce jour n'a pas pu être enregistré.",
+      "exceptionAdded": "Jour non travaillé enregistré.",
+      "exceptionRemoveFailed": "Ce jour n'a pas pu être supprimé.",
+      "exceptionRemoved": "Jour non travaillé supprimé.",
+      "saveFailed": "Le calendrier n'a pas pu être enregistré.",
+      "saved": "Calendrier du Daily Scrum enregistré."
+    },
+    "validation": {
+      "placeRequired": "Renseignez une salle, un lien de réunion, ou les deux.",
+      "timeInvalid": "Saisissez une heure de début valide.",
+      "timezoneInvalid": "Choisissez un fuseau horaire reconnu par le système.",
+      "workingDayRequired": "Sélectionnez au moins un jour travaillé."
+    },
+    "weekdays": {
+      "friday": "Ven",
+      "monday": "Lun",
+      "saturday": "Sam",
+      "sunday": "Dim",
+      "thursday": "Jeu",
+      "tuesday": "Mar",
+      "wednesday": "Mer"
+    },
+    "workingWeek": {
+      "legend": "Jours travaillés de la semaine",
+      "noneSelected": "Aucun jour travaillé sélectionné. Le calendrier n'a rien à compter.",
+      "summary_one": "L'équipe travaille {{count}} jour par semaine.",
+      "summary_other": "L'équipe travaille {{count}} jours par semaine.",
+      "title": "Semaine de travail"
+    }
+  },
   "definitionEditor": {
     "activeItems": "{{count}} éléments actifs",
     "activeItems_one": "{{count}} élément actif",

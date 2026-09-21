@@ -37,15 +37,22 @@ The Daily Scrum is **not**:
 
 ### Key Characteristics
 
-| Aspect           | Guideline                                                                     |
-| ---------------- | ----------------------------------------------------------------------------- |
-| **Duration**     | Maximum 15 minutes                                                            |
-| **Frequency**    | Every working day                                                             |
-| **Participants** | Developers (Scrum Master facilitates; Product Owner and Scrum Master observe) |
-| **Location**     | Same place and time each day                                                  |
-| **Format**       | Developers choose the structure                                               |
+| Aspect           | Guideline                                                                     | How Scrumooth supports it                                                                   |
+| ---------------- | ----------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| **Duration**     | Maximum 15 minutes                                                            | A fixed 15-minute timebox; only the start time is configurable                              |
+| **Frequency**    | Every working day                                                             | The team's working-day pattern and dated non-working days are recorded, and counted against |
+| **Participants** | Developers (Scrum Master facilitates; Product Owner and Scrum Master observe) | Only Developers can author or join the record                                               |
+| **Location**     | Same place and time each day                                                  | The standing commitment (time, time zone, room or meeting link) is recorded per team        |
+| **Format**       | Developers choose the structure                                               | A "choose your focus" selector, saved with the record                                       |
 
 The Developers can select whatever structure and techniques they want, as long as the Daily Scrum focuses on progress toward the Sprint Goal and produces an actionable plan. Scrumooth supports this by letting the team choose its focus rather than mandating a fixed set of questions.
+
+Two further commitments the Guide attaches to the event are made observable rather than assumed:
+
+- **Inspection has a baseline.** Each record stores the Sprint Goal **as it stood when the record was created**. A later renegotiation of the goal cannot rewrite what a past Daily Scrum appears to have examined.
+- **Adaptation is evidenced.** A record must either list the Sprint Backlog adjustments the Developers agreed (each typed as added, removed, reprioritised, refined or split) or explicitly acknowledge that no adaptation was needed.
+
+The calendar **informs, it does not restrict**. Scrumooth never blocks a team from holding or recording its Daily Scrum on a day the calendar does not expect — the Developers are the ones who decide when it is worth meeting.
 
 ---
 
@@ -57,8 +64,27 @@ The Developers can select whatever structure and techniques they want, as long a
 2. The Daily Scrum interface displays:
    - The **Sprint Goal** as the primary anchor
    - The date selector
+   - The **cadence strip** — the standing time and place, and "Sprint day X of Y"
    - The team-level Daily Scrum record for the selected date
    - Goal-relevant metrics (goal progress, backlog items adjusted, participants)
+
+### The Team's Standing Commitment
+
+The Guide has the Daily Scrum held "at the same time and place every working day". That commitment lives on its own Settings page (`Settings → Daily Scrum Schedule`), where — **Scrum Master only** — the team records:
+
+- the **start time** and the **time zone** it is expressed in;
+- the **place**: a room, a validated meeting link, or both;
+- the team's **working days** (Monday to Friday by default, but any subset), and
+- any **non-working days** — public holidays, company days off, team offsites — as dated exceptions to the weekly pattern.
+
+Everyone on the team can read the commitment; only the Scrum Master can change it, because the Scrum Master is accountable for ensuring the Scrum events take place.
+
+The Daily Scrum page shows the commitment in a compact **cadence strip** under the header, alongside the event's fixed 15-minute timebox. Two honest signals sit in that strip:
+
+- **"Sprint day X of Y"** — progress counted on the team's **own** working days, so a holiday does not make the sprint appear to jump two days at once.
+- **"N of M working days recorded"** — how many of the Sprint's due working days carry a Daily Scrum record.
+
+When the selected date is not a working day for the team, the strip says so plainly and names the exception. It is an explanation, not a refusal: the record can still be started, and a Daily Scrum held on a day the calendar did not expect still counts as held.
 
 ### Team-Level Record
 
@@ -89,17 +115,31 @@ On the current day, when no record exists yet, Scrumooth opens the Inspect & Ada
 
 The form captures the Daily Scrum's output as a shared team record:
 
+- **Focus** — the structure the Developers chose for this event
 - **Progress toward Sprint Goal** — how is the team progressing toward the goal?
-- **Adaptations (Sprint Backlog)** — what adjustments to the Sprint Backlog were agreed?
-- **Sprint Backlog adjustments (optional)** — link adjustments to specific Sprint Backlog items
+- **Adaptations (Sprint Backlog)** — what adjustments to the Sprint Backlog were agreed, or an acknowledgement that none were needed
 - **Plan for next day** — the actionable plan the Developers agreed for the next day
+
+#### Declaring the adaptation outcome
+
+The Guide states the purpose of the event is to **adapt the Sprint Backlog**, so the record has to say what the Developers concluded. Two options are offered as an exclusive pair:
+
+- **"The Sprint Backlog was adapted"** — reveals the adjustment rows. Each row names a Sprint Backlog item, the **kind** of adjustment (added, removed, reprioritised, refined or split) and a note explaining it.
+- **"No adaptation needed today"** — records the considered decision that nothing needed to change, without requiring the Developers to invent an adjustment.
+
+A record that declares neither is refused, because the event's stated purpose would be left unproven. Declaring both at once is treated as contradictory input and is also refused — the choice is between the two, never both.
+
+The kind of adjustment is a controlled value rather than free text so that the declaration can later be checked against what the Sprint Backlog actually did. The state of the affected item — and of its Product Backlog item — is recorded **by the system** at the moment of the declaration; the client never supplies it.
 
 ```
 Progress toward Sprint Goal:
   We completed the user authentication API; the checkout flow is ~80% done.
 
-Adaptations (Sprint Backlog):
-  Reassigned the password-reset item to Carol; moved profile page out of this sprint.
+Adaptation outcome:  The Sprint Backlog was adapted
+  - Removed from the Sprint Backlog · Profile page
+    Moved out of this Sprint; it is not needed for the goal.
+  - Reprioritised · Password reset email
+    Brought forward so it can be finished before the review.
 
 Plan for next day:
   Carol and Bob pair on password-reset email; Alice starts performance testing.
@@ -127,15 +167,34 @@ The Daily Scrum page shows the shared team-level record:
 │ Sprint Goal: Deliver the reporting module                │
 ├─────────────────────────────────────────────────────────┤
 │ Inspect & Adapt                                          │
+│   ● Sprint Goal inspected at this Daily Scrum            │
+│     Deliver the reporting module                         │
 │   ● Progress toward Sprint Goal                          │
 │     We completed the auth API; checkout is ~80% done.    │
-│   ● Adaptations (Sprint Backlog)                         │
-│     Reassigned password-reset to Carol.                  │
+│   ● Sprint Backlog adjustments                           │
+│     [Reprioritised] Password reset email                 │
+│       Brought forward before the review                  │
+│       ✓ Reflected in the Sprint Backlog                  │
 │   ● Plan for next day                                    │
 │     Carol + Bob pair on password reset; Alice tests.     │
 │   👥 Joined: Alice, Bob, Carol                            │
 └─────────────────────────────────────────────────────────┘
 ```
+
+#### The goal that was inspected
+
+The record shows the Sprint Goal **as it stood when the Daily Scrum was held**, labelled "Sprint Goal inspected at this Daily Scrum". It is a stored snapshot, not a live lookup: a goal renegotiated later in the Sprint cannot retroactively rewrite what the event examined.
+
+If the Sprint Goal has since changed, the record says so and shows both — the goal that was inspected and the goal the Sprint now has. Neither replaces the other.
+
+#### Reflected, or declared but not yet reflected
+
+Each adjustment carries a status chip:
+
+- **Reflected in the Sprint Backlog** — the Sprint Backlog has moved in the direction the declaration described: a removed item has left the Sprint Backlog, an added one is present, or the item (or its Product Backlog item) has changed since the declaration.
+- **Declared, not yet reflected** — the declaration is recorded but nothing in the Sprint Backlog has moved yet.
+
+The verdict is worked out **when the record is read**, comparing the state captured at declaration time with the state now. It therefore stays truthful as the Sprint Backlog evolves, and it is the same verdict the Scrum Master dashboard rolls up per Sprint. It is not a reprimand: a declaration made minutes ago will naturally still read "not yet reflected".
 
 ### History
 

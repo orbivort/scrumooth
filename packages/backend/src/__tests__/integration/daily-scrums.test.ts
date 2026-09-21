@@ -190,6 +190,9 @@ describe('Daily Scrum Integration Tests (team-level, goal-focused)', () => {
         .send({
           progressNotes: 'On track toward the goal',
           planForNextDay: 'Pair up on feature Y',
+          // A record must declare its adaptation outcome: the Guides' purpose for the event is to
+          // adapt the Sprint Backlog, so "nothing needed changing" is a decision to state.
+          noAdaptationNeeded: true,
         })
         .expect(201);
 
@@ -223,6 +226,7 @@ describe('Daily Scrum Integration Tests (team-level, goal-focused)', () => {
           scrumDate: '2026-08-20',
           progressNotes: 'On track for the date',
           planForNextDay: 'Pair up on feature Z',
+          noAdaptationNeeded: true,
         })
         .expect(201);
 
@@ -285,7 +289,7 @@ describe('Daily Scrum Integration Tests (team-level, goal-focused)', () => {
         .post(`/api/v1/daily-scrums/${sprint.id}`)
         .set('Cookie', cookies)
         .set(CSRF_CONSTANTS.HEADER_NAME, csrfToken)
-        .send({ progressNotes: 'First', planForNextDay: 'First plan' })
+        .send({ progressNotes: 'First', planForNextDay: 'First plan', noAdaptationNeeded: true })
         .expect(201);
 
       const second = await request(app)
@@ -357,7 +361,11 @@ describe('Daily Scrum Integration Tests (team-level, goal-focused)', () => {
         .post(`/api/v1/daily-scrums/${sprint.id}`)
         .set('Cookie', cookies)
         .set(CSRF_CONSTANTS.HEADER_NAME, csrfToken)
-        .send({ progressNotes: 'Initial', planForNextDay: 'Initial plan' })
+        .send({
+          progressNotes: 'Initial',
+          planForNextDay: 'Initial plan',
+          noAdaptationNeeded: true,
+        })
         .expect(201);
 
       const scrumId = created.body.data.id;
@@ -404,7 +412,11 @@ describe('Daily Scrum Integration Tests (team-level, goal-focused)', () => {
         .post(`/api/v1/daily-scrums/${sprint.id}`)
         .set('Cookie', cookies)
         .set(CSRF_CONSTANTS.HEADER_NAME, csrfToken)
-        .send({ progressNotes: 'Progress', planForNextDay: 'Plan for next day' })
+        .send({
+          progressNotes: 'Progress',
+          planForNextDay: 'Plan for next day',
+          noAdaptationNeeded: true,
+        })
         .expect(201);
 
       const scrumId = created.body.data.id;
@@ -525,7 +537,7 @@ describe('Daily Scrum Integration Tests (team-level, goal-focused)', () => {
         .post(`/api/v1/daily-scrums/${sprint.id}`)
         .set('Cookie', cookies)
         .set(CSRF_CONSTANTS.HEADER_NAME, csrfToken)
-        .send({ progressNotes: 'Blocked on API', planForNextDay: 'Plan' })
+        .send({ progressNotes: 'Blocked on API', planForNextDay: 'Plan', noAdaptationNeeded: true })
         .expect(201);
 
       const scrumId = created.body.data.id;

@@ -19,6 +19,15 @@
     "trackedAsFormalImpediment": "Tracciato come Impediment formale",
     "viewMode": "Modalità vista"
   },
+  "cadence": {
+    "configure": "Registra orario e luogo del Daily Scrum",
+    "held": "{{held}} di {{expected}} giorni lavorativi registrati",
+    "joinLink": "Partecipa alla riunione",
+    "nonWorkingDay": "Oggi non è un giorno lavorativo nel calendario del team. Il team può comunque riunirsi.",
+    "nonWorkingDayNamed": "{{name}} — non è un giorno lavorativo per questo team. Il team può comunque riunirsi.",
+    "notConfigured": "Nessun orario e luogo fisso ancora registrato",
+    "sprintDay": "Giorno {{current}} di {{total}} dello Sprint"
+  },
   "createImpediment": "Crea impedimento",
   "datePicker": {
     "ariaLabel": "Seleziona data per aggiornamenti giornalieri",
@@ -54,16 +63,30 @@
     "viewTitle": "Focus del Daily Scrum"
   },
   "form": {
+    "adaptationEvidenceLabel": "Cosa ha concluso l'evento riguardo allo Sprint Backlog?",
     "adaptationsHint": "Cosa dobbiamo adattare nello Sprint Backlog in base ai nostri progressi?",
     "adaptationsLabel": "Adattamenti (Sprint Backlog)",
     "adaptationsPlaceholder": "Descrivi i cambiamenti concordati allo Sprint Backlog...",
     "addAdjustment": "Aggiungi",
+    "adjustmentActions": {
+      "ADDED": "Aggiunto allo Sprint Backlog",
+      "REFINED": "Rifinito",
+      "REMOVED": "Rimosso dallo Sprint Backlog",
+      "REPRIORITIZED": "Riprioritizzato",
+      "SPLIT": "Diviso",
+      "UNSPECIFIED": "Adattamento dello Sprint Backlog"
+    },
     "backlogActionLabel": "Azione di adattamento",
     "backlogActionPlaceholder": "Qual è l'adattamento? (es. riassegnato, segnalato)",
+    "backlogActionTypeLabel": "Tipo di adattamento",
     "backlogAdjustmentsLabel": "Adattamenti dello Sprint Backlog (opzionale)",
     "backlogItemPlaceholder": "Seleziona un elemento dello Sprint Backlog...",
     "backlogItemSelect": "Elemento dello Sprint Backlog",
     "cancel": "Annulla",
+    "evidenceAcknowledged": "Registrato: gli Developers hanno ritenuto che oggi nessun adattamento dello Sprint Backlog fosse necessario.",
+    "evidenceAdapted": "Lo Sprint Backlog è stato adattato",
+    "evidenceAdaptedHint": "Aggiungi almeno un adattamento, oppure scegli «Nessun adattamento necessario oggi».",
+    "evidenceNoAdaptation": "Nessun adattamento necessario oggi",
     "fieldHint": "Opzionale",
     "planHint": "Un piano azionabile per il prossimo giorno di lavoro, concordato dai developer.",
     "planLabel": "Piano per il prossimo giorno",
@@ -102,6 +125,12 @@
     "startTitle": "Daily Scrum di oggi",
     "title": "Ispeziona e adatta"
   },
+  "inspectedGoal": {
+    "label": "Obiettivo dello Sprint ispezionato in questo Daily Scrum",
+    "noAdaptation": "Gli Developers hanno ritenuto che nessun adattamento dello Sprint Backlog fosse necessario.",
+    "none": "Nessun Obiettivo dello Sprint era registrato quando si è tenuto questo Daily Scrum.",
+    "renegotiated": "L'Obiettivo dello Sprint è stato rinegoziato dopo questo Daily Scrum. Ora recita: {{currentGoal}}"
+  },
   "loading": {
     "actions": "Caricamento azioni...",
     "pageHeader": "Caricamento intestazione pagina...",
@@ -132,6 +161,10 @@
   "quickDates": {
     "today": "Oggi",
     "yesterday": "Ieri"
+  },
+  "reflection": {
+    "pending": "Dichiarato, non ancora riflesso",
+    "reflected": "Riflesso nello Sprint Backlog"
   },
   "retryPrompt": {
     "dismiss": "Chiudi",
@@ -213,6 +246,7 @@
     "yesterday": "Ieri"
   },
   "validation": {
+    "adaptationEvidenceRequired": "Dichiara se lo Sprint Backlog è stato adattato, oppure conferma che nessun adattamento era necessario.",
     "descriptionRequired": "La descrizione è richiesta",
     "descriptionTooShort": "La descrizione deve avere almeno 10 caratteri",
     "planRequired": "Aggiungi un piano attuabile per il giorno successivo per salvare il Daily Scrum.",

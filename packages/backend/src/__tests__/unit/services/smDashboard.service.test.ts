@@ -24,6 +24,12 @@ vi.mock('../../../utils/prisma', () => ({
     retroActionItem: {
       findMany: vi.fn(),
     },
+    dailyScrumSchedule: {
+      findUnique: vi.fn(),
+    },
+    teamNonWorkingDay: {
+      findMany: vi.fn(),
+    },
   },
 }));
 
@@ -37,9 +43,36 @@ import { smDashboardService } from '../../../services/smDashboard.service';
 import { teamHealthCheckService } from '../../../services/teamHealthCheck.service';
 import prisma from '../../../utils/prisma';
 
+/** A two-week Sprint, Monday 2026-09-07 through Friday 2026-09-18: ten working days. */
+const SPRINT_START = new Date('2026-09-07T00:00:00.000Z');
+const SPRINT_END = new Date('2026-09-18T00:00:00.000Z');
+
+const dailyScrum = (scrumDate: string, backlogAdjustments: unknown[] = []) => ({
+  scrumDate: new Date(`${scrumDate}T00:00:00.000Z`),
+  backlogAdjustments,
+});
+
+/** A stored adjustment plus the current state its verdict is computed from. */
+const storedAdjustment = (overrides: Record<string, unknown> = {}) => ({
+  actionType: 'REFINED',
+  pbiStatusAtAdjustment: 'READY',
+  itemUpdatedAtAtAdjustment: new Date('2026-09-10T08:00:00.000Z'),
+  pbiUpdatedAtAtAdjustment: new Date('2026-09-10T08:00:00.000Z'),
+  sprintBacklogItem: {
+    updatedAt: new Date('2026-09-10T08:00:00.000Z'),
+    pbi: { status: 'READY', updatedAt: new Date('2026-09-10T08:00:00.000Z') },
+  },
+  pbi: { status: 'READY', updatedAt: new Date('2026-09-10T08:00:00.000Z') },
+  ...overrides,
+});
+
 describe('SMDashboardService', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // No standing schedule and no exceptions unless a test says otherwise, so the calendar
+    // falls back to the Monday-to-Friday week.
+    vi.mocked(prisma.dailyScrumSchedule.findUnique).mockResolvedValue(null as never);
+    vi.mocked(prisma.teamNonWorkingDay.findMany).mockResolvedValue([] as never);
   });
 
   describe('getImpedimentMetrics', () => {
@@ -85,16 +118,16 @@ describe('SMDashboardService', () => {
           id: 'sprint-1',
           name: 'Sprint 1',
           status: 'COMPLETED',
-          startDate: new Date(),
-          endDate: new Date(),
+          startDate: SPRINT_START,
+          endDate: SPRINT_END,
           sprintReview: { id: 'rev-1' },
           retrospective: { id: 'retro-1' },
-          dailyScrums: [{ id: 'd1' }, { id: 'd2' }],
+          dailyScrums: [dailyScrum('2026-09-07'), dailyScrum('2026-09-08')],
           generatedSprint: null,
           timeboxes: [],
         },
-      ] as any);
-      vi.mocked(prisma.sprintConfiguration.findUnique).mockResolvedValue(null as any);
+      ] as never);
+      vi.mocked(prisma.sprintConfiguration.findUnique).mockResolvedValue(null as never);
 
       const result = await smDashboardService.getEventCompliance('team-1', 1);
 
@@ -102,6 +135,121 @@ describe('SMDashboardService', () => {
       expect(result[0]!.sprintPlanningCompleted).toBe(true);
       expect(result[0]!.sprintReviewCompleted).toBe(true);
       expect(result[0]!.retrospectiveCompleted).toBe(true);
+    });
+
+    it('counts expected Daily Scrums on the working-day calendar, not in whole weeks', async () => {
+      vi.mocked(prisma.sprint.findMany).mockResolvedValue([
+        {
+          id: 'sprint-1',
+          name: 'Sprint 1',
+          status: 'COMPLETED',
+          startDate: SPRINT_START,
+          endDate: SPRINT_END,
+          sprintReview: { id: 'rev-1' },
+          retrospective: { id: 'retro-1' },
+          dailyScrums: [dailyScrum('2026-09-07'), dailyScrum('2026-09-08')],
+          generatedSprint: null,
+          timeboxes: [],
+        },
+      ] as never);
+      vi.mocked(prisma.sprintConfiguration.findUnique).mockResolvedValue(null as never);
+
+      const result = await smDashboardService.getEventCompliance('team-1', 1);
+
+      expect(result[0]!.dailyScrumHeld).toBe(2);
+      expect(result[0]!.dailyScrumExpected).toBe(10);
+      expect(result[0]!.dailyScrumOnSchedule).toBe(false);
+      expect(result[0]!.dailyScrumMissedDates).toContain('2026-09-09');
+      expect(result[0]!.dailyScrumMissedDates).not.toContain('2026-09-07');
+      // Every expected day has already passed, so all ten were due.
+      expect(result[0]!.dailyScrumDue).toBeGreaterThanOrEqual(9);
+    });
+
+    it('excludes a recorded holiday from what a Sprint expected', async () => {
+      vi.mocked(prisma.sprint.findMany).mockResolvedValue([
+        {
+          id: 'sprint-1',
+          name: 'Sprint 1',
+          status: 'COMPLETED',
+          startDate: SPRINT_START,
+          endDate: SPRINT_END,
+          sprintReview: { id: 'rev-1' },
+          retrospective: { id: 'retro-1' },
+          dailyScrums: [],
+          generatedSprint: null,
+          timeboxes: [],
+        },
+      ] as never);
+      vi.mocked(prisma.sprintConfiguration.findUnique).mockResolvedValue(null as never);
+      vi.mocked(prisma.teamNonWorkingDay.findMany).mockResolvedValue([
+        { id: 'nwd-1', teamId: 'team-1', date: new Date('2026-09-09T00:00:00.000Z'), name: null },
+      ] as never);
+
+      const result = await smDashboardService.getEventCompliance('team-1', 1);
+
+      // Nine, not the ten the old "weeks multiplied by five" arithmetic assumed.
+      expect(result[0]!.dailyScrumExpected).toBe(9);
+      expect(result[0]!.dailyScrumMissedDates).not.toContain('2026-09-09');
+    });
+
+    it('marks a Sprint on schedule only once it has closed without a miss', async () => {
+      vi.mocked(prisma.sprint.findMany).mockResolvedValue([
+        {
+          id: 'sprint-1',
+          name: 'Sprint 1',
+          status: 'ACTIVE',
+          startDate: SPRINT_START,
+          endDate: SPRINT_END,
+          sprintReview: null,
+          retrospective: null,
+          dailyScrums: [],
+          generatedSprint: null,
+          timeboxes: [],
+        },
+      ] as never);
+      vi.mocked(prisma.sprintConfiguration.findUnique).mockResolvedValue(null as never);
+
+      const result = await smDashboardService.getEventCompliance('team-1', 1);
+
+      // A Sprint still running has not missed anything yet: the verdict stays open rather than
+      // reporting a shortfall the team has not actually incurred.
+      expect(result[0]!.dailyScrumOnSchedule).toBeUndefined();
+    });
+
+    it('rolls up whether declared adaptations were reflected in the Sprint Backlog', async () => {
+      vi.mocked(prisma.sprint.findMany).mockResolvedValue([
+        {
+          id: 'sprint-1',
+          name: 'Sprint 1',
+          status: 'COMPLETED',
+          startDate: SPRINT_START,
+          endDate: SPRINT_END,
+          sprintReview: { id: 'rev-1' },
+          retrospective: { id: 'retro-1' },
+          dailyScrums: [
+            // Moved since the declaration: reflected.
+            dailyScrum('2026-09-07', [
+              storedAdjustment({
+                sprintBacklogItem: {
+                  updatedAt: new Date('2026-09-11T08:00:00.000Z'),
+                  pbi: { status: 'READY', updatedAt: new Date('2026-09-10T08:00:00.000Z') },
+                },
+              }),
+            ]),
+            // Nothing has moved: still pending.
+            dailyScrum('2026-09-08', [storedAdjustment()]),
+          ],
+          generatedSprint: null,
+          timeboxes: [],
+        },
+      ] as never);
+      vi.mocked(prisma.sprintConfiguration.findUnique).mockResolvedValue(null as never);
+
+      const result = await smDashboardService.getEventCompliance('team-1', 1);
+
+      expect(result[0]!.adaptationDeclared).toBe(2);
+      expect(result[0]!.adaptationReflected).toBe(1);
+      expect(result[0]!.adaptationPending).toBe(1);
     });
   });
 
@@ -198,17 +346,17 @@ describe('SMDashboardService', () => {
   });
 
   describe('getEventCompliance with sprintConfiguration', () => {
-    it('should compute expected daily scrums from config duration and handle PLANNED status', async () => {
+    it('derives the expected count from the Sprint dates rather than the configured duration', async () => {
       const sprints = [
         {
           id: 'sprint-1',
           name: 'Sprint 1',
           status: 'COMPLETED',
-          startDate: new Date(),
-          endDate: new Date(),
+          startDate: SPRINT_START,
+          endDate: SPRINT_END,
           sprintReview: { id: 'rev-1' },
           retrospective: { id: 'retro-1' },
-          dailyScrums: [{ id: 'd1' }, { id: 'd2' }],
+          dailyScrums: [dailyScrum('2026-09-07')],
           generatedSprint: null,
           timeboxes: [],
         },
@@ -216,8 +364,10 @@ describe('SMDashboardService', () => {
           id: 'sprint-2',
           name: 'Sprint 2',
           status: 'PLANNED',
-          startDate: new Date(),
-          endDate: new Date(),
+          // A one-week Sprint, so the count follows the dates and not the team's TWO_WEEKS
+          // configuration.
+          startDate: new Date('2026-09-21T00:00:00.000Z'),
+          endDate: new Date('2026-09-25T00:00:00.000Z'),
           sprintReview: null,
           retrospective: null,
           dailyScrums: [],
@@ -226,50 +376,85 @@ describe('SMDashboardService', () => {
         },
       ];
 
-      vi.mocked(prisma.sprint.findMany).mockResolvedValue(sprints as any);
+      vi.mocked(prisma.sprint.findMany).mockResolvedValue(sprints as never);
       vi.mocked(prisma.sprintConfiguration.findUnique).mockResolvedValue({
         teamId: 'team-1',
         duration: 'TWO_WEEKS',
-      } as any);
+      } as never);
 
       const result = await smDashboardService.getEventCompliance('team-1', 2);
 
       expect(result).toHaveLength(2);
-      // TWO_WEEKS -> 14 days -> floor(14/7)*5 = 10 expected daily scrums
       expect(result[0]!.dailyScrumExpected).toBe(10);
       expect(result[0]!.sprintPlanningCompleted).toBe(true);
       expect(result[0]!.timeboxExceeded).toBe(false);
-      // PLANNED sprint: expected equals actual held (0)
       expect(result[1]!.sprintPlanningCompleted).toBe(false);
       expect(result[1]!.sprintReviewCompleted).toBe(false);
       expect(result[1]!.retrospectiveCompleted).toBe(false);
-      expect(result[1]!.dailyScrumExpected).toBe(0);
+      // Five working days in that week, counted from its own dates.
+      expect(result[1]!.dailyScrumExpected).toBe(5);
+      expect(result[1]!.dailyScrumDue).toBeGreaterThanOrEqual(1);
+      expect(result[1]!.dailyScrumDue).toBeLessThanOrEqual(5);
+      expect(result[1]!.dailyScrumMissedDates).toContain('2026-09-21');
     });
 
-    it('should fall back to 14 days default when duration is unknown', async () => {
+    it('falls back to the Monday-to-Friday week when the team has no schedule', async () => {
       vi.mocked(prisma.sprint.findMany).mockResolvedValue([
         {
           id: 'sprint-1',
           name: 'Sprint 1',
           status: 'COMPLETED',
-          startDate: new Date(),
-          endDate: new Date(),
+          startDate: SPRINT_START,
+          endDate: SPRINT_END,
           sprintReview: null,
           retrospective: null,
-          dailyScrums: [{ id: 'd1' }],
+          dailyScrums: [dailyScrum('2026-09-07')],
           generatedSprint: null,
           timeboxes: [],
         },
-      ] as any);
+      ] as never);
       vi.mocked(prisma.sprintConfiguration.findUnique).mockResolvedValue({
         teamId: 'team-1',
         duration: 'UNKNOWN_DURATION',
-      } as any);
+      } as never);
 
       const result = await smDashboardService.getEventCompliance('team-1', 1);
 
-      // Unknown duration -> 14 days -> floor(14/7)*5 = 10
       expect(result[0]!.dailyScrumExpected).toBe(10);
+    });
+
+    it('honours a team that does not work every weekday', async () => {
+      vi.mocked(prisma.sprint.findMany).mockResolvedValue([
+        {
+          id: 'sprint-1',
+          name: 'Sprint 1',
+          status: 'COMPLETED',
+          startDate: SPRINT_START,
+          endDate: SPRINT_END,
+          sprintReview: null,
+          retrospective: null,
+          dailyScrums: [],
+          generatedSprint: null,
+          timeboxes: [],
+        },
+      ] as never);
+      vi.mocked(prisma.sprintConfiguration.findUnique).mockResolvedValue(null as never);
+      vi.mocked(prisma.dailyScrumSchedule.findUnique).mockResolvedValue({
+        id: 'schedule-1',
+        teamId: 'team-1',
+        timezone: 'UTC',
+        startMinute: 540,
+        location: 'Room 4',
+        locationUrl: null,
+        workingDays: [1, 2, 3, 4],
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      } as never);
+
+      const result = await smDashboardService.getEventCompliance('team-1', 1);
+
+      // Fridays are not working days, so the fortnight holds eight.
+      expect(result[0]!.dailyScrumExpected).toBe(8);
     });
   });
 

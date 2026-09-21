@@ -125,6 +125,17 @@ export const queryKeys = {
       [...queryKeys.dailyScrum.bySprint(sprintId), { date }] as const,
     participation: (sprintId: string, date: string) =>
       [...queryKeys.dailyScrum.all, 'participation', { sprintId, date }] as const,
+    /** The standing cadence, the team calendar and what the Sprint has recorded so far. */
+    cadence: (sprintId: string, date: string) =>
+      [...queryKeys.dailyScrum.all, 'cadence', { sprintId, date }] as const,
+  },
+
+  // Daily Scrum standing commitment (time, place, working-day calendar)
+  dailyScrumSchedule: {
+    all: ['daily-scrum-schedule'] as const,
+    byTeam: (teamId: string) => [...queryKeys.dailyScrumSchedule.all, { teamId }] as const,
+    nonWorkingDays: (teamId: string, from: string, to: string) =>
+      [...queryKeys.dailyScrumSchedule.all, 'non-working-days', { teamId, from, to }] as const,
   },
 
   // Product Goal queries

@@ -461,6 +461,7 @@
     "retrospectives": "Sprint Retrospective",
     "scrumMaster": "Scrum Master Dashboard",
     "settings": {
+      "dailyScrumSchedule": "Daily Scrum Schedule",
       "data": "Data",
       "privacyData": "Privacy & Data",
       "sprintConfiguration": "Sprint Configuration",

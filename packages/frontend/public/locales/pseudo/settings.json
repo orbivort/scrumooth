@@ -20,6 +20,73 @@
       "nameRequired": "[Téàm nàmé ís réqúírédddddddd]"
     }
   },
+  "dailyScrumSchedule": {
+    "backToDailyScrum": "[Bàck tó Dàíly Scrúmmmmmmm]",
+    "cadence": {
+      "location": "[Róóm ór plàcééééé]",
+      "locationPlaceholder": "[é.g. Méétíng róómmmmmmm 4]",
+      "locationUrl": "[Méétíng línkkkkk]",
+      "nextMeeting": "[Néxt Dàíly Scrúmmmmmmm: {{date}} ààtt {{time}} ({{timezone}})]",
+      "noWorkingDays": "[Séléct àt léàst óné wórkíng dày tó séé whén thé téàm néxt méétsssssssssssssssssssss.]",
+      "placeHint": "[Récórd à róóm, à línk, ór bóth. Óné óf thé twó ís réqúíréddddddddddddddddddd.]",
+      "preview": "[Thé évént ópéns àttttttt {{time}} lócàl tímééééé.]",
+      "startTime": "[Stàrt tíméééé]",
+      "timezone": "[Tímé zónéééé]",
+      "timezoneHint": "[Thé stàrt tímé ís wàll-clóck tímé ín thís zónéééééééééééééééé.]",
+      "title": "[Tímé ànd plàcéééééé]"
+    },
+    "exceptions": {
+      "add": "[ÀÀdddd ddàày]",
+      "date": "[DDààtté]",
+      "empty": "[Nó éxcéptíóns récórdéd fór thís yéàr. Àdd óné ónly whén à dày dífférs fróm thé wéékly pàttérn àbóvé — à públíc hólídày, à cómpàny dày óff, ór à téàm óffsítééééééééééééééééééééééééééééééééééééééééééééééééé.]",
+      "name": "[NNààmmé]",
+      "namePlaceholder": "[é.g. Públíc hólídàyyyyyyy]",
+      "removeLabel": "[Rémóvé thé éxcéptíón ónnnnnnnnn {{date}}]",
+      "title": "[Nón-wórkíng dàys ínnnnnnn {{year}}]",
+      "unnamed": "[Nón-wórkíng dàyyyyyy]"
+    },
+    "footnote": "[Thé Dàíly Scrúm ís à 15-mínúté évént, só ónly íts stàrt ís cónfígúréd. Thé téàm càn stíll hóld thé évént ón àny dày; thé càléndàr ínfórms, ít dóés nót réstrícttttttttttttttttttttttttttttttttttttttttttttttttt.]",
+    "loading": "[Lóàdíng thé téàm's Dàíly Scrúm schédúléééééééééééééé...]",
+    "readOnlyNote": "[Ónly thé Scrúm Màstér càn chàngé thís schédúlé. Yóú àré sééíng thé cómmítmént thé téàm ís wórkíng tóóóóóóóóóóóóóóóóóóóóóóóóóóóóóóóó.]",
+    "saveBar": {
+      "reset": "[Réséttt]",
+      "save": "[Sàvé schédúlééééé]",
+      "saved": "[Nó únsàvéd chàngésssssss]",
+      "unsaved": "[Únsàvéd chàngéssssss]"
+    },
+    "subtitle": "[Thé Dàíly Scrúm ís héld àt thé sàmé tímé ànd plàcé évéry wórkíng dày. Récórd thàt stàndíng cómmítmént héré só thé téàm — ànd íts répórts — wórk fróm thé sàmé càléndàrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr.]",
+    "title": "[Dàíly Scrúm Schédúlééééééé]",
+    "toast": {
+      "exceptionAddFailed": "[Cóúld nót récórd thàt dàyyyyyyyyy.]",
+      "exceptionAdded": "[Nón-wórkíng dày récórdéddddddddd.]",
+      "exceptionRemoveFailed": "[Cóúld nót rémóvé thàt dàyyyyyyyyy.]",
+      "exceptionRemoved": "[Nón-wórkíng dày rémóvéddddddddd.]",
+      "saveFailed": "[Cóúld nót sàvé thé schédúléééééééééé.]",
+      "saved": "[Dàíly Scrúm schédúlé sàvédddddddddd.]"
+    },
+    "validation": {
+      "placeRequired": "[Récórd à róóm, à méétíng línk, ór bóthhhhhhhhhhhhh.]",
+      "timeInvalid": "[Éntér à vàlíd stàrt tímééééééééé.]",
+      "timezoneInvalid": "[Chóósé à tímé zóné thé systém récógníséssssssssssssss.]",
+      "workingDayRequired": "[Séléct àt léàst óné wórkíng dàyyyyyyyyyyy.]"
+    },
+    "weekdays": {
+      "friday": "[Fríí]",
+      "monday": "[Mónn]",
+      "saturday": "[Sàtt]",
+      "sunday": "[Súnn]",
+      "thursday": "[Thúú]",
+      "tuesday": "[Túéé]",
+      "wednesday": "[Wédd]"
+    },
+    "workingWeek": {
+      "legend": "[Wórkíng dàys óf thé wéékkkkkkkkk]",
+      "noneSelected": "[Nó wórkíng dàys séléctéd. Thé càléndàr hàs nóthíng tó cóúnttttttttttttttttttt.]",
+      "summary_one": "[Thé téàm wórkssssss {{count}} dày à wéékkkkk.]",
+      "summary_other": "[Thé téàm wórkssssss {{count}} dàys à wéékkkkk.]",
+      "title": "[Wórkíng wéékkkkk]"
+    }
+  },
   "definitionEditor": {
     "activeItems": "[{{count}} àctívé ítémsssss]",
     "activeItems_one": "[{{count}} àctívé ítémmmmm]",

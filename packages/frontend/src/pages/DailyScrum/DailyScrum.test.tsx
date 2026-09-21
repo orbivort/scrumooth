@@ -42,6 +42,7 @@ vi.mock('../../services', () => ({
     getActiveSprint: vi.fn(),
     getSprintTasks: vi.fn(),
     getDailyScrum: vi.fn(),
+    getDailyScrumCadence: vi.fn(),
     getDailyScrumParticipation: vi.fn(),
     createDailyScrum: vi.fn(),
     updateDailyScrum: vi.fn(),
@@ -94,8 +95,35 @@ vi.mock('react-i18next', async () => {
           'form.adaptationsLabel': 'Adaptations (Sprint Backlog)',
           'form.planLabel': 'Plan for next day',
           'form.planPlaceholder': 'What will the team work on next?',
+          'form.adaptationEvidenceLabel': 'What did the event conclude about the Sprint Backlog?',
+          'form.evidenceAdapted': 'The Sprint Backlog was adapted',
+          'form.evidenceNoAdaptation': 'No adaptation needed today',
+          'form.evidenceAcknowledged':
+            'Recorded: the Developers judged that no Sprint Backlog adaptation was needed today.',
+          'form.evidenceAdaptedHint':
+            'Add at least one adjustment, or choose "No adaptation needed today".',
+          'form.backlogItemSelect': 'Sprint Backlog item',
+          'form.backlogActionTypeLabel': 'Kind of adjustment',
+          'form.backlogActionLabel': 'Adjustment action',
+          'form.backlogActionPlaceholder': 'What is the adjustment? (e.g. reassigned, flagged)',
+          'form.addAdjustment': 'Add',
+          'form.adjustmentActions.REFINED': 'Refined',
+          'form.adjustmentActions.REMOVED': 'Removed from the Sprint Backlog',
+          'form.adjustmentActions.UNSPECIFIED': 'Sprint Backlog adjustment',
           'validation.planRequired':
             'Add an actionable plan for the next day to save the Daily Scrum.',
+          'validation.adaptationEvidenceRequired':
+            'Declare whether the Sprint Backlog was adapted, or acknowledge that no adaptation was needed.',
+          'cadence.notConfigured': 'No standing time and place recorded yet',
+          'cadence.sprintDay': 'Sprint day {{current}} of {{total}}',
+          'cadence.held': '{{held}} of {{expected}} working days recorded',
+          'cadence.configure': "Record the team's Daily Scrum time and place",
+          'inspectedGoal.label': 'Sprint Goal inspected at this Daily Scrum',
+          'inspectedGoal.none': 'No Sprint Goal was recorded when this Daily Scrum was held.',
+          'inspectedGoal.noAdaptation':
+            'The Developers judged that no Sprint Backlog adaptation was needed.',
+          'reflection.reflected': 'Reflected in the Sprint Backlog',
+          'reflection.pending': 'Declared, not yet reflected',
           submitScrum: 'Submit Daily Scrum',
           saveScrum: 'Save Daily Scrum',
           editScrum: 'Edit Daily Scrum',
@@ -229,6 +257,19 @@ function setupMocks(
   });
   api.getSprintTasks.mockResolvedValue({ data: [] });
   api.getDailyScrum.mockResolvedValue({ data: overrides.dailyScrum ?? null });
+  api.getDailyScrumCadence.mockResolvedValue({
+    data: {
+      schedule: null,
+      calendar: { workingDays: [1, 2, 3, 4, 5], nonWorkingDays: [] },
+      date: new Date().toISOString().slice(0, 10),
+      isWorkingDay: true,
+      nonWorkingDayName: null,
+      sprintProgress: { dayNumber: 3, totalDays: 10 },
+      held: overrides.dailyScrum ? 1 : 0,
+      expected: 10,
+      missedDates: [],
+    },
+  });
   api.getDailyScrumParticipation.mockResolvedValue({
     data:
       overrides.participation ??
@@ -380,6 +421,7 @@ describe('DailyScrum (goal-focused, team-level)', () => {
       fireEvent.change(planTextarea, { target: { value: 'Pair up on feature Y' } });
 
       fireEvent.click(screen.getByText('Impediment-first'));
+      fireEvent.click(screen.getByLabelText('No adaptation needed today'));
 
       const submitButton = screen.getByText('Submit Daily Scrum').closest('button');
       expect(submitButton).toBeEnabled();
@@ -421,6 +463,11 @@ describe('DailyScrum (goal-focused, team-level)', () => {
       expect(
         screen.getByText('Add an actionable plan for the next day to save the Daily Scrum.')
       ).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          'Declare whether the Sprint Backlog was adapted, or acknowledge that no adaptation was needed.'
+        )
+      ).toBeInTheDocument();
 
       const progressTextarea = screen.getByPlaceholderText(
         "Describe the team's progress toward the Sprint Goal..."
@@ -433,6 +480,11 @@ describe('DailyScrum (goal-focused, team-level)', () => {
       const planTextarea = screen.getByPlaceholderText('What will the team work on next?');
       fireEvent.change(planTextarea, { target: { value: 'Pair up on feature Y' } });
 
+      // A plan alone is not enough: the adaptation outcome has to be declared too.
+      expect(submitButton).toBeDisabled();
+
+      fireEvent.click(screen.getByLabelText('No adaptation needed today'));
+
       expect(submitButton).toBeEnabled();
 
       fireEvent.click(submitButton as HTMLElement);
@@ -442,6 +494,7 @@ describe('DailyScrum (goal-focused, team-level)', () => {
       expect(createCall[0]).toBe('sprint-1');
       expect(createCall[1]).toHaveProperty('progressNotes');
       expect(createCall[1]).toHaveProperty('planForNextDay', 'Pair up on feature Y');
+      expect(createCall[1]).toHaveProperty('noAdaptationNeeded', true);
     });
   });
 

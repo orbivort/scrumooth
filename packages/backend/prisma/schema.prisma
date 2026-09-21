@@ -67,6 +67,7 @@ model Team {
   updatedBy           String?               @db.Uuid
   definitionOfDone    DefinitionOfDone?
   definitionOfReady   DefinitionOfReady?
+  dailyScrumSchedule  DailyScrumSchedule?
   generatedSprints    GeneratedSprint[]
   healthChecks        TeamHealthCheck[]
   impediments         Impediment[]
@@ -74,6 +75,7 @@ model Team {
   productBacklog      ProductBacklogItem[]
   productGoals        ProductGoal[]
   sprintConfiguration SprintConfiguration?
+  nonWorkingDays      TeamNonWorkingDay[]
   retrospectives      SprintRetrospective[]
   sprintReviews       SprintReview[]
   sprints             Sprint[]
@@ -130,34 +132,35 @@ model ProductGoal {
 }
 
 model ProductBacklogItem {
-  id                 String                @id @db.Uuid
-  teamId             String                @db.Uuid
-  goalId             String?               @db.Uuid
-  title              String
-  description        String?
-  priority           MoSCoWPriority        @default(COULD_HAVE)
+  id                    String                  @id @db.Uuid
+  teamId                String                  @db.Uuid
+  goalId                String?                 @db.Uuid
+  title                 String
+  description           String?
+  priority              MoSCoWPriority          @default(COULD_HAVE)
   /// Dense, 1-based position of the item in its team's Product Backlog order.
   /// The 2020 Scrum Guide defines the Product Backlog as an *ordered* list, so this is
   /// the order of record: appended on create, rewritten 1..N by a reorder, never shown
   /// as a priority. MoSCoW remains a categorisation rendered on top of this order.
-  rank               Int                   @default(0)
-  businessValue      Int?
-  storyPoints        Int?
-  status             ItemStatus            @default(NEW)
-  labels             String[]              @default([])
-  acceptanceCriteria String?
-  createdAt          DateTime              @default(now()) @db.Timestamptz(3)
-  createdBy          String?               @db.Uuid
-  updatedAt          DateTime              @updatedAt @db.Timestamptz(3)
-  updatedBy          String?               @db.Uuid
-  sprintId           String?               @db.Uuid
-  incrementPBIs      IncrementPBI[]
-  creator            User?                 @relation("PBICreator", fields: [createdBy], references: [id], onDelete: SetNull)
-  goal               ProductGoal?          @relation(fields: [goalId], references: [id], onDelete: SetNull)
-  team               Team                  @relation(fields: [teamId], references: [id], onDelete: Cascade)
-  backlogChanges     SprintBacklogChange[]
-  sprintBacklogItems SprintBacklogItem[]
-  tasks              Task[]
+  rank                  Int                     @default(0)
+  businessValue         Int?
+  storyPoints           Int?
+  status                ItemStatus              @default(NEW)
+  labels                String[]                @default([])
+  acceptanceCriteria    String?
+  createdAt             DateTime                @default(now()) @db.Timestamptz(3)
+  createdBy             String?                 @db.Uuid
+  updatedAt             DateTime                @updatedAt @db.Timestamptz(3)
+  updatedBy             String?                 @db.Uuid
+  sprintId              String?                 @db.Uuid
+  incrementPBIs         IncrementPBI[]
+  creator               User?                   @relation("PBICreator", fields: [createdBy], references: [id], onDelete: SetNull)
+  goal                  ProductGoal?            @relation(fields: [goalId], references: [id], onDelete: SetNull)
+  team                  Team                    @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  backlogChanges        SprintBacklogChange[]
+  dailyScrumAdjustments DailyScrumBacklogItem[]
+  sprintBacklogItems    SprintBacklogItem[]
+  tasks                 Task[]
 
   @@index([teamId])
   @@index([status])
@@ -167,26 +170,25 @@ model ProductBacklogItem {
   @@index([teamId, status])
   @@index([teamId, status, priority])
   @@index([teamId, rank])
-
   @@index([labels], type: Gin)
   @@map("product_backlog_items")
 }
 
 model Sprint {
-  id                 String                @id @db.Uuid
-  teamId             String                @db.Uuid
-  goalId             String?               @db.Uuid
+  id                 String                   @id @db.Uuid
+  teamId             String                   @db.Uuid
+  goalId             String?                  @db.Uuid
   name               String
-  startDate          DateTime              @db.Timestamptz(3)
-  endDate            DateTime              @db.Timestamptz(3)
+  startDate          DateTime                 @db.Timestamptz(3)
+  endDate            DateTime                 @db.Timestamptz(3)
   sprintGoal         String?
-  status             SprintStatus          @default(PLANNED)
+  status             SprintStatus             @default(PLANNED)
   cancellationReason String?
   smNotes            String?
-  createdAt          DateTime              @default(now()) @db.Timestamptz(3)
-  createdBy          String?               @db.Uuid
-  updatedAt          DateTime              @updatedAt @db.Timestamptz(3)
-  updatedBy          String?               @db.Uuid
+  createdAt          DateTime                 @default(now()) @db.Timestamptz(3)
+  createdBy          String?                  @db.Uuid
+  updatedAt          DateTime                 @updatedAt @db.Timestamptz(3)
+  updatedBy          String?                  @db.Uuid
   burndownData       BurndownData[]
   dailyScrums        DailyScrum[]
   generatedSprint    GeneratedSprint?
@@ -200,8 +202,8 @@ model Sprint {
   sprintReview       SprintReview?
   healthChecks       TeamHealthCheck[]
   timeboxes          Timebox[]
-  goal               ProductGoal?          @relation(fields: [goalId], references: [id], onDelete: SetNull)
-  team               Team                  @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  goal               ProductGoal?             @relation(fields: [goalId], references: [id], onDelete: SetNull)
+  team               Team                     @relation(fields: [teamId], references: [id], onDelete: Cascade)
   tasks              Task[]
 
   @@index([teamId])
@@ -359,6 +361,15 @@ model DailyScrum {
   // how the event is being run. Stored as a plain string to keep it forward
   // compatible; validated against DAILY_SCRUM_FOCUS_MODES at the API boundary.
   focusMode          String?
+  /// The Sprint Goal as it stood when this record was created. Immutable: the
+  /// inspected baseline must not be rewritten by a later goal renegotiation, or
+  /// the historical record would appear to have inspected a goal it never saw.
+  sprintGoal         String?
+  /// Explicit acknowledgement that the event concluded no Sprint Backlog
+  /// adaptation was needed. A record must carry either this or at least one
+  /// `backlogAdjustments` row, so the Guide's stated purpose for the event is
+  /// evidenced rather than implied.
+  noAdaptationNeeded Boolean                 @default(false)
   createdAt          DateTime                @default(now()) @db.Timestamptz(3)
   createdBy          String?                 @db.Uuid
   updatedAt          DateTime                @updatedAt @db.Timestamptz(3)
@@ -373,21 +384,45 @@ model DailyScrum {
   @@map("daily_scrums")
 }
 
+/// A Sprint Backlog adaptation declared at a Daily Scrum.
+///
+/// The 2020 Scrum Guide states the purpose of the event is to "adapt the Sprint Backlog", so
+/// a declaration is structured (a typed `actionType`) and carries the state of the affected
+/// item as it was when the declaration was recorded. The declaration is therefore verifiable:
+/// the store can say whether the Sprint Backlog actually moved, instead of taking the note's
+/// word for it.
+///
+/// `sprintBacklogItemId` is nullable with `ON DELETE SET NULL` on purpose. Removing the item
+/// from the Sprint Backlog is exactly how a `REMOVED` declaration is fulfilled, so a cascading
+/// delete would destroy the evidence at the moment it became true. `pbiId` and
+/// `pbiTitleAtAdjustment` keep the declaration readable after the item is gone.
 model DailyScrumBacklogItem {
-  id                  String            @id @db.Uuid
-  dailyScrumId        String            @db.Uuid
-  sprintBacklogItemId String            @db.Uuid
-  action              String
-  createdAt           DateTime          @default(now()) @db.Timestamptz(3)
-  createdBy           String?           @db.Uuid
-  updatedAt           DateTime          @updatedAt @db.Timestamptz(3)
-  updatedBy           String?           @db.Uuid
-  dailyScrum          DailyScrum        @relation(fields: [dailyScrumId], references: [id], onDelete: Cascade)
-  sprintBacklogItem   SprintBacklogItem @relation(fields: [sprintBacklogItemId], references: [id], onDelete: Cascade)
+  id                        String                      @id @db.Uuid
+  dailyScrumId              String                      @db.Uuid
+  sprintBacklogItemId       String?                     @db.Uuid
+  pbiId                     String?                     @db.Uuid
+  pbiTitleAtAdjustment      String?
+  /// `ADDED` | `REMOVED` | `REPRIORITIZED` | `REFINED` | `SPLIT`. NULL only on rows recorded
+  /// before the typed action existed.
+  actionType                DailyScrumAdjustmentAction?
+  /// The Developers' note explaining the adaptation.
+  action                    String
+  /// State snapshot of the affected item and its PBI at declaration time.
+  pbiStatusAtAdjustment     ItemStatus?
+  itemUpdatedAtAtAdjustment DateTime?                   @db.Timestamptz(3)
+  pbiUpdatedAtAtAdjustment  DateTime?                   @db.Timestamptz(3)
+  createdAt                 DateTime                    @default(now()) @db.Timestamptz(3)
+  createdBy                 String?                     @db.Uuid
+  updatedAt                 DateTime                    @updatedAt @db.Timestamptz(3)
+  updatedBy                 String?                     @db.Uuid
+  dailyScrum                DailyScrum                  @relation(fields: [dailyScrumId], references: [id], onDelete: Cascade)
+  sprintBacklogItem         SprintBacklogItem?          @relation(fields: [sprintBacklogItemId], references: [id], onDelete: SetNull)
+  pbi                       ProductBacklogItem?         @relation(fields: [pbiId], references: [id], onDelete: SetNull)
 
   @@unique([dailyScrumId, sprintBacklogItemId])
   @@index([dailyScrumId])
   @@index([sprintBacklogItemId])
+  @@index([pbiId])
   @@map("daily_scrum_backlog_items")
 }
 
@@ -1212,6 +1247,53 @@ model Timebox {
   @@map("timeboxes")
 }
 
+/// The team's standing Daily Scrum commitment.
+///
+/// The 2020 Scrum Guide says the Daily Scrum is held "at the same time and place every working
+/// day". A record of the event is not the same as a commitment to hold it, so the commitment
+/// itself is persisted here -- one row per team -- and the number of Daily Scrums a Sprint
+/// should have is derived from this rather than assumed to be five per week.
+///
+/// No duration is stored: the Daily Scrum is a fixed 15-minute timebox, so only its start is
+/// configurable. See `@scrumooth/shared` `timeboxFor`.
+model DailyScrumSchedule {
+  id          String   @id @db.Uuid
+  teamId      String   @unique @db.Uuid
+  /// IANA time zone the wall-clock `startMinute` is expressed in, e.g. "Europe/Berlin".
+  timezone    String   @default("UTC")
+  /// Start of the event as minutes after local midnight (0-1439).
+  startMinute Int
+  /// The "same place": a room, or a link. Either may be omitted, but not both.
+  location    String?
+  locationUrl String?
+  /// ISO-8601 weekday numbers (1 = Monday .. 7 = Sunday) the team works. Defaults to Mon-Fri.
+  workingDays Int[]    @default([1, 2, 3, 4, 5])
+  createdAt   DateTime @default(now()) @db.Timestamptz(3)
+  createdBy   String?  @db.Uuid
+  updatedAt   DateTime @updatedAt @db.Timestamptz(3)
+  updatedBy   String?  @db.Uuid
+  team        Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@map("daily_scrum_schedules")
+}
+
+/// A single dated exception to a team's weekly working pattern: a public holiday, a company day
+/// off, or a team offsite. Only exceptions are stored; the weekly pattern remains the default.
+model TeamNonWorkingDay {
+  id        String   @id @db.Uuid
+  teamId    String   @db.Uuid
+  date      DateTime @db.Date
+  name      String?
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  createdBy String?  @db.Uuid
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+  updatedBy String?  @db.Uuid
+  team      Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@unique([teamId, date])
+  @@map("team_non_working_days")
+}
+
 enum UserRole {
   PRODUCT_OWNER
   SCRUM_MASTER
@@ -1250,7 +1332,6 @@ enum ImpedimentStatus {
 
 /**
  * Impact ordering for impediments, declared most-critical-first.
- *
  * PostgreSQL compares enum values by declaration order, so `orderBy: { priority: 'asc' }`
  * resolves to CRITICAL → LOW. Reordering these values is a migration, not a code change.
  */
@@ -1259,6 +1340,20 @@ enum ImpedimentPriority {
   HIGH
   MEDIUM
   LOW
+}
+
+/**
+ * The typology of a Sprint Backlog adaptation declared at a Daily Scrum.
+ * Typed rather than free text so the adaptation is structured evidence: the declaration can be
+ * checked against what the Sprint Backlog actually did (`@scrumooth/shared`
+ * `evaluateAdaptationReflection`) instead of only asserting that something happened.
+ */
+enum DailyScrumAdjustmentAction {
+  ADDED
+  REMOVED
+  REPRIORITIZED
+  REFINED
+  SPLIT
 }
 
 enum ProductGoalStatus {

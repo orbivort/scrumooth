@@ -19,6 +19,8 @@ export class DailyScrumPage extends BasePage {
   readonly promoteDescriptionInput: Locator;
   readonly promoteSubmitButton: Locator;
   readonly impedimentList: Locator;
+  readonly adaptedRadio: Locator;
+  readonly noAdaptationRadio: Locator;
 
   constructor(page: Page) {
     super(page);
@@ -41,6 +43,9 @@ export class DailyScrumPage extends BasePage {
     this.promoteDescriptionInput = page.locator('[role="dialog"] textarea').first();
     this.promoteSubmitButton = page.locator('[role="dialog"] button:has-text("Create Impediment")');
     this.impedimentList = page.locator('[class*="impediment-list"]');
+    // The adaptation-outcome choice is an exclusive pair of radios in one fieldset.
+    this.adaptedRadio = page.locator('input[name="adaptation-evidence"]').first();
+    this.noAdaptationRadio = page.locator('input[name="adaptation-evidence"]').nth(1);
   }
 
   /**
@@ -99,6 +104,12 @@ export class DailyScrumPage extends BasePage {
     progressNotes?: string;
     adaptationsNotes?: string;
     planForNextDay?: string;
+    /**
+     * The record must declare its adaptation outcome, so a submission either lists Sprint
+     * Backlog adjustments or acknowledges that none were needed. Defaults to the
+     * acknowledgement, which is what a form submission without staged adjustments sends.
+     */
+    adaptationEvidence?: 'adapted' | 'none';
   }): Promise<void> {
     if (data.progressNotes) {
       await this.progressInput.fill(data.progressNotes);
@@ -108,6 +119,11 @@ export class DailyScrumPage extends BasePage {
     }
     if (data.planForNextDay) {
       await this.planInput.fill(data.planForNextDay);
+    }
+    if (data.adaptationEvidence === 'none') {
+      await this.noAdaptationRadio.check();
+    } else if (data.adaptationEvidence === 'adapted') {
+      await this.adaptedRadio.check();
     }
   }
 

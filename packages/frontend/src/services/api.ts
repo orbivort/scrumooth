@@ -12,6 +12,7 @@ export { productBacklogService } from './domain/productBacklog.service';
 export { sprintService } from './domain/sprint.service';
 export { sprintBacklogService } from './domain/sprintBacklog.service';
 export { dailyScrumService } from './domain/dailyScrum.service';
+export { dailyScrumScheduleService } from './domain/dailyScrumSchedule.service';
 export { impedimentsService } from './domain/impediments.service';
 export { reportsService } from './domain/reports.service';
 export { productGoalsService } from './domain/productGoals.service';
@@ -33,6 +34,7 @@ import { productBacklogService } from './domain/productBacklog.service';
 import { sprintService } from './domain/sprint.service';
 import { sprintBacklogService } from './domain/sprintBacklog.service';
 import { dailyScrumService } from './domain/dailyScrum.service';
+import { dailyScrumScheduleService } from './domain/dailyScrumSchedule.service';
 import { impedimentsService } from './domain/impediments.service';
 import { reportsService } from './domain/reports.service';
 import { productGoalsService } from './domain/productGoals.service';
@@ -135,12 +137,23 @@ class ApiService {
   // Daily Scrum endpoints (team-level, goal-focused)
   getDailyScrum = dailyScrumService.getDailyScrum.bind(dailyScrumService);
   getDailyScrums = dailyScrumService.getDailyScrums.bind(dailyScrumService);
+  getDailyScrumCadence = dailyScrumService.getCadence.bind(dailyScrumService);
   createDailyScrum = dailyScrumService.createDailyScrum.bind(dailyScrumService);
   updateDailyScrum = dailyScrumService.updateDailyScrum.bind(dailyScrumService);
   recordDailyScrumParticipation = dailyScrumService.recordParticipation.bind(dailyScrumService);
   getDailyScrumParticipation = dailyScrumService.getParticipation.bind(dailyScrumService);
   sendDailyScrumTeamSignal = dailyScrumService.sendTeamSignal.bind(dailyScrumService);
   promoteImpedimentFromDailyScrum = dailyScrumService.promoteToImpediment.bind(dailyScrumService);
+
+  // Daily Scrum standing commitment (Scrum Master writes, team reads)
+  getDailyScrumSchedule = dailyScrumScheduleService.getSchedule.bind(dailyScrumScheduleService);
+  saveDailyScrumSchedule = dailyScrumScheduleService.saveSchedule.bind(dailyScrumScheduleService);
+  getDailyScrumNonWorkingDays =
+    dailyScrumScheduleService.listNonWorkingDays.bind(dailyScrumScheduleService);
+  addDailyScrumNonWorkingDay =
+    dailyScrumScheduleService.addNonWorkingDay.bind(dailyScrumScheduleService);
+  deleteDailyScrumNonWorkingDay =
+    dailyScrumScheduleService.deleteNonWorkingDay.bind(dailyScrumScheduleService);
 
   // Impediments endpoints
   getImpediments = impedimentsService.getImpediments.bind(impedimentsService);

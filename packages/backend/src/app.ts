@@ -15,6 +15,7 @@ import goalsRoutes from './routes/goals.routes';
 import workflowRoutes from './routes/workflow.routes';
 import sprintConfigurationRoutes from './routes/sprintConfiguration.routes';
 import dailyScrumRoutes from './routes/dailyScrum.routes';
+import dailyScrumScheduleRoutes from './routes/dailyScrumSchedule.routes';
 import incrementRoutes from './routes/increment.routes';
 import sprintReviewRoutes from './routes/sprintReview.routes';
 import retrospectiveRoutes from './routes/retrospective.routes';
@@ -185,6 +186,9 @@ v1Router.use('/sprint-configuration', sprintConfigurationRoutes);
 
 // Daily Scrum routes
 v1Router.use('/daily-scrums', dailyScrumRoutes);
+
+// Daily Scrum standing commitment (time, place, working-day calendar)
+v1Router.use('/daily-scrum-schedule', dailyScrumScheduleRoutes);
 
 // Increment routes
 v1Router.use('/increments', incrementRoutes);

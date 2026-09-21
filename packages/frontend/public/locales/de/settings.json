@@ -20,6 +20,73 @@
       "nameRequired": "Team-Name ist erforderlich"
     }
   },
+  "dailyScrumSchedule": {
+    "backToDailyScrum": "Zurück zum Daily Scrum",
+    "cadence": {
+      "location": "Raum oder Ort",
+      "locationPlaceholder": "z. B. Besprechungsraum 4",
+      "locationUrl": "Meeting-Link",
+      "nextMeeting": "Nächstes Daily Scrum: {{date}} um {{time}} ({{timezone}})",
+      "noWorkingDays": "Wähle mindestens einen Arbeitstag, um zu sehen, wann das Team sich das nächste Mal trifft.",
+      "placeHint": "Erfasse einen Raum, einen Link oder beides. Eines von beiden ist erforderlich.",
+      "preview": "Das Event beginnt um {{time}} Ortszeit.",
+      "startTime": "Startzeit",
+      "timezone": "Zeitzone",
+      "timezoneHint": "Die Startzeit ist die Uhrzeit in dieser Zeitzone.",
+      "title": "Zeit und Ort"
+    },
+    "exceptions": {
+      "add": "Tag hinzufügen",
+      "date": "Datum",
+      "empty": "Für dieses Jahr sind keine Ausnahmen erfasst. Erfasse eine nur, wenn ein Tag vom Wochenmuster oben abweicht – ein Feiertag, ein firmafreier Tag oder ein Team-Offsite.",
+      "name": "Bezeichnung",
+      "namePlaceholder": "z. B. Feiertag",
+      "removeLabel": "Ausnahme am {{date}} entfernen",
+      "title": "Nicht-Arbeitstage in {{year}}",
+      "unnamed": "Nicht-Arbeitstag"
+    },
+    "footnote": "Das Daily Scrum dauert 15 Minuten, daher wird nur sein Beginn konfiguriert. Das Team kann das Event weiterhin an jedem Tag abhalten; der Kalender informiert, er schränkt nicht ein.",
+    "loading": "Der Zeitplan für das Daily Scrum des Teams wird geladen…",
+    "readOnlyNote": "Nur der Scrum Master kann diesen Zeitplan ändern. Du siehst die Vereinbarung, nach der das Team arbeitet.",
+    "saveBar": {
+      "reset": "Zurücksetzen",
+      "save": "Zeitplan speichern",
+      "saved": "Keine ungespeicherten Änderungen",
+      "unsaved": "Ungespeicherte Änderungen"
+    },
+    "subtitle": "Das Daily Scrum findet an jedem Arbeitstag zur gleichen Zeit und am gleichen Ort statt. Halte diese Vereinbarung hier fest, damit das Team – und seine Berichte – von demselben Kalender ausgehen.",
+    "title": "Zeitplan für das Daily Scrum",
+    "toast": {
+      "exceptionAddFailed": "Dieser Tag konnte nicht erfasst werden.",
+      "exceptionAdded": "Nicht-Arbeitstag erfasst.",
+      "exceptionRemoveFailed": "Dieser Tag konnte nicht entfernt werden.",
+      "exceptionRemoved": "Nicht-Arbeitstag entfernt.",
+      "saveFailed": "Der Zeitplan konnte nicht gespeichert werden.",
+      "saved": "Zeitplan für das Daily Scrum gespeichert."
+    },
+    "validation": {
+      "placeRequired": "Erfasse einen Raum, einen Meeting-Link oder beides.",
+      "timeInvalid": "Gib eine gültige Startzeit ein.",
+      "timezoneInvalid": "Wähle eine Zeitzone, die das System kennt.",
+      "workingDayRequired": "Wähle mindestens einen Arbeitstag."
+    },
+    "weekdays": {
+      "friday": "Fr",
+      "monday": "Mo",
+      "saturday": "Sa",
+      "sunday": "So",
+      "thursday": "Do",
+      "tuesday": "Di",
+      "wednesday": "Mi"
+    },
+    "workingWeek": {
+      "legend": "Arbeitstage der Woche",
+      "noneSelected": "Keine Arbeitstage ausgewählt. Der Kalender hat nichts zu zählen.",
+      "summary_one": "Das Team arbeitet {{count}} Tag pro Woche.",
+      "summary_other": "Das Team arbeitet {{count}} Tage pro Woche.",
+      "title": "Arbeitswoche"
+    }
+  },
   "definitionEditor": {
     "activeItems": "{{count}} aktive Elemente",
     "activeItems_one": "{{count}} aktive Element",

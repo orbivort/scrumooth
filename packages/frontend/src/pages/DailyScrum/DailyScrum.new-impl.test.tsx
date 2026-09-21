@@ -11,6 +11,7 @@ import DailyScrum from './DailyScrum';
 const mockGetActiveSprint = vi.fn();
 const mockGetSprintTasks = vi.fn();
 const mockGetDailyScrum = vi.fn();
+const mockGetDailyScrumCadence = vi.fn();
 const mockGetDailyScrumParticipation = vi.fn();
 const mockGetImpediments = vi.fn();
 const mockGetProductGoals = vi.fn();
@@ -37,6 +38,8 @@ vi.mock('../../services', () => ({
     getActiveSprint: (teamId: string) => mockGetActiveSprint(teamId),
     getSprintTasks: (sprintId: string) => mockGetSprintTasks(sprintId),
     getDailyScrum: (sprintId: string, date: string) => mockGetDailyScrum(sprintId, date),
+    getDailyScrumCadence: (sprintId: string, date: string) =>
+      mockGetDailyScrumCadence(sprintId, date),
     getDailyScrumParticipation: (sprintId: string, date: string) =>
       mockGetDailyScrumParticipation(sprintId, date),
     getImpediments: (teamId: string) => mockGetImpediments(teamId),
@@ -142,6 +145,19 @@ function renderPage(
   mockGetSprintTasks.mockResolvedValue({ data: baseTasks });
   mockGetProductGoals.mockResolvedValue({ data: productGoals });
   mockGetDailyScrum.mockResolvedValue({ data: record });
+  mockGetDailyScrumCadence.mockResolvedValue({
+    data: {
+      schedule: null,
+      calendar: { workingDays: [1, 2, 3, 4, 5], nonWorkingDays: [] },
+      date: today,
+      isWorkingDay: true,
+      nonWorkingDayName: null,
+      sprintProgress: { dayNumber: 3, totalDays: 10 },
+      held: record ? 1 : 0,
+      expected: 10,
+      missedDates: [],
+    },
+  });
   mockGetImpediments.mockResolvedValue({ data: [] });
   mockGetDailyScrumParticipation.mockResolvedValue({
     data: {
@@ -239,6 +255,10 @@ describe('DailyScrum (new implementation coverage)', () => {
       const newPlan = 'Finish the email integration and deploy to staging';
       fireEvent.change(planField, { target: { value: newPlan } });
 
+      // The record must still declare its adaptation outcome, so acknowledge that none was
+      // needed rather than leaving the evidence unstated.
+      fireEvent.click(screen.getByLabelText('No adaptation needed today'));
+
       fireEvent.click(screen.getByText('Save Daily Scrum'));
 
       await waitFor(() => {
@@ -262,6 +282,7 @@ describe('DailyScrum (new implementation coverage)', () => {
         screen.getByPlaceholderText(/what will the team work on next/i)
       )) as HTMLTextAreaElement;
       fireEvent.change(planField, { target: { value: 'Implement feature toggle' } });
+      fireEvent.click(screen.getByLabelText('No adaptation needed today'));
 
       fireEvent.click(screen.getByText('Submit Daily Scrum'));
 
@@ -473,6 +494,7 @@ describe('DailyScrum (new implementation coverage)', () => {
         screen.getByPlaceholderText(/what will the team work on next/i)
       )) as HTMLTextAreaElement;
       fireEvent.change(planField, { target: { value: 'Implement feature toggle' } });
+      fireEvent.click(screen.getByLabelText('No adaptation needed today'));
 
       fireEvent.click(screen.getByText('Submit Daily Scrum'));
 
@@ -492,6 +514,7 @@ describe('DailyScrum (new implementation coverage)', () => {
         screen.getByPlaceholderText(/what will the team work on next/i)
       )) as HTMLTextAreaElement;
       fireEvent.change(planField, { target: { value: 'Implement feature toggle' } });
+      fireEvent.click(screen.getByLabelText('No adaptation needed today'));
 
       fireEvent.click(screen.getByText('Submit Daily Scrum'));
 

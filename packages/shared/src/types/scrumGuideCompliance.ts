@@ -45,7 +45,29 @@ export interface EventComplianceSummary {
   sprintReviewCompleted: boolean;
   retrospectiveCompleted: boolean;
   dailyScrumHeld: number;
+  /**
+   * Working days the Sprint contains on the team's calendar, not "Sprint weeks multiplied by
+   * five". The two differ on any week containing a holiday.
+   */
   dailyScrumExpected: number;
+  /**
+   * How many of those expected days have fallen on or before today. A Sprint still running has
+   * not held tomorrow's Daily Scrum yet, so this is the fair denominator while it is in flight.
+   */
+  dailyScrumDue: number;
+  /** Expected working days carrying no Daily Scrum record, in date order. */
+  dailyScrumMissedDates: string[];
+  /**
+   * Whether the Sprint held a Daily Scrum on every working day it was expected to. Undefined
+   * while the Sprint is still running, because a Sprint in progress has not missed anything yet.
+   */
+  dailyScrumOnSchedule?: boolean;
+  /** Sprint Backlog adjustments declared at the Sprint's Daily Scrums. */
+  adaptationDeclared: number;
+  /** Declarations the Sprint Backlog has borne out. */
+  adaptationReflected: number;
+  /** Declarations still awaiting movement in the Sprint Backlog. */
+  adaptationPending: number;
   timeboxExceeded: boolean;
 }
 

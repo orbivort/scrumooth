@@ -1,13 +1,21 @@
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useNavigate } from 'react-router';
+import { Link, useNavigate } from 'react-router';
 import { useTranslation } from 'react-i18next';
-import { formatLocaleDate, formatDateRange, SCRUM_EVENTS } from '@scrumooth/shared';
+import {
+  DAILY_SCRUM_ADJUSTMENT_ACTIONS,
+  formatLocaleDate,
+  formatDateRange,
+  formatStartMinute,
+  SCRUM_EVENTS,
+} from '@scrumooth/shared';
 
 import { apiService } from '../../services';
 import { useTeamStore, useAuthStore } from '../../store';
 import type {
+  AdaptationReflection,
   DailyScrum as DailyScrumRecord,
+  DailyScrumAdjustmentAction,
   DailyScrumBacklogAdjustmentInput,
   Impediment,
   ApiResponse,
@@ -115,6 +123,9 @@ export const DailyScrum: React.FC = () => {
     // The Developers choose the structure of the Daily Scrum (Scrum Guide).
     // The choice is part of the record so all team members can see it.
     focusMode: null as FocusMode | null,
+    // The two evidence options are exclusive: the record either carries adjustments or
+    // acknowledges that none were needed. Sending both together is refused by the API.
+    noAdaptationNeeded: false,
   });
   const [backlogAdjustments, setBacklogAdjustments] = useState<DailyScrumBacklogAdjustmentInput[]>(
     []
@@ -122,6 +133,8 @@ export const DailyScrum: React.FC = () => {
   const [failedSubmissionData, setFailedSubmissionData] = useState<typeof formData | null>(null);
   const [showRetryPrompt, setShowRetryPrompt] = useState(false);
   const [selectedBacklogItemId, setSelectedBacklogItemId] = useState('');
+  const [selectedBacklogActionType, setSelectedBacklogActionType] =
+    useState<DailyScrumAdjustmentAction>('REFINED');
   const [selectedBacklogAction, setSelectedBacklogAction] = useState('');
 
   const {
@@ -220,6 +233,13 @@ export const DailyScrum: React.FC = () => {
     return userRoleInCurrentTeam?.toLowerCase() === UserRole.DEVELOPERS;
   }, [userRoleInCurrentTeam]);
 
+  // The Scrum Master is accountable for ensuring the events take place, so only they are shown
+  // the prompt to record the team's standing commitment.
+  const isScrumMaster = useMemo(
+    () => userRoleInCurrentTeam?.toLowerCase() === UserRole.SCRUM_MASTER,
+    [userRoleInCurrentTeam]
+  );
+
   const { data: sprintData, isLoading: isSprintLoading } = useQuery({
     queryKey: queryKeys.sprint.activeSprint(teamId ?? ''),
     queryFn: () => apiService.getActiveSprint(teamId ?? ''),
@@ -257,6 +277,20 @@ export const DailyScrum: React.FC = () => {
 
   const participation = participationData?.data;
   const nonParticipants = participation?.nonParticipants ?? [];
+
+  // The team's standing commitment and the calendar-derived progress for the selected date.
+  // Composed server-side from the same calendar the Scrum Master dashboard counts with, so
+  // "Sprint day X of Y" here and the dashboard's expected count cannot disagree.
+  const { data: cadenceData } = useQuery({
+    queryKey: queryKeys.dailyScrum.cadence(sprint?.id ?? '', selectedDate),
+    queryFn: () => apiService.getDailyScrumCadence(sprint?.id ?? '', selectedDate),
+    enabled: !!sprint?.id,
+  });
+
+  const cadence = cadenceData?.data;
+  // Until the cadence loads there is no honest day number to show; the fallback keeps the
+  // layout stable without inventing a count.
+  const sprintProgress = cadence?.sprintProgress ?? { dayNumber: 0, totalDays: 0 };
 
   // Impediments raised in the current Sprint. The Daily Scrum surfaces these so
   // the Developers can inspect and adapt around the blockers they reported.
@@ -340,6 +374,10 @@ export const DailyScrum: React.FC = () => {
     void queryClient.invalidateQueries({
       queryKey: queryKeys.dailyScrum.participation(sprint.id, selectedDate),
     });
+    // Saving changes how many Daily Scrums the Sprint holds, so the cadence signal is stale too.
+    void queryClient.invalidateQueries({
+      queryKey: queryKeys.dailyScrum.cadence(sprint.id, selectedDate),
+    });
   }, [queryClient, sprint?.id, selectedDate]);
 
   const createScrumMutation = useMutation({
@@ -351,7 +389,13 @@ export const DailyScrum: React.FC = () => {
     onSuccess: () => {
       invalidateScrum();
       setShowScrumForm(false);
-      setFormData({ progressNotes: '', adaptationsNotes: '', planForNextDay: '', focusMode: null });
+      setFormData({
+        progressNotes: '',
+        adaptationsNotes: '',
+        planForNextDay: '',
+        focusMode: null,
+        noAdaptationNeeded: false,
+      });
       setBacklogAdjustments([]);
       setFailedSubmissionData(null);
       setShowRetryPrompt(false);
@@ -470,15 +514,23 @@ export const DailyScrum: React.FC = () => {
   });
 
   // The Daily Scrum must produce an actionable next-day plan (Scrum Guide).
-  // Progress and adaptations remain optional so the Developers choose their structure.
-  const canSubmitScrum = Boolean(formData.planForNextDay.trim());
+  // Progress notes remain optional so the Developers choose their structure, but the
+  // adaptation outcome has to be declared: either adjustments, or an explicit acknowledgement
+  // that none were needed. The API refuses a record that declares neither.
+  const hasAdaptationEvidence = formData.noAdaptationNeeded || backlogAdjustments.length > 0;
+  const canSubmitScrum = Boolean(formData.planForNextDay.trim()) && hasAdaptationEvidence;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!canSubmitScrum) {
       return;
     }
-    const payload = { ...formData, backlogAdjustments };
+    const payload = {
+      ...formData,
+      // The two declarations are mutually exclusive, so acknowledging that none was needed
+      // sends an empty list rather than leaving the previous rows behind.
+      backlogAdjustments: formData.noAdaptationNeeded ? [] : backlogAdjustments,
+    };
     if (dailyScrum) {
       updateScrumMutation.mutate(payload);
     } else {
@@ -589,7 +641,11 @@ export const DailyScrum: React.FC = () => {
     if (!selectedBacklogItemId || !selectedBacklogAction.trim()) return;
     setBacklogAdjustments((prev) => [
       ...prev,
-      { sprintBacklogItemId: selectedBacklogItemId, action: selectedBacklogAction },
+      {
+        sprintBacklogItemId: selectedBacklogItemId,
+        actionType: selectedBacklogActionType,
+        action: selectedBacklogAction,
+      },
     ]);
     setSelectedBacklogItemId('');
     setSelectedBacklogAction('');
@@ -602,7 +658,13 @@ export const DailyScrum: React.FC = () => {
       if (date === selectedDate) return;
       setSelectedDate(date);
       setShowScrumForm(false);
-      setFormData({ progressNotes: '', adaptationsNotes: '', planForNextDay: '', focusMode: null });
+      setFormData({
+        progressNotes: '',
+        adaptationsNotes: '',
+        planForNextDay: '',
+        focusMode: null,
+        noAdaptationNeeded: false,
+      });
       setBacklogAdjustments([]);
     },
     [selectedDate]
@@ -670,7 +732,7 @@ export const DailyScrum: React.FC = () => {
               {t('title')}
             </h1>
             <p className={styles['page-subtitle']}>
-              {t('subtitle', { sprintName: sprint.name, day: getSprintDay(sprint) })}
+              {t('subtitle', { sprintName: sprint.name, day: sprintProgress.dayNumber })}
             </p>
           </div>
           <div className={styles['header-right']}>
@@ -693,6 +755,70 @@ export const DailyScrum: React.FC = () => {
               </Button>
             )}
           </div>
+        </div>
+
+        {/* The standing commitment: "at the same time and place every working day". The strip
+            informs and evidences; it never blocks a record on a day the calendar does not
+            expect, because the Developers decide when it is worth meeting. */}
+        <div className={styles['cadence-strip']} data-testid="daily-scrum-cadence">
+          <div className={styles['cadence-item']}>
+            <span className={styles['cadence-icon']}>
+              <ClockIcon size={16} />
+            </span>
+            {cadence?.schedule ? (
+              <>
+                <span className={styles['cadence-value']}>
+                  {formatStartMinute(cadence.schedule.startMinute)} · {cadence.schedule.timezone}
+                </span>
+                {cadence.schedule.location && (
+                  <span className={styles['cadence-place']}>{cadence.schedule.location}</span>
+                )}
+                {cadence.schedule.locationUrl && (
+                  <a
+                    className={styles['cadence-link']}
+                    href={cadence.schedule.locationUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    {t('cadence.joinLink')}
+                  </a>
+                )}
+              </>
+            ) : (
+              <span className={styles['cadence-value-muted']}>{t('cadence.notConfigured')}</span>
+            )}
+          </div>
+
+          <span className={styles['cadence-day-pill']}>
+            {t('cadence.sprintDay', {
+              current: sprintProgress.dayNumber,
+              total: sprintProgress.totalDays,
+            })}
+          </span>
+
+          {cadence && (
+            <span className={styles['cadence-held']}>
+              {t('cadence.held', { held: cadence.held, expected: cadence.expected })}
+            </span>
+          )}
+
+          {cadence && !cadence.isWorkingDay && (
+            <span className={styles['cadence-non-working']} role="status">
+              {cadence.nonWorkingDayName
+                ? t('cadence.nonWorkingDayNamed', { name: cadence.nonWorkingDayName })
+                : t('cadence.nonWorkingDay')}
+            </span>
+          )}
+
+          {cadence && !cadence.schedule && isScrumMaster && (
+            <Link
+              className={styles['cadence-configure']}
+              to="/settings/daily-scrum-schedule"
+              state={{ from: 'daily-scrum' }}
+            >
+              {t('cadence.configure')}
+            </Link>
+          )}
         </div>
 
         <div className={styles['values-banner']}>
@@ -990,73 +1116,138 @@ export const DailyScrum: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Optional Sprint Backlog adaptation linkage (spec: R4) */}
-                  <div className={styles['form-group']}>
-                    <label>{t('form.backlogAdjustmentsLabel')}</label>
-                    <div className={styles['backlog-adjustment-row']}>
-                      <select
-                        value={selectedBacklogItemId}
-                        onChange={(e) => setSelectedBacklogItemId(e.target.value)}
-                        aria-label={t('form.backlogItemSelect')}
+                  {/* The adaptation outcome is required evidence (Scrum Guide: the purpose of
+                      the event is to adapt the Sprint Backlog). Declaring it is a choice
+                      between two options, never a punishment: "we adapted" or "nothing needed
+                      adapting". */}
+                  <fieldset className={styles['adaptation-evidence']}>
+                    <legend>{t('form.adaptationEvidenceLabel')}</legend>
+                    <div className={styles['evidence-options']}>
+                      <label
+                        className={`${styles['evidence-option']} ${
+                          !formData.noAdaptationNeeded ? styles['evidence-option-active'] : ''
+                        }`}
                       >
-                        <option value="">{t('form.backlogItemPlaceholder')}</option>
-                        {sprintBacklogItems.map((item) => (
-                          <option key={item.id} value={item.id}>
-                            {sprintBacklogItemTitle(item)}
-                          </option>
-                        ))}
-                      </select>
-                      <input
-                        type="text"
-                        value={selectedBacklogAction}
-                        onChange={(e) => setSelectedBacklogAction(e.target.value)}
-                        placeholder={t('form.backlogActionPlaceholder')}
-                        maxLength={500}
-                        aria-label={t('form.backlogActionLabel')}
-                      />
-                      <Button
-                        type="button"
-                        variant="secondary"
-                        onClick={handleAddBacklogAdjustment}
-                        disabled={!selectedBacklogItemId || !selectedBacklogAction.trim()}
+                        <input
+                          type="radio"
+                          name="adaptation-evidence"
+                          checked={!formData.noAdaptationNeeded}
+                          onChange={() => setFormData({ ...formData, noAdaptationNeeded: false })}
+                        />
+                        <span>{t('form.evidenceAdapted')}</span>
+                      </label>
+                      <label
+                        className={`${styles['evidence-option']} ${
+                          formData.noAdaptationNeeded ? styles['evidence-option-active'] : ''
+                        }`}
                       >
-                        <PlusIcon size={16} />
-                        {t('form.addAdjustment')}
-                      </Button>
+                        <input
+                          type="radio"
+                          name="adaptation-evidence"
+                          checked={formData.noAdaptationNeeded}
+                          onChange={() => {
+                            setFormData({ ...formData, noAdaptationNeeded: true });
+                            // The two declarations are exclusive, so acknowledging that none
+                            // was needed drops any rows already staged.
+                            setBacklogAdjustments([]);
+                          }}
+                        />
+                        <span>{t('form.evidenceNoAdaptation')}</span>
+                      </label>
                     </div>
-                    {backlogAdjustments.length > 0 && (
-                      <ul className={styles['backlog-adjustment-list']}>
-                        {backlogAdjustments.map((adj, index) => {
-                          const item = sprintBacklogItems.find(
-                            (i) => i.id === adj.sprintBacklogItemId
-                          );
-                          return (
-                            <li
-                              key={`${adj.sprintBacklogItemId}-${index}`}
-                              className={styles['backlog-adjustment-item']}
-                            >
-                              <span className={styles['backlog-item-name']}>
-                                {item ? sprintBacklogItemTitle(item) : adj.sprintBacklogItemId}
-                              </span>
-                              <span className={styles['backlog-action']}>{adj.action}</span>
-                              <button
-                                type="button"
-                                className={styles['remove-adjustment']}
-                                onClick={() =>
-                                  setBacklogAdjustments((prev) =>
-                                    prev.filter((_, i) => i !== index)
-                                  )
-                                }
-                                aria-label={t('form.removeAdjustment')}
-                              >
-                                <XIcon size={16} />
-                              </button>
-                            </li>
-                          );
-                        })}
-                      </ul>
+
+                    {formData.noAdaptationNeeded ? (
+                      <p className={styles['evidence-acknowledgement']}>
+                        {t('form.evidenceAcknowledged')}
+                      </p>
+                    ) : (
+                      <>
+                        <div className={styles['backlog-adjustment-row']}>
+                          <select
+                            value={selectedBacklogItemId}
+                            onChange={(e) => setSelectedBacklogItemId(e.target.value)}
+                            aria-label={t('form.backlogItemSelect')}
+                          >
+                            <option value="">{t('form.backlogItemPlaceholder')}</option>
+                            {sprintBacklogItems.map((item) => (
+                              <option key={item.id} value={item.id}>
+                                {sprintBacklogItemTitle(item)}
+                              </option>
+                            ))}
+                          </select>
+                          <select
+                            value={selectedBacklogActionType}
+                            onChange={(e) =>
+                              setSelectedBacklogActionType(
+                                e.target.value as DailyScrumAdjustmentAction
+                              )
+                            }
+                            aria-label={t('form.backlogActionTypeLabel')}
+                          >
+                            {DAILY_SCRUM_ADJUSTMENT_ACTIONS.map((action) => (
+                              <option key={action} value={action}>
+                                {t(`form.adjustmentActions.${action}` as never)}
+                              </option>
+                            ))}
+                          </select>
+                          <input
+                            type="text"
+                            value={selectedBacklogAction}
+                            onChange={(e) => setSelectedBacklogAction(e.target.value)}
+                            placeholder={t('form.backlogActionPlaceholder')}
+                            maxLength={500}
+                            aria-label={t('form.backlogActionLabel')}
+                          />
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            onClick={handleAddBacklogAdjustment}
+                            disabled={!selectedBacklogItemId || !selectedBacklogAction.trim()}
+                          >
+                            <PlusIcon size={16} />
+                            {t('form.addAdjustment')}
+                          </Button>
+                        </div>
+                        {backlogAdjustments.length === 0 ? (
+                          <p className={styles['evidence-hint']}>{t('form.evidenceAdaptedHint')}</p>
+                        ) : (
+                          <ul className={styles['backlog-adjustment-list']}>
+                            {backlogAdjustments.map((adj, index) => {
+                              const item = sprintBacklogItems.find(
+                                (i) => i.id === adj.sprintBacklogItemId
+                              );
+                              return (
+                                <li
+                                  key={`${adj.sprintBacklogItemId}-${index}`}
+                                  className={styles['backlog-adjustment-item']}
+                                >
+                                  <span className={styles['adjustment-action-type']}>
+                                    {t(`form.adjustmentActions.${adj.actionType}` as never)}
+                                  </span>
+                                  <span className={styles['backlog-item-name']}>
+                                    {item ? sprintBacklogItemTitle(item) : adj.sprintBacklogItemId}
+                                  </span>
+                                  <span className={styles['backlog-action']}>{adj.action}</span>
+                                  <button
+                                    type="button"
+                                    className={styles['remove-adjustment']}
+                                    onClick={() =>
+                                      setBacklogAdjustments((prev) =>
+                                        prev.filter((_, i) => i !== index)
+                                      )
+                                    }
+                                    aria-label={t('form.removeAdjustment')}
+                                  >
+                                    <XIcon size={16} />
+                                  </button>
+                                </li>
+                              );
+                            })}
+                          </ul>
+                        )}
+                      </>
                     )}
-                  </div>
+                  </fieldset>
 
                   <div className={styles['form-actions']}>
                     <div className={styles['draft-indicator']}>
@@ -1091,9 +1282,14 @@ export const DailyScrum: React.FC = () => {
                       </Button>
                     </div>
                   </div>
-                  {!canSubmitScrum && (
+                  {!formData.planForNextDay.trim() && (
                     <div className={styles['form-error-message']} role="alert">
                       {t('validation.planRequired')}
+                    </div>
+                  )}
+                  {!hasAdaptationEvidence && (
+                    <div className={styles['form-error-message']} role="alert">
+                      {t('validation.adaptationEvidenceRequired')}
                     </div>
                   )}
                 </form>
@@ -1105,18 +1301,33 @@ export const DailyScrum: React.FC = () => {
                 dailyScrum={dailyScrum}
                 impediments={sprintImpediments}
                 isDeveloper={isDeveloper}
+                currentSprintGoal={sprint.sprintGoal ?? null}
                 onEdit={() => {
                   setFormData({
                     progressNotes: dailyScrum.progressNotes ?? '',
                     adaptationsNotes: dailyScrum.adaptationsNotes ?? '',
                     planForNextDay: dailyScrum.planForNextDay ?? '',
                     focusMode: dailyScrum.focusMode ?? null,
+                    noAdaptationNeeded: dailyScrum.noAdaptationNeeded ?? false,
                   });
                   setBacklogAdjustments(
-                    dailyScrum.backlogAdjustments.map((a) => ({
-                      sprintBacklogItemId: a.sprintBacklogItemId,
-                      action: a.action,
-                    }))
+                    dailyScrum.backlogAdjustments
+                      // A declaration whose item left the Sprint Backlog has nothing left to
+                      // re-stage, so only live items come back into the form.
+                      .filter(
+                        (
+                          adjustment
+                        ): adjustment is typeof adjustment & {
+                          sprintBacklogItemId: string;
+                        } => adjustment.sprintBacklogItemId !== null
+                      )
+                      .map((adjustment) => ({
+                        sprintBacklogItemId: adjustment.sprintBacklogItemId,
+                        // A declaration recorded before the typed action existed cannot be
+                        // re-typed automatically, so it defaults to the least committal one.
+                        actionType: adjustment.actionType ?? 'REFINED',
+                        action: adjustment.action,
+                      }))
                   );
                   setShowScrumForm(true);
                 }}
@@ -1192,15 +1403,21 @@ export const DailyScrum: React.FC = () => {
               <div className={styles['sprint-days']}>
                 <span className={styles['days-label']}>
                   {t('sprintProgress.dayOfTotal', {
-                    current: getSprintDay(sprint),
-                    total: getTotalSprintDays(sprint),
+                    current: sprintProgress.dayNumber,
+                    total: sprintProgress.totalDays,
                   })}
                 </span>
                 <div className={styles['days-bar']}>
                   <div
                     className={styles['days-fill']}
                     style={{
-                      width: `${(getSprintDay(sprint) / getTotalSprintDays(sprint)) * 100}%`,
+                      // Counted on the team's own working days, so a holiday does not make the
+                      // bar jump two days at once.
+                      width: `${
+                        sprintProgress.totalDays > 0
+                          ? (sprintProgress.dayNumber / sprintProgress.totalDays) * 100
+                          : 0
+                      }%`,
                     }}
                   />
                 </div>
@@ -1347,6 +1564,8 @@ interface DailyScrumViewProps {
   dailyScrum: DailyScrumRecord;
   impediments: Impediment[];
   isDeveloper: boolean;
+  /** The Sprint Goal as it stands now, so the view can show when the two have diverged. */
+  currentSprintGoal: string | null;
   onEdit: () => void;
   onPromoteImpediment: () => void;
 }
@@ -1364,11 +1583,20 @@ const DailyScrumView: React.FC<DailyScrumViewProps> = ({
   dailyScrum,
   impediments,
   isDeveloper,
+  currentSprintGoal,
   onEdit,
   onPromoteImpediment,
 }) => {
   const { t } = useTranslation('daily-scrum');
   const navigate = useNavigate();
+
+  // The goal this record inspected, captured when it was created. Comparing it with the live
+  // goal is what lets the view say "the commitment was renegotiated after this Daily Scrum"
+  // instead of quietly showing a goal the event never examined.
+  const inspectedGoal = dailyScrum.sprintGoal ?? null;
+  const goalWasRenegotiated = Boolean(
+    inspectedGoal && currentSprintGoal && inspectedGoal !== currentSprintGoal
+  );
 
   return (
     <div className={styles['updates-list-card']}>
@@ -1388,6 +1616,25 @@ const DailyScrumView: React.FC<DailyScrumViewProps> = ({
               {t('editScrum')}
             </Button>
           </div>
+        )}
+      </div>
+
+      <div className={styles['inspected-goal']}>
+        <div className={styles['section-label']}>
+          <span className={styles['label-icon']}>
+            <TargetIcon size={12} />
+          </span>
+          {t('inspectedGoal.label')}
+        </div>
+        {inspectedGoal ? (
+          <p className={styles['inspected-goal-text']}>{inspectedGoal}</p>
+        ) : (
+          <p className={styles['inspected-goal-empty']}>{t('inspectedGoal.none')}</p>
+        )}
+        {goalWasRenegotiated && (
+          <p className={styles['inspected-goal-renegotiated']} role="status">
+            {t('inspectedGoal.renegotiated', { currentGoal: currentSprintGoal })}
+          </p>
         )}
       </div>
 
@@ -1500,13 +1747,33 @@ const DailyScrumView: React.FC<DailyScrumViewProps> = ({
             <ul className={styles['backlog-adjustment-list']}>
               {dailyScrum.backlogAdjustments.map((adj) => (
                 <li key={adj.id} className={styles['backlog-adjustment-item']}>
+                  <span className={styles['adjustment-action-type']}>
+                    {adj.actionType
+                      ? t(`form.adjustmentActions.${adj.actionType}` as never)
+                      : t('form.adjustmentActions.UNSPECIFIED')}
+                  </span>
                   <span className={styles['backlog-item-name']}>
-                    {adj.sprintBacklogItem?.pbi?.title ?? adj.sprintBacklogItemId}
+                    {adj.sprintBacklogItem?.pbi?.title ??
+                      adj.pbiTitleAtAdjustment ??
+                      adj.sprintBacklogItemId}
                   </span>
                   <span className={styles['backlog-action']}>{adj.action}</span>
+                  {adj.reflection && <ReflectionChip reflection={adj.reflection} />}
                 </li>
               ))}
             </ul>
+          </div>
+        )}
+
+        {dailyScrum.noAdaptationNeeded && (
+          <div className={styles['update-section']}>
+            <div className={styles['section-label']}>
+              <span className={styles['label-icon']}>
+                <CheckCircleIcon size={12} />
+              </span>
+              {t('inspectAdapt.adaptations')}
+            </div>
+            <p className={styles['evidence-acknowledgement']}>{t('inspectedGoal.noAdaptation')}</p>
           </div>
         )}
       </div>
@@ -1538,6 +1805,29 @@ const DailyScrumView: React.FC<DailyScrumViewProps> = ({
   );
 };
 
+/**
+ * Whether the Sprint Backlog has actually moved since a declaration.
+ *
+ * The verdict comes from the server, which compares the state stored with the declaration
+ * against the item's current state. It is shown rather than hidden because "we said we would
+ * adapt and have not yet" is exactly the kind of thing empirical process control wants visible.
+ */
+const ReflectionChip: React.FC<{ reflection: AdaptationReflection }> = ({ reflection }) => {
+  const { t } = useTranslation('daily-scrum');
+  const isReflected = reflection === 'REFLECTED';
+
+  return (
+    <span
+      className={`${styles['reflection-chip']} ${
+        isReflected ? styles['reflection-chip-reflected'] : styles['reflection-chip-pending']
+      }`}
+      role="status"
+    >
+      {isReflected ? t('reflection.reflected') : t('reflection.pending')}
+    </span>
+  );
+};
+
 // Maps the uppercase ImpedimentStatus enum to the lowercase i18n key used by
 // the `impedimentStatus.*` translation namespace (e.g. OPEN -> open).
 function impedimentStatusKey(status: ImpedimentStatus): string {
@@ -1553,42 +1843,6 @@ function impedimentStatusKey(status: ImpedimentStatus): string {
     default:
       return 'open';
   }
-}
-
-function countWeekdaysBetween(start: Date, end: Date): number {
-  let count = 0;
-  const current = new Date(start);
-  current.setHours(0, 0, 0, 0);
-  const endDate = new Date(end);
-  endDate.setHours(0, 0, 0, 0);
-
-  while (current <= endDate) {
-    const dayOfWeek = current.getDay();
-    if (dayOfWeek !== 0 && dayOfWeek !== 6) {
-      count++;
-    }
-    current.setDate(current.getDate() + 1);
-  }
-  return count;
-}
-
-function getSprintDay(sprint: { startDate: string; endDate: string }): number {
-  const start = new Date(sprint.startDate);
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  start.setHours(0, 0, 0, 0);
-
-  if (today < start) {
-    return 1;
-  }
-
-  return Math.max(1, countWeekdaysBetween(start, today));
-}
-
-function getTotalSprintDays(sprint: { startDate: string; endDate: string }): number {
-  const start = new Date(sprint.startDate);
-  const end = new Date(sprint.endDate);
-  return countWeekdaysBetween(start, end);
 }
 
 function formatLocalDate(d: Date): string {

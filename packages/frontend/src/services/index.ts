@@ -11,6 +11,7 @@ export { productBacklogService } from './domain/productBacklog.service';
 export { sprintService } from './domain/sprint.service';
 export { sprintBacklogService } from './domain/sprintBacklog.service';
 export { dailyScrumService } from './domain/dailyScrum.service';
+export { dailyScrumScheduleService } from './domain/dailyScrumSchedule.service';
 export { impedimentsService } from './domain/impediments.service';
 export { reportsService } from './domain/reports.service';
 export { productGoalsService } from './domain/productGoals.service';

@@ -26,11 +26,13 @@ describe('MockApiService', () => {
 
   describe('promoteImpedimentFromDailyScrum', () => {
     beforeEach(async () => {
-      // Ensure a Daily Scrum exists for today's date in the mock store.
+      // Ensure a Daily Scrum exists for today's date in the mock store. The record has to
+      // declare its adaptation outcome, exactly as the real API requires.
       const existing = await mockApiService.getDailyScrum(UUIDS.teams.alpha);
       if (!existing.data) {
         await mockApiService.createDailyScrum(UUIDS.teams.alpha, {
           progressNotes: 'Making steady progress toward the Sprint Goal',
+          noAdaptationNeeded: true,
         });
       }
     });

@@ -19,6 +19,15 @@
     "trackedAsFormalImpediment": "Als formales Impediment verfolgt",
     "viewMode": "Ansichtsmodus"
   },
+  "cadence": {
+    "configure": "Zeit und Ort des Daily Scrum erfassen",
+    "held": "{{held}} von {{expected}} Arbeitstagen erfasst",
+    "joinLink": "Am Meeting teilnehmen",
+    "nonWorkingDay": "Heute ist laut Teamkalender kein Arbeitstag. Das Team kann sich trotzdem treffen.",
+    "nonWorkingDayNamed": "{{name}} – kein Arbeitstag für dieses Team. Das Team kann sich trotzdem treffen.",
+    "notConfigured": "Noch keine feste Zeit und kein fester Ort erfasst",
+    "sprintDay": "Sprint-Tag {{current}} von {{total}}"
+  },
   "createImpediment": "Hindernis erstellen",
   "datePicker": {
     "ariaLabel": "Datum für tägliche Updates auswählen",
@@ -54,16 +63,30 @@
     "viewTitle": "Daily-Scrum-Fokus"
   },
   "form": {
+    "adaptationEvidenceLabel": "Was hat das Event zum Sprint Backlog ergeben?",
     "adaptationsHint": "Was müssen wir basierend auf unserem Fortschritt im Sprint-Backlog anpassen?",
     "adaptationsLabel": "Anpassungen (Sprint-Backlog)",
     "adaptationsPlaceholder": "Beschreiben Sie vereinbarte Änderungen am Sprint-Backlog...",
     "addAdjustment": "Hinzufügen",
+    "adjustmentActions": {
+      "ADDED": "Zum Sprint Backlog hinzugefügt",
+      "REFINED": "Verfeinert",
+      "REMOVED": "Aus dem Sprint Backlog entfernt",
+      "REPRIORITIZED": "Neu priorisiert",
+      "SPLIT": "Aufgeteilt",
+      "UNSPECIFIED": "Anpassung des Sprint Backlogs"
+    },
     "backlogActionLabel": "Anpassungsaktion",
     "backlogActionPlaceholder": "Was ist die Anpassung? (z. B. neu zugewiesen, markiert)",
+    "backlogActionTypeLabel": "Art der Anpassung",
     "backlogAdjustmentsLabel": "Sprint-Backlog-Anpassungen (optional)",
     "backlogItemPlaceholder": "Sprint-Backlog-Element auswählen...",
     "backlogItemSelect": "Sprint-Backlog-Element",
     "cancel": "Abbrechen",
+    "evidenceAcknowledged": "Erfasst: Die Developers waren der Auffassung, dass heute keine Anpassung des Sprint Backlogs nötig war.",
+    "evidenceAdapted": "Das Sprint Backlog wurde angepasst",
+    "evidenceAdaptedHint": "Füge mindestens eine Anpassung hinzu oder wähle „Heute war keine Anpassung nötig“.",
+    "evidenceNoAdaptation": "Heute war keine Anpassung nötig",
     "fieldHint": "Optional",
     "planHint": "Ein umsetzbarer Plan für den nächsten Arbeitstag, vereinbart von den Entwicklern.",
     "planLabel": "Plan für den nächsten Tag",
@@ -102,6 +125,12 @@
     "startTitle": "Heutiges Daily Scrum",
     "title": "Prüfen & Anpassen"
   },
+  "inspectedGoal": {
+    "label": "Im Daily Scrum inspiziertes Sprint-Ziel",
+    "noAdaptation": "Die Developers waren der Auffassung, dass keine Anpassung des Sprint Backlogs nötig war.",
+    "none": "Bei diesem Daily Scrum war kein Sprint-Ziel erfasst.",
+    "renegotiated": "Das Sprint-Ziel wurde nach diesem Daily Scrum neu verhandelt. Es lautet jetzt: {{currentGoal}}"
+  },
   "loading": {
     "actions": "Aktionen werden geladen...",
     "pageHeader": "Seitenkopf wird geladen...",
@@ -132,6 +161,10 @@
   "quickDates": {
     "today": "Heute",
     "yesterday": "Gestern"
+  },
+  "reflection": {
+    "pending": "Erklärt, noch nicht widerspiegelt",
+    "reflected": "Im Sprint Backlog widerspiegelt"
   },
   "retryPrompt": {
     "dismiss": "Schließen",
@@ -213,6 +246,7 @@
     "yesterday": "Gestern"
   },
   "validation": {
+    "adaptationEvidenceRequired": "Erkläre, ob das Sprint Backlog angepasst wurde, oder bestätige, dass keine Anpassung nötig war.",
     "descriptionRequired": "Beschreibung ist erforderlich",
     "descriptionTooShort": "Beschreibung muss mindestens 10 Zeichen haben",
     "planRequired": "Fügen Sie einen umsetzbaren Plan für den nächsten Tag hinzu, um das Daily Scrum zu speichern.",

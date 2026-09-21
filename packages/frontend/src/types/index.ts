@@ -22,6 +22,10 @@ import {
   type SprintChangeApprovalStatus,
   type SprintChangeDecision,
   type SprintGoalImpact,
+  type DailyScrumAdjustmentAction,
+  type AdaptationReflection,
+  type AdaptationReflectionBasis,
+  type WorkingDayCalendar,
 } from '@scrumooth/shared';
 
 export type {
@@ -42,6 +46,10 @@ export type {
   SprintChangeApprovalStatus,
   SprintChangeDecision,
   SprintGoalImpact,
+  DailyScrumAdjustmentAction,
+  AdaptationReflection,
+  AdaptationReflectionBasis,
+  WorkingDayCalendar,
 };
 
 // Enums are runtime values; re-export as values.
@@ -326,8 +334,24 @@ export interface Impediment {
 
 export interface DailyScrumBacklogAdjustment {
   id: string;
-  sprintBacklogItemId: string;
+  /**
+   * Null once the item has left the Sprint Backlog, which is exactly how a `REMOVED`
+   * declaration is fulfilled.
+   */
+  sprintBacklogItemId: string | null;
+  /** Denormalised target, kept so the declaration outlives the item it describes. */
+  pbiId?: string | null;
+  pbiTitleAtAdjustment?: string | null;
+  /** Null only on declarations recorded before the typed action existed. */
+  actionType?: DailyScrumAdjustmentAction | null;
   action: string;
+  /**
+   * Whether the Sprint Backlog has moved since the declaration. Computed by the server from the
+   * stored snapshot, never asserted by the client.
+   */
+  reflection?: AdaptationReflection;
+  /** The observation behind `reflection`, so the interface can explain the verdict. */
+  reflectionBasis?: AdaptationReflectionBasis;
   createdAt: string;
   sprintBacklogItem?: {
     id: string;
@@ -367,7 +391,13 @@ export interface DailyScrum {
   adaptationsNotes?: string | null;
   planForNextDay?: string | null;
   focusMode?: DailyScrumFocusMode | null;
+  /**
+   * The Sprint Goal as it stood when this record was created. Immutable: a later goal
+   * renegotiation must not rewrite what a past Daily Scrum appears to have inspected.
+   */
   sprintGoal?: string | null;
+  /** The Developers' explicit acknowledgement that no Sprint Backlog adaptation was needed. */
+  noAdaptationNeeded?: boolean;
   participants: DailyScrumParticipant[];
   backlogAdjustments: DailyScrumBacklogAdjustment[];
   createdAt: string;
@@ -382,7 +412,73 @@ export interface DailyScrumParticipation {
 
 export interface DailyScrumBacklogAdjustmentInput {
   sprintBacklogItemId: string;
+  /** How the item was adapted. Required: an untyped declaration cannot be checked. */
+  actionType: DailyScrumAdjustmentAction;
   action: string;
+}
+
+/**
+ * The team's standing Daily Scrum commitment: held "at the same time and place every working
+ * day". The event's length is the fixed 15-minute timebox, so only its start is configured.
+ */
+export interface DailyScrumSchedule {
+  id: string;
+  teamId: string;
+  /** IANA time zone the wall-clock `startMinute` is expressed in, e.g. `Europe/Berlin`. */
+  timezone: string;
+  /** Start of the event as minutes after local midnight (0-1439). */
+  startMinute: number;
+  /** The "same place": a room, or a link. Either may be omitted, but not both. */
+  location?: string | null;
+  locationUrl?: string | null;
+  /** ISO-8601 weekday numbers (1 = Monday .. 7 = Sunday) the team works. */
+  workingDays: number[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** The writable half of the team's Daily Scrum schedule. */
+export interface DailyScrumScheduleInput {
+  timezone: string;
+  startMinute: number;
+  location?: string | null;
+  locationUrl?: string | null;
+  workingDays: number[];
+}
+
+/** A dated exception to the weekly working pattern: a holiday, a day off, a team offsite. */
+export interface TeamNonWorkingDay {
+  id: string;
+  teamId: string;
+  /** Calendar date, `YYYY-MM-DD`. */
+  date: string;
+  name?: string | null;
+  createdAt: string;
+}
+
+/**
+ * Everything needed to describe the standing cadence for one date, composed server-side from the
+ * same calendar the Scrum Master dashboard counts with.
+ */
+export interface DailyScrumCadence {
+  /** Null until a Scrum Master records the team's commitment. */
+  schedule: DailyScrumSchedule | null;
+  calendar: WorkingDayCalendar;
+  /** The date this cadence describes, `YYYY-MM-DD`. */
+  date: string;
+  isWorkingDay: boolean;
+  /** Name of the exception covering the date, when one applies. */
+  nonWorkingDayName?: string | null;
+  sprintProgress: {
+    dayNumber: number;
+    totalDays: number;
+  };
+  /** Daily Scrum records the Sprint holds. */
+  held: number;
+  /** Working days the Sprint should hold, on the team's calendar. */
+  expected: number;
+  /** Expected working days carrying no record, in date order. */
+  missedDates: string[];
 }
 
 export interface DefinitionOfDone {

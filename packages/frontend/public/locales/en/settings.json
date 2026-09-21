@@ -20,6 +20,73 @@
       "nameRequired": "Team name is required"
     }
   },
+  "dailyScrumSchedule": {
+    "backToDailyScrum": "Back to Daily Scrum",
+    "cadence": {
+      "location": "Room or place",
+      "locationPlaceholder": "e.g. Meeting room 4",
+      "locationUrl": "Meeting link",
+      "nextMeeting": "Next Daily Scrum: {{date}} at {{time}} ({{timezone}})",
+      "noWorkingDays": "Select at least one working day to see when the team next meets.",
+      "placeHint": "Record a room, a link, or both. One of the two is required.",
+      "preview": "The event opens at {{time}} local time.",
+      "startTime": "Start time",
+      "timezone": "Time zone",
+      "timezoneHint": "The start time is wall-clock time in this zone.",
+      "title": "Time and place"
+    },
+    "exceptions": {
+      "add": "Add day",
+      "date": "Date",
+      "empty": "No exceptions recorded for this year. Add one only when a day differs from the weekly pattern above — a public holiday, a company day off, or a team offsite.",
+      "name": "Name",
+      "namePlaceholder": "e.g. Public holiday",
+      "removeLabel": "Remove the exception on {{date}}",
+      "title": "Non-working days in {{year}}",
+      "unnamed": "Non-working day"
+    },
+    "footnote": "The Daily Scrum is a 15-minute event, so only its start is configured. The team can still hold the event on any day; the calendar informs, it does not restrict.",
+    "loading": "Loading the team's Daily Scrum schedule...",
+    "readOnlyNote": "Only the Scrum Master can change this schedule. You are seeing the commitment the team is working to.",
+    "saveBar": {
+      "reset": "Reset",
+      "save": "Save schedule",
+      "saved": "No unsaved changes",
+      "unsaved": "Unsaved changes"
+    },
+    "subtitle": "The Daily Scrum is held at the same time and place every working day. Record that standing commitment here so the team — and its reports — work from the same calendar.",
+    "title": "Daily Scrum Schedule",
+    "toast": {
+      "exceptionAddFailed": "Could not record that day.",
+      "exceptionAdded": "Non-working day recorded.",
+      "exceptionRemoveFailed": "Could not remove that day.",
+      "exceptionRemoved": "Non-working day removed.",
+      "saveFailed": "Could not save the schedule.",
+      "saved": "Daily Scrum schedule saved."
+    },
+    "validation": {
+      "placeRequired": "Record a room, a meeting link, or both.",
+      "timeInvalid": "Enter a valid start time.",
+      "timezoneInvalid": "Choose a time zone the system recognises.",
+      "workingDayRequired": "Select at least one working day."
+    },
+    "weekdays": {
+      "friday": "Fri",
+      "monday": "Mon",
+      "saturday": "Sat",
+      "sunday": "Sun",
+      "thursday": "Thu",
+      "tuesday": "Tue",
+      "wednesday": "Wed"
+    },
+    "workingWeek": {
+      "legend": "Working days of the week",
+      "noneSelected": "No working days selected. The calendar has nothing to count.",
+      "summary_one": "The team works {{count}} day a week.",
+      "summary_other": "The team works {{count}} days a week.",
+      "title": "Working week"
+    }
+  },
   "definitionEditor": {
     "activeItems": "{{count}} active items",
     "activeItems_one": "{{count}} active item",

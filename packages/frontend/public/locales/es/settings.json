@@ -20,6 +20,73 @@
       "nameRequired": "El nombre del equipo es requerido"
     }
   },
+  "dailyScrumSchedule": {
+    "backToDailyScrum": "Volver al Daily Scrum",
+    "cadence": {
+      "location": "Sala o lugar",
+      "locationPlaceholder": "p. ej. Sala de reuniones 4",
+      "locationUrl": "Enlace de la reunión",
+      "nextMeeting": "Próximo Daily Scrum: {{date}} a las {{time}} ({{timezone}})",
+      "noWorkingDays": "Selecciona al menos un día laborable para ver cuándo se reúne el equipo la próxima vez.",
+      "placeHint": "Registra una sala, un enlace o ambos. Se requiere uno de los dos.",
+      "preview": "El evento comienza a las {{time}} hora local.",
+      "startTime": "Hora de inicio",
+      "timezone": "Zona horaria",
+      "timezoneHint": "La hora de inicio es la hora local de esta zona.",
+      "title": "Hora y lugar"
+    },
+    "exceptions": {
+      "add": "Añadir día",
+      "date": "Fecha",
+      "empty": "No hay excepciones registradas para este año. Añade una solo cuando un día difiera del patrón semanal anterior: un día festivo, un día libre de la empresa o una reunión fuera de la oficina.",
+      "name": "Nombre",
+      "namePlaceholder": "p. ej. Día festivo",
+      "removeLabel": "Eliminar la excepción del {{date}}",
+      "title": "Días no laborables en {{year}}",
+      "unnamed": "Día no laborable"
+    },
+    "footnote": "El Daily Scrum dura 15 minutos, por lo que solo se configura su inicio. El equipo puede celebrarlo cualquier día; el calendario informa, no restringe.",
+    "loading": "Cargando el horario del Daily Scrum del equipo…",
+    "readOnlyNote": "Solo el Scrum Master puede cambiar este horario. Estás viendo el compromiso con el que trabaja el equipo.",
+    "saveBar": {
+      "reset": "Restablecer",
+      "save": "Guardar horario",
+      "saved": "Sin cambios pendientes",
+      "unsaved": "Cambios sin guardar"
+    },
+    "subtitle": "El Daily Scrum se celebra a la misma hora y en el mismo lugar cada día laborable. Registra ese compromiso aquí para que el equipo —y sus informes— partan del mismo calendario.",
+    "title": "Horario del Daily Scrum",
+    "toast": {
+      "exceptionAddFailed": "No se pudo registrar ese día.",
+      "exceptionAdded": "Día no laborable registrado.",
+      "exceptionRemoveFailed": "No se pudo eliminar ese día.",
+      "exceptionRemoved": "Día no laborable eliminado.",
+      "saveFailed": "No se pudo guardar el horario.",
+      "saved": "Horario del Daily Scrum guardado."
+    },
+    "validation": {
+      "placeRequired": "Registra una sala, un enlace de reunión o ambos.",
+      "timeInvalid": "Introduce una hora de inicio válida.",
+      "timezoneInvalid": "Elige una zona horaria que el sistema reconozca.",
+      "workingDayRequired": "Selecciona al menos un día laborable."
+    },
+    "weekdays": {
+      "friday": "Vie",
+      "monday": "Lun",
+      "saturday": "Sáb",
+      "sunday": "Dom",
+      "thursday": "Jue",
+      "tuesday": "Mar",
+      "wednesday": "Mié"
+    },
+    "workingWeek": {
+      "legend": "Días laborables de la semana",
+      "noneSelected": "No hay días laborables seleccionados. El calendario no tiene nada que contar.",
+      "summary_one": "El equipo trabaja {{count}} día a la semana.",
+      "summary_other": "El equipo trabaja {{count}} días a la semana.",
+      "title": "Semana laboral"
+    }
+  },
   "definitionEditor": {
     "activeItems": "{{count}} elementos activos",
     "activeItems_one": "{{count}} elemento activos",

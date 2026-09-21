@@ -425,6 +425,95 @@ The database schema is organized into logical groups:
 | isActive    | Boolean | Default: true | Active status     |
 | order       | Int     | Required      | Display order     |
 
+## Daily Scrum Module
+
+The Daily Scrum module persists three things the 2020 Scrum Guide attaches to the event: the **standing commitment**, the **inspected baseline**, and the **adaptation evidence**.
+
+### 9. DailyScrum
+
+The team-level record of one Daily Scrum: one row per Sprint per date, jointly owned by the Developers.
+
+| Field              | Type    | Constraints           | Description                                                       |
+| ------------------ | ------- | --------------------- | ----------------------------------------------------------------- |
+| id                 | UUID    | PK                    | Unique identifier                                                 |
+| sprintId           | UUID    | FK → Sprint, required | Sprint the record belongs to                                      |
+| scrumDate          | Date    | Required              | The day the event was held                                        |
+| progressNotes      | String  | Optional              | Progress toward the Sprint Goal                                   |
+| adaptationsNotes   | String  | Optional              | Free-text adaptations note                                        |
+| planForNextDay     | String  | Optional              | The actionable plan for the next day                              |
+| focusMode          | String  | Optional              | The structure the Developers chose; validated at the API boundary |
+| sprintGoal         | String  | Optional              | **Snapshot** of the Sprint Goal at creation; never rewritten      |
+| noAdaptationNeeded | Boolean | Default: false        | Explicit acknowledgement that no adaptation was needed            |
+
+`sprintGoal` is the inspected baseline: it is written from the Sprint row when the record is created and is never touched by an update, so a later goal renegotiation cannot make a past Daily Scrum appear to have inspected a goal it never saw.
+
+`noAdaptationNeeded` and `backlogAdjustments` are two halves of one requirement — a record must carry at least one of them. See §9.1.
+
+- Unique constraint: `(sprintId, scrumDate)`
+- Indexes: `(sprintId, scrumDate)`, `(scrumDate)`
+
+### 9.1 DailyScrumBacklogItem
+
+A Sprint Backlog adaptation declared at a Daily Scrum.
+
+| Field                     | Type   | Constraints      | Description                                                           |
+| ------------------------- | ------ | ---------------- | --------------------------------------------------------------------- |
+| id                        | UUID   | PK               | Unique identifier                                                     |
+| dailyScrumId              | UUID   | FK → DailyScrum  | Owning record                                                         |
+| sprintBacklogItemId       | UUID   | FK, **nullable** | The declared target; `NULL` once the item has left the Sprint Backlog |
+| pbiId                     | UUID   | FK, nullable     | Denormalised target, so the declaration survives the item             |
+| pbiTitleAtAdjustment      | String | Optional         | The target's title at declaration time                                |
+| actionType                | Enum   | Optional         | `ADDED` / `REMOVED` / `REPRIORITIZED` / `REFINED` / `SPLIT`           |
+| action                    | String | Required         | The Developers' note explaining the adaptation                        |
+| pbiStatusAtAdjustment     | Enum   | Optional         | The target PBI's status at declaration time                           |
+| itemUpdatedAtAtAdjustment | Ts     | Optional         | The target item's `updatedAt` at declaration time                     |
+| pbiUpdatedAtAtAdjustment  | Ts     | Optional         | The target PBI's `updatedAt` at declaration time                      |
+
+Two properties carry the design:
+
+- **The FK is nullable with `ON DELETE SET NULL`.** Removing the item from the Sprint Backlog is exactly how a `REMOVED` declaration is fulfilled, so a cascading delete would destroy the evidence at the moment it came true. `pbiId` and `pbiTitleAtAdjustment` keep the declaration readable once the item is gone.
+- **The four snapshot columns are written by the server**, read from the affected item at declaration time. A client never supplies them, so a declaration cannot describe its own baseline.
+
+The **reflection verdict** ("reflected" / "declared, not yet reflected") is _computed on read_ by comparing the snapshot with the item's current state — it is deliberately not a column, because a stored verdict would be a snapshot of a moving thing and would go stale the first time someone acted on the adaptation.
+
+- Unique constraint: `(dailyScrumId, sprintBacklogItemId)`
+- Indexes: `(dailyScrumId)`, `(sprintBacklogItemId)`, `(pbiId)`
+
+### 9.2 DailyScrumSchedule
+
+The team's standing commitment: the Daily Scrum is held "at the same time and place every working day".
+
+| Field       | Type   | Constraints            | Description                                        |
+| ----------- | ------ | ---------------------- | -------------------------------------------------- |
+| id          | UUID   | PK                     | Unique identifier                                  |
+| teamId      | UUID   | FK → Team, **unique**  | One commitment per team                            |
+| timezone    | String | Default: `UTC`         | IANA zone `startMinute` is expressed in            |
+| startMinute | Int    | Required, 0-1439       | Start of the event as minutes after local midnight |
+| location    | String | Optional, max 200      | A room or other plain-text place                   |
+| locationUrl | String | Optional               | A meeting link (`http`/`https` allowlist)          |
+| workingDays | Int[]  | Default: `[1,2,3,4,5]` | ISO weekday numbers (1 = Monday) the team works    |
+
+**No duration is stored.** The Daily Scrum is a fixed 15-minute timebox that does not scale with Sprint length; only the start is configurable. At least one of `location` / `locationUrl` is required.
+
+### 9.3 TeamNonWorkingDay
+
+A dated exception to the weekly working pattern.
+
+| Field  | Type   | Constraints         | Description           |
+| ------ | ------ | ------------------- | --------------------- |
+| id     | UUID   | PK                  | Unique identifier     |
+| teamId | UUID   | FK → Team, required | Owning team           |
+| date   | Date   | Required            | The exception date    |
+| name   | String | Optional, max 120   | e.g. a public holiday |
+
+Only exceptions are stored; the weekly pattern on `DailyScrumSchedule` remains the default.
+
+- Unique constraint: `(teamId, date)` — the arbiter for two Scrum Masters recording the same holiday concurrently
+
+### Why the calendar lives in the shared package
+
+The working-day rules (`countWorkingDays`, `listWorkingDays`, `sprintWorkingDayProgress`, `isWorkingDay`) are pure functions in `@scrumooth/shared` rather than SQL or service code. Both the Daily Scrum page's "Sprint day X of Y" and the Scrum Master dashboard's expected-count are computed with the _same_ functions, so the number the Developers see cannot drift apart from the number their Scrum Master is shown. The calendar is also non-coercive by construction: it is read to explain, count and evidence, and it never gates a write.
+
 ## Relationships
 
 ### One-to-Many Relationships
@@ -435,9 +524,12 @@ User (1) ──► (N) Notification
 Team (1) ──► (N) TeamMember
 Team (1) ──► (N) ProductGoal
 Team (1) ──► (N) Sprint
+Team (1) ──► (N) TeamNonWorkingDay
 ProductGoal (1) ──► (N) ProductBacklogItem
 Sprint (1) ──► (N) Task
 Sprint (1) ──► (N) DailyScrum
+DailyScrum (1) ──► (N) DailyScrumParticipant
+DailyScrum (1) ──► (N) DailyScrumBacklogItem
 ```
 
 ### Many-to-Many Relationships
@@ -455,6 +547,7 @@ Sprint (N) ◄──► (N) ProductBacklogItem
 ```
 Team (1) ──► (1) DefinitionOfDone
 Team (1) ──► (1) DefinitionOfReady
+Team (1) ──► (1) DailyScrumSchedule
 Sprint (1) ──► (1) SprintRetrospective
 Sprint (1) ──► (1) SprintReview
 ```
@@ -624,6 +717,9 @@ prisma/
 3. **Index Creation**: Create indexes concurrently in production
 4. **Testing**: Test migrations on staging before production
 5. **Backup**: Always backup before production migrations
+6. **Enum before column**: `CREATE TYPE "X" AS ENUM (...)` must precede any `ALTER TABLE ... ADD COLUMN` that uses it, and the values must appear in the same order as the Prisma enum so the generated SQL stays drift-free. Verify with `prisma migrate diff --from-migrations prisma/migrations --to-schema prisma/schema.prisma`.
+7. **Widening an existing constraint is a drop-and-recreate**: changing a foreign key to `ON DELETE SET NULL` — or making a `NOT NULL` column nullable — requires `ALTER TABLE ... DROP CONSTRAINT` followed by `ALTER TABLE ... ADD CONSTRAINT`, plus `ALTER COLUMN ... DROP NOT NULL`. Do both in one migration so the schema and the database never disagree mid-deploy.
+8. **Say why a constraint is what it is**: a constraint that looks like an oversight (a nullable FK where a NOT NULL one "should" be, a `SET NULL` where the rest of the table cascades) is a decision. Comment it in the migration, or the next reader will "fix" it back.
 
 ### Example Migration
 
@@ -657,7 +753,7 @@ CREATE INDEX "idx_notification_preferences_user" ON "notification_preferences"("
 
 ---
 
-**Last Updated**: 2026-05-10
+**Last Updated**: 2026-09-21
 
 **Related Documentation**:
 

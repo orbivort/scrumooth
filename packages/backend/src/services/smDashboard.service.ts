@@ -3,7 +3,21 @@
 // Sprint Goal achievement, and retrospective action item completion for the SM role.
 import prisma from '../utils/prisma';
 import { teamHealthCheckService } from './teamHealthCheck.service';
-import { IMPEDIMENT_PRIORITIES, timeboxFor, type ScrumEvent } from '@scrumooth/shared';
+import {
+  IMPEDIMENT_PRIORITIES,
+  evaluateAdaptationReflection,
+  isDailyScrumAdjustmentAction,
+  listWorkingDays,
+  timeboxFor,
+  toIsoDate,
+  type AdaptationReflection,
+  type ScrumEvent,
+} from '@scrumooth/shared';
+import {
+  dailyScrumScheduleService,
+  resolveCadenceWindow,
+  toLocalIsoDate,
+} from './dailyScrumSchedule.service';
 
 /**
  * Sort key for an impediment's declared impact. The enum's declaration order is meaningful
@@ -33,10 +47,47 @@ const getTimeboxSeconds = (eventType: string, durationDays: number): number => {
   return timeboxFor(eventType as ScrumEvent, weeks);
 };
 
+/**
+ * The realised state of one declared Sprint Backlog adjustment.
+ *
+ * Evaluated through the same shared rule the Daily Scrum page uses, so the chip the Developers
+ * see on the record and the count the Scrum Master reads here can never disagree.
+ */
+const evaluateStoredAdjustment = (adjustment: {
+  actionType: string | null;
+  pbiStatusAtAdjustment: string | null;
+  itemUpdatedAtAtAdjustment: Date | null;
+  pbiUpdatedAtAtAdjustment: Date | null;
+  sprintBacklogItem: { updatedAt: Date; pbi: { status: string; updatedAt: Date } } | null;
+  pbi: { status: string; updatedAt: Date } | null;
+}): AdaptationReflection => {
+  // The item's own view of its PBI is authoritative while the item exists; the denormalised
+  // relation is what remains once it has left the Sprint Backlog.
+  const pbi = adjustment.sprintBacklogItem?.pbi ?? adjustment.pbi ?? null;
+
+  return evaluateAdaptationReflection(
+    {
+      actionType: isDailyScrumAdjustmentAction(adjustment.actionType)
+        ? adjustment.actionType
+        : null,
+      pbiStatusAtAdjustment: adjustment.pbiStatusAtAdjustment,
+      itemUpdatedAtAtAdjustment: adjustment.itemUpdatedAtAtAdjustment?.toISOString() ?? null,
+      pbiUpdatedAtAtAdjustment: adjustment.pbiUpdatedAtAtAdjustment?.toISOString() ?? null,
+    },
+    {
+      itemPresentInSprintBacklog: adjustment.sprintBacklogItem !== null,
+      pbiStatus: pbi?.status ?? null,
+      itemUpdatedAt: adjustment.sprintBacklogItem?.updatedAt.toISOString() ?? null,
+      pbiUpdatedAt: pbi?.updatedAt.toISOString() ?? null,
+    }
+  ).reflection;
+};
+
 export const smDashboardService = {
   /**
-   * Event compliance for the last N Sprints: whether each event was completed,
-   * daily scrum counts, and timebox adherence (based on Sprint duration).
+   * Event compliance for the last N Sprints: whether each event was completed, Daily Scrum
+   * counts against the team's own working-day calendar, adaptation follow-through, and timebox
+   * adherence (based on Sprint duration).
    */
   async getEventCompliance(teamId: string, sprintCount = 5) {
     const sprints = await prisma.sprint.findMany({
@@ -44,7 +95,28 @@ export const smDashboardService = {
       include: {
         sprintReview: { select: { id: true } },
         retrospective: { select: { id: true } },
-        dailyScrums: { select: { id: true } },
+        dailyScrums: {
+          select: {
+            scrumDate: true,
+            // The declared adaptation plus the state it will be judged against, so the rollup
+            // costs no extra round trip per Daily Scrum.
+            backlogAdjustments: {
+              select: {
+                actionType: true,
+                pbiStatusAtAdjustment: true,
+                itemUpdatedAtAtAdjustment: true,
+                pbiUpdatedAtAtAdjustment: true,
+                sprintBacklogItem: {
+                  select: {
+                    updatedAt: true,
+                    pbi: { select: { status: true, updatedAt: true } },
+                  },
+                },
+                pbi: { select: { status: true, updatedAt: true } },
+              },
+            },
+          },
+        },
         generatedSprint: { select: { sprintNumber: true } },
         timeboxes: {
           select: {
@@ -57,9 +129,16 @@ export const smDashboardService = {
       take: sprintCount,
     });
 
+    // One calendar for the whole sweep. It is the same calendar the Daily Scrum page counts
+    // with, so a Sprint's expected number cannot differ between the page and this report.
+    const { calendar } = await dailyScrumScheduleService.resolveCalendar(
+      teamId,
+      resolveCadenceWindow(sprints.flatMap((sprint) => [sprint.startDate, sprint.endDate]))
+    );
+
     const config = await prisma.sprintConfiguration.findUnique({ where: { teamId } });
     const durationDays = config ? (DURATION_DAYS[config.duration] ?? 14) : 14;
-    const expectedDailyScrums = Math.max(Math.floor(durationDays / 7) * 5, 1);
+    const today = toLocalIsoDate(new Date());
 
     return sprints.map((sprint) => {
       // A timebox is considered exceeded if any concluded event ran past its
@@ -73,6 +152,24 @@ export const smDashboardService = {
         return tb.concludedElapsedMs / 1000 > capSeconds;
       });
 
+      // The Guide's "every working day" counted on the team's own calendar. The previous
+      // "Sprint weeks multiplied by five" overstated a Sprint containing a holiday.
+      const expectedDates = listWorkingDays(sprint.startDate, sprint.endDate, calendar);
+      const recordedDates = new Set(
+        sprint.dailyScrums
+          .map((record) => toIsoDate(record.scrumDate))
+          .filter((iso): iso is string => iso !== null)
+      );
+      // Only days that have already happened can have been missed; a Sprint still running has
+      // not failed to hold tomorrow's Daily Scrum.
+      const dueDates = expectedDates.filter((date) => date <= today);
+      const missedDates = dueDates.filter((date) => !recordedDates.has(date));
+
+      const verdicts = sprint.dailyScrums.flatMap((record) =>
+        record.backlogAdjustments.map(evaluateStoredAdjustment)
+      );
+      const adaptationReflected = verdicts.filter((verdict) => verdict === 'REFLECTED').length;
+
       return {
         sprintId: sprint.id,
         sprintName: sprint.name,
@@ -80,9 +177,16 @@ export const smDashboardService = {
         sprintPlanningCompleted: sprint.status !== 'PLANNED',
         sprintReviewCompleted: Boolean(sprint.sprintReview),
         retrospectiveCompleted: Boolean(sprint.retrospective),
+        // Every record counts, including one held on a day the calendar did not expect: the
+        // Developers may meet whenever they judge it useful.
         dailyScrumHeld: sprint.dailyScrums.length,
-        dailyScrumExpected:
-          sprint.status === 'COMPLETED' ? expectedDailyScrums : sprint.dailyScrums.length,
+        dailyScrumExpected: expectedDates.length,
+        dailyScrumDue: dueDates.length,
+        dailyScrumMissedDates: missedDates,
+        dailyScrumOnSchedule: sprint.status === 'COMPLETED' ? missedDates.length === 0 : undefined,
+        adaptationDeclared: verdicts.length,
+        adaptationReflected,
+        adaptationPending: verdicts.length - adaptationReflected,
         timeboxExceeded,
       };
     });

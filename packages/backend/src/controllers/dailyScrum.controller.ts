@@ -25,6 +25,17 @@ export const getDailyScrums = asyncHandler(async (req: Request, res: Response) =
   res.json(createSuccessResponse(dailyScrums));
 });
 
+export const getCadence = asyncHandler(async (req: Request, res: Response) => {
+  const sprintId = getParamValue(req.params.sprintId);
+  if (!sprintId) {
+    throw new BadRequestError('Sprint ID is required');
+  }
+  const { date } = req.query;
+
+  const cadence = await dailyScrumService.getCadence(sprintId, date as string | undefined);
+  res.json(createSuccessResponse(cadence));
+});
+
 export const getDailyScrumById = asyncHandler(async (req: Request, res: Response) => {
   const id = getParamValue(req.params.id);
   if (!id) {
@@ -57,6 +68,7 @@ export const createDailyScrum = asyncHandler(async (req: Request, res: Response)
     focusMode,
     backlogAdjustments,
     scrumDate,
+    noAdaptationNeeded,
   } = req.body;
 
   const dailyScrum = await dailyScrumService.createDailyScrum(userId, {
@@ -66,6 +78,7 @@ export const createDailyScrum = asyncHandler(async (req: Request, res: Response)
     adaptationsNotes,
     planForNextDay,
     focusMode,
+    noAdaptationNeeded,
     backlogAdjustments,
   });
 
@@ -82,14 +95,21 @@ export const updateDailyScrum = asyncHandler(async (req: Request, res: Response)
   if (!id) {
     throw new BadRequestError('Daily Scrum ID is required');
   }
-  const { progressNotes, adaptationsNotes, planForNextDay, focusMode, backlogAdjustments } =
-    req.body;
+  const {
+    progressNotes,
+    adaptationsNotes,
+    planForNextDay,
+    focusMode,
+    backlogAdjustments,
+    noAdaptationNeeded,
+  } = req.body;
 
   const dailyScrum = await dailyScrumService.updateDailyScrum(id, userId, {
     progressNotes,
     adaptationsNotes,
     planForNextDay,
     focusMode,
+    noAdaptationNeeded,
     backlogAdjustments,
   });
 

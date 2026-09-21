@@ -21,8 +21,23 @@
     "termsRequired": "Sie müssen die Richtlinie zur zulässigen Nutzung und die Datenschutzrichtlinie des Unternehmens akzeptieren"
   },
   "dailyScrum": {
+    "adaptationExclusive": "Ein Daily Scrum kann nicht zugleich Anpassungen auflisten und erklären, dass keine nötig war.",
+    "adaptationRequired": "Ein Daily Scrum muss sein Ergebnis zur Anpassung des Sprint Backlogs festhalten: mindestens eine Anpassung oder die ausdrückliche Bestätigung, dass keine nötig war.",
+    "adjustmentItemNotInSprint": "Eine Anpassung kann nur auf ein Element im Sprint Backlog dieses Sprints verweisen.",
     "developersOnly": "Das Daily Scrum ist ein Ereignis für die Entwickler. Nur Entwickler können das Daily Scrum erfassen oder bearbeiten.",
     "planRequired": "Für das Daily Scrum ist ein umsetzbarer Plan für den nächsten Tag erforderlich."
+  },
+  "dailyScrumSchedule": {
+    "dateDuplicate": "Dieser Tag ist bereits als Nicht-Arbeitstag erfasst.",
+    "dateInvalid": "Gib ein gültiges Datum im Format JJJJ-MM-TT ein.",
+    "locationUrlInvalid": "Der Meeting-Link muss eine gültige http- oder https-Adresse sein.",
+    "nameTooLong": "Die Bezeichnung darf höchstens 120 Zeichen lang sein.",
+    "placeRequired": "Erfasse einen Raum, einen Meeting-Link oder beides.",
+    "placeTooLong": "Der Ort darf höchstens 200 Zeichen lang sein.",
+    "startMinuteInvalid": "Die Startzeit muss zwischen 00:00 und 23:59 liegen.",
+    "timezoneInvalid": "Wähle eine Zeitzone, die das System kennt.",
+    "windowTooWide": "Der angefragte Zeitraum ist zu groß; höchstens ein Jahr ist zulässig.",
+    "workingDaysInvalid": "Wähle mindestens einen gültigen Arbeitstag (Montag bis Sonntag)."
   },
   "fieldRequired": "Dieses Feld ist erforderlich",
   "fieldTooLong": "Dieses Feld ist zu lang",

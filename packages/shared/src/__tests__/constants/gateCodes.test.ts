@@ -10,8 +10,8 @@ import {
 } from '../../constants/gateCodes.js';
 
 describe('gateCodes', () => {
-  it('should define twenty-seven gates', () => {
-    expect(GATE_CODE_LIST).toHaveLength(27);
+  it('should define thirty gates', () => {
+    expect(GATE_CODE_LIST).toHaveLength(30);
   });
 
   it('should prefix every gate code with GATE_', () => {
@@ -50,6 +50,14 @@ describe('gateCodes', () => {
     );
     expect(GATE_DEFINITIONS[GATE_CODES.CAPACITY_EXCEEDED].httpStatus).toBe(400);
     expect(GATE_DEFINITIONS[GATE_CODES.CAPACITY_EXCEEDED].i18nKey).toBe('capacityExceeded');
+  });
+
+  it('should refuse an unevidenced Daily Scrum adaptation with HTTP 400', () => {
+    expect(isGateCode(GATE_CODES.DAILY_SCRUM_ADAPTATION_REQUIRED)).toBe(true);
+    expect(GATE_DEFINITIONS[GATE_CODES.DAILY_SCRUM_ADAPTATION_REQUIRED].httpStatus).toBe(400);
+    expect(GATE_DEFINITIONS[GATE_CODES.DAILY_SCRUM_ADAPTATION_REQUIRED].i18nKey).toBe(
+      'dailyScrumAdaptationRequired'
+    );
   });
 
   it('should identify the Sprint container, membership and goal gates', () => {

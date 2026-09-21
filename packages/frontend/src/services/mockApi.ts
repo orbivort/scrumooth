@@ -2,7 +2,14 @@
 // This service returns mock data instead of making real API calls
 
 import i18n from 'i18next';
-import { timeboxFor, type ScrumEvent } from '@scrumooth/shared';
+import {
+  isWorkingDay,
+  listWorkingDays,
+  normalizeWorkingDays,
+  sprintWorkingDayProgress,
+  timeboxFor,
+  type ScrumEvent,
+} from '@scrumooth/shared';
 
 import {
   RetrospectiveCategory,
@@ -29,7 +36,12 @@ import {
   type Task,
   type Impediment,
   type DailyScrum,
+  type DailyScrumCadence,
   type DailyScrumParticipant,
+  type DailyScrumSchedule,
+  type DailyScrumScheduleInput,
+  type TeamNonWorkingDay,
+  type WorkingDayCalendar,
   type ProductGoal,
   type SprintConfiguration,
   type SprintDuration,
@@ -1495,16 +1507,61 @@ class MockApiService {
       focusMode: 'goal',
       sprintGoal:
         'Complete daily Scrum and impediment tracking features to improve team collaboration',
+      noAdaptationNeeded: false,
       participants: mockUsers.slice(0, 4).map((u) => ({
         id: `sp-seed-${u.id}`,
         userId: u.id,
         user: u,
       })) as DailyScrumParticipant[],
-      backlogAdjustments: [],
+      backlogAdjustments: [
+        {
+          id: 'adj-seed-1',
+          sprintBacklogItemId: 'sbi-sprint-3-pbi-008',
+          pbiId: 'pbi-008',
+          pbiTitleAtAdjustment: 'Impediment tracking',
+          actionType: 'REFINED',
+          action:
+            'Split the impediment workflow so create and assign can be demonstrated separately at the review.',
+          reflection: 'REFLECTED',
+          reflectionBasis: 'ITEM_UPDATED',
+          createdAt: `${MockApiService.SCRUM_SEED_DATE}T09:16:00.000Z`,
+          sprintBacklogItem: {
+            id: 'sbi-sprint-3-pbi-008',
+            pbiId: 'pbi-008',
+            pbi: { id: 'pbi-008', title: 'Impediment tracking' },
+          },
+        },
+      ],
       createdAt: `${MockApiService.SCRUM_SEED_DATE}T09:15:00.000Z`,
       updatedAt: `${MockApiService.SCRUM_SEED_DATE}T09:18:00.000Z`,
     },
   ];
+
+  /**
+   * The standing commitment the mock reports. Kept in memory so the Settings page round-trips
+   * like the real API, and seeded so the Daily Scrum cadence strip has something to show.
+   */
+  private dailyScrumSchedule: DailyScrumSchedule = {
+    id: 'schedule-seed-active',
+    teamId: 'team-alpha',
+    timezone: 'Europe/Berlin',
+    startMinute: 570,
+    location: 'Room 4',
+    locationUrl: null,
+    workingDays: [1, 2, 3, 4, 5],
+    createdAt: '2026-08-03T08:00:00.000Z',
+    updatedAt: '2026-08-03T08:00:00.000Z',
+  };
+
+  private dailyScrumNonWorkingDays: TeamNonWorkingDay[] = [];
+
+  /** The calendar the mock counts with, mirroring `normalizeCalendar` on the server. */
+  private mockCalendar(): WorkingDayCalendar {
+    return {
+      workingDays: normalizeWorkingDays(this.dailyScrumSchedule.workingDays),
+      nonWorkingDays: this.dailyScrumNonWorkingDays.map((exception) => exception.date),
+    };
+  }
 
   // The mock deliberately returns the seeded Inspect & Adapt record for a sprint
   // regardless of the requested date. This keeps the same realistic data visible
@@ -1546,6 +1603,21 @@ class MockApiService {
       };
     }
 
+    const sprintGoal = mockSprints.find((sprint) => sprint.id === sprintId)?.sprintGoal ?? null;
+    const adjustments = scrum.backlogAdjustments ?? [];
+    const noAdaptationNeeded = scrum.noAdaptationNeeded === true;
+
+    // Mirror the server's evidence rule so the mock cannot accept a record the real API refuses.
+    if (!noAdaptationNeeded && adjustments.length === 0) {
+      return {
+        success: false,
+        error: {
+          code: 'GATE_DAILY_SCRUM_ADAPTATION_REQUIRED',
+          message: 'An actionable plan and an adaptation outcome are required.',
+        },
+      };
+    }
+
     const newScrum: DailyScrum = {
       id: `scrum-${Date.now()}`,
       sprintId,
@@ -1554,6 +1626,9 @@ class MockApiService {
       adaptationsNotes: scrum.adaptationsNotes,
       planForNextDay: scrum.planForNextDay,
       focusMode: scrum.focusMode ?? null,
+      // Snapshotted from the Sprint, exactly as the service does: the caller cannot supply it.
+      sprintGoal,
+      noAdaptationNeeded,
       participants: [
         {
           id: `sp-${Date.now()}`,
@@ -1561,7 +1636,16 @@ class MockApiService {
           user: currentUser,
         },
       ],
-      backlogAdjustments: scrum.backlogAdjustments ?? [],
+      backlogAdjustments: adjustments.map((adjustment, position) => ({
+        id: `adj-${Date.now()}-${position}`,
+        sprintBacklogItemId: adjustment.sprintBacklogItemId,
+        actionType: adjustment.actionType,
+        action: adjustment.action,
+        // A freshly declared adjustment has not been acted on yet.
+        reflection: 'PENDING_REFLECTION' as const,
+        reflectionBasis: 'NO_CHANGE_OBSERVED' as const,
+        createdAt: new Date().toISOString(),
+      })),
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
@@ -1582,13 +1666,36 @@ class MockApiService {
     }
 
     const current = this.dynamicDailyScrums[index] as DailyScrum;
+    const nextNoAdaptationNeeded = scrum.noAdaptationNeeded ?? Boolean(current.noAdaptationNeeded);
+    const nextAdjustments = scrum.backlogAdjustments ?? current.backlogAdjustments;
+
+    if (!nextNoAdaptationNeeded && nextAdjustments.length === 0) {
+      return {
+        success: false,
+        error: {
+          code: 'GATE_DAILY_SCRUM_ADAPTATION_REQUIRED',
+          message: 'An adaptation outcome is required for the Daily Scrum.',
+        },
+      };
+    }
+    if (nextNoAdaptationNeeded && nextAdjustments.length > 0) {
+      return {
+        success: false,
+        error: {
+          code: 'BAD_REQUEST',
+          message: 'A Daily Scrum cannot have adaptations and declare none was needed.',
+        },
+      };
+    }
+
     const updated: DailyScrum = {
       ...current,
       progressNotes: scrum.progressNotes ?? current.progressNotes,
       adaptationsNotes: scrum.adaptationsNotes ?? current.adaptationsNotes,
       planForNextDay: scrum.planForNextDay ?? current.planForNextDay,
       focusMode: scrum.focusMode === undefined ? current.focusMode : scrum.focusMode,
-      backlogAdjustments: scrum.backlogAdjustments ?? current.backlogAdjustments,
+      noAdaptationNeeded: nextNoAdaptationNeeded,
+      backlogAdjustments: nextAdjustments,
       updatedAt: new Date().toISOString(),
     };
     this.dynamicDailyScrums[index] = updated;
@@ -1654,6 +1761,135 @@ class MockApiService {
         nonParticipants,
       },
     };
+  }
+
+  /**
+   * The standing cadence for a date, derived from the same shared calendar helpers the backend
+   * uses so the mock cannot disagree with production about what a Sprint expected.
+   */
+  async getDailyScrumCadence(
+    sprintId: string,
+    date?: string
+  ): Promise<ApiResponse<DailyScrumCadence>> {
+    await delay(250);
+
+    const sprint = mockSprints.find((s) => s.id === sprintId);
+    if (!sprint) {
+      return { success: false, error: { code: 'NOT_FOUND', message: 'Sprint not found' } };
+    }
+
+    const calendar = this.mockCalendar();
+    const reference = date ?? formatLocalDate();
+    const expectedDates = listWorkingDays(sprint.startDate, sprint.endDate, calendar);
+    const recordedDates = new Set(
+      this.dynamicDailyScrums.filter((s) => s.sprintId === sprintId).map((s) => s.scrumDate)
+    );
+    const today = formatLocalDate();
+
+    return {
+      success: true,
+      data: {
+        schedule: this.dailyScrumSchedule,
+        calendar,
+        date: reference,
+        isWorkingDay: isWorkingDay(reference, calendar),
+        nonWorkingDayName:
+          this.dailyScrumNonWorkingDays.find((exception) => exception.date === reference)?.name ??
+          null,
+        sprintProgress: sprintWorkingDayProgress(
+          sprint.startDate,
+          sprint.endDate,
+          reference,
+          calendar
+        ),
+        held: recordedDates.size,
+        expected: expectedDates.length,
+        missedDates: expectedDates.filter(
+          (expectedDate) => !recordedDates.has(expectedDate) && expectedDate <= today
+        ),
+      },
+    };
+  }
+
+  async getDailyScrumSchedule(_teamId: string): Promise<ApiResponse<DailyScrumSchedule | null>> {
+    await delay(250);
+    return { success: true, data: this.dailyScrumSchedule };
+  }
+
+  async saveDailyScrumSchedule(
+    _teamId: string,
+    schedule: DailyScrumScheduleInput
+  ): Promise<ApiResponse<DailyScrumSchedule>> {
+    await delay(300);
+
+    if (!schedule.location?.trim() && !schedule.locationUrl?.trim()) {
+      return {
+        success: false,
+        error: { code: 'BAD_REQUEST', message: 'A room or a meeting link is required' },
+      };
+    }
+
+    this.dailyScrumSchedule = {
+      ...this.dailyScrumSchedule,
+      timezone: schedule.timezone,
+      startMinute: schedule.startMinute,
+      location: schedule.location ?? null,
+      locationUrl: schedule.locationUrl ?? null,
+      workingDays: normalizeWorkingDays(schedule.workingDays),
+      updatedAt: new Date().toISOString(),
+    };
+    return { success: true, data: this.dailyScrumSchedule };
+  }
+
+  async getDailyScrumNonWorkingDays(
+    _teamId: string,
+    params: {
+      from: string;
+      to: string;
+    }
+  ): Promise<ApiResponse<TeamNonWorkingDay[]>> {
+    await delay(200);
+    return {
+      success: true,
+      data: this.dailyScrumNonWorkingDays
+        .filter((exception) => exception.date >= params.from && exception.date <= params.to)
+        .sort((a, b) => a.date.localeCompare(b.date)),
+    };
+  }
+
+  async addDailyScrumNonWorkingDay(
+    _teamId: string,
+    exception: {
+      date: string;
+      name?: string | null;
+    }
+  ): Promise<ApiResponse<TeamNonWorkingDay>> {
+    await delay(300);
+
+    if (this.dailyScrumNonWorkingDays.some((recorded) => recorded.date === exception.date)) {
+      return {
+        success: false,
+        error: { code: 'CONFLICT', message: 'That day is already recorded as non-working' },
+      };
+    }
+
+    const created: TeamNonWorkingDay = {
+      id: `nwd-${Date.now()}`,
+      teamId: this.dailyScrumSchedule.teamId,
+      date: exception.date,
+      name: exception.name ?? null,
+      createdAt: new Date().toISOString(),
+    };
+    this.dailyScrumNonWorkingDays.push(created);
+    return { success: true, data: created };
+  }
+
+  async deleteDailyScrumNonWorkingDay(_teamId: string, id: string): Promise<ApiResponse<null>> {
+    await delay(200);
+    this.dailyScrumNonWorkingDays = this.dailyScrumNonWorkingDays.filter(
+      (exception) => exception.id !== id
+    );
+    return { success: true, data: null };
   }
 
   async sendDailyScrumTeamSignal(

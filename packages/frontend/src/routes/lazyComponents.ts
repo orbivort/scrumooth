@@ -25,6 +25,12 @@ export const LazySprintConfiguration = lazy(() =>
   }))
 );
 
+export const LazyDailyScrumSchedule = lazy(() =>
+  import('../pages/Settings/DailyScrumSchedule').then((module) => ({
+    default: module.DailyScrumSchedule,
+  }))
+);
+
 export const LazyTeamDefinitionsPage = lazy(() =>
   import('../pages/Settings/TeamDefinitions').then((module) => ({
     default: module.default,

@@ -28,6 +28,7 @@ import {
   LazyDailyScrum as DailyScrum,
   LazyImpediments as Impediments,
   LazySprintConfiguration as SprintConfiguration,
+  LazyDailyScrumSchedule as DailyScrumSchedulePage,
   LazyTeamDefinitionsPage as TeamDefinitionsPage,
   LazyProductBacklog as ProductBacklog,
   LazyProductGoalsPage as ProductGoalsPage,
@@ -372,6 +373,16 @@ function App() {
                             <ProtectedRoute>
                               <LazyRoute fallbackMessage="Loading sprint configuration...">
                                 <SprintConfiguration />
+                              </LazyRoute>
+                            </ProtectedRoute>
+                          }
+                        />
+                        <Route
+                          path="/settings/daily-scrum-schedule"
+                          element={
+                            <ProtectedRoute>
+                              <LazyRoute fallbackMessage="Loading Daily Scrum schedule...">
+                                <DailyScrumSchedulePage />
                               </LazyRoute>
                             </ProtectedRoute>
                           }

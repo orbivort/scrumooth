@@ -79,6 +79,48 @@ export {
   type DayRange,
 } from './sprintCalendar.js';
 
+export {
+  MAX_CALENDAR_SPAN_DAYS,
+  DEFAULT_WORKING_DAYS,
+  ISO_WEEKDAYS,
+  START_MINUTE_MIN,
+  START_MINUTE_MAX,
+  toIsoDate,
+  isoDateToDayIndex,
+  dayIndexToIsoDate,
+  toIsoWeekday,
+  addDays,
+  normalizeWorkingDays,
+  normalizeNonWorkingDays,
+  normalizeCalendar,
+  isWorkingDay,
+  countWorkingDays,
+  listWorkingDays,
+  sprintWorkingDayProgress,
+  isKnownTimeZone,
+  formatStartMinute,
+  parseStartMinute,
+  type WorkingDayCalendar,
+  type SprintWorkingDayProgress,
+} from './workingDays.js';
+
+export {
+  DAILY_SCRUM_ADJUSTMENT_ACTIONS,
+  isDailyScrumAdjustmentAction,
+  ADAPTATION_REFLECTIONS,
+  ADAPTATION_REFLECTION_BASES,
+  evaluateAdaptationReflection,
+  hasAdaptationEvidence,
+  hasContradictoryAdaptationEvidence,
+  type DailyScrumAdjustmentAction,
+  type AdaptationReflection,
+  type AdaptationReflectionBasis,
+  type AdaptationReflectionVerdict,
+  type AdaptationAdjustmentSnapshot,
+  type AdaptationCurrentState,
+  type AdaptationEvidenceDeclaration,
+} from './dailyScrumAdaptation.js';
+
 export function isValidEmail(email: string): boolean {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   return emailRegex.test(email);

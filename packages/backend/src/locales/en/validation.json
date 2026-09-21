@@ -21,8 +21,23 @@
     "termsRequired": "You must accept the Corporate Acceptable Use Policy and Data Protection Policy"
   },
   "dailyScrum": {
+    "adaptationExclusive": "A Daily Scrum cannot both list adjustments and declare that no adaptation was needed.",
+    "adaptationRequired": "A Daily Scrum must declare its adaptation outcome: at least one Sprint Backlog adjustment, or an explicit acknowledgement that none was needed.",
+    "adjustmentItemNotInSprint": "An adjustment can only reference an item in this Sprint's Sprint Backlog.",
     "developersOnly": "The Daily Scrum is an event for the Developers. Only Developers can record or edit the Daily Scrum.",
     "planRequired": "An actionable plan for the next day is required for the Daily Scrum."
+  },
+  "dailyScrumSchedule": {
+    "dateDuplicate": "That day is already recorded as a non-working day.",
+    "dateInvalid": "Enter a valid date in YYYY-MM-DD format.",
+    "locationUrlInvalid": "The meeting link must be a valid http or https address.",
+    "nameTooLong": "The name can be at most 120 characters.",
+    "placeRequired": "Record a room, a meeting link, or both.",
+    "placeTooLong": "The place can be at most 200 characters.",
+    "startMinuteInvalid": "The start time must be between 00:00 and 23:59.",
+    "timezoneInvalid": "Choose a time zone the system recognises.",
+    "windowTooWide": "The requested range is too wide; one year is the maximum.",
+    "workingDaysInvalid": "Select at least one valid working day (Monday to Sunday)."
   },
   "fieldRequired": "This field is required",
   "fieldTooLong": "This field is too long",

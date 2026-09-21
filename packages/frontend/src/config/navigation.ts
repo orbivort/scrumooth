@@ -74,6 +74,14 @@ export const SETTINGS_GROUPS: SettingsGroup[] = [
         roles: ['PRODUCT_OWNER', 'SCRUM_MASTER'],
       },
       {
+        path: '/settings/daily-scrum-schedule',
+        icon: SunIcon,
+        labelKey: 'nav.settings.dailyScrumSchedule',
+        // The Scrum Master is accountable for ensuring the Scrum events take place, so the
+        // standing commitment behind the Daily Scrum is theirs to set.
+        roles: ['SCRUM_MASTER'],
+      },
+      {
         path: '/settings/team-definitions',
         icon: FileTextIcon,
         labelKey: 'nav.settings.teamDefinitions',

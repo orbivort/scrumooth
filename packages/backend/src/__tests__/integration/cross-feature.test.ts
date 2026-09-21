@@ -356,6 +356,8 @@ describe('Cross-Feature Integration Tests', () => {
         .send({
           progressNotes: 'Blocked by external dependency',
           planForNextDay: 'Plan to unblock',
+          // A Daily Scrum must declare its adaptation outcome.
+          noAdaptationNeeded: true,
         })
         .expect(201);
 
@@ -888,6 +890,7 @@ describe('Cross-Feature Integration Tests', () => {
           .send({
             progressNotes: 'Blocked by API issue',
             planForNextDay: 'Plan to resolve API',
+            noAdaptationNeeded: true,
           })
           .expect(201);
 

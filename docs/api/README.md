@@ -305,6 +305,7 @@ Scrumooth enforces the 2020 Scrum Guide server-side, so the same gates that hold
 | `GATE_TEAM_SIZE_LIMIT`                         | 409  | A Scrum Team cannot grow past `TEAM_MAX_SIZE`.                                                                                                                                                              |
 | `GATE_DEVELOPER_ONLY_SIZING`                   | 403  | Only Developers size Product Backlog items.                                                                                                                                                                 |
 | `GATE_DEVELOPER_ONLY_DAILY_SCRUM`              | 403  | Only Developers author or join the Daily Scrum.                                                                                                                                                             |
+| `GATE_DAILY_SCRUM_ADAPTATION_REQUIRED`         | 400  | A Daily Scrum must declare its adaptation outcome: at least one typed Sprint Backlog adjustment, or an explicit acknowledgement that none was needed. Declaring both is equally refused.                    |
 | `GATE_PRODUCT_OWNER_ONLY_CANCELLATION`         | 403  | Only the Product Owner can cancel an `ACTIVE` Sprint.                                                                                                                                                       |
 | `GATE_PRODUCT_OWNER_ONLY_BACKLOG_ORDER`        | 403  | Only the Product Owner orders the Product Backlog: the order and the MoSCoW band are their decision.                                                                                                        |
 | `GATE_INCREMENT_LOCKED`                        | 400  | A delivered Increment cannot be rewritten.                                                                                                                                                                  |
@@ -416,6 +417,7 @@ Content-Type: application/json
 - [Sprints API](./sprints.md) - Sprint planning, execution, tracking
 - [Sprint Board API](./sprint-board.md) - Kanban board operations
 - [Daily Scrum API](./daily-scrum.md) - Daily standup management
+- [Daily Scrum Schedule API](./daily-scrum-schedule.md) - The team's standing "same time and place every working day" commitment and its working-day calendar
 - [Impediments API](./impediments.md) - Impediment tracking
 
 ### Sprint Reviews and Retrospectives
