@@ -434,12 +434,14 @@ export const SprintReview: React.FC = () => {
     mutationFn: async (feedback: Partial<StakeholderFeedback>) => {
       const reviewId = review?.id ?? '';
       const result = await apiService.addStakeholderFeedback(reviewId, feedback);
-      // Persist the Product Goal assessment as a snapshot so it can be surfaced
-      // in the Product Goal detail timeline.
-      if (feedback.productGoalAssessment) {
+      // Persist the Product Goal assessment as a snapshot so it can be surfaced in the
+      // Product Goal detail timeline. Only a non-blank assessment is submitted: a snapshot
+      // must carry evidence, and an empty one is refused by the backend.
+      const assessment = feedback.productGoalAssessment?.trim();
+      if (assessment) {
         await apiService
           .submitProductGoalAssessment(reviewId, {
-            assessment: feedback.productGoalAssessment,
+            assessment,
           })
           .catch(() => {
             // Snapshot creation is best-effort; the feedback itself was saved.
@@ -546,6 +548,12 @@ export const SprintReview: React.FC = () => {
     if (feedbackForm.actionRequired && !feedbackForm.ownerId) {
       errors.ownerId = t('addFeedbackModal.owner').replace(' *', '');
     }
+    // A whitespace-only Product Goal assessment is not evidence: ask the reviewer to either
+    // write it or clear the field, rather than silently recording nothing.
+    const rawAssessment = feedbackForm.productGoalAssessment ?? '';
+    if (rawAssessment !== '' && rawAssessment.trim() === '') {
+      errors.productGoalAssessment = t('addFeedbackModal.productGoalAssessmentRequired');
+    }
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   }, [
@@ -554,6 +562,7 @@ export const SprintReview: React.FC = () => {
     feedbackForm.content,
     feedbackForm.actionRequired,
     feedbackForm.ownerId,
+    feedbackForm.productGoalAssessment,
   ]);
 
   const validateAdjustmentForm = useCallback((): boolean => {

@@ -49,7 +49,12 @@ function getTranslatedErrorMessage(message: string): string {
  * the code is not a Product Goal gate so callers can fall back to their generic error handling.
  * The key is translated by the calling component so it follows the active request locale.
  */
-type ProductGoalGateKey = 'productGoals.gateAlreadyActive' | 'productGoals.gateProductOwnerOnly';
+type ProductGoalGateKey =
+  | 'productGoals.gateAlreadyActive'
+  | 'productGoals.gateProductOwnerOnly'
+  | 'productGoals.gateRequiredForBacklog'
+  | 'productGoals.gateNotActive'
+  | 'productGoals.gateEvidenceRequired';
 
 function getProductGoalGateKey(code: string | undefined): ProductGoalGateKey | null {
   if (code === GATE_CODES.PRODUCT_GOAL_ALREADY_ACTIVE) {
@@ -57,6 +62,15 @@ function getProductGoalGateKey(code: string | undefined): ProductGoalGateKey | n
   }
   if (code === GATE_CODES.PRODUCT_OWNER_ONLY_PRODUCT_GOAL) {
     return 'productGoals.gateProductOwnerOnly';
+  }
+  if (code === GATE_CODES.PRODUCT_GOAL_REQUIRED_FOR_BACKLOG) {
+    return 'productGoals.gateRequiredForBacklog';
+  }
+  if (code === GATE_CODES.PRODUCT_GOAL_NOT_ACTIVE) {
+    return 'productGoals.gateNotActive';
+  }
+  if (code === GATE_CODES.PRODUCT_GOAL_EVIDENCE_REQUIRED) {
+    return 'productGoals.gateEvidenceRequired';
   }
   return null;
 }
@@ -419,8 +433,15 @@ export const ProductGoalsPage: React.FC = () => {
 
   // Status change mutation
   const statusChangeMutation = useMutation({
-    mutationFn: ({ id, status }: { id: string; status: ProductGoal['status'] }) =>
-      apiService.updateProductGoal(id, { status }),
+    mutationFn: ({
+      id,
+      status,
+      reason,
+    }: {
+      id: string;
+      status: ProductGoal['status'];
+      reason?: string;
+    }) => apiService.updateProductGoal(id, { status, reason }),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.productGoal.lists() });
       setShowStatusChangeModal(false);
@@ -554,7 +575,7 @@ export const ProductGoalsPage: React.FC = () => {
     }
   };
 
-  const handleStatusChange = async (newStatus: ProductGoalStatus) => {
+  const handleStatusChange = async (newStatus: ProductGoalStatus, reason?: string) => {
     if (!selectedGoal) return;
 
     setStatusChangeError(null);
@@ -588,7 +609,7 @@ export const ProductGoalsPage: React.FC = () => {
 
     // Execute status change
     statusChangeMutation.mutate(
-      { id: selectedGoal.id, status: newStatus.toUpperCase() as ProductGoal['status'] },
+      { id: selectedGoal.id, status: newStatus.toUpperCase() as ProductGoal['status'], reason },
       {
         onSuccess: () => {
           // Update the selected goal in state to reflect the change

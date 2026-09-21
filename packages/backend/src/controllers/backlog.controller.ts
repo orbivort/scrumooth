@@ -45,8 +45,8 @@ export const createPBI = asyncHandler(async (req: Request, res: Response) => {
   if (!req.userId) {
     throw new BadRequestError('User not authenticated');
   }
-  // Validate goal capacity before creating the item
-  await productBacklogService.validateGoalCapacity(req.body.goalId, 1);
+  // Goal capacity is validated by the service once the Product Goal anchor is resolved,
+  // so auto-linked items are counted against the goal they actually serve.
   const pbi = await productBacklogService.createPBI(req.userId, req.body);
   res.status(201).json(createSuccessResponse(pbi));
 });
@@ -110,8 +110,8 @@ export const createPBIBulk = asyncHandler(async (req: Request, res: Response) =>
   if (!req.userId) {
     throw new BadRequestError('User not authenticated');
   }
-  // Validate bulk import capacity before creating items
-  await productBacklogService.validateBulkImportCapacity(req.body);
+  // Goal capacity is validated by the service once the Product Goal anchor is resolved,
+  // so auto-linked rows are counted against the goal they actually serve.
   const result = await productBacklogService.createPBIBulk(req.userId, req.body);
   res.status(201).json(createSuccessResponse(result));
 });

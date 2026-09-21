@@ -46,6 +46,7 @@
     "ownerPlaceholder": "Seleziona proprietario...",
     "productGoalAssessment": "Valutazione dell'avanzamento dell'obiettivo di prodotto",
     "productGoalAssessmentPlaceholder": "Come sta progredendo il team verso l'obiettivo di prodotto?",
+    "productGoalAssessmentRequired": "Scrivi la valutazione dell'obiettivo di prodotto o svuota il campo. Una valutazione vuota non viene registrata come prova.",
     "relatedPbi": "PBI correlato (Opzionale)",
     "requiredFieldsNote": "I campi richiesti sono contrassegnati con *",
     "subtitle": "Cattura insights preziosi dagli stakeholders per migliorare il tuo prodotto",

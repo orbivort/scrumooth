@@ -46,6 +46,7 @@
     "ownerPlaceholder": "Sélectionner le propriétaire...",
     "productGoalAssessment": "Évaluation du progrès de l'objectif produit",
     "productGoalAssessmentPlaceholder": "Comment l'équipe progresse-t-elle vers l'objectif produit ?",
+    "productGoalAssessmentRequired": "Rédigez l'évaluation de l'objectif de produit ou videz le champ. Une évaluation vide n'est pas enregistrée comme preuve.",
     "relatedPbi": "PBI associé (Optionnel)",
     "requiredFieldsNote": "Les champs requis sont marqués avec *",
     "subtitle": "Capturer des enseignements précieux des parties prenantes pour améliorer votre produit",

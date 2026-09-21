@@ -18,8 +18,14 @@
   "notTeamMember": "No es miembro de este equipo",
   "pleaseLoginAgain": "Inicie sesión nuevamente para continuar",
   "productGoal": {
+    "abandonmentReasonRequired": "Abandonar un objetivo de producto requiere un motivo para que el equipo pueda inspeccionar por qué se descartó el objetivo.",
     "alreadyActive": "Ya existe un objetivo de producto activo para este equipo. Cúmplelo o abandónalo antes de activar otro.",
-    "productOwnerOnly": "Solo el Product Owner puede crear, editar o eliminar un objetivo de producto."
+    "evidenceRequired": "Un objetivo de producto no puede completarse sin evidencia. Registra primero una evaluación de la Sprint Review o valores medidos de las métricas de éxito.",
+    "notActive": "Un elemento del backlog solo puede vincularse al objetivo de producto activo del equipo. Activa este objetivo o vincula el elemento al objetivo activo.",
+    "productOwnerOnly": "Solo el Product Owner puede crear, editar o eliminar un objetivo de producto.",
+    "requiredForBacklog": "El Product Backlog es la expresión emergente del objetivo de producto. Define un objetivo de producto activo antes de añadir elementos al backlog.",
+    "snapshotEvidenceRequired": "Una instantánea del objetivo de producto debe registrar lo que el equipo inspeccionó: indica una evaluación o los valores medidos de las métricas de éxito.",
+    "successMetricsRequired": "Un objetivo de producto debe declarar al menos una métrica de éxito: indica cómo sabrá el equipo que se ha alcanzado el estado futuro."
   },
   "recordNotFound": "Registro no encontrado",
   "roleAlreadyTaken": "Ya existe un {{role}} para este equipo. Cada equipo puede tener exactamente un {{role}}.",

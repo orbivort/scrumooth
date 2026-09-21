@@ -131,5 +131,56 @@ describe('ProductGoalSnapshotService', () => {
         productGoalSnapshotService.createSnapshot('user-1', 'rev-1', {})
       ).rejects.toThrow(BadRequestError);
     });
+
+    it('should refuse an empty snapshot because it would record no evidence', async () => {
+      vi.mocked(prisma.sprintReview.findUnique).mockResolvedValue({
+        id: 'rev-1',
+        sprint: { id: 'sprint-1', goalId: 'goal-1', teamId: 'team-1' },
+      } as any);
+
+      await expect(
+        productGoalSnapshotService.createSnapshot('user-1', 'rev-1', {})
+      ).rejects.toThrow(BadRequestError);
+
+      expect(prisma.productGoalSnapshot.create).not.toHaveBeenCalled();
+    });
+
+    it('should refuse a snapshot whose assessment is only whitespace', async () => {
+      vi.mocked(prisma.sprintReview.findUnique).mockResolvedValue({
+        id: 'rev-1',
+        sprint: { id: 'sprint-1', goalId: 'goal-1', teamId: 'team-1' },
+      } as any);
+
+      await expect(
+        productGoalSnapshotService.createSnapshot('user-1', 'rev-1', { assessment: '   ' })
+      ).rejects.toThrow(BadRequestError);
+
+      expect(prisma.productGoalSnapshot.create).not.toHaveBeenCalled();
+    });
+
+    it('should accept a snapshot that carries only measured metric values', async () => {
+      vi.mocked(prisma.sprintReview.findUnique).mockResolvedValue({
+        id: 'rev-1',
+        sprint: { id: 'sprint-1', goalId: 'goal-1', teamId: 'team-1' },
+      } as any);
+      vi.mocked(prisma.productBacklogItem.findMany).mockResolvedValue([] as any);
+      vi.mocked(prisma.productGoalSnapshot.findUnique).mockResolvedValue(null as any);
+      vi.mocked(prisma.productGoalSnapshot.create).mockResolvedValue({
+        id: 'snap-1',
+        goalId: 'goal-1',
+        sprintReviewId: 'rev-1',
+      } as any);
+
+      await productGoalSnapshotService.createSnapshot('user-1', 'rev-1', {
+        successMetricValues: { activeUsers: 120 },
+      });
+
+      expect(prisma.productGoalSnapshot.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          assessment: undefined,
+          successMetricValues: { activeUsers: 120 },
+        }),
+      });
+    });
   });
 });

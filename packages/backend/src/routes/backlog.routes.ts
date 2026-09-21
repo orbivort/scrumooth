@@ -16,6 +16,9 @@ router.use(authenticate);
 // Validation schemas
 const createPBISchema = z.object({
   teamId: z.string().uuid('Invalid team ID'),
+  // Optional by design: the service auto-links the item to the team's ACTIVE Product Goal
+  // when omitted, and rejects the request when the team has no ACTIVE goal. A supplied goal
+  // must belong to the team and be the ACTIVE one.
   goalId: z.string().uuid('Invalid goal ID').optional().nullable(),
   title: z.string().min(1, 'Title is required').max(200),
   description: z.string().max(5000).optional(),

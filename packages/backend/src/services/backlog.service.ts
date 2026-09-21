@@ -186,11 +186,17 @@ class ProductBacklogService {
       ? await this.assertCanSizeOrResolve(data.teamId, userId, true)
       : null;
 
+    // Scrum Guide: the Product Backlog is the emergent expression of the Product Goal, so an
+    // item can never be created outside a goal. An omitted goalId is auto-linked to the
+    // team's single ACTIVE goal; a team without one cannot receive new backlog items.
+    const goalId = await this.resolveGoalAnchor(data.teamId, data.goalId);
+    await this.validateGoalCapacity(goalId, 1);
+
     const pbi = await prisma.productBacklogItem.create({
       data: {
         id: pbiId,
         teamId: data.teamId,
-        goalId: data.goalId,
+        goalId,
         title: data.title,
         description: data.description,
         storyPoints: data.storyPoints,
@@ -271,6 +277,18 @@ class ProductBacklogService {
 
     const userRoles = [teamMember.role];
 
+    // A backlog item always serves a Product Goal. An item that already carries one keeps it
+    // (a fulfilled or abandoned goal is a historical record that must not be rewritten); an
+    // item created before the anchoring gate was introduced is healed on its next edit. A
+    // goal named by the caller must be the team's ACTIVE goal, so a null goalId never
+    // un-anchors an item.
+    let goalAnchor: string | undefined;
+    if (data.goalId) {
+      goalAnchor = await this.resolveGoalAnchor(existing.teamId, data.goalId);
+    } else if (!existing.goalId) {
+      goalAnchor = await this.resolveGoalAnchor(existing.teamId);
+    }
+
     if (data.status && data.status !== existing.status) {
       const validationResult = await workflowService.validateTransition(
         'BacklogItem',
@@ -295,10 +313,13 @@ class ProductBacklogService {
       }
     }
 
+    const { goalId: _requestedGoalId, ...updateData } = data;
+
     const pbi = await prisma.productBacklogItem.update({
       where: { id: pbiId },
       data: {
-        ...data,
+        ...updateData,
+        ...(goalAnchor ? { goalId: goalAnchor } : {}),
         updatedAt: new Date(),
       },
     });
@@ -415,6 +436,12 @@ class ProductBacklogService {
       throw localizedError('errors:developerOnlySizing', {}, 403, GATE_CODES.DEVELOPER_ONLY_SIZING);
     }
 
+    // A bulk upload is single-team, so the Product Goal anchor is resolved once for the whole
+    // batch. A team with no ACTIVE Product Goal fails the batch: nothing in it could serve a
+    // goal. A row that names a different goal is reported through the per-row error transport
+    // below rather than discarding the rows that can be anchored correctly.
+    const anchorGoalId = firstItem ? await this.resolveGoalAnchor(firstItem.teamId) : undefined;
+
     // Check for duplicate titles within the batch
     const seenTitles = new Set<string>();
     const processedItems: Array<CreatePBIData & { _rowNumber?: number }> = [];
@@ -434,10 +461,24 @@ class ProductBacklogService {
       }
     }
 
+    // Validate capacity against the resolved anchor so auto-linked rows are counted too.
+    await this.validateBulkImportCapacity(
+      processedItems.map((item) => ({ goalId: item.goalId ?? anchorGoalId }))
+    );
+
     for (const item of processedItems) {
       const { _rowNumber, ...createData } = item;
 
       try {
+        if (createData.goalId && createData.goalId !== anchorGoalId) {
+          throw localizedError(
+            'errors:productGoal.notActive',
+            {},
+            409,
+            GATE_CODES.PRODUCT_GOAL_NOT_ACTIVE
+          );
+        }
+
         const pbi = await prisma.$transaction(async (tx) => {
           const pbiId = generateUUIDv7();
           const initialStatus = createData.status ?? 'NEW';
@@ -446,7 +487,7 @@ class ProductBacklogService {
             data: {
               id: pbiId,
               teamId: createData.teamId,
-              goalId: createData.goalId,
+              goalId: anchorGoalId,
               title: createData.title,
               description: createData.description,
               storyPoints: createData.storyPoints,
@@ -604,6 +645,65 @@ class ProductBacklogService {
     for (const [goalId, additionalItems] of itemsByGoal) {
       await this.validateGoalCapacity(goalId, additionalItems);
     }
+  }
+
+  /**
+   * Resolve the Product Goal a Product Backlog item must serve.
+   *
+   * Scrum Guide: the Product Backlog is the emergent expression of the Product Goal, so an
+   * item cannot exist outside a goal. A caller-supplied `goalId` must belong to the same team
+   * and must be that team's ACTIVE goal; an omitted `goalId` adopts the team's single ACTIVE
+   * goal. Either way, a team with no ACTIVE Product Goal cannot receive new items.
+   *
+   * @param teamId - the team the backlog items belong to
+   * @param goalId - the goal the caller asked for, when one was named
+   * @returns the goal id the item must carry
+   * @throws NotFoundError when the requested goal does not belong to the team
+   * @throws AppError (409, `GATE_PRODUCT_GOAL_NOT_ACTIVE`) when the requested goal is not ACTIVE
+   * @throws AppError (400, `GATE_PRODUCT_GOAL_REQUIRED_FOR_BACKLOG`) when the team has no
+   * ACTIVE Product Goal to anchor the item to
+   */
+  private async resolveGoalAnchor(teamId: string, goalId?: string | null): Promise<string> {
+    if (goalId) {
+      const requestedGoal = await prisma.productGoal.findFirst({
+        where: { id: goalId, teamId },
+        select: { id: true, status: true },
+      });
+
+      if (!requestedGoal) {
+        throw new NotFoundError('Product Goal');
+      }
+
+      if (requestedGoal.status !== 'ACTIVE') {
+        throw localizedError(
+          'errors:productGoal.notActive',
+          {},
+          409,
+          GATE_CODES.PRODUCT_GOAL_NOT_ACTIVE
+        );
+      }
+
+      return requestedGoal.id;
+    }
+
+    // The single-active-goal gate keeps at most one ACTIVE goal per team; the ordering keeps
+    // the lookup deterministic should legacy data ever hold more.
+    const activeGoal = await prisma.productGoal.findFirst({
+      where: { teamId, status: 'ACTIVE' },
+      select: { id: true },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    if (!activeGoal) {
+      throw localizedError(
+        'errors:productGoal.requiredForBacklog',
+        {},
+        400,
+        GATE_CODES.PRODUCT_GOAL_REQUIRED_FOR_BACKLOG
+      );
+    }
+
+    return activeGoal.id;
   }
 
   /**

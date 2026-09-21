@@ -18,8 +18,14 @@
   "notTeamMember": "You are not a member of this team",
   "pleaseLoginAgain": "Please log in again to continue",
   "productGoal": {
+    "abandonmentReasonRequired": "Abandoning a Product Goal requires a reason so the team can inspect why the objective was dropped.",
     "alreadyActive": "An active Product Goal already exists for this team. Fulfil or abandon it before activating another.",
-    "productOwnerOnly": "Only the Product Owner can create, edit, or delete a Product Goal."
+    "evidenceRequired": "A Product Goal cannot be completed without evidence. Record a Sprint Review assessment or measured success-metric values for this goal first.",
+    "notActive": "A backlog item can only be linked to the team's active Product Goal. Activate this goal, or link the item to the goal that is active.",
+    "productOwnerOnly": "Only the Product Owner can create, edit, or delete a Product Goal.",
+    "requiredForBacklog": "The Product Backlog is the emergent expression of the Product Goal. Define an active Product Goal before adding backlog items.",
+    "snapshotEvidenceRequired": "A Product Goal snapshot must record what the team inspected: provide an assessment or the measured success-metric values.",
+    "successMetricsRequired": "A Product Goal must declare at least one success metric: state how the team will know the future state has been reached."
   },
   "recordNotFound": "Record not found",
   "roleAlreadyTaken": "A {{role}} already exists for this team. Each team can have exactly one {{role}}.",

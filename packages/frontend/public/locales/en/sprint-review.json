@@ -46,6 +46,7 @@
     "ownerPlaceholder": "Select owner...",
     "productGoalAssessment": "Product Goal Progress Assessment",
     "productGoalAssessmentPlaceholder": "How is the team progressing toward the Product Goal?",
+    "productGoalAssessmentRequired": "Please write the Product Goal assessment or clear the field. A blank assessment is not recorded as evidence.",
     "relatedPbi": "Related PBI (Optional)",
     "requiredFieldsNote": "Required fields are marked with *",
     "subtitle": "Capture valuable insights from stakeholders to improve your product",

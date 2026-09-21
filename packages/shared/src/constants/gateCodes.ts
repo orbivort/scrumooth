@@ -37,6 +37,15 @@ export const GATE_CODES = {
   PRODUCT_OWNER_ONLY_PRODUCT_GOAL: 'GATE_PRODUCT_OWNER_ONLY_PRODUCT_GOAL',
   /** A Sprint cannot start until it is linked to a Product Goal. */
   PRODUCT_GOAL_REQUIRED: 'GATE_PRODUCT_GOAL_REQUIRED',
+  /**
+   * The Product Backlog is the emergent expression of the Product Goal: a new item can only
+   * be added while the team has an ACTIVE Product Goal to serve.
+   */
+  PRODUCT_GOAL_REQUIRED_FOR_BACKLOG: 'GATE_PRODUCT_GOAL_REQUIRED_FOR_BACKLOG',
+  /** A backlog item may only be linked to the team's single ACTIVE Product Goal. */
+  PRODUCT_GOAL_NOT_ACTIVE: 'GATE_PRODUCT_GOAL_NOT_ACTIVE',
+  /** A Product Goal cannot be completed without recorded evidence of progress toward it. */
+  PRODUCT_GOAL_EVIDENCE_REQUIRED: 'GATE_PRODUCT_GOAL_EVIDENCE_REQUIRED',
 } as const;
 
 export type GateCode = (typeof GATE_CODES)[keyof typeof GATE_CODES];
@@ -136,6 +145,21 @@ export const GATE_DEFINITIONS: Record<GateCode, GateDefinition> = {
     code: GATE_CODES.PRODUCT_GOAL_REQUIRED,
     httpStatus: 400,
     i18nKey: 'productGoalRequired',
+  },
+  [GATE_CODES.PRODUCT_GOAL_REQUIRED_FOR_BACKLOG]: {
+    code: GATE_CODES.PRODUCT_GOAL_REQUIRED_FOR_BACKLOG,
+    httpStatus: 400,
+    i18nKey: 'productGoalRequiredForBacklog',
+  },
+  [GATE_CODES.PRODUCT_GOAL_NOT_ACTIVE]: {
+    code: GATE_CODES.PRODUCT_GOAL_NOT_ACTIVE,
+    httpStatus: 409,
+    i18nKey: 'productGoalNotActive',
+  },
+  [GATE_CODES.PRODUCT_GOAL_EVIDENCE_REQUIRED]: {
+    code: GATE_CODES.PRODUCT_GOAL_EVIDENCE_REQUIRED,
+    httpStatus: 409,
+    i18nKey: 'productGoalEvidenceRequired',
   },
 };
 

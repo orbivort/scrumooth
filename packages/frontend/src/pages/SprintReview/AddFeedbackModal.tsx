@@ -260,7 +260,21 @@ export const AddFeedbackModal: React.FC<AddFeedbackModalProps> = ({
                 placeholder={t('addFeedbackModal.productGoalAssessmentPlaceholder')}
                 rows={3}
                 maxLength={2000}
+                className={formErrors.productGoalAssessment ? styles.error : ''}
+                aria-invalid={!!formErrors.productGoalAssessment}
+                aria-describedby={
+                  formErrors.productGoalAssessment ? 'feedback-product-goal-error' : undefined
+                }
               />
+              {formErrors.productGoalAssessment && (
+                <span
+                  id="feedback-product-goal-error"
+                  className={styles['error-message']}
+                  role="alert"
+                >
+                  {formErrors.productGoalAssessment}
+                </span>
+              )}
             </div>
 
             <div className={styles['form-group']}>

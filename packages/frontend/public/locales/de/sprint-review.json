@@ -46,6 +46,7 @@
     "ownerPlaceholder": "Eigentümer auswählen...",
     "productGoalAssessment": "Bewertung des Produktziel-Fortschritts",
     "productGoalAssessmentPlaceholder": "Wie kommt das Team mit dem Produktziel voran?",
+    "productGoalAssessmentRequired": "Bitte formuliere die Bewertung des Produktziels oder leere das Feld. Eine leere Bewertung wird nicht als Nachweis erfasst.",
     "relatedPbi": "Verwandtes PBI (Optional)",
     "requiredFieldsNote": "Pflichtfelder sind mit * markiert",
     "subtitle": "Wertvolle Insights von Stakeholders erfassen, um Ihr Produkt zu verbessern",

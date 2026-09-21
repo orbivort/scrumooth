@@ -14,6 +14,9 @@ vi.mock('../../../utils/prisma', () => ({
     teamMember: {
       findFirst: vi.fn(),
     },
+    productGoal: {
+      findFirst: vi.fn(),
+    },
     definitionOfDone: {
       findUnique: vi.fn(),
     },
@@ -63,6 +66,9 @@ import { isBacklogLimitEnabled, BACKLOG_CONFIG } from '../../../config/backlog.c
 describe('ProductBacklogService', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // The Product Backlog is the emergent expression of the Product Goal, so every write
+    // resolves the team's ACTIVE goal. Default the lookup to one so unrelated cases anchor.
+    vi.mocked(prisma.productGoal.findFirst).mockResolvedValue({ id: 'goal-1' } as any);
   });
 
   describe('getProductBacklog', () => {
@@ -348,6 +354,122 @@ describe('ProductBacklogService', () => {
           data: expect.objectContaining({ storyPoints: 5 }),
         })
       );
+    });
+
+    it('should auto-link the item to the team ACTIVE Product Goal when no goal is given', async () => {
+      const userId = 'test-user-id';
+      const teamId = 'team-id';
+      const mockPBI = {
+        id: 'test-pbi-uuid',
+        teamId,
+        goalId: 'goal-1',
+        title: 'New PBI',
+        status: 'NEW',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      vi.mocked(prisma.productGoal.findFirst).mockResolvedValue({ id: 'goal-1' } as any);
+      vi.mocked(prisma.productBacklogItem.create).mockResolvedValue(mockPBI as any);
+
+      await productBacklogService.createPBI(userId, { teamId, title: mockPBI.title });
+
+      expect(prisma.productGoal.findFirst).toHaveBeenCalledWith({
+        where: { teamId, status: 'ACTIVE' },
+        select: { id: true },
+        orderBy: { createdAt: 'desc' },
+      });
+      expect(prisma.productBacklogItem.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ goalId: 'goal-1' }),
+        })
+      );
+    });
+
+    it('should refuse creation with a gate code when the team has no ACTIVE Product Goal', async () => {
+      const userId = 'test-user-id';
+      const teamId = 'team-id';
+
+      vi.mocked(prisma.productGoal.findFirst).mockResolvedValue(null as any);
+
+      await expect(
+        productBacklogService.createPBI(userId, { teamId, title: 'Orphan item' })
+      ).rejects.toMatchObject({
+        statusCode: 400,
+        code: GATE_CODES.PRODUCT_GOAL_REQUIRED_FOR_BACKLOG,
+      });
+
+      expect(prisma.productBacklogItem.create).not.toHaveBeenCalled();
+    });
+
+    it('should accept an explicitly supplied ACTIVE goal', async () => {
+      const userId = 'test-user-id';
+      const teamId = 'team-id';
+      const mockPBI = {
+        id: 'test-pbi-uuid',
+        teamId,
+        goalId: 'goal-explicit',
+        title: 'New PBI',
+        status: 'NEW',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      vi.mocked(prisma.productGoal.findFirst).mockResolvedValue({
+        id: 'goal-explicit',
+        status: 'ACTIVE',
+      } as any);
+      vi.mocked(prisma.productBacklogItem.create).mockResolvedValue(mockPBI as any);
+
+      await productBacklogService.createPBI(userId, {
+        teamId,
+        title: mockPBI.title,
+        goalId: 'goal-explicit',
+      });
+
+      expect(prisma.productGoal.findFirst).toHaveBeenCalledWith({
+        where: { id: 'goal-explicit', teamId },
+        select: { id: true, status: true },
+      });
+      expect(prisma.productBacklogItem.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ goalId: 'goal-explicit' }),
+        })
+      );
+    });
+
+    it('should refuse an explicit goal that is not ACTIVE', async () => {
+      vi.mocked(prisma.productGoal.findFirst).mockResolvedValue({
+        id: 'goal-completed',
+        status: 'COMPLETED',
+      } as any);
+
+      await expect(
+        productBacklogService.createPBI('test-user-id', {
+          teamId: 'team-id',
+          title: 'Item',
+          goalId: 'goal-completed',
+        })
+      ).rejects.toMatchObject({
+        statusCode: 409,
+        code: GATE_CODES.PRODUCT_GOAL_NOT_ACTIVE,
+      });
+
+      expect(prisma.productBacklogItem.create).not.toHaveBeenCalled();
+    });
+
+    it('should refuse an explicit goal that does not belong to the team', async () => {
+      vi.mocked(prisma.productGoal.findFirst).mockResolvedValue(null as any);
+
+      await expect(
+        productBacklogService.createPBI('test-user-id', {
+          teamId: 'team-id',
+          title: 'Item',
+          goalId: 'other-team-goal',
+        })
+      ).rejects.toThrow(NotFoundError);
+
+      expect(prisma.productBacklogItem.create).not.toHaveBeenCalled();
     });
   });
 
@@ -689,6 +811,111 @@ describe('ProductBacklogService', () => {
       expect(result.storyPoints).toBe(13);
       expect(prisma.productBacklogItem.update).toHaveBeenCalled();
     });
+
+    it('should anchor a legacy unanchored item on its next edit', async () => {
+      const userId = 'test-user-id';
+      const pbiId = 'pbi-id';
+      const mockPBI = {
+        id: pbiId,
+        teamId: 'team-id',
+        goalId: null,
+        title: 'Legacy item',
+        status: 'NEW',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      vi.mocked(prisma.productBacklogItem.findUnique).mockResolvedValue(mockPBI as any);
+      vi.mocked(prisma.teamMember.findFirst).mockResolvedValue({
+        id: 'member-id',
+        teamId: mockPBI.teamId,
+        userId,
+        role: 'DEVELOPERS',
+      } as any);
+      vi.mocked(prisma.productBacklogItem.update).mockResolvedValue({
+        ...mockPBI,
+        goalId: 'goal-1',
+      } as any);
+
+      await productBacklogService.updatePBI(pbiId, userId, { title: 'Legacy item' });
+
+      expect(prisma.productGoal.findFirst).toHaveBeenCalledWith({
+        where: { teamId: mockPBI.teamId, status: 'ACTIVE' },
+        select: { id: true },
+        orderBy: { createdAt: 'desc' },
+      });
+      expect(prisma.productBacklogItem.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ goalId: 'goal-1' }),
+        })
+      );
+    });
+
+    it('should keep an existing goal rather than un-anchoring on a null goalId', async () => {
+      const userId = 'test-user-id';
+      const pbiId = 'pbi-id';
+      const mockPBI = {
+        id: pbiId,
+        teamId: 'team-id',
+        goalId: 'goal-existing',
+        title: 'Anchored item',
+        status: 'NEW',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      vi.mocked(prisma.productBacklogItem.findUnique).mockResolvedValue(mockPBI as any);
+      vi.mocked(prisma.teamMember.findFirst).mockResolvedValue({
+        id: 'member-id',
+        teamId: mockPBI.teamId,
+        userId,
+        role: 'DEVELOPERS',
+      } as any);
+      vi.mocked(prisma.productBacklogItem.update).mockResolvedValue(mockPBI as any);
+
+      await productBacklogService.updatePBI(pbiId, userId, { title: 'Anchored item' });
+
+      expect(prisma.productGoal.findFirst).not.toHaveBeenCalled();
+      const updateArg = vi.mocked(prisma.productBacklogItem.update).mock.calls[0]?.[0] as {
+        data: Record<string, unknown>;
+      };
+      expect(updateArg.data.goalId).toBeUndefined();
+    });
+
+    it('should refuse re-anchoring to a goal that is not ACTIVE', async () => {
+      const userId = 'test-user-id';
+      const pbiId = 'pbi-id';
+      const mockPBI = {
+        id: pbiId,
+        teamId: 'team-id',
+        goalId: 'goal-existing',
+        title: 'Anchored item',
+        status: 'NEW',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      vi.mocked(prisma.productBacklogItem.findUnique).mockResolvedValue(mockPBI as any);
+      vi.mocked(prisma.teamMember.findFirst).mockResolvedValue({
+        id: 'member-id',
+        teamId: mockPBI.teamId,
+        userId,
+        role: 'DEVELOPERS',
+      } as any);
+      vi.mocked(prisma.productGoal.findFirst).mockResolvedValue({
+        id: 'goal-completed',
+        status: 'COMPLETED',
+      } as any);
+
+      await expect(
+        productBacklogService.updatePBI(pbiId, userId, { goalId: 'goal-completed' })
+      ).rejects.toMatchObject({
+        statusCode: 409,
+        code: GATE_CODES.PRODUCT_GOAL_NOT_ACTIVE,
+      });
+
+      expect(prisma.productBacklogItem.update).not.toHaveBeenCalled();
+    });
   });
 
   describe('updatePBI DONE transition composes the Sprint Increment', () => {
@@ -963,6 +1190,48 @@ describe('ProductBacklogService', () => {
       expect(result.createdItems).toHaveLength(2);
       expect(result.createdItems[0]!.title).toBe('Item 1');
       expect(result.createdItems[1]!.title).toBe('Item 2');
+    });
+
+    it('should anchor every row to the team ACTIVE Product Goal', async () => {
+      const result = await productBacklogService.createPBIBulk(userId, mockItems);
+
+      // The anchor is resolved once for the whole batch (a bulk upload is single-team).
+      expect(prisma.productGoal.findFirst).toHaveBeenCalledTimes(1);
+      expect(prisma.productGoal.findFirst).toHaveBeenCalledWith({
+        where: { teamId, status: 'ACTIVE' },
+        select: { id: true },
+        orderBy: { createdAt: 'desc' },
+      });
+      expect(mockTx.productBacklogItem.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ goalId: 'goal-1' }),
+        })
+      );
+      expect(result.successful).toBe(2);
+    });
+
+    it('should fail the batch with a gate code when the team has no ACTIVE Product Goal', async () => {
+      vi.mocked(prisma.productGoal.findFirst).mockResolvedValue(null as any);
+
+      await expect(productBacklogService.createPBIBulk(userId, mockItems)).rejects.toMatchObject({
+        statusCode: 400,
+        code: GATE_CODES.PRODUCT_GOAL_REQUIRED_FOR_BACKLOG,
+      });
+
+      expect(prisma.$transaction).not.toHaveBeenCalled();
+    });
+
+    it('should report a row-level error when a row names a different goal', async () => {
+      const itemsWithForeignGoal = [
+        mockItems[0]!,
+        { _rowNumber: 2, teamId, title: 'Item 2', goalId: 'goal-other' },
+      ];
+
+      const result = await productBacklogService.createPBIBulk(userId, itemsWithForeignGoal);
+
+      expect(result.successful).toBe(1);
+      expect(result.failed).toBe(1);
+      expect(result.errors[0]).toMatchObject({ row: 2 });
     });
 
     it('should handle partial failure with AppError details', async () => {

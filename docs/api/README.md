@@ -294,21 +294,24 @@ GET /api/v1/backlog?status=IN_PROGRESS&priority=MUST_HAVE&sort=priority&order=de
 
 Scrumooth enforces the 2020 Scrum Guide server-side, so the same gates that hold in the interface also hold when you call the API directly. When a gate refuses an action the response carries `error.code` set to a stable `GATE_*` value, letting a client branch on the refusal without parsing the localized message. The codes are defined in `packages/shared/src/constants/gateCodes.ts`.
 
-| Code                                   | HTTP | Rule enforced                                                                         |
-| -------------------------------------- | ---- | ------------------------------------------------------------------------------------- |
-| `GATE_SPRINT_EVENTS_MISSING`           | 400  | A Sprint cannot close before its Sprint Review and Sprint Retrospective are recorded. |
-| `GATE_IMPEDIMENTS_UNRESOLVED`          | 400  | A Sprint cannot close while it still has unresolved impediments.                      |
-| `GATE_DOD_NOT_VERIFIED`                | 400  | Nothing is Done until every active Definition of Done item is verified.               |
-| `GATE_LEADERSHIP_ROLE_TAKEN`           | 409  | A team can hold exactly one Product Owner and one Scrum Master.                       |
-| `GATE_TEAM_SIZE_LIMIT`                 | 409  | A Scrum Team cannot grow past `TEAM_MAX_SIZE`.                                        |
-| `GATE_DEVELOPER_ONLY_SIZING`           | 403  | Only Developers size Product Backlog items.                                           |
-| `GATE_DEVELOPER_ONLY_DAILY_SCRUM`      | 403  | Only Developers author or join the Daily Scrum.                                       |
-| `GATE_PRODUCT_OWNER_ONLY_CANCELLATION` | 403  | Only the Product Owner can cancel an `ACTIVE` Sprint.                                 |
-| `GATE_INCREMENT_LOCKED`                | 400  | A delivered Increment cannot be rewritten.                                            |
-| `GATE_DEVELOPER_ONLY_SPRINT_BACKLOG`   | 403  | Only Developers save the Sprint Backlog.                                              |
-| `GATE_PRODUCT_GOAL_ALREADY_ACTIVE`     | 409  | A team can pursue only one Product Goal at a time.                                    |
-| `GATE_PRODUCT_OWNER_ONLY_PRODUCT_GOAL` | 403  | Only the Product Owner creates, edits, or deletes a Product Goal.                     |
-| `GATE_PRODUCT_GOAL_REQUIRED`           | 400  | A Sprint cannot start until it is linked to a Product Goal.                           |
+| Code                                     | HTTP | Rule enforced                                                                                                                    |
+| ---------------------------------------- | ---- | -------------------------------------------------------------------------------------------------------------------------------- |
+| `GATE_SPRINT_EVENTS_MISSING`             | 400  | A Sprint cannot close before its Sprint Review and Sprint Retrospective are recorded.                                            |
+| `GATE_IMPEDIMENTS_UNRESOLVED`            | 400  | A Sprint cannot close while it still has unresolved impediments.                                                                 |
+| `GATE_DOD_NOT_VERIFIED`                  | 400  | Nothing is Done until every active Definition of Done item is verified.                                                          |
+| `GATE_LEADERSHIP_ROLE_TAKEN`             | 409  | A team can hold exactly one Product Owner and one Scrum Master.                                                                  |
+| `GATE_TEAM_SIZE_LIMIT`                   | 409  | A Scrum Team cannot grow past `TEAM_MAX_SIZE`.                                                                                   |
+| `GATE_DEVELOPER_ONLY_SIZING`             | 403  | Only Developers size Product Backlog items.                                                                                      |
+| `GATE_DEVELOPER_ONLY_DAILY_SCRUM`        | 403  | Only Developers author or join the Daily Scrum.                                                                                  |
+| `GATE_PRODUCT_OWNER_ONLY_CANCELLATION`   | 403  | Only the Product Owner can cancel an `ACTIVE` Sprint.                                                                            |
+| `GATE_INCREMENT_LOCKED`                  | 400  | A delivered Increment cannot be rewritten.                                                                                       |
+| `GATE_DEVELOPER_ONLY_SPRINT_BACKLOG`     | 403  | Only Developers save the Sprint Backlog.                                                                                         |
+| `GATE_PRODUCT_GOAL_ALREADY_ACTIVE`       | 409  | A team can pursue only one Product Goal at a time.                                                                               |
+| `GATE_PRODUCT_OWNER_ONLY_PRODUCT_GOAL`   | 403  | Only the Product Owner creates, edits, or deletes a Product Goal.                                                                |
+| `GATE_PRODUCT_GOAL_REQUIRED`             | 400  | A Sprint cannot start until it is linked to a Product Goal.                                                                      |
+| `GATE_PRODUCT_GOAL_REQUIRED_FOR_BACKLOG` | 400  | The Product Backlog is the emergent expression of the Product Goal: items can only be added while an ACTIVE Product Goal exists. |
+| `GATE_PRODUCT_GOAL_NOT_ACTIVE`           | 409  | A backlog item may only be linked to the team's single ACTIVE Product Goal.                                                      |
+| `GATE_PRODUCT_GOAL_EVIDENCE_REQUIRED`    | 409  | A Product Goal cannot be completed without recorded evidence of progress toward it.                                              |
 
 ```json
 {

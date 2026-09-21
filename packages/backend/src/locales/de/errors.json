@@ -18,8 +18,14 @@
   "notTeamMember": "Sie sind kein Mitglied dieses Teams",
   "pleaseLoginAgain": "Bitte melden Sie sich erneut an, um fortzufahren",
   "productGoal": {
+    "abandonmentReasonRequired": "Das Verwerfen eines Produktziels erfordert eine Begründung, damit das Team nachvollziehen kann, warum das Ziel aufgegeben wurde.",
     "alreadyActive": "Für dieses Team existiert bereits ein aktives Produktziel. Erfülle oder verwirf es, bevor du ein weiteres aktivierst.",
-    "productOwnerOnly": "Nur der Product Owner kann ein Produktziel erstellen, bearbeiten oder löschen."
+    "evidenceRequired": "Ein Produktziel kann nicht ohne Nachweis abgeschlossen werden. Erfasse zuerst eine Bewertung aus dem Sprint Review oder gemessene Erfolgswerte für dieses Ziel.",
+    "notActive": "Ein Backlog-Eintrag kann nur mit dem aktiven Produktziel des Teams verknüpft werden. Aktiviere dieses Ziel oder verknüpfe den Eintrag mit dem aktiven Ziel.",
+    "productOwnerOnly": "Nur der Product Owner kann ein Produktziel erstellen, bearbeiten oder löschen.",
+    "requiredForBacklog": "Das Product Backlog ist der sich entfaltende Ausdruck des Produktziels. Lege zuerst ein aktives Produktziel fest, bevor du Backlog-Einträge hinzufügst.",
+    "snapshotEvidenceRequired": "Eine Produktziel-Momentaufnahme muss festhalten, was das Team überprüft hat: Gib eine Bewertung oder die gemessenen Erfolgswerte an.",
+    "successMetricsRequired": "Ein Produktziel muss mindestens einen Erfolgsmesswert angeben: Beschreibe, woran das Team erkennt, dass der zukünftige Zustand erreicht ist."
   },
   "recordNotFound": "Datensatz nicht gefunden",
   "roleAlreadyTaken": "Für dieses Team existiert bereits ein {{role}}. Jedes Team kann genau einen {{role}} haben.",

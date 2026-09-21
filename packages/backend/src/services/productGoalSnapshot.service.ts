@@ -2,8 +2,9 @@
 // Captures progress toward the Product Goal at each Sprint Review and
 // links the Product Goal to the Sprint Review response.
 import prisma from '../utils/prisma';
-import { NotFoundError, BadRequestError } from '../utils/errors';
+import { NotFoundError, BadRequestError, localizedError } from '../utils/errors';
 import { generateUUIDv7 } from '../utils/uuid';
+import { hasMeasuredValues } from '../utils/validation';
 import type { Prisma } from '../generated/prisma/client';
 
 export const productGoalSnapshotService = {
@@ -92,6 +93,14 @@ export const productGoalSnapshotService = {
       throw new BadRequestError('This Sprint is not linked to a Product Goal');
     }
 
+    // A snapshot is the evidence a Product Goal is judged against, so it must record
+    // something the team inspected: a written assessment or measured success-metric values.
+    // An empty payload would store nothing while looking like evidence, so it is refused.
+    const assessment = data.assessment?.trim();
+    if (!assessment && !hasMeasuredValues(data.successMetricValues)) {
+      throw localizedError('errors:productGoal.snapshotEvidenceRequired', {}, 400);
+    }
+
     // Compute completed PBI count and story points for the goal's backlog items.
     const backlogItems = await prisma.productBacklogItem.findMany({
       where: { goalId: review.sprint.goalId },
@@ -118,7 +127,7 @@ export const productGoalSnapshotService = {
           successMetricValues: data.successMetricValues,
           completedPbiCount,
           completedStoryPoints,
-          assessment: data.assessment,
+          assessment,
           updatedBy: userId,
           updatedAt: new Date(),
         },
@@ -133,7 +142,7 @@ export const productGoalSnapshotService = {
         successMetricValues: data.successMetricValues,
         completedPbiCount,
         completedStoryPoints,
-        assessment: data.assessment,
+        assessment,
         createdBy: userId,
         updatedBy: userId,
       },

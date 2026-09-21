@@ -186,10 +186,19 @@ router.post(
   '/:id/product-goal-assessment',
   validateParams(reviewIdSchema),
   validateBody(
-    z.object({
-      assessment: z.string().max(5000).optional(),
-      successMetricValues: z.record(z.string(), z.any()).optional(),
-    })
+    z
+      .object({
+        assessment: z.string().max(5000).optional(),
+        successMetricValues: z.record(z.string(), z.any()).optional(),
+      })
+      // A snapshot is the evidence a Product Goal is judged against, so an empty payload is
+      // not a valid snapshot: it must carry an assessment or at least one measured value.
+      .refine(
+        (value) =>
+          (value.assessment?.trim().length ?? 0) > 0 ||
+          Object.keys(value.successMetricValues ?? {}).length > 0,
+        { message: 'errors:productGoal.snapshotEvidenceRequired' }
+      )
   ),
   productGoalSnapshotController.submitProductGoalAssessment
 );
