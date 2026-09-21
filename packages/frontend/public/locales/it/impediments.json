@@ -1,10 +1,13 @@
 {
   "allStatus": "Tutti gli stati",
   "card": {
+    "escalated": "Escalato allo Scrum Master",
     "owner": "Proprietario",
     "reportedBy": "Segnalato da",
     "resolution": "Risoluzione",
     "sprint": "Sprint",
+    "targetDate": "Obiettivo: {{date}}",
+    "targetDateOverdue": "In ritardo: {{date}}",
     "unknown": "Sconosciuto",
     "viewDetailsAria": "Vedi dettagli per Impediment: {{title}}. Stato: {{status}}"
   },
@@ -14,8 +17,11 @@
     "creating": "Creazione in corso...",
     "descriptionLabel": "Descrizione",
     "descriptionPlaceholder": "Fornisci dettagli sull'Impediment",
+    "optional": "Facoltativo",
+    "priorityLabel": "Priorità",
     "sprintLabel": "Sprint",
     "subtitle": "Documenta i blocchi che ostacolano il progresso del tuo team",
+    "targetDateLabel": "Data obiettivo",
     "title": "Segnala Nuovo Impediment",
     "titleLabel": "Titolo",
     "titlePlaceholder": "Breve descrizione dell'Impediment"
@@ -36,17 +42,22 @@
     "close": "Chiudi",
     "createdLabel": "Creato",
     "deleteLabel": "Elimina",
+    "deleteNotPermitted": "Solo chi ha segnalato l'impediment, il proprietario o lo Scrum Master possono eliminarlo.",
     "deleting": "Eliminazione in corso...",
     "descriptionLabel": "Descrizione",
+    "escalated": "Questo impediment ha superato la soglia di escalation, quindi lo Scrum Master è stato avvisato.",
     "ownerLabel": "Proprietario",
+    "priorityLabel": "Priorità",
     "reportedByLabel": "Segnalato da",
     "resolutionLabel": "Risoluzione",
     "resolutionPlaceholder": "Descrivi come questo Impediment è stato risolto...",
+    "resolutionRequiredFor": "Per contrassegnare questo impediment come {{status}} è necessaria una risoluzione scritta.",
     "saveResolution": "Salva Risoluzione",
     "saving": "Salvataggio in corso...",
     "sprintLabel": "Sprint",
     "statusLabel": "Stato",
     "subtitle": "Visualizza e gestisci le informazioni dell'Impediment",
+    "targetDateLabel": "Data obiettivo",
     "title": "Dettagli Impediment",
     "titleLabel": "Titolo"
   },
@@ -64,6 +75,12 @@
     "title": "Errore Caricamento Dati"
   },
   "filterByStatus": "Filtra per stato",
+  "priority": {
+    "critical": "Critica",
+    "high": "Alta",
+    "low": "Bassa",
+    "medium": "Media"
+  },
   "reportImpediment": "Segnala Impediment",
   "stats": {
     "CLOSED": "Chiuso",

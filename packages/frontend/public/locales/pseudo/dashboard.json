@@ -128,9 +128,15 @@
   "forecastBurndown": "[Fórécàst (línéàrrrrrrr)]",
   "impedimentList": {
     "ariaLabel": "[Ímpédíménts lístttttt]",
-    "impedimentAriaLabel": "[{{title}}, ssttààttúús: {{status}}. Clíck tó víéw ímpédíménttttttttt]",
+    "impedimentAriaLabel": "[{{title}}, ssttààttúús: {{status}}, pprrííóórríítty: {{priority}}. Clíck tó víéw ímpédíménttttttttt]",
     "noImpediments": "[Nó ímpédíménts répórtédddddddd]",
     "title": "[Ímpédíméntsssss]"
+  },
+  "impedimentPriority": {
+    "CRITICAL": "[Crítícàllll]",
+    "HIGH": "[HHííggh]",
+    "LOW": "[Lóww]",
+    "MEDIUM": "[Médíúmmm]"
   },
   "impedimentStatus": {
     "CLOSED": "[Clóséddd]",

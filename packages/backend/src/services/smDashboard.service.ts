@@ -3,7 +3,17 @@
 // Sprint Goal achievement, and retrospective action item completion for the SM role.
 import prisma from '../utils/prisma';
 import { teamHealthCheckService } from './teamHealthCheck.service';
-import { timeboxFor, type ScrumEvent } from '@scrumooth/shared';
+import { IMPEDIMENT_PRIORITIES, timeboxFor, type ScrumEvent } from '@scrumooth/shared';
+
+/**
+ * Sort key for an impediment's declared impact. The enum's declaration order is meaningful
+ * (CRITICAL first), so an unknown value sorts last rather than being silently treated as
+ * critical.
+ */
+const priorityRank = (priority: string): number => {
+  const index = (IMPEDIMENT_PRIORITIES as readonly string[]).indexOf(priority);
+  return index === -1 ? IMPEDIMENT_PRIORITIES.length : index;
+};
 
 const DURATION_DAYS: Record<string, number> = {
   ONE_WEEK: 7,
@@ -129,12 +139,17 @@ export const smDashboardService = {
           id: i.id,
           title: i.title,
           status: i.status,
+          priority: i.priority,
+          targetDate: i.targetDate,
+          overdue: i.targetDate ? i.targetDate.getTime() < now : false,
           ageDays,
           atRisk: ageDays > sprintDurationDays,
           sprintName: i.sprint?.name ?? null,
         };
       })
-      .sort((a, b) => b.ageDays - a.ageDays);
+      // Impact first, so the Scrum Master sees what to remove before what has merely aged:
+      // age alone cannot distinguish a blocked Sprint from a long-running annoyance.
+      .sort((a, b) => priorityRank(a.priority) - priorityRank(b.priority) || b.ageDays - a.ageDays);
 
     return {
       total: impediments.length,

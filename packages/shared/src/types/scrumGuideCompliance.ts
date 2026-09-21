@@ -2,6 +2,8 @@
 // Increment integrity, SM facilitation dashboard, Product Goal snapshots,
 // and Scrum Values health checks.
 
+import type { ImpedimentPriority } from '../constants/index.js';
+
 // --- Increment integrity ---
 
 export enum IntegrationTestResult {
@@ -58,9 +60,15 @@ export interface ImpedimentMetrics {
     id: string;
     title: string;
     status: string;
+    /** Declared impact, so the Scrum Master can act on impact rather than age alone. */
+    priority: ImpedimentPriority;
+    /** The date the team intends the impediment to be removed by, if any. */
+    targetDate: string | null;
+    /** True when the target date has passed and the impediment is still unresolved. */
+    overdue: boolean;
     ageDays: number;
     atRisk: boolean;
-    sprintName?: string;
+    sprintName?: string | null;
   }>;
 }
 

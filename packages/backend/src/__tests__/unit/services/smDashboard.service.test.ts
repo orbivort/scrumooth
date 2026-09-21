@@ -390,6 +390,42 @@ describe('SMDashboardService', () => {
       expect(result.averageResolutionDays).toBe(0);
       expect(result.aging[0]!.atRisk).toBe(false);
     });
+
+    it('should order aging by impact first and flag an overdue target date', async () => {
+      const now = Date.now();
+      vi.mocked(prisma.impediment.findMany).mockResolvedValue([
+        {
+          id: 'imp-low',
+          title: 'Old but minor',
+          status: 'OPEN',
+          priority: 'LOW',
+          targetDate: null,
+          createdAt: new Date(now - 30 * 24 * 60 * 60 * 1000),
+          resolvedAt: null,
+          sprint: null,
+        },
+        {
+          id: 'imp-critical',
+          title: 'Blocked release',
+          status: 'OPEN',
+          priority: 'CRITICAL',
+          targetDate: new Date(now - 2 * 24 * 60 * 60 * 1000),
+          createdAt: new Date(now - 2 * 24 * 60 * 60 * 1000),
+          resolvedAt: null,
+          sprint: null,
+        },
+      ] as any);
+
+      const result = await smDashboardService.getImpedimentMetrics('team-1');
+
+      // Impact beats age: the younger CRITICAL impediment is listed first, because age alone
+      // cannot tell the Scrum Master which impediment to remove first.
+      expect(result.aging.map((item) => item.id)).toEqual(['imp-critical', 'imp-low']);
+      expect(result.aging[0]!.priority).toBe('CRITICAL');
+      expect(result.aging[0]!.overdue).toBe(true);
+      expect(result.aging[1]!.overdue).toBe(false);
+      expect(result.aging[1]!.targetDate).toBeNull();
+    });
   });
 
   describe('getDoDComplianceTrend', () => {

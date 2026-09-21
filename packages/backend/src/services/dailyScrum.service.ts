@@ -1,6 +1,10 @@
 import prisma from '../utils/prisma';
 import { NotFoundError, BadRequestError, ConflictError, localizedError } from '../utils/errors';
-import { GATE_CODES } from '@scrumooth/shared';
+import {
+  DEFAULT_IMPEDIMENT_PRIORITY,
+  GATE_CODES,
+  type ImpedimentPriority,
+} from '@scrumooth/shared';
 import { generateUUIDv7 } from '../utils/uuid';
 import {
   NotificationType,
@@ -536,6 +540,8 @@ class DailyScrumService {
       description: string;
       ownerId?: string;
       sprintId?: string;
+      priority?: ImpedimentPriority;
+      targetDate?: string | Date | null;
     }
   ): Promise<{
     dailyScrum: DailyScrumWithRelations;
@@ -586,7 +592,12 @@ class DailyScrumService {
           reportedById: userId,
           ownerId: data.ownerId,
           status: ImpedimentStatus.OPEN,
+          // An impediment promoted from the Daily Scrum carries the same impact defaults and
+          // audit trail as one reported directly, so every entry point tells the same story.
+          priority: data.priority ?? DEFAULT_IMPEDIMENT_PRIORITY,
+          targetDate: data.targetDate ?? null,
           createdBy: userId,
+          updatedBy: userId,
         },
         include: {
           reportedBy: {

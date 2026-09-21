@@ -414,6 +414,7 @@ export const createMockImpediment = (overrides?: Partial<Impediment>): Impedimen
   description: 'A test impediment',
   reportedById: 'user-1',
   status: 'OPEN' as ImpedimentStatus,
+  priority: 'MEDIUM',
   createdAt: '2026-01-01T00:00:00Z',
   updatedAt: '2026-01-01T00:00:00Z',
   ...overrides,

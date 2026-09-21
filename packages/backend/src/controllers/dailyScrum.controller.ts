@@ -137,13 +137,15 @@ export const promoteToImpediment = asyncHandler(async (req: Request, res: Respon
   if (!id) {
     throw new BadRequestError('Daily Scrum ID is required');
   }
-  const { title, description, ownerId, sprintId } = req.body;
+  const { title, description, ownerId, sprintId, priority, targetDate } = req.body;
 
   const result = await dailyScrumService.promoteToImpediment(id, userId, {
     title,
     description,
     ownerId,
     sprintId,
+    priority,
+    targetDate,
   });
 
   res.status(201).json(createSuccessResponse(result));

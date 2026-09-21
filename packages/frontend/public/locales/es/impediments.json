@@ -1,10 +1,13 @@
 {
   "allStatus": "Todos los estados",
   "card": {
+    "escalated": "Escalado al Scrum Master",
     "owner": "Propietario",
     "reportedBy": "Reportado por",
     "resolution": "Resolución",
     "sprint": "Sprint",
+    "targetDate": "Objetivo: {{date}}",
+    "targetDateOverdue": "Vencido: {{date}}",
     "unknown": "Desconocido",
     "viewDetailsAria": "Ver detalles para Impediment: {{title}}. Estado: {{status}}"
   },
@@ -14,8 +17,11 @@
     "creating": "Creando...",
     "descriptionLabel": "Descripción",
     "descriptionPlaceholder": "Proporciona detalles sobre el Impediment",
+    "optional": "Opcional",
+    "priorityLabel": "Prioridad",
     "sprintLabel": "Sprint",
     "subtitle": "Documentar bloqueadores que afectan el progreso de su equipo",
+    "targetDateLabel": "Fecha objetivo",
     "title": "Reportar Nuevo Impediment",
     "titleLabel": "Título",
     "titlePlaceholder": "Descripción breve del Impediment"
@@ -36,17 +42,22 @@
     "close": "Cerrar",
     "createdLabel": "Creado",
     "deleteLabel": "Eliminar",
+    "deleteNotPermitted": "Solo quien reportó, el propietario o el Scrum Master pueden eliminar este impedimento.",
     "deleting": "Eliminando...",
     "descriptionLabel": "Descripción",
+    "escalated": "Este impedimento superó el umbral de escalado, por lo que se notificó al Scrum Master.",
     "ownerLabel": "Propietario",
+    "priorityLabel": "Prioridad",
     "reportedByLabel": "Reportado por",
     "resolutionLabel": "Resolución",
     "resolutionPlaceholder": "Describa cómo se resolvió este Impediment...",
+    "resolutionRequiredFor": "Se requiere una resolución escrita para marcar este impedimento como {{status}}.",
     "saveResolution": "Guardar Resolución",
     "saving": "Guardando...",
     "sprintLabel": "Sprint",
     "statusLabel": "Estado",
     "subtitle": "Ver y gestionar información del Impediment",
+    "targetDateLabel": "Fecha objetivo",
     "title": "Detalles del Impediment",
     "titleLabel": "Título"
   },
@@ -64,6 +75,12 @@
     "title": "Error cargando datos"
   },
   "filterByStatus": "Filtrar por estado",
+  "priority": {
+    "critical": "Crítica",
+    "high": "Alta",
+    "low": "Baja",
+    "medium": "Media"
+  },
   "reportImpediment": "Reportar Impediment",
   "stats": {
     "CLOSED": "Cerrado",

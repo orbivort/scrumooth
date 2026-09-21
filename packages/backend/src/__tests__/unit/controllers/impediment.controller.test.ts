@@ -175,13 +175,16 @@ describe('Impediment Controller', () => {
       await new Promise((resolve) => setTimeout(resolve, 0));
 
       expect(mockNext).not.toHaveBeenCalled();
-      expect(impedimentService.createImpediment).toHaveBeenCalledWith({
+      // The authenticated caller is the actor: the service derives `reportedById` from them
+      // rather than trusting the payload.
+      expect(impedimentService.createImpediment).toHaveBeenCalledWith('user-123', {
         teamId: 'team-123',
         sprintId: 'sprint-123',
         title: 'New Impediment',
         description: 'Test description',
         ownerId: 'user-456',
-        reportedById: 'user-123',
+        priority: undefined,
+        targetDate: undefined,
       });
       expect(mockRes._status).toBe(201);
       expect(mockRes._json).toEqual({
@@ -238,6 +241,7 @@ describe('Impediment Controller', () => {
   describe('updateImpediment', () => {
     it('should update an impediment', async () => {
       mockReq.params = { id: 'imp-123' };
+      mockReq.userId = 'user-123';
       mockReq.body = {
         teamId: 'team-123',
         status: 'RESOLVED',
@@ -252,11 +256,18 @@ describe('Impediment Controller', () => {
       await new Promise((resolve) => setTimeout(resolve, 0));
 
       expect(mockNext).not.toHaveBeenCalled();
-      expect(impedimentService.updateImpediment).toHaveBeenCalledWith('imp-123', 'team-123', {
-        status: 'RESOLVED',
-        resolution: 'Fixed the issue',
-        ownerId: 'user-456',
-      });
+      expect(impedimentService.updateImpediment).toHaveBeenCalledWith(
+        'imp-123',
+        'team-123',
+        'user-123',
+        {
+          status: 'RESOLVED',
+          resolution: 'Fixed the issue',
+          ownerId: 'user-456',
+          priority: undefined,
+          targetDate: undefined,
+        }
+      );
       expect(mockRes._json).toEqual({
         success: true,
         data: mockImpediment,
@@ -286,6 +297,7 @@ describe('Impediment Controller', () => {
 
     it('should handle service errors', async () => {
       mockReq.params = { id: 'imp-123' };
+      mockReq.userId = 'user-123';
       mockReq.body = { teamId: 'team-123', status: 'RESOLVED' };
       const error = new Error('Impediment not found');
 
@@ -302,6 +314,7 @@ describe('Impediment Controller', () => {
     it('should delete an impediment', async () => {
       mockReq.params = { id: 'imp-123' };
       mockReq.query = { teamId: 'team-123' };
+      mockReq.userId = 'user-123';
 
       (impedimentService.deleteImpediment as any).mockResolvedValue(undefined);
 
@@ -309,7 +322,12 @@ describe('Impediment Controller', () => {
       await new Promise((resolve) => setTimeout(resolve, 0));
 
       expect(mockNext).not.toHaveBeenCalled();
-      expect(impedimentService.deleteImpediment).toHaveBeenCalledWith('imp-123', 'team-123');
+      // Deletion is attributed, so the service can check reporter/owner/Scrum Master rights.
+      expect(impedimentService.deleteImpediment).toHaveBeenCalledWith(
+        'imp-123',
+        'team-123',
+        'user-123'
+      );
       expect(mockRes._json).toEqual({
         success: true,
         data: { message: 'Impediment deleted successfully' },
@@ -340,6 +358,7 @@ describe('Impediment Controller', () => {
     it('should handle service errors', async () => {
       mockReq.params = { id: 'imp-123' };
       mockReq.query = { teamId: 'team-123' };
+      mockReq.userId = 'user-123';
       const error = new Error('Impediment not found');
 
       (impedimentService.deleteImpediment as any).mockRejectedValue(error);

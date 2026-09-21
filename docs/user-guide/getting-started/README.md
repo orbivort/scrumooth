@@ -146,11 +146,11 @@ Once your team is created, invite members to join:
 
 3. **Member Roles**
 
-   | Role              | Permissions                                                              |
-   | ----------------- | ------------------------------------------------------------------------ |
-   | **Product Owner** | Manage backlog, goals, reviews, team settings, cancel a Sprint           |
-   | **Scrum Master**  | Facilitate ceremonies, manage impediments, retrospectives                |
-   | **Developers**    | Size work, save the Sprint Backlog, update tasks, author the Daily Scrum |
+   | Role              | Permissions                                                                                                                 |
+   | ----------------- | --------------------------------------------------------------------------------------------------------------------------- |
+   | **Product Owner** | Manage backlog, goals, reviews, team settings, cancel a Sprint                                                              |
+   | **Scrum Master**  | Facilitate ceremonies, retrospectives, and own unassigned impediments; notified when one ages past the escalation threshold |
+   | **Developers**    | Size work, save the Sprint Backlog, update tasks, author the Daily Scrum                                                    |
 
 4. **Invitation Process**
    - Invited members receive an email with registration instructions
@@ -409,8 +409,11 @@ Congratulations! You've completed the basic setup. Here's what to do next:
    - Update task status as work progresses
 
 3. **Impediments** - Track and resolve blockers
-   - Navigate to "Impediments" to log and manage blockers
-   - Assign owners and track resolution
+   - Navigate to "Impediments" to log and manage blockers for the active Sprint
+   - Set a priority (Critical, High, Medium, Low) and an optional target date, so the Scrum Master knows what to remove first
+   - Assign an owner: leave it blank and the impediment defaults to the team's Scrum Master, who is notified
+   - Both **Resolved** and **Closed** require written resolution text. An unresolved impediment blocks the Sprint from closing, and the Scrum Master is notified when one ages past the escalation threshold
+   - Only the reporter, the owner, or the Scrum Master can delete an impediment, and every impediment is scoped to the team that raised it
 
 ### End of Sprint
 

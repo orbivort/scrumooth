@@ -194,6 +194,17 @@ export const config = {
     ),
   },
 
+  // Impediment Escalation Configuration
+  impediment: {
+    // How long an unresolved impediment may age before its team's Scrum Master is notified.
+    // One week is the product default: long enough not to nag, short enough to act within a Sprint.
+    escalationThresholdDays: Math.max(
+      1, // A sub-day threshold is noise rather than a signal.
+      parseInt(process.env.IMPEDIMENT_ESCALATION_THRESHOLD_DAYS ?? '7', 10)
+    ),
+    escalationCron: process.env.IMPEDIMENT_ESCALATION_CRON ?? '0 6 * * *',
+  },
+
   // Event Loop Monitoring
   eventLoop: {
     enabled:
@@ -456,6 +467,14 @@ export const validateConfig = (): void => {
 
   if (config.notification.maxPageSize < 10 || config.notification.maxPageSize > 100) {
     throw new Error('NOTIFICATION_MAX_PAGE_SIZE must be between 10 and 100');
+  }
+
+  // Validate impediment escalation configuration
+  if (
+    Number.isNaN(config.impediment.escalationThresholdDays) ||
+    config.impediment.escalationThresholdDays < 1
+  ) {
+    throw new Error('IMPEDIMENT_ESCALATION_THRESHOLD_DAYS must be a positive integer');
   }
 
   // Validate team configuration

@@ -4,6 +4,7 @@ import {
   IntegrationTestResult,
   ScrumValue,
   HealthCheckStatus,
+  type ImpedimentPriority,
   type Locale,
   type IntegrationTestRecord,
   type IncrementChainNode,
@@ -24,6 +25,7 @@ import {
 } from '@scrumooth/shared';
 
 export type {
+  ImpedimentPriority,
   IntegrationTestRecord,
   IncrementChainNode,
   EventComplianceSummary,
@@ -303,10 +305,20 @@ export interface Impediment {
   reportedById: string;
   ownerId?: string;
   status: ImpedimentStatus;
+  /** Declared impact. `CRITICAL` first: the backend orders reads by this, then by age. */
+  priority: ImpedimentPriority;
+  /** The date the team intends to have the impediment removed by, if any. */
+  targetDate?: string | null;
   resolution?: string;
   createdAt: string;
   updatedAt: string;
   resolvedAt?: string;
+  /** Set when an unresolved impediment was escalated to the Scrum Master. */
+  escalatedAt?: string | null;
+  /** How many times the impediment has been escalated. */
+  escalationCount?: number;
+  createdBy?: string | null;
+  updatedBy?: string | null;
   reportedBy?: User;
   owner?: User;
   sprint?: { id: string; name: string };

@@ -1,9 +1,16 @@
 import React, { memo, useCallback, useEffect, useState, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
+import { DEFAULT_IMPEDIMENT_PRIORITY, IMPEDIMENT_PRIORITIES } from '@scrumooth/shared';
 
-import type { Impediment } from '../../../types';
+import type { Impediment, ImpedimentPriority } from '../../../types';
 
 import styles from './ImpedimentList.module.css';
+
+/** Payloads predating the priority field default to Medium, matching the backend default. */
+const normalizePriority = (priority: ImpedimentPriority | undefined): ImpedimentPriority =>
+  priority && (IMPEDIMENT_PRIORITIES as readonly string[]).includes(priority)
+    ? priority
+    : DEFAULT_IMPEDIMENT_PRIORITY;
 
 interface ImpedimentListProps {
   impediments: Impediment[];
@@ -87,6 +94,7 @@ const ImpedimentList: React.FC<ImpedimentListProps> = memo(
                 ? t('impedimentList.impedimentAriaLabel', {
                     title: impediment.title,
                     status: t(`impedimentStatus.${impediment.status}`),
+                    priority: t(`impedimentPriority.${normalizePriority(impediment.priority)}`),
                   })
                 : undefined
             }
@@ -94,6 +102,12 @@ const ImpedimentList: React.FC<ImpedimentListProps> = memo(
             <span className={styles['impediment-status-dot']} aria-hidden="true" />
             <div className={styles['impediment-content']}>
               <span className={styles['impediment-title']}>{impediment.title}</span>
+              <span
+                className={`${styles['impediment-priority-badge']} ${styles[`priority-${normalizePriority(impediment.priority).toLowerCase()}`] ?? ''}`}
+                aria-hidden={onImpedimentClick ? true : undefined}
+              >
+                {t(`impedimentPriority.${normalizePriority(impediment.priority)}`)}
+              </span>
               <span
                 className={`${styles['impediment-status-badge']} ${styles[impediment.status.toLowerCase()]}`}
                 aria-hidden={onImpedimentClick ? true : undefined}

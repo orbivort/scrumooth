@@ -77,6 +77,14 @@ const promoteImpedimentSchema = z.object({
   // Team is derived server-side from the Daily Scrum record; sprint is optional
   // and defaults to the Daily Scrum's sprint when omitted.
   sprintId: z.string().uuid().optional(),
+  priority: z.enum(['CRITICAL', 'HIGH', 'MEDIUM', 'LOW']).optional(),
+  targetDate: z
+    .string()
+    .refine(
+      (value) => value === '' || !Number.isNaN(Date.parse(value)),
+      'Invalid target date: expected an ISO date'
+    )
+    .nullish(),
 });
 
 /**

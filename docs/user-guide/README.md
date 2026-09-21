@@ -26,7 +26,7 @@ Scrumooth is built for one situation in particular: engineering-led organisation
 
 ### What Scrumooth Enforces
 
-Scrumooth does not treat the Scrum Guide as advice. It enforces the rules server-side, so they hold whether you use the interface or call the API directly: a Sprint cannot be closed before its Review and its Retrospective, only Developers size the work, one Product Owner owns the Product Backlog, and "Done" means the Definition of Done has been met.
+Scrumooth does not treat the Scrum Guide as advice. It enforces the rules server-side, so they hold whether you use the interface or call the API directly: a Sprint cannot be closed before its Review and its Retrospective, only Developers size the work, one Product Owner owns the Product Backlog, "Done" means the Definition of Done has been met, and a Sprint cannot be closed while an impediment it raised is still unresolved — with both terminal impediment states requiring a written resolution.
 
 The canonical list of enforced rules — and the boundaries where Scrumooth deliberately does not enforce anything — lives in the project README: [What Scrumooth Enforces](../../README.md#what-scrumooth-enforces).
 
@@ -126,11 +126,11 @@ Scrumooth enforces the Scrum framework as defined in the [2020 Scrum Guide](http
 
 ### Scrum Roles
 
-| Role              | Responsibility         | Scrumooth Permissions                            |
-| ----------------- | ---------------------- | ------------------------------------------------ |
-| **Product Owner** | Maximize product value | Manage backlog, goals, reviews; cancel a Sprint  |
-| **Scrum Master**  | Facilitate Scrum       | Facilitate ceremonies, manage impediments        |
-| **Developers**    | Create the Increment   | Size work, save the Sprint Backlog, execute work |
+| Role              | Responsibility         | Scrumooth Permissions                                                                                                                                              |
+| ----------------- | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Product Owner** | Maximize product value | Manage backlog, goals, reviews; cancel a Sprint                                                                                                                    |
+| **Scrum Master**  | Facilitate Scrum       | Facilitate ceremonies; cause the removal of impediments — unassigned impediments default to them and they are notified when one ages past the escalation threshold |
+| **Developers**    | Create the Increment   | Size work, save the Sprint Backlog, execute work                                                                                                                   |
 
 ### Scrum Artifacts
 

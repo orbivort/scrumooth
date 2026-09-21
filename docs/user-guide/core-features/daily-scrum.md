@@ -175,12 +175,13 @@ An impediment is anything that:
 
 2. **Promote to a formal record**:
    - Use "Create Impediment" to promote an impediment raised in the Daily Scrum into a formal Impediment record
-   - The formal record is tracked and can be assigned an owner and priority
+   - The formal record carries the same impact fields and audit trail as one reported directly from the Impediments page, so the Scrum Master can act on it either way
 
 3. **Track Resolution**:
-   - Assign owner
-   - Set target resolution date
-   - Update status as progress is made
+   - Assign an owner — leave it blank and the impediment lands on the team's Scrum Master, who is accountable for causing its removal
+   - Set a priority (Critical, High, Medium, Low) and, if the team wants one, a target date
+   - Update the status as progress is made. Both **Resolved** and **Closed** require written resolution text, and an unresolved impediment blocks the Sprint from being closed
+   - The Scrum Master is notified automatically once an impediment stays unresolved past the escalation threshold
 
 ---
 

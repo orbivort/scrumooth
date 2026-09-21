@@ -423,24 +423,28 @@ model BurndownData {
 }
 
 model Impediment {
-  id            String           @id @db.Uuid
-  teamId        String           @db.Uuid
-  sprintId      String?          @db.Uuid
-  title         String
-  description   String
-  reportedById  String           @db.Uuid
-  ownerId       String?          @db.Uuid
-  status        ImpedimentStatus @default(OPEN)
-  resolution    String?
-  resolvedAt    DateTime?        @db.Timestamptz(3)
-  createdAt     DateTime         @default(now()) @db.Timestamptz(3)
-  createdBy     String?          @db.Uuid
-  updatedAt     DateTime         @updatedAt @db.Timestamptz(3)
-  updatedBy     String?          @db.Uuid
-  owner         User?            @relation("ImpedimentOwner", fields: [ownerId], references: [id], onDelete: SetNull)
-  reportedBy    User             @relation("ImpedimentReporter", fields: [reportedById], references: [id], onDelete: Restrict)
-  sprint        Sprint?          @relation(fields: [sprintId], references: [id], onDelete: SetNull)
-  team          Team             @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  id              String             @id @db.Uuid
+  teamId          String             @db.Uuid
+  sprintId        String?            @db.Uuid
+  title           String
+  description     String
+  reportedById    String             @db.Uuid
+  ownerId         String?            @db.Uuid
+  status          ImpedimentStatus   @default(OPEN)
+  priority        ImpedimentPriority @default(MEDIUM)
+  targetDate      DateTime?          @db.Date
+  resolution      String?
+  resolvedAt      DateTime?          @db.Timestamptz(3)
+  escalatedAt     DateTime?          @db.Timestamptz(3)
+  escalationCount Int                @default(0)
+  createdAt       DateTime           @default(now()) @db.Timestamptz(3)
+  createdBy       String?            @db.Uuid
+  updatedAt       DateTime           @updatedAt @db.Timestamptz(3)
+  updatedBy       String?            @db.Uuid
+  owner           User?              @relation("ImpedimentOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  reportedBy      User               @relation("ImpedimentReporter", fields: [reportedById], references: [id], onDelete: Restrict)
+  sprint          Sprint?            @relation(fields: [sprintId], references: [id], onDelete: SetNull)
+  team            Team               @relation(fields: [teamId], references: [id], onDelete: Cascade)
 
   @@index([teamId])
   @@index([status])
@@ -449,6 +453,9 @@ model Impediment {
   @@index([ownerId])
   @@index([teamId, status])
   @@index([teamId, status, createdAt])
+  // Impact-first reads for a team (the SM dashboard and the Impediments page) and the
+  // escalation job's scan of unresolved work both walk this index instead of sorting.
+  @@index([teamId, priority, createdAt])
   @@map("impediments")
 }
 
@@ -1241,6 +1248,19 @@ enum ImpedimentStatus {
   CLOSED
 }
 
+/**
+ * Impact ordering for impediments, declared most-critical-first.
+ *
+ * PostgreSQL compares enum values by declaration order, so `orderBy: { priority: 'asc' }`
+ * resolves to CRITICAL → LOW. Reordering these values is a migration, not a code change.
+ */
+enum ImpedimentPriority {
+  CRITICAL
+  HIGH
+  MEDIUM
+  LOW
+}
+
 enum ProductGoalStatus {
   NEW
   ACTIVE
@@ -1337,6 +1357,7 @@ enum NotificationType {
   TEAM_REMOVAL
   TASK_ASSIGNMENT
   IMPEDIMENT_ASSIGNMENT
+  IMPEDIMENT_ESCALATION
   DAILY_SCRUM_SIGNAL
   TEAM_CREATED
   TEAM_UPDATED

@@ -1,10 +1,13 @@
 {
   "allStatus": "Alle Status",
   "card": {
+    "escalated": "An den Scrum Master eskaliert",
     "owner": "Verantwortlicher",
     "reportedBy": "Gemeldet von",
     "resolution": "Lösung",
     "sprint": "Sprint",
+    "targetDate": "Ziel: {{date}}",
+    "targetDateOverdue": "Überfällig: {{date}}",
     "unknown": "Unbekannt",
     "viewDetailsAria": "Details für Impediment anzeigen: {{title}}. Status: {{status}}"
   },
@@ -14,8 +17,11 @@
     "creating": "Erstellen...",
     "descriptionLabel": "Beschreibung",
     "descriptionPlaceholder": "Details zum Impediment angeben",
+    "optional": "Optional",
+    "priorityLabel": "Priorität",
     "sprintLabel": "Sprint",
     "subtitle": "Blocker dokumentieren, die den Fortschritt Ihres Teams behindern",
+    "targetDateLabel": "Zieldatum",
     "title": "Neues Impediment melden",
     "titleLabel": "Titel",
     "titlePlaceholder": "Kurze Beschreibung des Impediments"
@@ -36,17 +42,22 @@
     "close": "Schließen",
     "createdLabel": "Erstellt",
     "deleteLabel": "Löschen",
+    "deleteNotPermitted": "Nur die meldende Person, der Eigentümer oder der Scrum Master können dieses Impediment löschen.",
     "deleting": "Löschen...",
     "descriptionLabel": "Beschreibung",
+    "escalated": "Dieses Impediment hat die Eskalationsschwelle überschritten; der Scrum Master wurde benachrichtigt.",
     "ownerLabel": "Eigentümer",
+    "priorityLabel": "Priorität",
     "reportedByLabel": "Gemeldet von",
     "resolutionLabel": "Lösung",
     "resolutionPlaceholder": "Beschreiben Sie, wie dieses Impediment gelöst wurde...",
+    "resolutionRequiredFor": "Um dieses Impediment als {{status}} zu markieren, ist eine schriftliche Lösung erforderlich.",
     "saveResolution": "Lösung speichern",
     "saving": "Speichern...",
     "sprintLabel": "Sprint",
     "statusLabel": "Status",
     "subtitle": "Impediment-Informationen anzeigen und verwalten",
+    "targetDateLabel": "Zieldatum",
     "title": "Impediment-Details",
     "titleLabel": "Titel"
   },
@@ -64,6 +75,12 @@
     "title": "Fehler beim Laden der Daten"
   },
   "filterByStatus": "Nach Status filtern",
+  "priority": {
+    "critical": "Kritisch",
+    "high": "Hoch",
+    "low": "Niedrig",
+    "medium": "Mittel"
+  },
   "reportImpediment": "Impediment melden",
   "stats": {
     "CLOSED": "Geschlossen",

@@ -15,6 +15,18 @@ export const GATE_CODES = {
   SPRINT_EVENTS_MISSING: 'GATE_SPRINT_EVENTS_MISSING',
   /** A Sprint cannot close while it still has unresolved impediments. */
   IMPEDIMENTS_UNRESOLVED: 'GATE_IMPEDIMENTS_UNRESOLVED',
+  /**
+   * An impediment records why the Scrum Team is blocked, so it belongs to the team it was
+   * raised for: reading and writing one requires membership of that team, and no member of
+   * another team can tamper with the record of what held a team back.
+   */
+  IMPEDIMENT_TEAM_MEMBERS_ONLY: 'GATE_IMPEDIMENT_TEAM_MEMBERS_ONLY',
+  /**
+   * Reaching a terminal state (`RESOLVED` or `CLOSED`) requires written resolution text.
+   * Without it, `CLOSED` becomes a cheap way to lift the Sprint-close gate without removing
+   * anything — the gate's own failure mode.
+   */
+  IMPEDIMENT_TERMINAL_RESOLUTION_REQUIRED: 'GATE_IMPEDIMENT_TERMINAL_RESOLUTION_REQUIRED',
   /** Nothing is Done until every active Definition of Done item is verified. */
   DOD_NOT_VERIFIED: 'GATE_DOD_NOT_VERIFIED',
   /** A team can hold exactly one Product Owner and one Scrum Master. */
@@ -141,6 +153,16 @@ export const GATE_DEFINITIONS: Record<GateCode, GateDefinition> = {
     code: GATE_CODES.IMPEDIMENTS_UNRESOLVED,
     httpStatus: 400,
     i18nKey: 'impedimentsUnresolved',
+  },
+  [GATE_CODES.IMPEDIMENT_TEAM_MEMBERS_ONLY]: {
+    code: GATE_CODES.IMPEDIMENT_TEAM_MEMBERS_ONLY,
+    httpStatus: 403,
+    i18nKey: 'impedimentTeamMembersOnly',
+  },
+  [GATE_CODES.IMPEDIMENT_TERMINAL_RESOLUTION_REQUIRED]: {
+    code: GATE_CODES.IMPEDIMENT_TERMINAL_RESOLUTION_REQUIRED,
+    httpStatus: 400,
+    i18nKey: 'impedimentTerminalResolutionRequired',
   },
   [GATE_CODES.DOD_NOT_VERIFIED]: {
     code: GATE_CODES.DOD_NOT_VERIFIED,

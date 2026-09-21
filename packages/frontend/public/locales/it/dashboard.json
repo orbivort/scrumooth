@@ -128,9 +128,15 @@
   "forecastBurndown": "Previsione (lineare)",
   "impedimentList": {
     "ariaLabel": "Lista Impediments",
-    "impedimentAriaLabel": "{{title}}, stato: {{status}}. Clicca per vedere l'Impediment",
+    "impedimentAriaLabel": "{{title}}, stato: {{status}}, priorità: {{priority}}. Clicca per vedere l'Impediment",
     "noImpediments": "Nessun Impediment segnalato",
     "title": "Impediments"
+  },
+  "impedimentPriority": {
+    "CRITICAL": "Critica",
+    "HIGH": "Alta",
+    "LOW": "Bassa",
+    "MEDIUM": "Media"
   },
   "impedimentStatus": {
     "CLOSED": "Chiuso",

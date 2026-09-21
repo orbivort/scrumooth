@@ -1,10 +1,13 @@
 {
   "allStatus": "[Àll Stàtússss]",
   "card": {
+    "escalated": "[Éscàlàtéd tó thé Scrúm Màstérrrrrrrrrr]",
     "owner": "[Ównérrr]",
     "reportedBy": "[Répórtéd byyyyy]",
     "resolution": "[Résólútíónnnn]",
     "sprint": "[Sprínttt]",
+    "targetDate": "[TTààrrggéét: {{date}}]",
+    "targetDateOverdue": "[Óvérdúéééé: {{date}}]",
     "unknown": "[Únknównnnn]",
     "viewDetailsAria": "[Víéw détàíls fór ímpédíméntttttttttt: {{title}}. SSttààttúús: {{status}}]"
   },
@@ -14,8 +17,11 @@
     "creating": "[CCrrééààttíínng...]",
     "descriptionLabel": "[Déscríptíónnnnn]",
     "descriptionPlaceholder": "[Próvídé détàíls àbóút thé ímpédíméntttttttttttt]",
+    "optional": "[Óptíónàllll]",
+    "priorityLabel": "[Príórítyyyy]",
     "sprintLabel": "[Sprínttt]",
     "subtitle": "[Dócúmént blóckérs àfféctíng yóúr téàm's prógrésssssssssssssssss]",
+    "targetDateLabel": "[Tàrgét dàtééééé]",
     "title": "[Répórt Néw Ímpédíméntttttttt]",
     "titleLabel": "[Títlééé]",
     "titlePlaceholder": "[Bríéf déscríptíón óf thé ímpédíméntttttttttttt]"
@@ -36,17 +42,22 @@
     "close": "[Clósééé]",
     "createdLabel": "[Créàtédddd]",
     "deleteLabel": "[Délétééé]",
+    "deleteNotPermitted": "[Ónly thé répórtér, thé ównér, ór thé Scrúm Màstér càn délété thís ímpédíménttttttttttttttttttttttttt.]",
     "deleting": "[DDééllééttíínng...]",
     "descriptionLabel": "[Déscríptíónnnnn]",
+    "escalated": "[Thís ímpédímént àgéd pàst thé éscàlàtíón thréshóld, só thé Scrúm Màstér hàs béén nótífíédddddddddddddddddddddddddddd.]",
     "ownerLabel": "[Ównérrr]",
+    "priorityLabel": "[Príórítyyyy]",
     "reportedByLabel": "[Répórtéd byyyyy]",
     "resolutionLabel": "[Résólútíónnnn]",
     "resolutionPlaceholder": "[Déscríbé hów thís ímpédímént wàs résólvéddddddddddddddd...]",
+    "resolutionRequiredFor": "[À wríttén résólútíón ís réqúíréd tó màrk thís ímpédímént àsssssssssssssssssss {{status}}.]",
     "saveResolution": "[Sàvé Résólútíónnnnnn]",
     "saving": "[SSààvvíínng...]",
     "sprintLabel": "[Sprínttt]",
     "statusLabel": "[Stàtússs]",
     "subtitle": "[Víéw ànd mànàgé ímpédímént ínfórmàtíónnnnnnnnnnnnn]",
+    "targetDateLabel": "[Tàrgét dàtééééé]",
     "title": "[Ímpédímént Détàílsssssss]",
     "titleLabel": "[Títlééé]"
   },
@@ -64,6 +75,12 @@
     "title": "[Érrór Lóàdíng Dàtààààààà]"
   },
   "filterByStatus": "[Fíltér by stàtússssss]",
+  "priority": {
+    "critical": "[Crítícàllll]",
+    "high": "[HHííggh]",
+    "low": "[Lóww]",
+    "medium": "[Médíúmmm]"
+  },
   "reportImpediment": "[Répórt Ímpédíménttttttt]",
   "stats": {
     "CLOSED": "[Clóséddd]",

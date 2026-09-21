@@ -17,6 +17,8 @@
   "impedimentAssigned": "Neues Impediment zugewiesen: \"{{impedimentTitle}}\"",
   "impedimentAssignedMessage": "Gemeldet von {{reporterName}}",
   "impedimentCreated": "Neues Impediment gemeldet: {{title}}",
+  "impedimentEscalation": "Impediment erfordert Ihre Aktion: \"{{impedimentTitle}}\"",
+  "impedimentEscalationMessage": "Dieses Impediment ist seit {{ageDays}} Tagen ungelöst. Als Scrum Master sind Sie dafür verantwortlich, seine Beseitigung zu bewirken.",
   "impedimentResolved": "Impediment gelöst: {{title}}",
   "mention": "{{userName}} hat Sie in einem Kommentar erwähnt",
   "newTaskAssignedMessage": "Im Sprint \"{{sprintName}}\"",

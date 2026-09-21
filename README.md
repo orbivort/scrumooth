@@ -169,7 +169,7 @@ Everything needed to run the Sprint — the Guide's five events, three artifacts
 - **Sprint Planning** - Configurable sprint durations and capacity planning; **only Developers save the Sprint Backlog**
 - **Sprint Execution** - Interactive Kanban board with drag-and-drop; **only the Product Owner can cancel, and only while the Sprint is `ACTIVE`**
 - **Daily Scrum** - Shared daily record, with impediment surfacing; **only Developers author it — the Product Owner and Scrum Master observe**
-- **Impediment** - Blocker identification and resolution tracking; **a Sprint cannot close before its Impediments are resolved**
+- **Impediment** - Blocker identification and resolution tracking with impact prioritisation (Critical/High/Medium/Low) and target dates; **a Sprint cannot close before its Impediments are resolved**, both terminal states require a written resolution, every write is scoped to the team that raised the impediment, and an unowned impediment falls to the Scrum Master — who is notified when one ages past the escalation threshold
 - **Increment** - Product increment management; **The moment a Product Backlog item meets the Definition of Done, an Increment is born**
 - **Sprint Review** - Review management, stakeholder feedback, and backlog adjustment; **a Sprint cannot close before its Review is recorded**
 - **Sprint Retrospective** - Team reflection and tracked improvement; **a Sprint cannot close before its Retrospective is recorded**

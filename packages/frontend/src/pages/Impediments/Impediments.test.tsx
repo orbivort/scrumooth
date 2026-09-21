@@ -31,6 +31,9 @@ const SearchParamsCapture: React.FC<{ children: React.ReactNode }> = ({ children
 // Mock the store and services
 vi.mock('../../store', () => ({
   useTeamStore: vi.fn(),
+  // The page reads the current user id to decide reporter/owner delete rights.
+  useAuthStore: (selector: (state: { user: { id: string } | null }) => unknown) =>
+    selector({ user: { id: 'user-1' } }),
 }));
 
 vi.mock('../../services', () => ({

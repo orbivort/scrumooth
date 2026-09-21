@@ -2,10 +2,15 @@ import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
-import { formatLocaleDate } from '@scrumooth/shared';
+import {
+  DEFAULT_IMPEDIMENT_PRIORITY,
+  formatLocaleDate,
+  IMPEDIMENT_PRIORITIES,
+  type ImpedimentPriority,
+} from '@scrumooth/shared';
 
 import { apiService } from '../../services';
-import { useTeamStore } from '../../store';
+import { useAuthStore, useTeamStore } from '../../store';
 import { logger } from '../../utils/logger';
 import { ImpedimentStatus, type Impediment } from '../../types';
 import { TeamMemberSelect } from '../../components/TeamMemberSelect/TeamMemberSelect';
@@ -37,9 +42,44 @@ import { useI18nStore } from '@/i18n/useI18nStore';
 const QUERY_STALE_TIME = 5 * 60 * 1000;
 const QUERY_CACHE_TIME = 10 * 60 * 1000;
 
+/**
+ * States reached by dealing with an impediment. Both require written resolution text: reaching
+ * `CLOSED` without stating how the impediment was removed would lift the Sprint-close gate on an
+ * empty record.
+ */
+const TERMINAL_STATUSES: readonly ImpedimentStatus[] = [
+  ImpedimentStatus.RESOLVED,
+  ImpedimentStatus.CLOSED,
+];
+
+const isTerminalStatus = (status: ImpedimentStatus): boolean => TERMINAL_STATUSES.includes(status);
+
+/** Payloads predating the priority field default to Medium, matching the backend default. */
+const normalizePriority = (priority: ImpedimentPriority | undefined): ImpedimentPriority =>
+  priority && (IMPEDIMENT_PRIORITIES as readonly string[]).includes(priority)
+    ? priority
+    : DEFAULT_IMPEDIMENT_PRIORITY;
+
+const EMPTY_IMPEDIMENT_FORM = {
+  title: '',
+  description: '',
+  ownerId: '',
+  priority: DEFAULT_IMPEDIMENT_PRIORITY as ImpedimentPriority,
+  targetDate: '',
+};
+
+/** Literal label keys, so the translation lookup stays type-checked against the locale files. */
+const PRIORITY_LABEL_KEY = {
+  CRITICAL: 'priority.critical',
+  HIGH: 'priority.high',
+  MEDIUM: 'priority.medium',
+  LOW: 'priority.low',
+} as const;
+
 export const Impediments: React.FC = () => {
   const { t } = useTranslation(['impediments', 'common']);
-  const { currentTeam } = useTeamStore();
+  const { currentTeam, userRoleInCurrentTeam } = useTeamStore();
+  const currentUserId = useAuthStore((state) => state.user?.id);
   const { locale } = useI18nStore();
   const [searchParams, setSearchParams] = useSearchParams();
   const queryClient = useQueryClient();
@@ -47,14 +87,14 @@ export const Impediments: React.FC = () => {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedImpediment, setSelectedImpediment] = useState<Impediment | null>(null);
   const [filterStatus, setFilterStatus] = useState<string>('all');
-  const [formData, setFormData] = useState({
-    title: '',
-    description: '',
-    ownerId: '',
-  });
+  const [formData, setFormData] = useState({ ...EMPTY_IMPEDIMENT_FORM });
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [resolutionInput, setResolutionInput] = useState('');
-  const [showResolutionInput, setShowResolutionInput] = useState(false);
+  // The terminal status the pending resolution text will be saved with, or null when no
+  // resolution is being collected. Lifting the Sprint-close gate has to be described either way.
+  const [resolutionTargetStatus, setResolutionTargetStatus] = useState<ImpedimentStatus | null>(
+    null
+  );
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showUnsavedChangesModal, setShowUnsavedChangesModal] = useState(false);
   const [pendingCloseAction, setPendingCloseAction] = useState<(() => void) | null>(null);
@@ -68,6 +108,27 @@ export const Impediments: React.FC = () => {
 
   const teamId = currentTeam?.id;
   const teamMembers = currentTeam?.members ?? [];
+
+  const showResolutionInput = resolutionTargetStatus !== null;
+
+  // The Scrum Master is accountable for causing the removal of impediments, so they may always
+  // delete one. The API enforces this; the interface mirrors it so the control is not offered
+  // to someone the server would refuse. The role is normalised because team payloads have been
+  // observed in both `SCRUM_MASTER` and `scrum_master` casing.
+  const isScrumMaster = (userRoleInCurrentTeam ?? '').toUpperCase() === 'SCRUM_MASTER';
+
+  const canDeleteImpediment = useCallback(
+    (impediment: Impediment): boolean => {
+      if (isScrumMaster) {
+        return true;
+      }
+      return (
+        !!currentUserId &&
+        (impediment.reportedById === currentUserId || impediment.ownerId === currentUserId)
+      );
+    },
+    [currentUserId, isScrumMaster]
+  );
 
   const {
     data: activeSprintData,
@@ -161,7 +222,7 @@ export const Impediments: React.FC = () => {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.impediment.all });
       setShowCreateModal(false);
-      setFormData({ title: '', description: '', ownerId: '' });
+      setFormData({ ...EMPTY_IMPEDIMENT_FORM });
       setFormErrors({});
       success(t('toast.created'));
     },
@@ -275,14 +336,28 @@ export const Impediments: React.FC = () => {
     }
   };
 
+  const getPriorityLabel = (priority: ImpedimentPriority | undefined): string =>
+    t(PRIORITY_LABEL_KEY[normalizePriority(priority)]);
+
+  const getPriorityClass = (priority: ImpedimentPriority | undefined): string =>
+    styles[`priority-${normalizePriority(priority).toLowerCase()}`] ?? '';
+
+  /** An unresolved impediment whose target date has passed is visibly late. */
+  const isOverdue = (impediment: Impediment): boolean =>
+    !!impediment.targetDate &&
+    !isTerminalStatus(impediment.status) &&
+    new Date(impediment.targetDate).getTime() < Date.now();
+
   const handleStatusChange = (impedimentId: string, newStatus: ImpedimentStatus) => {
     if (!teamId) {
       toastError(t('toast.teamIdRequired'));
       return;
     }
 
-    if (newStatus === 'RESOLVED' && !resolutionInput.trim()) {
-      setShowResolutionInput(true);
+    // A terminal state has to state how the impediment was dealt with. Without this, moving an
+    // impediment to `CLOSED` lifted the Sprint-close gate while saying nothing about removal.
+    if (isTerminalStatus(newStatus) && !resolutionInput.trim()) {
+      setResolutionTargetStatus(newStatus);
       return;
     }
 
@@ -291,10 +366,10 @@ export const Impediments: React.FC = () => {
       updates: {
         status: newStatus,
         teamId,
-        resolution: newStatus === 'RESOLVED' ? resolutionInput : undefined,
+        resolution: isTerminalStatus(newStatus) ? resolutionInput.trim() : undefined,
       },
     });
-    setShowResolutionInput(false);
+    setResolutionTargetStatus(null);
     setResolutionInput('');
   };
 
@@ -312,11 +387,27 @@ export const Impediments: React.FC = () => {
     setSelectedImpediment(updatedImpediment);
     setSearchParams({ id: current.id });
 
-    if (newStatus === 'RESOLVED' && !current.resolution) {
-      setShowResolutionInput(true);
+    if (isTerminalStatus(newStatus) && !current.resolution) {
+      setResolutionTargetStatus(newStatus);
     } else if (newStatus !== oldStatus) {
       handleStatusChange(current.id, newStatus);
     }
+  };
+
+  const handlePrioritySelect = (priority: ImpedimentPriority) => {
+    const current = effectiveSelectedImpediment;
+    if (!current || !teamId) return;
+
+    setSelectedImpediment({ ...current, priority });
+    updateMutation.mutate({ id: current.id, updates: { teamId, priority } });
+  };
+
+  const handleTargetDateSelect = (targetDate: string) => {
+    const current = effectiveSelectedImpediment;
+    if (!current || !teamId) return;
+
+    setSelectedImpediment({ ...current, targetDate: targetDate || null });
+    updateMutation.mutate({ id: current.id, updates: { teamId, targetDate: targetDate || null } });
   };
 
   const handleSelectImpediment = (impediment: Impediment) => {
@@ -326,7 +417,7 @@ export const Impediments: React.FC = () => {
 
   const handleCloseDetail = () => {
     setSelectedImpediment(null);
-    setShowResolutionInput(false);
+    setResolutionTargetStatus(null);
     setResolutionInput('');
     setSearchParams({});
   };
@@ -381,10 +472,17 @@ export const Impediments: React.FC = () => {
       title: formData.title.trim(),
       description: formData.description.trim(),
       ownerId: formData.ownerId || undefined,
+      // The team states impact and intent up front, so the Scrum Master can act on impact
+      // rather than discovering it from the dashboard later.
+      priority: formData.priority,
+      targetDate: formData.targetDate || null,
     });
   };
 
-  const handleInputChange = (field: keyof typeof formData, value: string) => {
+  const handleInputChange = (
+    field: 'title' | 'description' | 'ownerId' | 'targetDate',
+    value: string
+  ) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
     if (formErrors[field]) {
       setFormErrors((prev) => {
@@ -395,10 +493,17 @@ export const Impediments: React.FC = () => {
     }
   };
 
+  const handlePriorityChange = (value: string) => {
+    setFormData((prev) => ({ ...prev, priority: value as ImpedimentPriority }));
+  };
+
   const hasUnsavedChanges = useCallback(() => {
     const current = formDataRef.current;
     return (
-      current.title.trim() !== '' || current.description.trim() !== '' || current.ownerId !== ''
+      current.title.trim() !== '' ||
+      current.description.trim() !== '' ||
+      current.ownerId !== '' ||
+      current.targetDate.trim() !== ''
     );
   }, []);
 
@@ -410,14 +515,14 @@ export const Impediments: React.FC = () => {
             onClose ??
             (() => {
               setShowCreateModal(false);
-              setFormData({ title: '', description: '', ownerId: '' });
+              setFormData({ ...EMPTY_IMPEDIMENT_FORM });
               setFormErrors({});
             })
         );
         setShowUnsavedChangesModal(true);
       } else {
         setShowCreateModal(false);
-        setFormData({ title: '', description: '', ownerId: '' });
+        setFormData({ ...EMPTY_IMPEDIMENT_FORM });
         setFormErrors({});
         onClose?.();
       }
@@ -427,7 +532,7 @@ export const Impediments: React.FC = () => {
 
   const handleDiscardChanges = useCallback(() => {
     setShowUnsavedChangesModal(false);
-    setFormData({ title: '', description: '', ownerId: '' });
+    setFormData({ ...EMPTY_IMPEDIMENT_FORM });
     setFormErrors({});
     if (pendingCloseAction) {
       pendingCloseAction();
@@ -575,6 +680,11 @@ export const Impediments: React.FC = () => {
                 <div className={styles['card-title-row']}>
                   <h3 className={styles['card-title']}>{impediment.title}</h3>
                   <span
+                    className={`${styles['priority-badge']} ${getPriorityClass(impediment.priority)}`}
+                  >
+                    {getPriorityLabel(impediment.priority)}
+                  </span>
+                  <span
                     className={`${styles['status-badge']} ${getStatusClass(impediment.status)}`}
                   >
                     <span className={styles['status-icon']} />
@@ -586,6 +696,20 @@ export const Impediments: React.FC = () => {
                     <CalendarIcon className={styles['meta-icon']} />
                     {formatLocaleDate(impediment.createdAt, locale)}
                   </span>
+                  {impediment.targetDate && (
+                    <span
+                      className={`${styles['meta-item']} ${isOverdue(impediment) ? styles['meta-overdue'] : ''}`}
+                    >
+                      <CalendarIcon className={styles['meta-icon']} />
+                      {isOverdue(impediment)
+                        ? t('card.targetDateOverdue', {
+                            date: formatLocaleDate(impediment.targetDate, locale),
+                          })
+                        : t('card.targetDate', {
+                            date: formatLocaleDate(impediment.targetDate, locale),
+                          })}
+                    </span>
+                  )}
                   {impediment.sprintId && (
                     <span className={styles['meta-item']}>
                       <SprintIcon className={styles['meta-icon']} />
@@ -595,6 +719,12 @@ export const Impediments: React.FC = () => {
                 </div>
               </div>
               <p className={styles['card-description']}>{impediment.description}</p>
+              {impediment.escalatedAt && (
+                <div className={styles['escalation-notice']}>
+                  <AlertCircleIcon className={styles['escalation-notice-icon']} />
+                  <span>{t('card.escalated')}</span>
+                </div>
+              )}
               <div className={styles['card-footer']}>
                 <div className={styles['footer-item']}>
                   <span className={styles['footer-label']}>{t('card.reportedBy')}</span>
@@ -783,6 +913,40 @@ export const Impediments: React.FC = () => {
                   )}
                 </div>
                 <div className={styles['form-row']}>
+                  <div className={styles['form-group']}>
+                    <label htmlFor="impediment-priority" className={styles['form-label']}>
+                      {t('createModal.priorityLabel')}
+                    </label>
+                    <select
+                      id="impediment-priority"
+                      className={styles['form-select']}
+                      value={formData.priority}
+                      onChange={(e) => handlePriorityChange(e.target.value)}
+                      disabled={createMutation.isPending}
+                    >
+                      {IMPEDIMENT_PRIORITIES.map((priority) => (
+                        <option key={priority} value={priority}>
+                          {t(PRIORITY_LABEL_KEY[priority])}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className={styles['form-group']}>
+                    <label htmlFor="impediment-target-date" className={styles['form-label']}>
+                      {t('createModal.targetDateLabel')}
+                      <span className={styles['optional-badge']}>{t('createModal.optional')}</span>
+                    </label>
+                    <input
+                      id="impediment-target-date"
+                      type="date"
+                      className={styles['form-input']}
+                      value={formData.targetDate}
+                      onChange={(e) => handleInputChange('targetDate', e.target.value)}
+                      disabled={createMutation.isPending}
+                    />
+                  </div>
+                </div>
+                <div className={styles['form-row']}>
                   <TeamMemberSelect
                     value={formData.ownerId}
                     onChange={(value) => handleInputChange('ownerId', value)}
@@ -899,6 +1063,47 @@ export const Impediments: React.FC = () => {
                   <option value="CLOSED">{t('status.closed')}</option>
                 </select>
               </div>
+              <div className={styles['detail-section']}>
+                <label htmlFor="impediment-detail-priority" className={styles['detail-label']}>
+                  <AlertTriangleIcon className={styles['detail-label-icon']} />
+                  {t('detailModal.priorityLabel')}
+                </label>
+                <select
+                  id="impediment-detail-priority"
+                  className={styles['status-select']}
+                  value={normalizePriority(effectiveSelectedImpediment.priority)}
+                  onChange={(e) => handlePrioritySelect(e.target.value as ImpedimentPriority)}
+                  disabled={updateMutation.isPending}
+                >
+                  {IMPEDIMENT_PRIORITIES.map((priority) => (
+                    <option key={priority} value={priority}>
+                      {t(PRIORITY_LABEL_KEY[priority])}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className={styles['detail-section']}>
+                <label htmlFor="impediment-detail-target-date" className={styles['detail-label']}>
+                  <CalendarIcon className={styles['detail-label-icon']} />
+                  {t('detailModal.targetDateLabel')}
+                </label>
+                <input
+                  id="impediment-detail-target-date"
+                  type="date"
+                  className={styles['form-input']}
+                  value={effectiveSelectedImpediment.targetDate?.slice(0, 10) ?? ''}
+                  onChange={(e) => handleTargetDateSelect(e.target.value)}
+                  disabled={updateMutation.isPending}
+                />
+              </div>
+              {effectiveSelectedImpediment.escalatedAt && (
+                <div className={styles['detail-section']}>
+                  <div className={styles['escalation-notice']}>
+                    <AlertCircleIcon className={styles['escalation-notice-icon']} />
+                    <span>{t('detailModal.escalated')}</span>
+                  </div>
+                </div>
+              )}
               {showResolutionInput && !effectiveSelectedImpediment.resolution && (
                 <div className={styles['detail-section']}>
                   <label
@@ -908,6 +1113,11 @@ export const Impediments: React.FC = () => {
                     <CheckCircleIcon className={styles['detail-label-icon']} />
                     {t('detailModal.resolutionLabel')}
                   </label>
+                  <p className={styles['resolution-hint']}>
+                    {t('detailModal.resolutionRequiredFor', {
+                      status: getStatusLabel(resolutionTargetStatus),
+                    })}
+                  </p>
                   <textarea
                     id="impediment-resolution"
                     className={styles['resolution-input']}
@@ -921,7 +1131,7 @@ export const Impediments: React.FC = () => {
                     <button
                       className={`${styles.btn} ${styles['btn-secondary']}`}
                       onClick={() => {
-                        setShowResolutionInput(false);
+                        setResolutionTargetStatus(null);
                         setResolutionInput('');
                       }}
                     >
@@ -930,10 +1140,7 @@ export const Impediments: React.FC = () => {
                     <button
                       className={`${styles.btn} ${styles['btn-primary']}`}
                       onClick={() =>
-                        handleStatusChange(
-                          effectiveSelectedImpediment.id,
-                          ImpedimentStatus.RESOLVED
-                        )
+                        handleStatusChange(effectiveSelectedImpediment.id, resolutionTargetStatus)
                       }
                       disabled={updateMutation.isPending || !resolutionInput.trim()}
                     >
@@ -1000,12 +1207,19 @@ export const Impediments: React.FC = () => {
                   {formatLocaleDate(effectiveSelectedImpediment.createdAt, locale, 'PPp')}
                 </p>
               </div>
+              {!canDeleteImpediment(effectiveSelectedImpediment) && (
+                <div className={styles['detail-section']}>
+                  <p className={styles['permission-hint']}>{t('detailModal.deleteNotPermitted')}</p>
+                </div>
+              )}
             </div>
             <div className={styles['modal-footer']}>
               <button
                 className={`${styles.btn} ${styles['btn-danger']}`}
                 onClick={() => setShowDeleteConfirm(true)}
-                disabled={deleteMutation.isPending}
+                disabled={
+                  deleteMutation.isPending || !canDeleteImpediment(effectiveSelectedImpediment)
+                }
               >
                 {deleteMutation.isPending ? (
                   <>

@@ -526,6 +526,73 @@
   background: var(--color-gray-500);
 }
 
+/* Priority Badge - impact order mirrors the backend enum: CRITICAL -> LOW */
+.priority-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-0-5) var(--space-2);
+  border-radius: var(--radius-md);
+  border: var(--border-width-1) solid transparent;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  text-transform: uppercase;
+  letter-spacing: var(--letter-spacing-wide);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.priority-critical {
+  background: var(--color-error-100);
+  color: var(--color-error-700);
+  border-color: var(--color-error-200);
+}
+
+.priority-high {
+  background: var(--color-warning-100);
+  color: var(--color-warning-700);
+  border-color: var(--color-warning-200);
+}
+
+.priority-medium {
+  background: var(--color-primary-100);
+  color: var(--color-primary-700);
+  border-color: var(--color-primary-200);
+}
+
+.priority-low {
+  background: var(--color-gray-100);
+  color: var(--color-gray-700);
+  border-color: var(--color-gray-200);
+}
+
+/* An unresolved impediment whose target date has passed */
+.meta-overdue {
+  color: var(--color-error-700);
+  font-weight: var(--font-weight-semibold);
+}
+
+/* Escalation to the accountable Scrum Master */
+.escalation-notice {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  border: var(--border-width-1) solid var(--color-warning-200);
+  background: var(--color-warning-50);
+  color: var(--color-warning-700);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+}
+
+.escalation-notice-icon {
+  width: var(--space-4);
+  height: var(--space-4);
+  flex-shrink: 0;
+}
+
 /* Card Meta */
 .card-meta {
   display: flex;
@@ -545,6 +612,10 @@
   width: var(--space-3-5);
   height: var(--space-3-5);
   color: var(--color-text-tertiary);
+}
+
+.meta-overdue .meta-icon {
+  color: var(--color-error-500);
 }
 
 .source-badge {
@@ -1241,6 +1312,25 @@
 }
 
 /* Resolution Input - Enhanced */
+.resolution-hint {
+  margin: 0 0 var(--space-2);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  line-height: var(--line-height-normal);
+}
+
+/* Explains why a control is withheld (the server enforces the same rule) */
+.permission-hint {
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border: var(--border-width-1) solid var(--color-border-default);
+  border-radius: var(--radius-md);
+  background: var(--color-background-page);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  line-height: var(--line-height-normal);
+}
+
 .resolution-input {
   width: 100%;
   padding: var(--space-3) var(--space-4);

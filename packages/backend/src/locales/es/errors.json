@@ -19,6 +19,14 @@
   "fieldAlreadyExists": "{{field}} ya existe",
   "fieldAlreadyTaken": "{{field}} ya está en uso",
   "forbidden": "No tiene permiso para realizar esta acción",
+  "impediment": {
+    "deleteForbidden": "Solo la persona que reportó un impedimento, su propietario o el Scrum Master pueden eliminarlo. El registro de lo que bloqueó al equipo es evidencia.",
+    "invalidTargetDate": "La fecha objetivo debe ser una fecha ISO válida, por ejemplo 2026-05-15.",
+    "ownerNotTeamMember": "Un impedimento solo puede ser responsabilidad de un miembro del equipo para el que fue reportado.",
+    "sprintNotOfTeam": "Un impedimento solo puede vincularse a un Sprint del equipo para el que fue reportado.",
+    "teamMembersOnly": "El impedimento pertenece a su Scrum Team: solo un miembro de ese equipo puede leerlo o modificarlo.",
+    "terminalResolutionRequired": "Alcanzar el estado resuelto o cerrado requiere una resolución escrita. Indique cómo se eliminó el impedimento, para que cerrarlo no levante la puerta de cierre del Sprint sin evidencia."
+  },
   "increment": {
     "alreadyDelivered": "Este incremento ya ha sido entregado y no puede entregarse de nuevo.",
     "deliveredLocked": "Este incremento ha sido entregado y ya no puede modificarse."

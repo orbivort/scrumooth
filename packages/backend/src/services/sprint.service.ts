@@ -1800,11 +1800,14 @@ class SprintService {
 
     // Prerequisite gates: per the Scrum Guide (2020), the Sprint Review is the
     // second-to-last event and the Sprint Retrospective concludes the Sprint. A Sprint cannot
-    // be closed until both are completed. The Guide also holds that impediments are re-ordered
-    // or resolved so they do not consume the team's capacity, so an unresolved impediment is
-    // treated as a blocking prerequisite of Sprint close (see the enforcement table in the
-    // README). Both checks are enforced server-side (fail-fast, outside the transaction) so a
-    // direct API call cannot bypass the frontend checks.
+    // be closed until both are completed. An unresolved impediment also blocks close — but not
+    // because the Guide orders impediments to be "re-ordered or resolved" (it contains no such
+    // rule). It blocks close because the Increment is only inspectable if the Sprint is not
+    // still stuck on a known blocker, and because the Guide's actual demand is that the Scrum
+    // Master *causes the removal* of impediments — which the escalation job and the SM
+    // dashboard exist to make traceable (see the enforcement table in the README). Both checks
+    // are enforced server-side (fail-fast, outside the transaction) so a direct API call cannot
+    // bypass the frontend checks.
     const [sprintReview, sprintRetrospective, unresolvedImpediments] = await Promise.all([
       prisma.sprintReview.findUnique({
         where: { sprintId },

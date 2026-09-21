@@ -28,6 +28,12 @@ vi.mock('../../utils/logger', () => ({
     warn: vi.fn(),
     debug: vi.fn(),
   },
+  default: {
+    info: vi.fn(),
+    error: vi.fn(),
+    warn: vi.fn(),
+    debug: vi.fn(),
+  },
 }));
 
 vi.mock('../../jobs/notificationCleanup', () => ({
@@ -36,6 +42,10 @@ vi.mock('../../jobs/notificationCleanup', () => ({
 
 vi.mock('../../jobs/deletionGracePeriodJob', () => ({
   startDeletionGracePeriodJob: vi.fn(),
+}));
+
+vi.mock('../../jobs/impedimentEscalationJob', () => ({
+  startImpedimentEscalationJob: vi.fn(),
 }));
 
 vi.mock('../../services/auth.service', () => ({
@@ -108,6 +118,11 @@ describe('Index (Server Entry Point)', () => {
     it('should start deletion grace period job', async () => {
       const { startDeletionGracePeriodJob } = await import('../../jobs/deletionGracePeriodJob');
       expect(startDeletionGracePeriodJob).toHaveBeenCalledTimes(1);
+    });
+
+    it('should start impediment escalation job', async () => {
+      const { startImpedimentEscalationJob } = await import('../../jobs/impedimentEscalationJob');
+      expect(startImpedimentEscalationJob).toHaveBeenCalledTimes(1);
     });
 
     it('should initialize auth service', async () => {

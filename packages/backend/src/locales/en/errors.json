@@ -19,6 +19,14 @@
   "fieldAlreadyExists": "{{field}} already exists",
   "fieldAlreadyTaken": "{{field}} is already taken",
   "forbidden": "You do not have permission to perform this action",
+  "impediment": {
+    "deleteForbidden": "Only the person who reported an impediment, its owner, or the Scrum Master can delete it. The record of what held the team back is evidence.",
+    "invalidTargetDate": "A target date must be a valid ISO date, for example 2026-05-15.",
+    "ownerNotTeamMember": "An impediment can only be owned by a member of the team it was raised for.",
+    "sprintNotOfTeam": "An impediment can only be linked to a Sprint of the team it was raised for.",
+    "teamMembersOnly": "The impediment belongs to its Scrum Team: only a member of that team can read or change it.",
+    "terminalResolutionRequired": "Reaching a resolved or closed state requires a written resolution. State how the impediment was removed, so closing it cannot lift the Sprint-close gate without evidence."
+  },
   "increment": {
     "alreadyDelivered": "This Increment has already been delivered and cannot be delivered again.",
     "deliveredLocked": "This Increment has been delivered and can no longer be changed."
