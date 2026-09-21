@@ -106,7 +106,11 @@ export function StatusChangeModal<T extends string>({
 
     setIsSubmitting(true);
     try {
-      await onStatusChange(selectedStatus, requiresReason ? reason.trim() : undefined);
+      if (requiresReason) {
+        await onStatusChange(selectedStatus, reason.trim());
+      } else {
+        await onStatusChange(selectedStatus);
+      }
     } finally {
       setIsSubmitting(false);
     }

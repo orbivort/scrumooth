@@ -10,6 +10,7 @@ vi.mock('../../../utils/prisma', () => ({
       update: vi.fn(),
       delete: vi.fn(),
       count: vi.fn(),
+      aggregate: vi.fn(),
     },
     teamMember: {
       findFirst: vi.fn(),
@@ -55,13 +56,14 @@ vi.mock('../../../config/backlog.config', () => ({
 }));
 
 // Now import the service and other dependencies
-import { productBacklogService } from '../../../services/backlog.service';
+import { productBacklogService, MAX_REORDER_ITEMS } from '../../../services/backlog.service';
 import { incrementService } from '../../../services/increment.service';
 import prisma from '../../../utils/prisma';
 import { workflowService } from '../../../services/workflow.service';
 import { NotFoundError, BadRequestError, ForbiddenError, AppError } from '../../../utils/errors';
 import { GATE_CODES } from '@scrumooth/shared';
 import { isBacklogLimitEnabled, BACKLOG_CONFIG } from '../../../config/backlog.config';
+import { PRODUCT_BACKLOG_ORDER } from '../../../config/backlogOrder';
 
 describe('ProductBacklogService', () => {
   beforeEach(() => {
@@ -69,6 +71,16 @@ describe('ProductBacklogService', () => {
     // The Product Backlog is the emergent expression of the Product Goal, so every write
     // resolves the team's ACTIVE goal. Default the lookup to one so unrelated cases anchor.
     vi.mocked(prisma.productGoal.findFirst).mockResolvedValue({ id: 'goal-1' } as any);
+    // Creating an item appends it to the end of the team's order, so every create reads the
+    // current max rank. Default to an empty backlog (next rank = 1) unless a case overrides it.
+    vi.mocked(prisma.productBacklogItem.aggregate).mockResolvedValue({
+      _max: { rank: 0 },
+    } as any);
+    // The service wraps appends and reorders in transactions. Interactive transactions run
+    // their callback against the same mocked client, and array-form batches resolve the
+    // operations they were handed, so both styles stay observable on the same mocks.
+    vi.mocked(prisma.$transaction).mockImplementation((async (input: any) =>
+      typeof input === 'function' ? input(prisma) : Promise.all(input)) as any);
   });
 
   describe('getProductBacklog', () => {
@@ -95,6 +107,12 @@ describe('ProductBacklogService', () => {
       expect(result.data).toHaveLength(1);
       expect(result.pagination.total).toBe(1);
       expect(result.pagination.totalPages).toBe(1);
+      // The order of record is the persisted rank — not the MoSCoW band plus creation time.
+      expect(prisma.productBacklogItem.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          orderBy: PRODUCT_BACKLOG_ORDER,
+        })
+      );
     });
 
     it('should filter by status', async () => {
@@ -217,6 +235,35 @@ describe('ProductBacklogService', () => {
       expect(result.title).toBe(mockPBI.title);
       expect(result.teamId).toBe(mockPBI.teamId);
       expect(workflowService.executeStatusChange).toHaveBeenCalled();
+    });
+
+    it('should append the new item to the end of the team order', async () => {
+      const userId = 'test-user-id';
+      vi.mocked(prisma.productBacklogItem.aggregate).mockResolvedValue({
+        _max: { rank: 7 },
+      } as any);
+      vi.mocked(prisma.productBacklogItem.create).mockResolvedValue({
+        id: 'test-pbi-uuid',
+        teamId: 'team-id',
+        title: 'Appended PBI',
+        status: 'NEW',
+        priority: 'COULD_HAVE',
+        rank: 8,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      } as any);
+
+      await productBacklogService.createPBI(userId, { teamId: 'team-id', title: 'Appended PBI' });
+
+      expect(prisma.productBacklogItem.aggregate).toHaveBeenCalledWith({
+        where: { teamId: 'team-id' },
+        _max: { rank: true },
+      });
+      expect(prisma.productBacklogItem.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ rank: 8 }),
+        })
+      );
     });
 
     it('should use default status NEW when not provided', async () => {
@@ -1019,29 +1066,366 @@ describe('ProductBacklogService', () => {
 
       expect(incrementService.composeDonePBI).not.toHaveBeenCalled();
     });
-  });
 
-  describe('updatePriority', () => {
-    it('should update PBI priority', async () => {
+    it('should allow a Developer to edit an item while resubmitting the unchanged priority', async () => {
+      const userId = 'test-user-id';
       const pbiId = 'pbi-id';
       const mockPBI = {
         id: pbiId,
         teamId: 'team-id',
         title: 'Test PBI',
-        priority: 'COULD_HAVE',
+        status: 'NEW',
+        priority: 'MUST_HAVE',
         createdAt: new Date(),
         updatedAt: new Date(),
       };
-      const updatedPBI = {
-        ...mockPBI,
+
+      vi.mocked(prisma.productBacklogItem.findUnique).mockResolvedValue(mockPBI as any);
+      vi.mocked(prisma.teamMember.findFirst).mockResolvedValue({
+        id: 'member-id',
+        teamId: mockPBI.teamId,
+        userId,
+        role: 'DEVELOPERS',
+      } as any);
+      vi.mocked(prisma.productBacklogItem.update).mockResolvedValue(mockPBI as any);
+
+      await productBacklogService.updatePBI(pbiId, userId, {
+        description: 'Refined during backlog refinement',
         priority: 'MUST_HAVE',
+      });
+
+      expect(prisma.productBacklogItem.update).toHaveBeenCalled();
+    });
+
+    it('should refuse with GATE_PRODUCT_OWNER_ONLY_BACKLOG_ORDER when a Developer changes the priority', async () => {
+      const userId = 'test-user-id';
+      const pbiId = 'pbi-id';
+      const mockPBI = {
+        id: pbiId,
+        teamId: 'team-id',
+        title: 'Test PBI',
+        status: 'NEW',
+        priority: 'MUST_HAVE',
+        createdAt: new Date(),
+        updatedAt: new Date(),
       };
 
-      vi.mocked(prisma.productBacklogItem.update).mockResolvedValue(updatedPBI as any);
+      vi.mocked(prisma.productBacklogItem.findUnique).mockResolvedValue(mockPBI as any);
+      vi.mocked(prisma.teamMember.findFirst).mockResolvedValue({
+        id: 'member-id',
+        teamId: mockPBI.teamId,
+        userId,
+        role: 'DEVELOPERS',
+      } as any);
 
-      const result = await productBacklogService.updatePriority(pbiId, 'MUST_HAVE');
+      await expect(
+        productBacklogService.updatePBI(pbiId, userId, { priority: 'SHOULD_HAVE' })
+      ).rejects.toMatchObject({
+        statusCode: 403,
+        code: GATE_CODES.PRODUCT_OWNER_ONLY_BACKLOG_ORDER,
+      });
+
+      expect(prisma.productBacklogItem.update).not.toHaveBeenCalled();
+    });
+
+    it('should allow the Product Owner to change the priority through update', async () => {
+      const userId = 'test-user-id';
+      const pbiId = 'pbi-id';
+      const mockPBI = {
+        id: pbiId,
+        teamId: 'team-id',
+        title: 'Test PBI',
+        status: 'NEW',
+        priority: 'MUST_HAVE',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      vi.mocked(prisma.productBacklogItem.findUnique).mockResolvedValue(mockPBI as any);
+      vi.mocked(prisma.teamMember.findFirst).mockResolvedValue({
+        id: 'member-id',
+        teamId: mockPBI.teamId,
+        userId,
+        role: 'PRODUCT_OWNER',
+      } as any);
+      vi.mocked(prisma.productBacklogItem.update).mockResolvedValue({
+        ...mockPBI,
+        priority: 'COULD_HAVE',
+      } as any);
+
+      const result = await productBacklogService.updatePBI(pbiId, userId, {
+        priority: 'COULD_HAVE',
+      });
+
+      expect(result.priority).toBe('COULD_HAVE');
+    });
+  });
+
+  describe('updatePriority', () => {
+    const pbiId = 'pbi-id';
+    const userId = 'test-user-id';
+    const mockPBI = {
+      id: pbiId,
+      teamId: 'team-id',
+      title: 'Test PBI',
+      priority: 'COULD_HAVE',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    it('should update PBI priority for the Product Owner', async () => {
+      vi.mocked(prisma.productBacklogItem.findUnique).mockResolvedValue(mockPBI as any);
+      vi.mocked(prisma.teamMember.findFirst).mockResolvedValue({
+        id: 'member-id',
+        teamId: 'team-id',
+        userId,
+        role: 'PRODUCT_OWNER',
+      } as any);
+      vi.mocked(prisma.productBacklogItem.update).mockResolvedValue({
+        ...mockPBI,
+        priority: 'MUST_HAVE',
+      } as any);
+
+      const result = await productBacklogService.updatePriority(pbiId, userId, 'MUST_HAVE');
 
       expect(result.priority).toBe('MUST_HAVE');
+    });
+
+    it('should throw NotFoundError for a non-existent PBI', async () => {
+      vi.mocked(prisma.productBacklogItem.findUnique).mockResolvedValue(null as any);
+
+      await expect(
+        productBacklogService.updatePriority('missing-id', userId, 'MUST_HAVE')
+      ).rejects.toThrow(NotFoundError);
+      expect(prisma.productBacklogItem.update).not.toHaveBeenCalled();
+    });
+
+    it('should refuse with GATE_PRODUCT_OWNER_ONLY_BACKLOG_ORDER when a Developer reclassifies an item', async () => {
+      vi.mocked(prisma.productBacklogItem.findUnique).mockResolvedValue(mockPBI as any);
+      vi.mocked(prisma.teamMember.findFirst).mockResolvedValue({
+        id: 'member-id',
+        teamId: 'team-id',
+        userId,
+        role: 'DEVELOPERS',
+      } as any);
+
+      await expect(
+        productBacklogService.updatePriority(pbiId, userId, 'MUST_HAVE')
+      ).rejects.toMatchObject({
+        statusCode: 403,
+        code: GATE_CODES.PRODUCT_OWNER_ONLY_BACKLOG_ORDER,
+      });
+      expect(prisma.productBacklogItem.update).not.toHaveBeenCalled();
+    });
+
+    it('should refuse with GATE_PRODUCT_OWNER_ONLY_BACKLOG_ORDER when a Scrum Master reclassifies an item', async () => {
+      vi.mocked(prisma.productBacklogItem.findUnique).mockResolvedValue(mockPBI as any);
+      vi.mocked(prisma.teamMember.findFirst).mockResolvedValue({
+        id: 'member-id',
+        teamId: 'team-id',
+        userId,
+        role: 'SCRUM_MASTER',
+      } as any);
+
+      await expect(
+        productBacklogService.updatePriority(pbiId, userId, 'MUST_HAVE')
+      ).rejects.toMatchObject({
+        statusCode: 403,
+        code: GATE_CODES.PRODUCT_OWNER_ONLY_BACKLOG_ORDER,
+      });
+    });
+
+    it('should refuse a non-team member with a 403', async () => {
+      vi.mocked(prisma.productBacklogItem.findUnique).mockResolvedValue(mockPBI as any);
+      vi.mocked(prisma.teamMember.findFirst).mockResolvedValue(null as any);
+
+      await expect(
+        productBacklogService.updatePriority(pbiId, userId, 'MUST_HAVE')
+      ).rejects.toMatchObject({ statusCode: 403, code: 'FORBIDDEN' });
+    });
+  });
+
+  describe('reorderPBIs', () => {
+    const userId = 'test-user-id';
+    const teamId = 'team-id';
+    const ownerMembership = { id: 'member-id', teamId, userId, role: 'PRODUCT_OWNER' };
+
+    const namedItems = [
+      { id: 'pbi-1', teamId },
+      { id: 'pbi-2', teamId },
+      { id: 'pbi-3', teamId },
+    ];
+    const currentOrder = [
+      { id: 'pbi-1', rank: 1, priority: 'MUST_HAVE' },
+      { id: 'pbi-2', rank: 2, priority: 'SHOULD_HAVE' },
+      { id: 'pbi-3', rank: 3, priority: 'COULD_HAVE' },
+    ];
+
+    it('should persist a full reorder as dense 1..N ranks and return the new order', async () => {
+      vi.mocked(prisma.productBacklogItem.findMany)
+        .mockResolvedValueOnce(namedItems as any)
+        .mockResolvedValueOnce(currentOrder as any);
+      vi.mocked(prisma.teamMember.findFirst).mockResolvedValue(ownerMembership as any);
+      vi.mocked(prisma.productBacklogItem.update).mockResolvedValue({} as any);
+
+      const result = await productBacklogService.reorderPBIs(userId, {
+        pbiIds: ['pbi-3', 'pbi-1', 'pbi-2'],
+      });
+
+      expect(result).toEqual([
+        { id: 'pbi-3', rank: 1, priority: 'COULD_HAVE' },
+        { id: 'pbi-1', rank: 2, priority: 'MUST_HAVE' },
+        { id: 'pbi-2', rank: 3, priority: 'SHOULD_HAVE' },
+      ]);
+      expect(prisma.productBacklogItem.update).toHaveBeenCalledTimes(3);
+      expect(prisma.productBacklogItem.update).toHaveBeenCalledWith({
+        where: { id: 'pbi-3' },
+        data: { rank: 1 },
+      });
+      expect(prisma.$transaction).toHaveBeenCalledTimes(1);
+    });
+
+    it('should move one item before a neighbour with the positional shape', async () => {
+      vi.mocked(prisma.productBacklogItem.findMany)
+        .mockResolvedValueOnce([namedItems[2], namedItems[0]] as any)
+        .mockResolvedValueOnce(currentOrder as any);
+      vi.mocked(prisma.teamMember.findFirst).mockResolvedValue(ownerMembership as any);
+      vi.mocked(prisma.productBacklogItem.update).mockResolvedValue({} as any);
+
+      const result = await productBacklogService.reorderPBIs(userId, {
+        pbiId: 'pbi-3',
+        targetPbiId: 'pbi-1',
+        position: 'before',
+      });
+
+      expect(result.map((entry) => entry.id)).toEqual(['pbi-3', 'pbi-1', 'pbi-2']);
+      expect(result.map((entry) => entry.rank)).toEqual([1, 2, 3]);
+    });
+
+    it('should move one item after a neighbour with the positional shape', async () => {
+      vi.mocked(prisma.productBacklogItem.findMany)
+        .mockResolvedValueOnce([namedItems[0], namedItems[1]] as any)
+        .mockResolvedValueOnce(currentOrder as any);
+      vi.mocked(prisma.teamMember.findFirst).mockResolvedValue(ownerMembership as any);
+      vi.mocked(prisma.productBacklogItem.update).mockResolvedValue({} as any);
+
+      const result = await productBacklogService.reorderPBIs(userId, {
+        pbiId: 'pbi-1',
+        targetPbiId: 'pbi-2',
+        position: 'after',
+      });
+
+      expect(result.map((entry) => entry.id)).toEqual(['pbi-2', 'pbi-1', 'pbi-3']);
+    });
+
+    it('should write nothing when the requested order is already the current order', async () => {
+      vi.mocked(prisma.productBacklogItem.findMany)
+        .mockResolvedValueOnce(namedItems as any)
+        .mockResolvedValueOnce(currentOrder as any);
+      vi.mocked(prisma.teamMember.findFirst).mockResolvedValue(ownerMembership as any);
+
+      const result = await productBacklogService.reorderPBIs(userId, {
+        pbiIds: ['pbi-1', 'pbi-2', 'pbi-3'],
+      });
+
+      expect(result.map((entry) => entry.id)).toEqual(['pbi-1', 'pbi-2', 'pbi-3']);
+      expect(prisma.productBacklogItem.update).not.toHaveBeenCalled();
+      expect(prisma.$transaction).not.toHaveBeenCalled();
+    });
+
+    it('should refuse with GATE_PRODUCT_OWNER_ONLY_BACKLOG_ORDER when a Developer reorders', async () => {
+      vi.mocked(prisma.productBacklogItem.findMany).mockResolvedValueOnce(namedItems as any);
+      vi.mocked(prisma.teamMember.findFirst).mockResolvedValue({
+        ...ownerMembership,
+        role: 'DEVELOPERS',
+      } as any);
+
+      await expect(
+        productBacklogService.reorderPBIs(userId, { pbiIds: ['pbi-3', 'pbi-1', 'pbi-2'] })
+      ).rejects.toMatchObject({
+        statusCode: 403,
+        code: GATE_CODES.PRODUCT_OWNER_ONLY_BACKLOG_ORDER,
+      });
+
+      expect(prisma.productBacklogItem.update).not.toHaveBeenCalled();
+    });
+
+    it('should refuse a partial list instead of reporting a false success', async () => {
+      vi.mocked(prisma.productBacklogItem.findMany)
+        .mockResolvedValueOnce([namedItems[0], namedItems[1]] as any)
+        .mockResolvedValueOnce(currentOrder as any);
+      vi.mocked(prisma.teamMember.findFirst).mockResolvedValue(ownerMembership as any);
+
+      await expect(
+        productBacklogService.reorderPBIs(userId, { pbiIds: ['pbi-1', 'pbi-2'] })
+      ).rejects.toMatchObject({ statusCode: 400, code: 'BAD_REQUEST' });
+
+      expect(prisma.productBacklogItem.update).not.toHaveBeenCalled();
+    });
+
+    it('should refuse a payload that names the same item twice', async () => {
+      vi.mocked(prisma.productBacklogItem.findMany)
+        .mockResolvedValueOnce(namedItems as any)
+        .mockResolvedValueOnce(currentOrder as any);
+      vi.mocked(prisma.teamMember.findFirst).mockResolvedValue(ownerMembership as any);
+
+      await expect(
+        productBacklogService.reorderPBIs(userId, { pbiIds: ['pbi-1', 'pbi-1', 'pbi-2', 'pbi-3'] })
+      ).rejects.toMatchObject({ statusCode: 400 });
+    });
+
+    it('should refuse items that belong to different teams', async () => {
+      vi.mocked(prisma.productBacklogItem.findMany).mockResolvedValueOnce([
+        namedItems[0],
+        { id: 'pbi-2', teamId: 'other-team' },
+      ] as any);
+
+      await expect(
+        productBacklogService.reorderPBIs(userId, { pbiIds: ['pbi-1', 'pbi-2'] })
+      ).rejects.toMatchObject({ statusCode: 400 });
+
+      expect(prisma.teamMember.findFirst).not.toHaveBeenCalled();
+    });
+
+    it('should refuse an empty payload without querying the backlog', async () => {
+      await expect(productBacklogService.reorderPBIs(userId, { pbiIds: [] })).rejects.toMatchObject(
+        { statusCode: 400 }
+      );
+
+      expect(prisma.productBacklogItem.findMany).not.toHaveBeenCalled();
+    });
+
+    it('should refuse moving an item relative to itself', async () => {
+      await expect(
+        productBacklogService.reorderPBIs(userId, {
+          pbiId: 'pbi-1',
+          targetPbiId: 'pbi-1',
+          position: 'after',
+        })
+      ).rejects.toMatchObject({ statusCode: 400 });
+
+      expect(prisma.productBacklogItem.findMany).not.toHaveBeenCalled();
+    });
+
+    it('should refuse a payload above the cap', async () => {
+      const tooManyIds = Array.from(
+        { length: MAX_REORDER_ITEMS + 1 },
+        (_, index) => `pbi-${index}`
+      );
+
+      await expect(
+        productBacklogService.reorderPBIs(userId, { pbiIds: tooManyIds })
+      ).rejects.toMatchObject({ statusCode: 400 });
+
+      expect(prisma.productBacklogItem.findMany).not.toHaveBeenCalled();
+    });
+
+    it('should throw NotFoundError when a named item does not exist', async () => {
+      vi.mocked(prisma.productBacklogItem.findMany).mockResolvedValueOnce([namedItems[0]] as any);
+
+      await expect(
+        productBacklogService.reorderPBIs(userId, { pbiIds: ['pbi-1', 'ghost-id'] })
+      ).rejects.toThrow(NotFoundError);
     });
   });
 
@@ -1139,7 +1523,7 @@ describe('ProductBacklogService', () => {
       { _rowNumber: 2, teamId, title: 'Item 2', description: 'Second item' },
     ];
 
-    let mockTx: { productBacklogItem: { create: any } };
+    let mockTx: { productBacklogItem: { aggregate: any; create: any } };
 
     function createMockPBI(id: string, title: string) {
       return {
@@ -1164,6 +1548,9 @@ describe('ProductBacklogService', () => {
     beforeEach(() => {
       mockTx = {
         productBacklogItem: {
+          // The bulk path appends each row to the team's order, so the transaction client it
+          // receives must answer the max-rank read as well as the insert.
+          aggregate: vi.fn().mockResolvedValue({ _max: { rank: 0 } }),
           create: vi.fn(),
         },
       };
@@ -1237,6 +1624,7 @@ describe('ProductBacklogService', () => {
     it('should handle partial failure with AppError details', async () => {
       const mockTx = {
         productBacklogItem: {
+          aggregate: vi.fn().mockResolvedValue({ _max: { rank: 0 } }),
           create: vi
             .fn()
             .mockResolvedValueOnce(createMockPBI('test-pbi-uuid', 'Item 1') as any)
@@ -1262,6 +1650,7 @@ describe('ProductBacklogService', () => {
     it('should handle partial failure with generic AppError', async () => {
       const mockTx = {
         productBacklogItem: {
+          aggregate: vi.fn().mockResolvedValue({ _max: { rank: 0 } }),
           create: vi
             .fn()
             .mockResolvedValueOnce(createMockPBI('test-pbi-uuid', 'Item 1') as any)
@@ -1283,6 +1672,7 @@ describe('ProductBacklogService', () => {
     it('should record workflow history for each created item', async () => {
       const mockTx = {
         productBacklogItem: {
+          aggregate: vi.fn().mockResolvedValue({ _max: { rank: 0 } }),
           create: vi
             .fn()
             .mockResolvedValueOnce(createMockPBI('test-pbi-uuid', 'Item 1') as any)
@@ -1325,6 +1715,7 @@ describe('ProductBacklogService', () => {
     it('should handle errors when Prisma throws unexpected errors', async () => {
       const mockTx = {
         productBacklogItem: {
+          aggregate: vi.fn().mockResolvedValue({ _max: { rank: 0 } }),
           create: vi.fn().mockRejectedValue(new Error('Database connection error')),
         },
       };
@@ -1355,6 +1746,7 @@ describe('ProductBacklogService', () => {
 
       const mockTx = {
         productBacklogItem: {
+          aggregate: vi.fn().mockResolvedValue({ _max: { rank: 0 } }),
           create: vi.fn().mockResolvedValue(createMockPBI('pbi-uuid-1', 'Same Title') as any),
         },
       };

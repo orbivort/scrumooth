@@ -61,6 +61,21 @@
   font-size: var(--font-size-sm);
 }
 
+/**
+ * Explains why ordering is not offered. Only the Product Owner orders the Product Backlog
+ * (Scrum Guide), so the affordances are absent for everyone else rather than failing on use —
+ * and the reason is stated instead of being left to be inferred from a missing control.
+ */
+.backlog-order-hint {
+  margin: 0 0 var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-surface);
+  border: var(--border-width-1) solid var(--color-border-subtle);
+  border-radius: var(--radius-lg);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+}
+
 .loading-spinner {
   display: inline-block;
   width: 16px;

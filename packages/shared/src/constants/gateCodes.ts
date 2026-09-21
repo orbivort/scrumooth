@@ -27,10 +27,20 @@ export const GATE_CODES = {
   DEVELOPER_ONLY_DAILY_SCRUM: 'GATE_DEVELOPER_ONLY_DAILY_SCRUM',
   /** Only the Product Owner can cancel an `ACTIVE` Sprint. */
   PRODUCT_OWNER_ONLY_CANCELLATION: 'GATE_PRODUCT_OWNER_ONLY_CANCELLATION',
+  /**
+   * The Product Owner orders the Product Backlog: changing an item's MoSCoW priority or its
+   * position in the backlog is their accountability, and no one else's.
+   */
+  PRODUCT_OWNER_ONLY_BACKLOG_ORDER: 'GATE_PRODUCT_OWNER_ONLY_BACKLOG_ORDER',
   /** A delivered Increment cannot be rewritten. */
   INCREMENT_LOCKED: 'GATE_INCREMENT_LOCKED',
   /** Only Developers save the Sprint Backlog. */
   DEVELOPER_ONLY_SPRINT_BACKLOG: 'GATE_DEVELOPER_ONLY_SPRINT_BACKLOG',
+  /**
+   * A Product Backlog item must be refined to `READY` before it can enter a Sprint — at
+   * planning time exactly as when it is added mid-Sprint.
+   */
+  PBI_NOT_READY: 'GATE_PBI_NOT_READY',
   /** A team can pursue only one Product Goal at a time. */
   PRODUCT_GOAL_ALREADY_ACTIVE: 'GATE_PRODUCT_GOAL_ALREADY_ACTIVE',
   /** Only the Product Owner creates, edits, or deletes a Product Goal. */
@@ -121,6 +131,11 @@ export const GATE_DEFINITIONS: Record<GateCode, GateDefinition> = {
     httpStatus: 403,
     i18nKey: 'productOwnerOnlyCancellation',
   },
+  [GATE_CODES.PRODUCT_OWNER_ONLY_BACKLOG_ORDER]: {
+    code: GATE_CODES.PRODUCT_OWNER_ONLY_BACKLOG_ORDER,
+    httpStatus: 403,
+    i18nKey: 'productOwnerOnlyBacklogOrder',
+  },
   [GATE_CODES.INCREMENT_LOCKED]: {
     code: GATE_CODES.INCREMENT_LOCKED,
     httpStatus: 400,
@@ -130,6 +145,11 @@ export const GATE_DEFINITIONS: Record<GateCode, GateDefinition> = {
     code: GATE_CODES.DEVELOPER_ONLY_SPRINT_BACKLOG,
     httpStatus: 403,
     i18nKey: 'developerOnlySprintBacklog',
+  },
+  [GATE_CODES.PBI_NOT_READY]: {
+    code: GATE_CODES.PBI_NOT_READY,
+    httpStatus: 400,
+    i18nKey: 'pbiNotReady',
   },
   [GATE_CODES.PRODUCT_GOAL_ALREADY_ACTIVE]: {
     code: GATE_CODES.PRODUCT_GOAL_ALREADY_ACTIVE,

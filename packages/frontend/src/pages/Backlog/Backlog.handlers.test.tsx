@@ -112,6 +112,25 @@ const renderBacklog = async () => {
   });
 };
 
+/**
+ * Override the acting team role for the next render.
+ *
+ * Ordering the Product Backlog is the Product Owner's accountability, so the reorder and
+ * reclassify affordances exist only for that role; tests that exercise them have to act as the
+ * Product Owner, and tests that assert the gate have to act as anyone else.
+ */
+const setTeamRole = (role: string) =>
+  vi.spyOn(teamContextModule, 'useTeamContext').mockReturnValue({
+    userRole: role,
+    currentTeam: mockTeam,
+    userTeams: [{ ...mockTeam, userRole: role }],
+    isLoading: false,
+    error: null,
+    switchTeam: vi.fn(),
+    refreshTeams: vi.fn(),
+    hasMultipleTeams: false,
+  } as never);
+
 describe('ProductBacklog handlers coverage', () => {
   beforeAll(async () => {
     await initTestI18n();
@@ -262,6 +281,7 @@ describe('ProductBacklog handlers coverage', () => {
   describe('View mode toggle + drag and drop', () => {
     it('should switch to board view and perform keyboard drag + drop', async () => {
       const user = userEvent.setup();
+      setTeamRole('PRODUCT_OWNER');
       await renderBacklog();
 
       await user.click(screen.getByText(i18nT('backlog:viewToggle.board')));
@@ -287,6 +307,7 @@ describe('ProductBacklog handlers coverage', () => {
 
     it('should not drop when the same priority is targeted (cancel path)', async () => {
       const user = userEvent.setup();
+      setTeamRole('PRODUCT_OWNER');
       await renderBacklog();
 
       await user.click(screen.getByText(i18nT('backlog:viewToggle.board')));
@@ -300,6 +321,19 @@ describe('ProductBacklog handlers coverage', () => {
       fireEvent.keyDown(card, { key: 'Escape' });
 
       expect(apiService.updateProductBacklogItem).not.toHaveBeenCalled();
+    });
+
+    it('should explain that ordering belongs to the Product Owner and offer no ordering affordance otherwise', async () => {
+      const user = userEvent.setup();
+      // beforeEach acts as a Developer: ordering is not theirs.
+      await renderBacklog();
+
+      expect(screen.getByText(i18nT('backlog:order.productOwnerOnlyHint'))).toBeInTheDocument();
+
+      await user.click(screen.getByText(i18nT('backlog:viewToggle.board')));
+      await screen.findByLabelText(cardAriaLabel('Feature Alpha', 'moscow.mustHave'));
+
+      expect(document.querySelectorAll('[draggable="true"]')).toHaveLength(0);
     });
   });
 

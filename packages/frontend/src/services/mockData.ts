@@ -614,7 +614,11 @@ export const mockProductGoals: ProductGoal[] = [
 ];
 
 // ==================== Product Backlog Items ====================
-export const mockProductBacklogItems: ProductBacklogItem[] = [
+// The fixtures carry no hand-maintained position: the Product Backlog is an ordered list, so a
+// dense, 1-based `rank` per team is derived from the fixture order below (see
+// `rankBacklogFixtures`). That mirrors the backend's persisted order of record without adding a
+// number to every literal that would drift as soon as one item is inserted.
+const backlogFixtures: Array<Omit<ProductBacklogItem, 'rank'>> = [
   // New Items - For Active Goal (Q2 Platform Enhancement)
   {
     id: '019c6739-e4b1-75b7-9e35-0ad52076afc0',
@@ -829,6 +833,27 @@ export const mockProductBacklogItems: ProductBacklogItem[] = [
     creator: mockUsers[2],
   },
 ];
+
+/**
+ * Assign a dense, 1-based `rank` per team, in fixture order.
+ *
+ * The Product Backlog is an ordered list (Scrum Guide), so every item carries the position the
+ * Product Owner put it in. Mock data derives it instead of maintaining it by hand.
+ */
+const rankBacklogFixtures = (
+  items: Array<Omit<ProductBacklogItem, 'rank'>>
+): ProductBacklogItem[] => {
+  const cursors = new Map<string, number>();
+
+  return items.map((item) => {
+    const next = (cursors.get(item.teamId) ?? 0) + 1;
+    cursors.set(item.teamId, next);
+
+    return { ...item, rank: next };
+  });
+};
+
+export const mockProductBacklogItems: ProductBacklogItem[] = rankBacklogFixtures(backlogFixtures);
 
 // ==================== Sprints ====================
 export const mockSprints: Sprint[] = [

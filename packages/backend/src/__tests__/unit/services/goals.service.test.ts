@@ -66,6 +66,13 @@ describe('ProductGoalService', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(withTransaction).mockImplementation((callback: any) => callback(prisma));
+    // Re-establish the transition default on every test: clearAllMocks() clears call
+    // history but not mock implementations, so a per-test mockResolvedValue would
+    // otherwise leak into the following tests.
+    vi.mocked(workflowService.validateTransition).mockResolvedValue({
+      isValid: true,
+      allowed: true,
+    } as any);
   });
 
   describe('getProductGoals', () => {

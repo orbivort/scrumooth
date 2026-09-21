@@ -2,7 +2,9 @@
  * ListView Component
  *
  * A table-based list view for displaying product backlog items.
- * Provides a compact, scannable view of all items with key attributes.
+ * Provides a compact, scannable view of all items with key attributes, in the team's backlog
+ * order of record (the persisted `rank`), so the list reads top-to-bottom as "what is next".
+ * A Product Owner can move an item one position with the controls in the position cell.
  * Uses virtual scrolling for performance with large lists (>50 items).
  *
  * @module pages/Backlog/views/ListView
@@ -17,14 +19,23 @@ import { useVirtualScroll, shouldEnableVirtualization } from '../../../hooks/use
 
 import styles from './ListView.module.css';
 
+import { ChevronDownIcon, ChevronUpIcon } from '@/components/common/Icons';
+
 /**
  * Props for the ListView component
  */
 export interface ListViewProps {
-  /** Array of product backlog items to display */
+  /** Array of product backlog items to display, in backlog order */
   items: ProductBacklogItem[];
   /** Callback when an item row is clicked */
   onItemClick: (item: ProductBacklogItem) => void;
+  /**
+   * Callback to move an item one position within the backlog. Ordering is the Product Owner's
+   * accountability (Scrum Guide); the caller decides whether to offer it.
+   */
+  onMove?: (itemId: string, direction: 'up' | 'down') => void;
+  /** Whether the viewer may order the backlog (Product Owner only) */
+  canOrder?: boolean;
 }
 
 /**
@@ -57,23 +68,122 @@ const getStatusLabel = (status: string, t: (key: string) => string): string => {
 };
 
 /**
+ * Props for the position cell: the item's place in the backlog plus, for a Product Owner, the
+ * one-step move controls.
+ */
+interface PositionCellProps {
+  position: number;
+  itemTitle: string;
+  isFirst: boolean;
+  isLast: boolean;
+  canOrder: boolean;
+  onMoveUp: () => void;
+  onMoveDown: () => void;
+}
+
+/**
+ * PositionCell Component
+ *
+ * Shows the item's position and — when the viewer may order the backlog — two controls that move
+ * the item one place. Ordering is exposed here as well as on the board so it does not depend on
+ * pointer drag alone.
+ */
+const PositionCell: React.FC<PositionCellProps> = ({
+  position,
+  itemTitle,
+  isFirst,
+  isLast,
+  canOrder,
+  onMoveUp,
+  onMoveDown,
+}) => {
+  const { t } = useTranslation('backlog');
+
+  return (
+    <div className={styles['position-cell']}>
+      <span
+        className={styles['position-value']}
+        aria-label={t('order.positionLabel', { position })}
+      >
+        {position}
+      </span>
+      {canOrder && (
+        <span className={styles['position-actions']}>
+          <button
+            type="button"
+            className={styles['position-button']}
+            disabled={isFirst}
+            onClick={(e) => {
+              // The row itself opens the item, so a move must not also trigger that.
+              e.stopPropagation();
+              onMoveUp();
+            }}
+            title={t('order.moveUpLabel')}
+            aria-label={t('order.moveUpAria', { title: itemTitle })}
+          >
+            <ChevronUpIcon size={14} />
+          </button>
+          <button
+            type="button"
+            className={styles['position-button']}
+            disabled={isLast}
+            onClick={(e) => {
+              e.stopPropagation();
+              onMoveDown();
+            }}
+            title={t('order.moveDownLabel')}
+            aria-label={t('order.moveDownAria', { title: itemTitle })}
+          >
+            <ChevronDownIcon size={14} />
+          </button>
+        </span>
+      )}
+    </div>
+  );
+};
+
+/**
  * TableRow Component
  *
  * Renders a single table row for a backlog item (non-virtualized mode).
  */
 interface TableRowProps {
   item: ProductBacklogItem;
+  index: number;
+  total: number;
+  canOrder: boolean;
   onItemClick: (item: ProductBacklogItem) => void;
+  onMove?: (itemId: string, direction: 'up' | 'down') => void;
 }
 
-const TableRow: React.FC<TableRowProps> = ({ item, onItemClick }) => {
+const TableRow: React.FC<TableRowProps> = ({
+  item,
+  index,
+  total,
+  canOrder,
+  onItemClick,
+  onMove,
+}) => {
   const { t } = useTranslation('backlog');
   const handleClick = useCallback(() => {
     onItemClick(item);
   }, [item, onItemClick]);
 
+  const position = index + 1;
+
   return (
     <tr onClick={handleClick}>
+      <td>
+        <PositionCell
+          position={position}
+          itemTitle={item.title}
+          isFirst={index === 0}
+          isLast={index === total - 1}
+          canOrder={canOrder}
+          onMoveUp={() => onMove?.(item.id, 'up')}
+          onMoveDown={() => onMove?.(item.id, 'down')}
+        />
+      </td>
       <td>#{item.id.slice(-4)}</td>
       <td className={styles['title-cell']}>{item.title}</td>
       <td>
@@ -113,7 +223,10 @@ const TableRow: React.FC<TableRowProps> = ({ item, onItemClick }) => {
 interface VirtualizedRowProps {
   item: ProductBacklogItem;
   index: number;
+  total: number;
+  canOrder: boolean;
   onItemClick: (item: ProductBacklogItem) => void;
+  onMove?: (itemId: string, direction: 'up' | 'down') => void;
   style: React.CSSProperties;
   measureRef?: (element: HTMLElement | null) => void;
 }
@@ -121,7 +234,10 @@ interface VirtualizedRowProps {
 const VirtualizedRow: React.FC<VirtualizedRowProps> = ({
   item,
   index,
+  total,
+  canOrder,
   onItemClick,
+  onMove,
   style,
   measureRef,
 }) => {
@@ -129,6 +245,8 @@ const VirtualizedRow: React.FC<VirtualizedRowProps> = ({
   const handleClick = useCallback(() => {
     onItemClick(item);
   }, [item, onItemClick]);
+
+  const position = index + 1;
 
   return (
     <div
@@ -139,6 +257,17 @@ const VirtualizedRow: React.FC<VirtualizedRowProps> = ({
       role="row"
       data-index={index}
     >
+      <div className={styles['virtualized-cell']} role="cell">
+        <PositionCell
+          position={position}
+          itemTitle={item.title}
+          isFirst={index === 0}
+          isLast={index === total - 1}
+          canOrder={canOrder}
+          onMoveUp={() => onMove?.(item.id, 'up')}
+          onMoveDown={() => onMove?.(item.id, 'down')}
+        />
+      </div>
       <div className={styles['virtualized-cell']} role="cell">
         #{item.id.slice(-4)}
       </div>
@@ -181,6 +310,7 @@ const VirtualizedRow: React.FC<VirtualizedRowProps> = ({
  * ListView Component
  *
  * Renders a table with columns for:
+ * - Position (the item's place in the backlog order, plus move controls for a Product Owner)
  * - ID (last 4 characters)
  * - Title
  * - MoSCoW Priority (badge)
@@ -202,10 +332,12 @@ const VirtualizedRow: React.FC<VirtualizedRowProps> = ({
  * <ListView
  *   items={filteredItems}
  *   onItemClick={(item) => openDetailModal(item)}
+ *   onMove={(id, direction) => moveItem(id, direction)}
+ *   canOrder={isProductOwner}
  * />
  * ```
  */
-export const ListView = memo<ListViewProps>(({ items, onItemClick }) => {
+export const ListView = memo<ListViewProps>(({ items, onItemClick, onMove, canOrder = false }) => {
   const { t } = useTranslation('backlog');
   const enableVirtualization = shouldEnableVirtualization(items.length, VIRTUALIZATION_THRESHOLD);
   const headerRef = useRef<HTMLDivElement>(null);
@@ -222,6 +354,9 @@ export const ListView = memo<ListViewProps>(({ items, onItemClick }) => {
       {/* Header - Table for non-virtualized, Grid for virtualized */}
       {enableVirtualization ? (
         <div ref={headerRef} className={styles['virtualized-header']} role="row">
+          <div className={styles['virtualized-header-cell']} role="columnheader">
+            {t('listView.position') as string}
+          </div>
           <div className={styles['virtualized-header-cell']} role="columnheader">
             {t('listView.id') as string}
           </div>
@@ -247,6 +382,7 @@ export const ListView = memo<ListViewProps>(({ items, onItemClick }) => {
       ) : (
         <table className={styles['backlog-table']}>
           <colgroup>
+            <col style={{ width: '104px' }} />
             <col style={{ width: '80px' }} />
             <col />
             <col style={{ width: '140px' }} />
@@ -257,6 +393,7 @@ export const ListView = memo<ListViewProps>(({ items, onItemClick }) => {
           </colgroup>
           <thead>
             <tr>
+              <th>{t('listView.position') as string}</th>
               <th>{t('listView.id') as string}</th>
               <th>{t('listView.title') as string}</th>
               <th>{t('listView.moscow') as string}</th>
@@ -282,7 +419,10 @@ export const ListView = memo<ListViewProps>(({ items, onItemClick }) => {
                 key={key}
                 item={item}
                 index={index}
+                total={items.length}
+                canOrder={canOrder}
                 onItemClick={onItemClick}
+                onMove={onMove}
                 style={{
                   position: 'absolute',
                   top: 0,
@@ -296,6 +436,7 @@ export const ListView = memo<ListViewProps>(({ items, onItemClick }) => {
         ) : (
           <table className={styles['backlog-table']}>
             <colgroup>
+              <col style={{ width: '104px' }} />
               <col style={{ width: '80px' }} />
               <col />
               <col style={{ width: '140px' }} />
@@ -305,8 +446,16 @@ export const ListView = memo<ListViewProps>(({ items, onItemClick }) => {
               <col style={{ width: '200px' }} />
             </colgroup>
             <tbody>
-              {items.map((item) => (
-                <TableRow key={item.id} item={item} onItemClick={onItemClick} />
+              {items.map((item, index) => (
+                <TableRow
+                  key={item.id}
+                  item={item}
+                  index={index}
+                  total={items.length}
+                  canOrder={canOrder}
+                  onItemClick={onItemClick}
+                  onMove={onMove}
+                />
               ))}
             </tbody>
           </table>

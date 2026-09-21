@@ -4,6 +4,7 @@ import * as backlogController from '../controllers/backlog.controller';
 import * as dodController from '../controllers/dod.controller';
 import * as dorController from '../controllers/dor.controller';
 import * as sprintController from '../controllers/sprint.controller';
+import { MAX_REORDER_ITEMS } from '../services/backlog.service';
 import { authenticate } from '../middleware/auth.middleware';
 import { validateBody, validateParams, validateQuery } from '../middleware/validation.middleware';
 import { z } from 'zod';
@@ -36,9 +37,34 @@ const prioritySchema = z.object({
   priority: z.enum(['MUST_HAVE', 'SHOULD_HAVE', 'COULD_HAVE', 'WONT_HAVE']),
 });
 
-const reorderSchema = z.object({
-  pbiIds: z.array(z.string().uuid()),
-});
+/**
+ * Reorder payload. Two accepted shapes:
+ * - the team's **complete** Product Backlog in the requested order (`pbiIds`) — the canonical
+ *   contract; a partial list is refused by the service rather than silently scrambling the
+ *   ranks of the items it omits;
+ * - one positional move relative to a neighbour (`pbiId`, `targetPbiId`, `position`), which is
+ *   what a filtered or paginated board sends.
+ * The cap keeps the renumbering transaction bounded (see `MAX_REORDER_ITEMS`).
+ */
+const reorderSchema = z.union(
+  [
+    z.object({
+      pbiIds: z
+        .array(z.string().uuid('Invalid PBI ID'))
+        .min(1, 'At least one PBI is required')
+        .max(MAX_REORDER_ITEMS, `A reorder cannot contain more than ${MAX_REORDER_ITEMS} items`),
+    }),
+    z.object({
+      pbiId: z.string().uuid('Invalid PBI ID'),
+      targetPbiId: z.string().uuid('Invalid target PBI ID'),
+      position: z.enum(['before', 'after']),
+    }),
+  ],
+  {
+    error:
+      'Provide either a complete ordered "pbiIds" list, or a positional move ("pbiId", "targetPbiId", "position")',
+  }
+);
 
 const pbiIdSchema = z.object({
   id: z.string().uuid('Invalid PBI ID'),

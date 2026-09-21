@@ -7,6 +7,7 @@ import { useFocusTrap } from '../hooks/useFocusTrap';
 import { MOSCOW_CONFIG } from '../config/moscow.config';
 import { handleMoscowKeyDown } from '../utils/formHandlers';
 import { useTeamContext } from '../../../contexts/TeamContext';
+import { canOrderBacklog } from '../../../utils/roleUtils';
 import { UnsavedChangesModal } from '../../../components/common/Form/UnsavedChangesModal';
 
 import styles from './EditItemModal.module.css';
@@ -41,6 +42,10 @@ export const EditItemModal: React.FC<EditItemModalProps> = ({
   // Only Developers are responsible for sizing; PO/SM cannot set story points.
   const { userRole } = useTeamContext();
   const isDeveloper = userRole === 'DEVELOPERS';
+
+  // Reclassifying an item reorders the backlog, which is the Product Owner's call (Scrum Guide);
+  // the backend refuses it with GATE_PRODUCT_OWNER_ONLY_BACKLOG_ORDER, so it is not offered here.
+  const isProductOwner = canOrderBacklog(userRole);
 
   const {
     selectedItem,
@@ -253,6 +258,8 @@ export const EditItemModal: React.FC<EditItemModalProps> = ({
                           className={`${styles['moscow-option']} ${isSelected ? styles.selected : ''} ${styles[`priority-${priority.toLowerCase().replace('_', '-')}`]}`}
                           onClick={() => handlePriorityChange(priority)}
                           onKeyDown={(e) => handleMoscowKeyDownWrapper(e, index)}
+                          disabled={!isProductOwner}
+                          aria-disabled={!isProductOwner}
                           style={
                             {
                               '--option-color': config.color,
@@ -282,6 +289,11 @@ export const EditItemModal: React.FC<EditItemModalProps> = ({
                     })}
                   </div>
                   <span className={styles['field-help']}>{t('editItem.moscowHelp') as string}</span>
+                  {!isProductOwner && (
+                    <span className={styles['field-help-warning']}>
+                      {t('order.priorityProductOwnerOnly') as string}
+                    </span>
+                  )}
                   {formErrors.moscowPriority && (
                     <span className={styles['error-message']} role="alert">
                       {formErrors.moscowPriority}

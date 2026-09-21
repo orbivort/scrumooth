@@ -65,7 +65,7 @@
 /* Virtualized Grid Layout */
 .virtualized-header {
   display: grid;
-  grid-template-columns: 80px 1fr 140px 140px 120px 100px 200px;
+  grid-template-columns: 104px 80px 1fr 140px 140px 120px 100px 200px;
   background: linear-gradient(135deg, var(--color-gray-50) 0%, var(--color-gray-100) 100%);
   border-bottom: var(--border-width-2) solid var(--color-border-default);
 }
@@ -87,7 +87,7 @@
 
 .virtualized-row {
   display: grid;
-  grid-template-columns: 80px 1fr 140px 140px 120px 100px 200px;
+  grid-template-columns: 104px 80px 1fr 140px 140px 120px 100px 200px;
   width: 100%;
   border-bottom: var(--border-width-1) solid var(--color-gray-100);
   background: var(--color-background-card);
@@ -541,31 +541,100 @@
   color: var(--color-text-secondary);
 }
 
+/* ============================================================================
+   POSITION CELL
+   The item's place in the backlog order, so the list reads top-to-bottom as
+   "what is next". A Product Owner also gets a one-step move control here, so
+   ordering never depends on pointer drag alone.
+   ============================================================================ */
+
+.position-cell {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.position-value {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: var(--space-6);
+  padding: 0 var(--space-1-5);
+  border-radius: var(--radius-full);
+  background: var(--color-gray-200);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  font-variant-numeric: tabular-nums;
+}
+
+.position-actions {
+  display: inline-flex;
+  gap: var(--space-1);
+}
+
+.position-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: var(--border-width-1) solid var(--color-border-default);
+  border-radius: var(--radius-sm);
+  background: var(--color-background-card);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition:
+    background var(--transition-fast),
+    color var(--transition-fast);
+}
+
+.position-button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Keyboard users move items here, so the control has to show where focus is. */
+.position-button:focus-visible {
+  outline: var(--border-width-2) solid var(--color-primary-600);
+  outline-offset: var(--border-width-1);
+}
+
+.position-button:hover:not(:disabled) {
+  background: var(--color-background-hover);
+  color: var(--color-text-primary);
+}
+
 /* Responsive adjustments for virtualized grid */
 @media (width <= 1200px) {
   .virtualized-header,
   .virtualized-row {
-    grid-template-columns: 70px 1fr 130px 130px 100px 90px 180px;
+    grid-template-columns: 104px 70px 1fr 130px 130px 100px 90px 180px;
   }
 
   .backlog-table col:nth-child(1) {
+    width: 104px;
+  }
+
+  .backlog-table col:nth-child(2) {
     width: 70px;
   }
 
-  .backlog-table col:nth-child(3),
-  .backlog-table col:nth-child(4) {
+  .backlog-table col:nth-child(4),
+  .backlog-table col:nth-child(5) {
     width: 130px;
   }
 
-  .backlog-table col:nth-child(5) {
+  .backlog-table col:nth-child(6) {
     width: 100px;
   }
 
-  .backlog-table col:nth-child(6) {
+  .backlog-table col:nth-child(7) {
     width: 90px;
   }
 
-  .backlog-table col:nth-child(7) {
+  .backlog-table col:nth-child(8) {
     width: 180px;
   }
 }
@@ -573,7 +642,7 @@
 @media (width <= 900px) {
   .virtualized-header,
   .virtualized-row {
-    grid-template-columns: 60px 1fr 120px 120px 90px 80px 160px;
+    grid-template-columns: 104px 60px 1fr 120px 120px 90px 80px 160px;
   }
 
   .virtualized-header-cell,
@@ -582,23 +651,27 @@
   }
 
   .backlog-table col:nth-child(1) {
+    width: 104px;
+  }
+
+  .backlog-table col:nth-child(2) {
     width: 60px;
   }
 
-  .backlog-table col:nth-child(3),
-  .backlog-table col:nth-child(4) {
+  .backlog-table col:nth-child(4),
+  .backlog-table col:nth-child(5) {
     width: 120px;
   }
 
-  .backlog-table col:nth-child(5) {
+  .backlog-table col:nth-child(6) {
     width: 90px;
   }
 
-  .backlog-table col:nth-child(6) {
+  .backlog-table col:nth-child(7) {
     width: 80px;
   }
 
-  .backlog-table col:nth-child(7) {
+  .backlog-table col:nth-child(8) {
     width: 160px;
   }
 }

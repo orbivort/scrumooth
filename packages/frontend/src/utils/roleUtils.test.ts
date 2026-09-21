@@ -1,6 +1,12 @@
 import { describe, it, expect } from 'vitest';
 
-import { getRoleLabel, getRoleBadgeClass, getRoleBadgeColor, canStartSprint } from './roleUtils';
+import {
+  getRoleLabel,
+  getRoleBadgeClass,
+  getRoleBadgeColor,
+  canStartSprint,
+  canOrderBacklog,
+} from './roleUtils';
 
 describe('roleUtils', () => {
   describe('getRoleLabel', () => {
@@ -129,6 +135,29 @@ describe('roleUtils', () => {
 
     it('should return false when neither prerequisite is met', () => {
       expect(canStartSprint({ hasSprintGoal: false, hasSavedBacklog: false })).toBe(false);
+    });
+  });
+
+  describe('canOrderBacklog', () => {
+    it('should allow the Product Owner', () => {
+      expect(canOrderBacklog('PRODUCT_OWNER')).toBe(true);
+    });
+
+    it('should accept the lowercase role form', () => {
+      expect(canOrderBacklog('product_owner')).toBe(true);
+    });
+
+    it('should refuse the Scrum Master', () => {
+      expect(canOrderBacklog('SCRUM_MASTER')).toBe(false);
+    });
+
+    it('should refuse a Developer', () => {
+      expect(canOrderBacklog('DEVELOPERS')).toBe(false);
+    });
+
+    it('should refuse a missing role', () => {
+      expect(canOrderBacklog(null)).toBe(false);
+      expect(canOrderBacklog(undefined)).toBe(false);
     });
   });
 });

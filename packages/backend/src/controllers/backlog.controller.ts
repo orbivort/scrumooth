@@ -74,8 +74,12 @@ export const updatePriority = asyncHandler(async (req: Request, res: Response) =
   if (!id) {
     throw new BadRequestError('PBI ID is required');
   }
+  if (!req.userId) {
+    throw new BadRequestError('User not authenticated');
+  }
   const { priority } = req.body;
-  const pbi = await productBacklogService.updatePriority(id, priority);
+  // Reclassifying an item is a Product Owner ordering decision, enforced in the service.
+  const pbi = await productBacklogService.updatePriority(id, req.userId, priority);
   res.json(createSuccessResponse(pbi));
 });
 
@@ -96,11 +100,16 @@ export const deletePBI = asyncHandler(async (req: Request, res: Response) => {
 
 /**
  * Reorder PBIs
+ *
+ * The service persists the new order and returns it, so the client reconciles against what
+ * was actually written rather than an unverified success message.
  */
 export const reorderPBIs = asyncHandler(async (req: Request, res: Response) => {
-  const { pbiIds } = req.body;
-  await productBacklogService.reorderPBIs(pbiIds);
-  res.json(createSuccessResponse({ message: 'Items reordered successfully' }));
+  if (!req.userId) {
+    throw new BadRequestError('User not authenticated');
+  }
+  const items = await productBacklogService.reorderPBIs(req.userId, req.body);
+  res.json(createSuccessResponse({ items }));
 });
 
 /**

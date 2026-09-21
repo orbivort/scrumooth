@@ -1,4 +1,16 @@
 {
+  "backlogItem": {
+    "notReady": "Nur Product-Backlog-Elemente mit dem Status READY können in einen Sprint aufgenommen werden. {{count}} ausgewählte(s) Element(e) sind noch nicht READY: {{items}}."
+  },
+  "backlogOrder": {
+    "duplicateItems": "Eine Umsortierung darf dasselbe Product-Backlog-Element nicht zweimal benennen.",
+    "empty": "Eine Umsortierung muss mindestens ein Product-Backlog-Element benennen.",
+    "incompleteList": "Eine vollständige Umsortierung muss jedes Element des Product Backlogs des Teams enthalten: erwartet {{expected}}, erhalten {{received}}. Für eine gefilterte Ansicht sende stattdessen eine Positionsverschiebung (pbiId, targetPbiId, position).",
+    "multipleTeams": "Alle umzusortierenden Elemente müssen zum Product Backlog desselben Teams gehören.",
+    "productOwnerOnly": "Nur der Product Owner ordnet das Product Backlog: Die MoSCoW-Priorität oder die Position eines Elements zu ändern, ist die Entscheidung des Product Owners.",
+    "selfMove": "Ein Element kann nicht vor oder nach sich selbst verschoben werden.",
+    "tooMany": "Eine Umsortierung darf nicht mehr als {{max}} Product-Backlog-Elemente enthalten."
+  },
   "databaseError": "Ein Datenbankfehler ist aufgetreten",
   "developerOnlySizing": "Nur Entwickler können Story Points festlegen, da die Entwickler, die die Arbeit ausführen, für die Schätzung verantwortlich sind.",
   "dodNotVerified": "Dieses Element kann nicht als Fertig markiert werden, solange nicht jede aktive Definition-of-Done-Anforderung verifiziert ist. {{count}} aktive Anforderung(en) müssen noch verifiziert werden.",
@@ -45,7 +57,8 @@
     "productGoalRequired": "Der Sprint kann nicht ohne ein verknüpftes Produktziel gestartet werden. Verknüpfe den Sprint zuerst mit dem Produktziel des Teams."
   },
   "sprintBacklog": {
-    "developersOnly": "Nur Entwickler können das Sprint-Backlog speichern, da die Entwickler, die die Arbeit ausführen, das Sprint-Backlog besitzen."
+    "developersOnly": "Nur Entwickler können das Sprint-Backlog speichern, da die Entwickler, die die Arbeit ausführen, das Sprint-Backlog besitzen.",
+    "pbiNotOfTeam": "Jedes für einen Sprint ausgewählte Element muss zum Product Backlog dieses Teams gehören."
   },
   "task": {
     "assigneeMustBeDeveloper": "Nur Entwickler im Team können zugewiesen werden. Product Owner und Scrum Master können keine Aufgaben zuweisen.",

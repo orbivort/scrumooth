@@ -268,6 +268,7 @@ describe('Backlog Controller', () => {
   describe('updatePriority', () => {
     it('should update PBI priority', async () => {
       mockReq.params = { id: 'pbi-123' };
+      mockReq.userId = 'user-123';
       mockReq.body = { priority: 'MUST_HAVE' };
       const mockPBI = { id: 'pbi-123', priority: 'MUST_HAVE' };
 
@@ -277,7 +278,12 @@ describe('Backlog Controller', () => {
       await new Promise((resolve) => setTimeout(resolve, 0));
 
       expect(mockNext).not.toHaveBeenCalled();
-      expect(productBacklogService.updatePriority).toHaveBeenCalledWith('pbi-123', 'MUST_HAVE');
+      // The service needs the actor to enforce the Product Owner ordering gate.
+      expect(productBacklogService.updatePriority).toHaveBeenCalledWith(
+        'pbi-123',
+        'user-123',
+        'MUST_HAVE'
+      );
       expect(mockRes._json).toEqual({
         success: true,
         data: mockPBI,
@@ -286,6 +292,7 @@ describe('Backlog Controller', () => {
 
     it('should throw BadRequestError when ID is missing', async () => {
       mockReq.params = {};
+      mockReq.userId = 'user-123';
 
       updatePriority(mockReq as any, mockRes as any, mockNext);
       await new Promise((resolve) => setTimeout(resolve, 0));
@@ -294,8 +301,21 @@ describe('Backlog Controller', () => {
       expect((mockNext.mock.calls[0] as any)[0].message).toBe('PBI ID is required');
     });
 
+    it('should throw BadRequestError when user is not authenticated', async () => {
+      mockReq.params = { id: 'pbi-123' };
+      mockReq.userId = undefined;
+
+      updatePriority(mockReq as any, mockRes as any, mockNext);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(mockNext).toHaveBeenCalledWith(expect.any(BadRequestError));
+      expect((mockNext.mock.calls[0] as any)[0].message).toBe('User not authenticated');
+      expect(productBacklogService.updatePriority).not.toHaveBeenCalled();
+    });
+
     it('should handle service errors', async () => {
       mockReq.params = { id: 'pbi-123' };
+      mockReq.userId = 'user-123';
       mockReq.body = { priority: 'INVALID' };
       const error = new Error('Invalid priority');
 
@@ -362,35 +382,62 @@ describe('Backlog Controller', () => {
   });
 
   describe('reorderPBIs', () => {
-    it('should reorder PBIs', async () => {
+    it('should persist the canonical list and return the resulting order', async () => {
+      mockReq.userId = 'user-123';
       mockReq.body = { pbiIds: ['pbi-1', 'pbi-2', 'pbi-3'] };
+      const ordered = [
+        { id: 'pbi-1', rank: 1, priority: 'MUST_HAVE' },
+        { id: 'pbi-2', rank: 2, priority: 'SHOULD_HAVE' },
+        { id: 'pbi-3', rank: 3, priority: 'COULD_HAVE' },
+      ];
 
-      (productBacklogService.reorderPBIs as any).mockResolvedValue(undefined);
+      (productBacklogService.reorderPBIs as any).mockResolvedValue(ordered);
 
       reorderPBIs(mockReq as any, mockRes as any, mockNext);
       await new Promise((resolve) => setTimeout(resolve, 0));
 
       expect(mockNext).not.toHaveBeenCalled();
-      expect(productBacklogService.reorderPBIs).toHaveBeenCalledWith(['pbi-1', 'pbi-2', 'pbi-3']);
+      expect(productBacklogService.reorderPBIs).toHaveBeenCalledWith('user-123', {
+        pbiIds: ['pbi-1', 'pbi-2', 'pbi-3'],
+      });
+      // The actual order comes back instead of an unverified success message.
       expect(mockRes._json).toEqual({
         success: true,
-        data: { message: 'Items reordered successfully' },
+        data: { items: ordered },
       });
     });
 
-    it('should handle empty pbiIds array', async () => {
-      mockReq.body = { pbiIds: [] };
+    it('should forward a positional move unchanged', async () => {
+      mockReq.userId = 'user-123';
+      mockReq.body = { pbiId: 'pbi-1', targetPbiId: 'pbi-3', position: 'after' };
 
-      (productBacklogService.reorderPBIs as any).mockResolvedValue(undefined);
+      (productBacklogService.reorderPBIs as any).mockResolvedValue([]);
 
       reorderPBIs(mockReq as any, mockRes as any, mockNext);
       await new Promise((resolve) => setTimeout(resolve, 0));
 
       expect(mockNext).not.toHaveBeenCalled();
-      expect(productBacklogService.reorderPBIs).toHaveBeenCalledWith([]);
+      expect(productBacklogService.reorderPBIs).toHaveBeenCalledWith('user-123', {
+        pbiId: 'pbi-1',
+        targetPbiId: 'pbi-3',
+        position: 'after',
+      });
+    });
+
+    it('should throw BadRequestError when user is not authenticated', async () => {
+      mockReq.userId = undefined;
+      mockReq.body = { pbiIds: ['pbi-1'] };
+
+      reorderPBIs(mockReq as any, mockRes as any, mockNext);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(mockNext).toHaveBeenCalledWith(expect.any(BadRequestError));
+      expect((mockNext.mock.calls[0] as any)[0].message).toBe('User not authenticated');
+      expect(productBacklogService.reorderPBIs).not.toHaveBeenCalled();
     });
 
     it('should handle service errors', async () => {
+      mockReq.userId = 'user-123';
       mockReq.body = { pbiIds: ['pbi-1'] };
       const error = new Error('Invalid PBI ID');
 

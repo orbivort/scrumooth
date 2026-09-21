@@ -134,6 +134,11 @@ model ProductBacklogItem {
   title              String
   description        String?
   priority           MoSCoWPriority        @default(COULD_HAVE)
+  /// Dense, 1-based position of the item in its team's Product Backlog order.
+  /// The 2020 Scrum Guide defines the Product Backlog as an *ordered* list, so this is
+  /// the order of record: appended on create, rewritten 1..N by a reorder, never shown
+  /// as a priority. MoSCoW remains a categorisation rendered on top of this order.
+  rank               Int                   @default(0)
   businessValue      Int?
   storyPoints        Int?
   status             ItemStatus            @default(NEW)
@@ -159,6 +164,8 @@ model ProductBacklogItem {
   @@index([priority])
   @@index([teamId, status])
   @@index([teamId, status, priority])
+  @@index([teamId, rank])
+
   @@index([labels], type: Gin)
   @@map("product_backlog_items")
 }

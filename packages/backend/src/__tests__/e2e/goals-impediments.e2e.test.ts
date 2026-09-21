@@ -202,6 +202,9 @@ describe('E2E: Goals and Impediments', () => {
           .send({
             teamId: team.id,
             title: `Goal ${uniqueTestId()}`,
+            // Required by the Product Goal contract; the payload is otherwise valid so the
+            // response is the Product Owner gate rather than a validation failure.
+            successMetrics: 'Test success metrics',
           })
           .expect(HTTP_STATUS.FORBIDDEN);
 

@@ -304,8 +304,10 @@ Scrumooth enforces the 2020 Scrum Guide server-side, so the same gates that hold
 | `GATE_DEVELOPER_ONLY_SIZING`             | 403  | Only Developers size Product Backlog items.                                                                                      |
 | `GATE_DEVELOPER_ONLY_DAILY_SCRUM`        | 403  | Only Developers author or join the Daily Scrum.                                                                                  |
 | `GATE_PRODUCT_OWNER_ONLY_CANCELLATION`   | 403  | Only the Product Owner can cancel an `ACTIVE` Sprint.                                                                            |
+| `GATE_PRODUCT_OWNER_ONLY_BACKLOG_ORDER`  | 403  | Only the Product Owner orders the Product Backlog: the order and the MoSCoW band are their decision.                             |
 | `GATE_INCREMENT_LOCKED`                  | 400  | A delivered Increment cannot be rewritten.                                                                                       |
 | `GATE_DEVELOPER_ONLY_SPRINT_BACKLOG`     | 403  | Only Developers save the Sprint Backlog.                                                                                         |
+| `GATE_PBI_NOT_READY`                     | 400  | A Product Backlog item must be refined to `READY` before it can enter a Sprint.                                                  |
 | `GATE_PRODUCT_GOAL_ALREADY_ACTIVE`       | 409  | A team can pursue only one Product Goal at a time.                                                                               |
 | `GATE_PRODUCT_OWNER_ONLY_PRODUCT_GOAL`   | 403  | Only the Product Owner creates, edits, or deletes a Product Goal.                                                                |
 | `GATE_PRODUCT_GOAL_REQUIRED`             | 400  | A Sprint cannot start until it is linked to a Product Goal.                                                                      |

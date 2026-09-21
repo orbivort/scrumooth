@@ -179,6 +179,8 @@ export interface ProductBacklogItem {
   title: string;
   description?: string;
   priority: MoSCoWPriority;
+  /** Dense, 1-based position in the team's Product Backlog order (the order of record). */
+  rank: number;
   businessValue?: number;
   effort?: ValueEffortLevel;
   storyPoints?: number;

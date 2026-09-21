@@ -53,9 +53,12 @@ export interface ProductGoalArtifact {
 }
 
 /**
- * Aggregate composition of the Product Backlog. Deliberately never a ranked
- * list: the Product Backlog has no persisted order today, so presenting a
- * "top item" would imply an ordering that does not exist.
+ * Aggregate composition of the Product Backlog.
+ *
+ * The landing page reports the artifact's composition (how much work it holds, how much of it
+ * serves the current Product Goal) rather than a ranked list. The order of record lives in the
+ * Product Backlog itself, where the Product Owner maintains it with `rank`; duplicating "what is
+ * next" here would be a second, quickly-stale opinion about the same decision.
  */
 export interface ProductBacklogSummary {
   total: number;

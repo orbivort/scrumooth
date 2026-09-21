@@ -112,6 +112,9 @@ export const createMockBacklogItem = (
   updatedAt: '2026-01-01T00:00:00Z',
   createdBy: 'user-1',
   ...overrides,
+  // Every item carries a position in the Product Backlog order; `overrides` is partial, so the
+  // resolved value is applied after the spread to keep the field a number.
+  rank: overrides?.rank ?? 1,
 });
 
 /**
@@ -294,6 +297,7 @@ export const mockBacklogItems: ProductBacklogItem[] = [
     description: 'Implement user login/logout',
     status: 'NEW' as ItemStatus,
     priority: 'MUST_HAVE' as MoSCoWPriority,
+    rank: 1,
     storyPoints: 8,
     businessValue: 10,
     labels: ['security', 'authentication'],
@@ -309,6 +313,7 @@ export const mockBacklogItems: ProductBacklogItem[] = [
     description: 'Create main dashboard',
     status: 'IN_PROGRESS' as ItemStatus,
     priority: 'MUST_HAVE' as MoSCoWPriority,
+    rank: 2,
     storyPoints: 13,
     businessValue: 15,
     labels: ['ui', 'dashboard'],
@@ -324,6 +329,7 @@ export const mockBacklogItems: ProductBacklogItem[] = [
     description: 'Implement Kanban board',
     status: 'NEW' as ItemStatus,
     priority: 'SHOULD_HAVE' as MoSCoWPriority,
+    rank: 3,
     storyPoints: 5,
     businessValue: 8,
     labels: ['ui', 'kanban'],

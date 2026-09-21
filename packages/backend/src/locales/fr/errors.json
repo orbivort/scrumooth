@@ -1,4 +1,16 @@
 {
+  "backlogItem": {
+    "notReady": "Seuls les éléments du Product Backlog affinés au statut READY peuvent entrer dans un Sprint. {{count}} élément(s) sélectionné(s) ne sont pas encore READY : {{items}}."
+  },
+  "backlogOrder": {
+    "duplicateItems": "Une réorganisation ne peut pas désigner deux fois le même élément du Product Backlog.",
+    "empty": "Une réorganisation doit désigner au moins un élément du Product Backlog.",
+    "incompleteList": "Une réorganisation complète doit contenir tous les éléments du Product Backlog de l'équipe : attendus {{expected}}, reçus {{received}}. Pour réorganiser une vue filtrée, envoyez plutôt un déplacement positionnel (pbiId, targetPbiId, position).",
+    "multipleTeams": "Tous les éléments réorganisés doivent appartenir au Product Backlog de la même équipe.",
+    "productOwnerOnly": "Seul le Product Owner ordonne le Product Backlog : modifier la priorité MoSCoW ou la position d'un élément relève de la décision du Product Owner.",
+    "selfMove": "Un élément ne peut pas être déplacé avant ou après lui-même.",
+    "tooMany": "Une réorganisation ne peut pas contenir plus de {{max}} éléments du Product Backlog."
+  },
   "databaseError": "Une erreur de base de données s'est produite",
   "developerOnlySizing": "Seuls les développeurs peuvent définir des points d'histoire, car les développeurs qui effectuent le travail sont responsables de l'estimation.",
   "dodNotVerified": "Cet élément ne peut pas être marqué Terminé tant que chaque critère actif de la Definition of Done n'est pas vérifié. {{count}} critère(s) actif(s) restent à vérifier.",
@@ -45,7 +57,8 @@
     "productGoalRequired": "Le sprint ne peut pas démarrer sans un objectif de produit lié. Liez d'abord le sprint à l'objectif de produit de l'équipe."
   },
   "sprintBacklog": {
-    "developersOnly": "Seuls les développeurs peuvent enregistrer le Sprint Backlog, car les développeurs qui effectuent le travail en sont responsables."
+    "developersOnly": "Seuls les développeurs peuvent enregistrer le Sprint Backlog, car les développeurs qui effectuent le travail en sont responsables.",
+    "pbiNotOfTeam": "Chaque élément sélectionné pour un Sprint doit appartenir au Product Backlog de cette équipe."
   },
   "task": {
     "assigneeMustBeDeveloper": "Seuls les développeurs de l'équipe peuvent être assignés. Les Product Owners et Scrum Masters ne peuvent pas assigner de tâches.",

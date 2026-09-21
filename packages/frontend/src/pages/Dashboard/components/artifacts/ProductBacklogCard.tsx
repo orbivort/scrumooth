@@ -18,9 +18,10 @@ interface ProductBacklogCardProps {
 /**
  * The Product Backlog is the single source of work undertaken by the team.
  *
- * The card deliberately shows aggregate composition only: Scrumooth does not
- * persist a backlog order yet, so any "next item" would imply an ordering that
- * does not exist. Counts come from the API's own totals, never from a sample.
+ * The card deliberately shows aggregate composition only: the backlog's order of record lives in
+ * the backlog itself (the Product Owner's `rank`), and the landing page reports the artifact's
+ * composition rather than duplicating an ordered list that would age the moment it rendered.
+ * Counts come from the API's own totals, never from a sample.
  */
 const ProductBacklogCard: React.FC<ProductBacklogCardProps> = memo(({ group, onRetry }) => {
   const { t } = useTranslation('dashboard');

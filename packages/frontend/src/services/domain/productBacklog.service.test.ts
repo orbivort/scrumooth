@@ -201,6 +201,69 @@ describe('ProductBacklogService', () => {
     });
   });
 
+  describe('reorderProductBacklogItems', () => {
+    it('should send the canonical full ordered list and return the resulting order', async () => {
+      const ordered = [
+        { id: 'pbi-3', rank: 1, priority: MoSCoWPriority.MUST_HAVE },
+        { id: 'pbi-1', rank: 2, priority: MoSCoWPriority.SHOULD_HAVE },
+        { id: 'pbi-2', rank: 3, priority: MoSCoWPriority.COULD_HAVE },
+      ];
+      const mockResponse = { data: { success: true, data: { items: ordered } } };
+      vi.mocked(mockApi.post).mockResolvedValue(mockResponse);
+
+      const result = await productBacklogService.reorderProductBacklogItems({
+        pbiIds: ['pbi-3', 'pbi-1', 'pbi-2'],
+      });
+
+      expect(mockApi.post).toHaveBeenCalledWith('/product-backlog/reorder', {
+        pbiIds: ['pbi-3', 'pbi-1', 'pbi-2'],
+      });
+      expect(result.data?.items).toEqual(ordered);
+    });
+
+    it('should send a positional move so a filtered view can reorder', async () => {
+      const mockResponse = {
+        data: {
+          success: true,
+          data: { items: [{ id: 'pbi-1', rank: 1, priority: MoSCoWPriority.MUST_HAVE }] },
+        },
+      };
+      vi.mocked(mockApi.post).mockResolvedValue(mockResponse);
+
+      await productBacklogService.reorderProductBacklogItems({
+        pbiId: 'pbi-1',
+        targetPbiId: 'pbi-2',
+        position: 'before',
+      });
+
+      expect(mockApi.post).toHaveBeenCalledWith('/product-backlog/reorder', {
+        pbiId: 'pbi-1',
+        targetPbiId: 'pbi-2',
+        position: 'before',
+      });
+    });
+
+    it('should surface the Product Owner gate refusal', async () => {
+      const mockResponse = {
+        data: {
+          success: false,
+          error: {
+            code: 'GATE_PRODUCT_OWNER_ONLY_BACKLOG_ORDER',
+            message: 'Only the Product Owner orders the Product Backlog',
+          },
+        },
+      };
+      vi.mocked(mockApi.post).mockResolvedValue(mockResponse);
+
+      const result = await productBacklogService.reorderProductBacklogItems({
+        pbiIds: ['pbi-1'],
+      });
+
+      expect(result.success).toBe(false);
+      expect(result.error?.code).toBe('GATE_PRODUCT_OWNER_ONLY_BACKLOG_ORDER');
+    });
+  });
+
   describe('deleteProductBacklogItem', () => {
     it('should delete a backlog item', async () => {
       const mockResponse = {

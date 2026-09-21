@@ -176,12 +176,29 @@ import prisma from '../../../utils/prisma';
 import { workflowService } from '../../../services/workflow.service';
 import { withTransaction } from '../../../utils/dbTransaction';
 
+/**
+ * Sprint Planning and Sprint start gate on refinement: both read the workflow status of every
+ * Product Backlog item being selected. Answer that lookup with READY items belonging to the
+ * sprint's team, derived from the requested ids, so happy-path planning tests pass the gate.
+ * Gate-specific tests override the mock themselves.
+ */
+const mockPlanningPbiLookupAsReady = (teamId = 'team-1') =>
+  (prisma.productBacklogItem.findMany as any).mockImplementation(async (args: any) =>
+    (args?.where?.id?.in ?? []).map((id: string) => ({
+      id,
+      teamId,
+      status: 'READY',
+      title: id,
+    }))
+  );
+
 describe('SprintService', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     // The Sprint-close impediment gate queries the sprint's unresolved impediments. Default
     // to none so happy-path tests are not blocked; gate-specific tests override this.
     (prisma.impediment.findMany as any).mockResolvedValue([]);
+    mockPlanningPbiLookupAsReady();
   });
 
   describe('getSprints', () => {
@@ -1634,7 +1651,7 @@ describe('SprintBacklogManagerService', () => {
       ).rejects.toThrow(BadRequestError);
     });
 
-    it('should throw BadRequestError when PBI is not in READY status', async () => {
+    it('should refuse with GATE_PBI_NOT_READY when the PBI is not in READY status', async () => {
       const mockSprint = {
         id: 'sprint-1',
         teamId: 'team-1',
@@ -1654,7 +1671,10 @@ describe('SprintBacklogManagerService', () => {
 
       await expect(
         sprintBacklogManagerService.addPBIToActiveSprint('sprint-1', 'user-1', { pbiId: 'pbi-1' })
-      ).rejects.toThrow(BadRequestError);
+      ).rejects.toMatchObject({
+        statusCode: 400,
+        code: GATE_CODES.PBI_NOT_READY,
+      });
     });
 
     it('should throw ForbiddenError when a Product Owner tries to add a PBI', async () => {
@@ -1892,6 +1912,7 @@ describe('SprintService - Additional Coverage', () => {
     vi.clearAllMocks();
     // See the Sprint-close impediment gate default above.
     (prisma.impediment.findMany as any).mockResolvedValue([]);
+    mockPlanningPbiLookupAsReady();
   });
 
   describe('startSprint with backlog items and tasks', () => {
@@ -1909,6 +1930,7 @@ describe('SprintService - Additional Coverage', () => {
 
       const mockPBI = {
         id: 'pbi-1',
+        teamId: 'team-1',
         status: 'READY',
       };
 
@@ -1998,7 +2020,7 @@ describe('SprintService - Additional Coverage', () => {
 
       (prisma.sprint.findUnique as any).mockResolvedValue(mockSprint);
       (prisma.sprint.findFirst as any).mockResolvedValue(null);
-      (prisma.productBacklogItem.findMany as any).mockResolvedValue([]);
+      mockPlanningPbiLookupAsReady();
       (prisma.sprintBacklogItem.findMany as any)
         .mockResolvedValueOnce([{ pbiId: 'pbi-1' }])
         .mockResolvedValueOnce([]);
@@ -2107,6 +2129,37 @@ describe('SprintService - Additional Coverage', () => {
       await expect(sprintService.startSprint('sprint-1', 'user-1')).rejects.toThrow(
         BadRequestError
       );
+    });
+
+    it('should refuse with GATE_PBI_NOT_READY when an item left READY after planning', async () => {
+      const mockSprint = {
+        id: 'sprint-1',
+        teamId: 'team-1',
+        name: 'Sprint 1',
+        status: 'PLANNED',
+        startDate: new Date(),
+        endDate: new Date(),
+        sprintGoal: 'Goal',
+        goalId: 'goal-active-1',
+      };
+
+      (prisma.sprint.findUnique as any).mockResolvedValue(mockSprint);
+      (prisma.sprint.findFirst as any).mockResolvedValue(null);
+      (prisma.sprintBacklogItem.findMany as any)
+        .mockResolvedValueOnce([{ pbiId: 'pbi-1' }])
+        .mockResolvedValueOnce([]);
+      (prisma.productBacklogItem.findMany as any).mockResolvedValue([
+        { id: 'pbi-1', teamId: 'team-1', status: 'REFINED', title: 'Downgraded after planning' },
+      ]);
+
+      // Starting the Sprint is the moment the selection becomes the Sprint Backlog, so the
+      // refinement rule has to hold here too — not only when the plan was saved.
+      await expect(sprintService.startSprint('sprint-1', 'user-1')).rejects.toMatchObject({
+        statusCode: 400,
+        code: GATE_CODES.PBI_NOT_READY,
+      });
+
+      expect(withTransaction).not.toHaveBeenCalled();
     });
   });
 
@@ -2562,6 +2615,68 @@ describe('SprintService - Additional Coverage', () => {
       expect(result.taskIds).toHaveLength(1);
     });
 
+    it('should refuse with GATE_PBI_NOT_READY when a selected item is not refined to READY', async () => {
+      const mockSprint = {
+        id: 'sprint-1',
+        teamId: 'team-1',
+        status: 'PLANNED',
+      };
+
+      (prisma.sprint.findUnique as any).mockResolvedValue(mockSprint);
+      (prisma.teamMember.findFirst as any).mockResolvedValue({ role: 'DEVELOPERS' });
+      (prisma.productBacklogItem.findMany as any).mockResolvedValue([
+        { id: 'pbi-1', teamId: 'team-1', status: 'REFINED', title: 'Still being refined' },
+      ]);
+
+      await expect(
+        sprintService.saveSprintBacklog('sprint-1', 'user-1', { items: [{ pbiId: 'pbi-1' }] })
+      ).rejects.toMatchObject({
+        statusCode: 400,
+        code: GATE_CODES.PBI_NOT_READY,
+      });
+
+      // The plan is refused before any write, so no partial Sprint Backlog can exist.
+      expect(withTransaction).not.toHaveBeenCalled();
+    });
+
+    it('should refuse a selected item that belongs to another team', async () => {
+      const mockSprint = {
+        id: 'sprint-1',
+        teamId: 'team-1',
+        status: 'PLANNED',
+      };
+
+      (prisma.sprint.findUnique as any).mockResolvedValue(mockSprint);
+      (prisma.teamMember.findFirst as any).mockResolvedValue({ role: 'DEVELOPERS' });
+      (prisma.productBacklogItem.findMany as any).mockResolvedValue([
+        { id: 'pbi-1', teamId: 'other-team', status: 'READY', title: 'Foreign item' },
+      ]);
+
+      await expect(
+        sprintService.saveSprintBacklog('sprint-1', 'user-1', { items: [{ pbiId: 'pbi-1' }] })
+      ).rejects.toMatchObject({ statusCode: 400 });
+
+      expect(withTransaction).not.toHaveBeenCalled();
+    });
+
+    it('should throw NotFoundError when a selected item does not exist', async () => {
+      const mockSprint = {
+        id: 'sprint-1',
+        teamId: 'team-1',
+        status: 'PLANNED',
+      };
+
+      (prisma.sprint.findUnique as any).mockResolvedValue(mockSprint);
+      (prisma.teamMember.findFirst as any).mockResolvedValue({ role: 'DEVELOPERS' });
+      (prisma.productBacklogItem.findMany as any).mockResolvedValue([]);
+
+      await expect(
+        sprintService.saveSprintBacklog('sprint-1', 'user-1', { items: [{ pbiId: 'ghost-pbi' }] })
+      ).rejects.toThrow(NotFoundError);
+
+      expect(withTransaction).not.toHaveBeenCalled();
+    });
+
     it('should materialize a GeneratedSprint and persist the backlog against the real Sprint', async () => {
       const mockGeneratedSprint = {
         id: 'gen-1',
@@ -2724,6 +2839,28 @@ describe('SprintService - Additional Coverage', () => {
   });
 
   describe('saveSprintPlanningDraft', () => {
+    it('should refuse with GATE_PBI_NOT_READY when a selected item is not refined to READY', async () => {
+      (prisma.sprint.findUnique as any).mockResolvedValue({
+        id: 'sprint-1',
+        teamId: 'team-1',
+        status: 'DRAFT',
+        sprintGoal: 'Goal',
+      });
+      (prisma.teamMember.findFirst as any).mockResolvedValue({ role: 'DEVELOPERS' });
+      (prisma.productBacklogItem.findMany as any).mockResolvedValue([
+        { id: 'pbi-1', teamId: 'team-1', status: 'NEW', title: 'Unrefined item' },
+      ]);
+
+      await expect(
+        sprintService.saveSprintPlanningDraft('sprint-1', 'user-1', { items: [{ pbiId: 'pbi-1' }] })
+      ).rejects.toMatchObject({
+        statusCode: 400,
+        code: GATE_CODES.PBI_NOT_READY,
+      });
+
+      expect(withTransaction).not.toHaveBeenCalled();
+    });
+
     it('should materialize a GeneratedSprint as DRAFT and upsert backlog, tasks, and goal', async () => {
       const mockGeneratedSprint = {
         id: 'gen-1',

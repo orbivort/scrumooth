@@ -52,6 +52,7 @@ const mockItemsByMoscow = {
 describe('BoardView', () => {
   const mockOnItemClick = vi.fn();
   const mockOnPriorityChange = vi.fn();
+  const mockOnReorder = vi.fn();
 
   beforeAll(async () => {
     await initTestI18n();
@@ -67,7 +68,9 @@ describe('BoardView', () => {
         <BoardView
           itemsByMoscow={mockItemsByMoscow}
           onItemClick={mockOnItemClick}
+          onReorder={mockOnReorder}
           onPriorityChange={mockOnPriorityChange}
+          canOrder
         />
       );
 
@@ -89,7 +92,9 @@ describe('BoardView', () => {
         <BoardView
           itemsByMoscow={mockItemsByMoscow}
           onItemClick={mockOnItemClick}
+          onReorder={mockOnReorder}
           onPriorityChange={mockOnPriorityChange}
+          canOrder
         />
       );
 
@@ -104,7 +109,9 @@ describe('BoardView', () => {
         <BoardView
           itemsByMoscow={mockItemsByMoscow}
           onItemClick={mockOnItemClick}
+          onReorder={mockOnReorder}
           onPriorityChange={mockOnPriorityChange}
+          canOrder
         />
       );
 
@@ -124,7 +131,9 @@ describe('BoardView', () => {
         <BoardView
           itemsByMoscow={emptyItemsByMoscow}
           onItemClick={mockOnItemClick}
+          onReorder={mockOnReorder}
           onPriorityChange={mockOnPriorityChange}
+          canOrder
         />
       );
 
@@ -139,7 +148,9 @@ describe('BoardView', () => {
         <BoardView
           itemsByMoscow={mockItemsByMoscow}
           onItemClick={mockOnItemClick}
+          onReorder={mockOnReorder}
           onPriorityChange={mockOnPriorityChange}
+          canOrder
         />
       );
 
@@ -152,7 +163,9 @@ describe('BoardView', () => {
         <BoardView
           itemsByMoscow={mockItemsByMoscow}
           onItemClick={mockOnItemClick}
+          onReorder={mockOnReorder}
           onPriorityChange={mockOnPriorityChange}
+          canOrder
         />
       );
 
@@ -167,7 +180,9 @@ describe('BoardView', () => {
         <BoardView
           itemsByMoscow={mockItemsByMoscow}
           onItemClick={mockOnItemClick}
+          onReorder={mockOnReorder}
           onPriorityChange={mockOnPriorityChange}
+          canOrder
         />
       );
 
@@ -185,7 +200,9 @@ describe('BoardView', () => {
         <BoardView
           itemsByMoscow={mockItemsByMoscow}
           onItemClick={mockOnItemClick}
+          onReorder={mockOnReorder}
           onPriorityChange={mockOnPriorityChange}
+          canOrder
         />
       );
 
@@ -217,7 +234,9 @@ describe('BoardView', () => {
         <BoardView
           itemsByMoscow={itemsByMoscowWithFewItems}
           onItemClick={mockOnItemClick}
+          onReorder={mockOnReorder}
           onPriorityChange={mockOnPriorityChange}
+          canOrder
         />
       );
 
@@ -249,7 +268,9 @@ describe('BoardView', () => {
         <BoardView
           itemsByMoscow={itemsByMoscowWithManyItems}
           onItemClick={mockOnItemClick}
+          onReorder={mockOnReorder}
           onPriorityChange={mockOnPriorityChange}
+          canOrder
         />
       );
 
@@ -280,7 +301,9 @@ describe('BoardView', () => {
         <BoardView
           itemsByMoscow={itemsByMoscowWithFewItems}
           onItemClick={mockOnItemClick}
+          onReorder={mockOnReorder}
           onPriorityChange={mockOnPriorityChange}
+          canOrder
         />
       );
 
@@ -311,7 +334,9 @@ describe('BoardView', () => {
         <BoardView
           itemsByMoscow={itemsByMoscowWithManyItems}
           onItemClick={mockOnItemClick}
+          onReorder={mockOnReorder}
           onPriorityChange={mockOnPriorityChange}
+          canOrder
         />
       );
 
@@ -349,13 +374,69 @@ describe('BoardView', () => {
         <BoardView
           itemsByMoscow={itemsByMoscowMixed}
           onItemClick={mockOnItemClick}
+          onReorder={mockOnReorder}
           onPriorityChange={mockOnPriorityChange}
+          canOrder
         />
       );
 
       // Both columns should show correct counts
       expect(screen.getByText('60')).toBeInTheDocument();
       expect(screen.getByText('5')).toBeInTheDocument();
+    });
+  });
+
+  describe('Positional ordering', () => {
+    it('should expose a drop zone per card so a drop can name a position', () => {
+      renderWithProviders(
+        <BoardView
+          itemsByMoscow={mockItemsByMoscow}
+          onItemClick={mockOnItemClick}
+          onReorder={mockOnReorder}
+          onPriorityChange={mockOnPriorityChange}
+          canOrder
+        />
+      );
+
+      // One drop zone per card, addressed by the item it sits before/after.
+      const dropZones = document.querySelectorAll('[data-drop-zone]');
+      expect(dropZones).toHaveLength(mockItems.length);
+      expect(dropZones[0]).toHaveAttribute('data-drop-zone', 'pbi-1');
+    });
+
+    it('should show the item position in the backlog order', () => {
+      renderWithProviders(
+        <BoardView
+          itemsByMoscow={mockItemsByMoscow}
+          onItemClick={mockOnItemClick}
+          onReorder={mockOnReorder}
+          onPriorityChange={mockOnPriorityChange}
+          canOrder
+        />
+      );
+
+      expect(screen.getAllByLabelText(/^Position \d+ in the Product Backlog$/).length).toBe(
+        mockItems.length
+      );
+    });
+
+    it('should not offer the ordering affordance to a non-Product-Owner', () => {
+      renderWithProviders(
+        <BoardView
+          itemsByMoscow={mockItemsByMoscow}
+          onItemClick={mockOnItemClick}
+          onReorder={mockOnReorder}
+          onPriorityChange={mockOnPriorityChange}
+          canOrder={false}
+        />
+      );
+
+      // Cards stay readable and clickable, but nothing is draggable and the lock is exposed so
+      // the refusal is discoverable rather than implicit.
+      expect(document.querySelectorAll('[draggable="true"]')).toHaveLength(0);
+      expect(document.querySelectorAll('[data-order-locked="true"]')).toHaveLength(
+        mockItems.length
+      );
     });
   });
 });

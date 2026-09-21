@@ -72,6 +72,7 @@ import {
 } from '../types';
 import type { BulkUploadItem } from '../pages/Backlog/BulkUpload/bulkUploadUtils';
 
+import type { ReorderBacklogPayload, ReorderedBacklogItem } from './domain/productBacklog.service';
 import type { TimeboxQuery } from './domain/timebox.service';
 import { mockSuccess, mockError, mockDelay } from './mockResponseUtils';
 import {
@@ -362,6 +363,9 @@ class MockApiService {
       items = items.filter((item) => labels.some((label) => item.labels.includes(label)));
     }
 
+    // The Product Backlog is an ordered list, so it is read in the persisted order of record.
+    items = [...items].sort((a, b) => a.rank - b.rank);
+
     // Apply pagination
     const page = params?.page ?? 1;
     const limit = params?.limit ?? 20;
@@ -391,12 +395,16 @@ class MockApiService {
   ): Promise<ApiResponse<ProductBacklogItem>> {
     await delay(500);
 
+    const teamId = item.teamId ?? getCurrentTeam().id;
+
     const newItem: ProductBacklogItem = {
       id: `pbi-${Date.now()}`,
-      teamId: item.teamId ?? getCurrentTeam().id,
+      teamId,
       title: item.title ?? 'New Item',
       description: item.description,
       priority: item.priority ?? MoSCoWPriority.COULD_HAVE,
+      // A new item joins the end of its team's order.
+      rank: this.nextBacklogRank(teamId),
       storyPoints: item.storyPoints,
       businessValue: item.businessValue,
       status: item.status ?? ItemStatus.NEW,
@@ -478,6 +486,7 @@ class MockApiService {
         title: item.title,
         description: item.description,
         priority: item.priority ?? MoSCoWPriority.COULD_HAVE,
+        rank: this.nextBacklogRank(teamId),
         storyPoints: item.storyPoints,
         businessValue: item.businessValue,
         status: ItemStatus.NEW,
@@ -537,6 +546,115 @@ class MockApiService {
     priority: MoSCoWPriority
   ): Promise<ApiResponse<ProductBacklogItem>> {
     return this.updateProductBacklogItem(id, { priority });
+  }
+
+  /**
+   * The rank that appends an item to the end of a team's Product Backlog order.
+   */
+  private nextBacklogRank(teamId: string): number {
+    return (
+      mockProductBacklogItems
+        .filter((item) => item.teamId === teamId)
+        .reduce((max, item) => Math.max(max, item.rank), 0) + 1
+    );
+  }
+
+  /**
+   * Persist a new Product Backlog order, mirroring the two payload shapes the API accepts.
+   *
+   * The mock has no authorization layer — the Product Owner ordering gate is exercised against
+   * the real backend — so what is simulated here is the ordering semantics: dense 1..N ranks,
+   * both shapes, and a refusal instead of a false success for a partial list.
+   */
+  async reorderProductBacklogItems(
+    payload: ReorderBacklogPayload
+  ): Promise<ApiResponse<{ items: ReorderedBacklogItem[] }>> {
+    await delay(300);
+
+    const isPositionalMove = 'pbiId' in payload;
+    const namedIds = isPositionalMove ? [payload.pbiId, payload.targetPbiId] : payload.pbiIds;
+
+    const namedItems = mockProductBacklogItems.filter((item) => namedIds.includes(item.id));
+    const firstNamed = namedItems[0];
+    if (!firstNamed) {
+      return {
+        success: false,
+        error: { code: 'NOT_FOUND', message: 'Product Backlog Item not found' },
+      };
+    }
+
+    const teamId = firstNamed.teamId;
+    if (namedItems.some((item) => item.teamId !== teamId)) {
+      return {
+        success: false,
+        error: {
+          code: 'BAD_REQUEST',
+          message: "All reordered items must belong to the same team's Product Backlog",
+        },
+      };
+    }
+
+    const currentIds = mockProductBacklogItems
+      .filter((item) => item.teamId === teamId)
+      .sort((a, b) => a.rank - b.rank)
+      .map((item) => item.id);
+
+    let nextIds: string[];
+
+    if (isPositionalMove) {
+      const withoutMoved = currentIds.filter((id) => id !== payload.pbiId);
+      const targetIndex = withoutMoved.indexOf(payload.targetPbiId);
+
+      if (targetIndex === -1) {
+        return {
+          success: false,
+          error: { code: 'NOT_FOUND', message: 'Product Backlog Item not found' },
+        };
+      }
+
+      const insertAt = payload.position === 'before' ? targetIndex : targetIndex + 1;
+      nextIds = [
+        ...withoutMoved.slice(0, insertAt),
+        payload.pbiId,
+        ...withoutMoved.slice(insertAt),
+      ];
+    } else {
+      const requestedSet = new Set(payload.pbiIds);
+
+      if (
+        requestedSet.size !== payload.pbiIds.length ||
+        requestedSet.size !== currentIds.length ||
+        !currentIds.every((id) => requestedSet.has(id))
+      ) {
+        return {
+          success: false,
+          error: {
+            code: 'BAD_REQUEST',
+            message: "A full reorder must contain every item of the team's Product Backlog",
+          },
+        };
+      }
+
+      nextIds = payload.pbiIds;
+    }
+
+    const rankById = new Map(nextIds.map((id, index) => [id, index + 1]));
+    mockProductBacklogItems.forEach((item, index) => {
+      const nextRank = rankById.get(item.id);
+      if (nextRank !== undefined) {
+        mockProductBacklogItems[index] = { ...item, rank: nextRank };
+      }
+    });
+
+    const items: ReorderedBacklogItem[] = nextIds.map((id) => ({
+      id,
+      rank: rankById.get(id) ?? 0,
+      priority:
+        mockProductBacklogItems.find((item) => item.id === id)?.priority ??
+        MoSCoWPriority.COULD_HAVE,
+    }));
+
+    return { success: true, data: { items } };
   }
 
   async deleteProductBacklogItem(_id: string): Promise<ApiResponse<never>> {

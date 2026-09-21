@@ -37,6 +37,14 @@ export interface MoscowCardProps {
   onMovePriority?: (itemId: string, newPriority: MoSCoWPriority) => void;
   /** Total items count per priority column for announcements */
   itemsCountByPriority?: Record<MoSCoWPriority, number>;
+  /**
+   * Whether the viewer may order the backlog. Only the Product Owner orders Product Backlog
+   * items (Scrum Guide), so for anyone else the move affordances are disabled and explained
+   * rather than offered and refused.
+   */
+  canOrder?: boolean;
+  /** The item's position in the backlog order, shown so "what is next" is readable. */
+  position?: number;
 }
 
 /**
@@ -105,7 +113,17 @@ const getPriorityLabel = (priority: MoSCoWPriority, t: (key: string) => string):
  * ```
  */
 export const MoscowCard = memo<MoscowCardProps>(
-  ({ item, onDragStart, onDragEnd, onClick, isDragging, onMovePriority, itemsCountByPriority }) => {
+  ({
+    item,
+    onDragStart,
+    onDragEnd,
+    onClick,
+    isDragging,
+    onMovePriority,
+    itemsCountByPriority,
+    canOrder = true,
+    position,
+  }) => {
     const { t } = useTranslation('backlog');
     const statusConfig = STATUS_CONFIG[item.status];
     const announce = useAnnounce();
@@ -140,7 +158,7 @@ export const MoscowCard = memo<MoscowCardProps>(
      * Handle keyboard grab start
      */
     const handleGrabStart = useCallback(() => {
-      if (!onMovePriority) return;
+      if (!canOrder || !onMovePriority) return;
 
       originalPriorityRef.current = item.priority;
       setIsGrabbed(true);
@@ -152,14 +170,22 @@ export const MoscowCard = memo<MoscowCardProps>(
       announceMessage(
         `Backlog item ${item.title} grabbed. Current priority: ${currentPriorityLabel}. ${itemCount} items currently in this column. Use ArrowLeft or ArrowRight to change priority. Escape to cancel, Enter to drop.`
       );
-    }, [item.priority, item.title, itemsCountByPriority, onMovePriority, announceMessage, t]);
+    }, [
+      canOrder,
+      item.priority,
+      item.title,
+      itemsCountByPriority,
+      onMovePriority,
+      announceMessage,
+      t,
+    ]);
 
     /**
      * Handle keyboard navigation between priorities
      */
     const handlePriorityChange = useCallback(
       (direction: 'left' | 'right') => {
-        if (!isGrabbed || !onMovePriority) return;
+        if (!isGrabbed || !canOrder || !onMovePriority) return;
 
         const currentIndex = getCurrentPriorityIndex();
         const newIndex = direction === 'left' ? currentIndex - 1 : currentIndex + 1;
@@ -180,14 +206,22 @@ export const MoscowCard = memo<MoscowCardProps>(
           `Target priority: ${newPriorityLabel}. ${itemCount} items currently in this column.`
         );
       },
-      [isGrabbed, onMovePriority, getCurrentPriorityIndex, itemsCountByPriority, announceMessage, t]
+      [
+        canOrder,
+        isGrabbed,
+        onMovePriority,
+        getCurrentPriorityIndex,
+        itemsCountByPriority,
+        announceMessage,
+        t,
+      ]
     );
 
     /**
      * Handle keyboard drop
      */
     const handleDrop = useCallback(() => {
-      if (!isGrabbed || !onMovePriority || !targetPriority) return;
+      if (!isGrabbed || !canOrder || !onMovePriority || !targetPriority) return;
 
       // If dropping on same priority, just cancel
       if (targetPriority === originalPriorityRef.current) {
@@ -208,6 +242,7 @@ export const MoscowCard = memo<MoscowCardProps>(
       setIsGrabbed(false);
       setTargetPriority(null);
     }, [
+      canOrder,
       isGrabbed,
       onMovePriority,
       targetPriority,
@@ -337,18 +372,20 @@ export const MoscowCard = memo<MoscowCardProps>(
       <div
         ref={cardRef}
         className={buildCardClasses()}
-        draggable
-        onDragStart={onDragStart}
+        draggable={canOrder}
+        onDragStart={canOrder ? onDragStart : undefined}
         onDragEnd={onDragEnd}
         onClick={onClick}
         onKeyDown={handleKeyDown}
         tabIndex={0}
         role="listitem"
         aria-grabbed={isGrabbed ? 'true' : 'false'}
-        aria-roledescription="draggable backlog item"
+        aria-roledescription={canOrder ? 'draggable backlog item' : 'backlog item'}
         aria-label={buildAriaLabel()}
+        title={canOrder ? undefined : (t('order.productOwnerOnlyHint') as string)}
         data-priority={item.priority}
         data-target-priority={isGrabbed ? targetPriority : undefined}
+        data-order-locked={canOrder ? undefined : 'true'}
       >
         {isGrabbed && (
           <div className={styles['grab-indicator']} aria-hidden="true">
@@ -362,7 +399,18 @@ export const MoscowCard = memo<MoscowCardProps>(
         )}
 
         <div className={styles['moscow-card-header']}>
-          <span className={styles['moscow-card-id']}>#{item.id.slice(-4)}</span>
+          <div className={styles['moscow-card-header-left']}>
+            {typeof position === 'number' && (
+              <span
+                className={styles['moscow-card-position']}
+                title={t('order.positionLabel', { position })}
+                aria-label={t('order.positionLabel', { position })}
+              >
+                {position}
+              </span>
+            )}
+            <span className={styles['moscow-card-id']}>#{item.id.slice(-4)}</span>
+          </div>
           <span
             className={styles['moscow-card-status']}
             style={{

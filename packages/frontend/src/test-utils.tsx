@@ -159,6 +159,9 @@ export const createMockBacklogItem = (
   updatedAt: '2026-01-01T00:00:00Z',
   createdBy: 'user-1',
   ...overrides,
+  // The position in the Product Backlog order is always a number, even though `overrides` is
+  // partial, so the resolved value is applied after the spread.
+  rank: overrides.rank ?? 1,
 });
 
 export const createMockProductGoal = (overrides: Partial<ProductGoal> = {}): ProductGoal => ({

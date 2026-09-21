@@ -349,6 +349,7 @@
     "id": "[ÍÍD]",
     "labels": "[Làbélsss]",
     "moscow": "[MóSCóWWW]",
+    "position": "[Pósítíónnnn]",
     "status": "[Stàtússs]",
     "title": "[Títlééé]"
   },
@@ -389,6 +390,15 @@
     "WONT_HAVE": "[Wón't Hàvéééé]"
   },
   "newItem": "[Néw Ítémmmm]",
+  "order": {
+    "moveDownAria": "[MMóóvvé {{title}} dówn óné pósítíón ín thé Pródúct Bàcklógggggggggggggg]",
+    "moveDownLabel": "[Móvé dównnnn]",
+    "moveUpAria": "[MMóóvvé {{title}} úp óné pósítíón ín thé Pródúct Bàcklóggggggggggggg]",
+    "moveUpLabel": "[MMóóvvéé úúp]",
+    "positionLabel": "[Pósítíónnnn {{position}} ín thé Pródúct Bàcklógggggggg]",
+    "priorityProductOwnerOnly": "[Ónly thé Pródúct Ównér càn chàngé àn ítém's MóSCóW príóríty, às thé Pródúct Ównér órdérs thé Pródúct Bàcklógggggggggggggggggggggggggggggggggg.]",
+    "productOwnerOnlyHint": "[Ónly thé Pródúct Ównér órdérs thé Pródúct Bàcklóg, só thé órdér ànd MóSCóW príórítíés àré réàd-ónly fór yóúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúúú.]"
+  },
   "pendingAdjustments": {
     "add": "[Àddd]",
     "all": "[Àlll]",
@@ -704,6 +714,7 @@
     "itemCreated": "[Bàcklóg ítém créàtéd súccéssfúllyyyyyyyyyyy]",
     "itemDeleted": "[Bàcklóg ítém délétéd súccéssfúllyyyyyyyyyyy]",
     "itemUpdated": "[Bàcklóg ítém úpdàtéd súccéssfúllyyyyyyyyyyy]",
+    "orderUpdated": "[Bàcklóg órdér úpdàtédddddddd]",
     "priorityUpdated": "[Príóríty úpdàtéd súccéssfúllyyyyyyyyyy]",
     "statusUpdated": "[Stàtús úpdàtéd súccéssfúllyyyyyyyyyy]"
   },

@@ -11,6 +11,7 @@ import {
   createTestTeamInDb,
   addTeamMember,
   createTestPBIInDb,
+  createTestProductGoalInDb,
   createTestSprintInDb,
   cleanupUsers,
   cleanupTeams,
@@ -59,7 +60,17 @@ describe('E2E: Product Backlog Management', () => {
     testTeamNames.push(teamName);
     const team = await createTestTeamInDb(teamName);
     await addTeamMember(team.id, user.id, role);
-    return { user, team };
+
+    // The Product Backlog is the emergent expression of the Product Goal, so a team owning a
+    // backlog owns exactly one ACTIVE goal. Creating it here keeps these journeys focused on the
+    // backlog behaviour under test instead of re-proving the goal gate in every case.
+    const goal = await createTestProductGoalInDb(
+      team.id,
+      `Active Goal ${uniqueTestId()}`,
+      'ACTIVE'
+    );
+
+    return { user, team, goal };
   };
 
   describe('GET /api/v1/product-backlog', () => {
@@ -493,6 +504,77 @@ describe('E2E: Product Backlog Management', () => {
         .expect(HTTP_STATUS.OK);
 
       expect(response.body.success).toBe(true);
+      // The endpoint returns the order it wrote, and the order survives a reload.
+      expect(response.body.data.items.map((item: { id: string }) => item.id)).toEqual([
+        pbi3.id,
+        pbi1.id,
+        pbi2.id,
+      ]);
+
+      const persisted = await request(app)
+        .get('/api/v1/product-backlog')
+        .query({ teamId: team.id })
+        .set('Cookie', cookies)
+        .expect(HTTP_STATUS.OK);
+
+      expect(persisted.body.data.map((item: { id: string }) => item.id)).toEqual([
+        pbi3.id,
+        pbi1.id,
+        pbi2.id,
+      ]);
+    });
+
+    it('should move one item with the positional shape', async () => {
+      const email = `reorder-positional-${uniqueTestId()}@example.com`;
+      testEmails.push(email);
+
+      const { team } = await setupTeamWithUser(email, ROLES.PRODUCT_OWNER);
+
+      const pbi1 = await createTestPBIInDb(team.id, `PBI 1 ${uniqueTestId()}`);
+      const pbi2 = await createTestPBIInDb(team.id, `PBI 2 ${uniqueTestId()}`);
+      const pbi3 = await createTestPBIInDb(team.id, `PBI 3 ${uniqueTestId()}`);
+
+      const cookies = await loginAndGetCookies(email);
+      const { csrfToken } = extractCsrfFromCookies(cookies);
+
+      const response = await request(app)
+        .post('/api/v1/product-backlog/reorder')
+        .set('Cookie', cookies)
+        .set(CSRF_CONSTANTS.HEADER_NAME, csrfToken)
+        .send({
+          pbiId: pbi3.id,
+          targetPbiId: pbi1.id,
+          position: 'before',
+        })
+        .expect(HTTP_STATUS.OK);
+
+      expect(response.body.data.items.map((item: { id: string }) => item.id)).toEqual([
+        pbi3.id,
+        pbi1.id,
+        pbi2.id,
+      ]);
+    });
+
+    it('should refuse with GATE_PRODUCT_OWNER_ONLY_BACKLOG_ORDER when a Developer reorders', async () => {
+      const email = `reorder-developer-${uniqueTestId()}@example.com`;
+      testEmails.push(email);
+
+      const { team } = await setupTeamWithUser(email, ROLES.DEVELOPERS);
+
+      const pbi1 = await createTestPBIInDb(team.id, `PBI 1 ${uniqueTestId()}`);
+      const pbi2 = await createTestPBIInDb(team.id, `PBI 2 ${uniqueTestId()}`);
+
+      const cookies = await loginAndGetCookies(email);
+      const { csrfToken } = extractCsrfFromCookies(cookies);
+
+      const response = await request(app)
+        .post('/api/v1/product-backlog/reorder')
+        .set('Cookie', cookies)
+        .set(CSRF_CONSTANTS.HEADER_NAME, csrfToken)
+        .send({ pbiIds: [pbi2.id, pbi1.id] })
+        .expect(HTTP_STATUS.FORBIDDEN);
+
+      expect(response.body.error.code).toBe('GATE_PRODUCT_OWNER_ONLY_BACKLOG_ORDER');
     });
 
     it('should return 422 VALIDATION_ERROR with invalid PBI IDs', async () => {

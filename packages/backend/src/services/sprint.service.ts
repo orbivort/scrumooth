@@ -25,6 +25,7 @@ import {
 import { logger } from '../utils/logger';
 import { processBatch } from '../utils/batch';
 import { notificationService } from './notification.service';
+import { PRODUCT_BACKLOG_ORDER } from '../config/backlogOrder';
 import { t as requestT } from '../i18n/requestT.js';
 
 // Sprint with relations (optimized for API responses)
@@ -146,6 +147,12 @@ export interface BurndownData {
   actual: number[];
 }
 
+/**
+ * How many not-ready item titles a refinement-gate refusal names before truncating. The full
+ * count is always reported; the list is capped so the message stays readable on a large plan.
+ */
+const MAX_NOT_READY_ITEMS_IN_MESSAGE = 3;
+
 class SprintService {
   /**
    * Get all sprints for a team
@@ -214,6 +221,7 @@ class SprintService {
                 title: true,
                 description: true,
                 priority: true,
+                rank: true,
                 businessValue: true,
                 storyPoints: true,
                 status: true,
@@ -294,6 +302,7 @@ class SprintService {
                 title: true,
                 description: true,
                 priority: true,
+                rank: true,
                 businessValue: true,
                 storyPoints: true,
                 status: true,
@@ -432,6 +441,14 @@ class SprintService {
     const items = data?.items ?? [];
     const tasks = data?.tasks ?? [];
 
+    // Refinement gate: only Product Backlog items already refined to READY may be selected into
+    // a Sprint. Same rule (and same gate code) as adding an item to an ACTIVE Sprint, so the two
+    // paths cannot disagree about what is selectable.
+    await this.assertSelectedPBIsAreReady(
+      sprint.teamId,
+      items.map((item) => item.pbiId)
+    );
+
     // Validate self-assignment for every provided task assignment.
     for (const task of tasks) {
       await this.assertAssigneeIsSameTeamDeveloper(sprint.teamId, userId, task.assigneeId);
@@ -551,6 +568,13 @@ class SprintService {
 
     const items = data?.items ?? [];
     const tasks = data?.tasks ?? [];
+
+    // Refinement gate: a planning draft may only select items already refined to READY, matching
+    // the mid-Sprint addition rule so an unrefined item cannot be smuggled in during planning.
+    await this.assertSelectedPBIsAreReady(
+      sprint.teamId,
+      items.map((item) => item.pbiId)
+    );
 
     // Validate self-assignment for every provided task assignment.
     for (const task of tasks) {
@@ -996,6 +1020,11 @@ class SprintService {
         throw new BadRequestError(requestT('errors:sprint.pbiConflictAtStart', { items }));
       }
     }
+
+    // Commit-time refinement check: the plan was validated when it was saved, but an item can be
+    // moved back to REFINED afterwards. Starting the Sprint is the moment the selection becomes
+    // the Sprint Backlog, so the refinement rule has to hold here too.
+    await this.assertSelectedPBIsAreReady(sprint.teamId, pbiIds);
 
     const transactionOptions: TransactionOptions = {
       ...TRANSACTION_CONFIG.START_SPRINT,
@@ -1545,6 +1574,63 @@ class SprintService {
         throw localizedError(messageKey, {}, 403, options.gateCode);
       }
       throw new ForbiddenError(requestT(messageKey));
+    }
+  }
+
+  /**
+   * Assert that every Product Backlog item selected into a Sprint is `READY`.
+   *
+   * Scrum Guide: the Sprint Backlog is composed of Product Backlog items the Developers select
+   * during Sprint Planning, and refinement is what makes an item selectable. The rule was
+   * already enforced when an item is added to an ACTIVE Sprint; applying it at planning time
+   * too closes the asymmetry, so a direct API call cannot select an unrefined item that the
+   * same operation would refuse one step later.
+   *
+   * One query covers the whole selection (no N+1), and the check deliberately reads only the
+   * workflow status: a Definition of Ready is a team agreement rather than a Scrum Guide
+   * artifact, so it is not a gate here.
+   *
+   * @param teamId - the sprint's team; every selected item must belong to its Product Backlog
+   * @param pbiIds - the selected Product Backlog item ids
+   * @throws NotFoundError when a selected item does not exist
+   * @throws BadRequestError when a selected item belongs to another team's backlog
+   * @throws AppError (400, `GATE_PBI_NOT_READY`) when any selected item is not `READY`
+   */
+  private async assertSelectedPBIsAreReady(teamId: string, pbiIds: string[]): Promise<void> {
+    const uniqueIds = [...new Set(pbiIds)];
+    if (uniqueIds.length === 0) {
+      return;
+    }
+
+    const items = await prisma.productBacklogItem.findMany({
+      where: { id: { in: uniqueIds } },
+      select: { id: true, teamId: true, status: true, title: true },
+    });
+
+    const foundIds = new Set(items.map((item) => item.id));
+    if (uniqueIds.some((id) => !foundIds.has(id))) {
+      throw new NotFoundError('Product Backlog Item');
+    }
+
+    if (items.some((item) => item.teamId !== teamId)) {
+      throw localizedError('errors:sprintBacklog.pbiNotOfTeam', {}, 400);
+    }
+
+    const notReady = items.filter((item) => item.status !== 'READY');
+    if (notReady.length > 0) {
+      // Name at most a few items so the refusal stays readable and the message bounded.
+      const named = notReady
+        .slice(0, MAX_NOT_READY_ITEMS_IN_MESSAGE)
+        .map((item) => item.title)
+        .join(', ');
+      const truncated = notReady.length > MAX_NOT_READY_ITEMS_IN_MESSAGE ? '…' : '';
+
+      throw localizedError(
+        'errors:backlogItem.notReady',
+        { count: notReady.length, items: `${named}${truncated}` },
+        400,
+        GATE_CODES.PBI_NOT_READY
+      );
     }
   }
 
@@ -2171,7 +2257,14 @@ class SprintBacklogManagerService {
     }
 
     if (pbi.status !== 'READY') {
-      throw new BadRequestError('PBI must be in READY status to be added to sprint');
+      // Same refinement rule (and same gate code) as planning-time selection: one rule, one
+      // localized refusal, so the two entry points cannot drift apart.
+      throw localizedError(
+        'errors:backlogItem.notReady',
+        { count: 1, items: pbi.title },
+        400,
+        GATE_CODES.PBI_NOT_READY
+      );
     }
 
     const user = await prisma.user.findUnique({
@@ -2604,7 +2697,9 @@ class SprintBacklogManagerService {
         status: 'READY',
         id: { notIn: excludePbiIds },
       },
-      orderBy: [{ priority: 'asc' }, { createdAt: 'desc' }],
+      // The pool is the team's Product Backlog read top-to-bottom: the Product Owner's order is
+      // what tells the Developers which Ready items to consider first.
+      orderBy: PRODUCT_BACKLOG_ORDER,
     });
 
     return pbis;

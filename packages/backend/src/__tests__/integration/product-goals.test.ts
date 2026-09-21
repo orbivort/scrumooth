@@ -322,6 +322,9 @@ describe('Product Goals Integration Tests', () => {
         .send({
           teamId: team.id,
           title: 'Not Allowed Goal',
+          // A valid payload, so the refusal is the Product Owner gate rather than a
+          // validation failure: the success metric is required for a Product Goal.
+          successMetrics: 'Measurable outcomes',
         })
         .expect(403);
 
@@ -873,6 +876,9 @@ describe('Product Goals Integration Tests', () => {
             .send({
               teamId: team.id,
               title: 'Forbidden Goal',
+              // Required by the Product Goal contract; the payload is otherwise valid so
+              // the response is the membership gate rather than a validation failure.
+              successMetrics: 'Measurable outcomes',
             })
             .expect(403);
 
@@ -1102,6 +1108,8 @@ describe('Product Goals Integration Tests', () => {
             teamId: team.id,
             title: 'German Goal',
             description: 'Test goal with German locale',
+            // Required by the Product Goal contract.
+            successMetrics: 'Measurable outcomes',
           });
 
         // Check that scrumooth_locale cookie is set

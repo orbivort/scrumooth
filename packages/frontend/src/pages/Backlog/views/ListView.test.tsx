@@ -315,4 +315,56 @@ describe('ListView', () => {
       expect(moscowBadges.length).toBeGreaterThan(0);
     });
   });
+
+  describe('Backlog order', () => {
+    it('should number the rows from the top of the backlog', () => {
+      renderWithProviders(<ListView items={mockItems} onItemClick={mockOnItemClick} />);
+
+      const positions = screen.getAllByLabelText(/^Position \d+ in the Product Backlog$/);
+      expect(positions.map((node) => node.textContent)).toEqual(['1', '2', '3']);
+    });
+
+    it('should move an item one position for the Product Owner', async () => {
+      const user = userEvent.setup();
+      const onMove = vi.fn();
+
+      renderWithProviders(
+        <ListView items={mockItems} onItemClick={mockOnItemClick} onMove={onMove} canOrder />
+      );
+
+      await user.click(
+        screen.getByLabelText(i18nT('backlog:order.moveDownAria', { title: 'Feature A' }))
+      );
+
+      expect(onMove).toHaveBeenCalledWith('pbi-1', 'down');
+    });
+
+    it('should disable the move controls at the ends of the backlog', () => {
+      renderWithProviders(
+        <ListView items={mockItems} onItemClick={mockOnItemClick} onMove={vi.fn()} canOrder />
+      );
+
+      expect(
+        screen.getByLabelText(i18nT('backlog:order.moveUpAria', { title: 'Feature A' }))
+      ).toBeDisabled();
+      expect(
+        screen.getByLabelText(i18nT('backlog:order.moveDownAria', { title: 'Feature C' }))
+      ).toBeDisabled();
+    });
+
+    it('should not offer move controls to anyone but the Product Owner', () => {
+      renderWithProviders(
+        <ListView
+          items={mockItems}
+          onItemClick={mockOnItemClick}
+          onMove={vi.fn()}
+          canOrder={false}
+        />
+      );
+
+      // The position stays readable; only the affordance is withheld.
+      expect(screen.getAllByLabelText(/^Position \d+ in the Product Backlog$/)).toHaveLength(3);
+      expect(screen.queryByLabelText(/^Move /)).not.toBeInTheDocument();
+    });
+  });
 });

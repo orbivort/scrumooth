@@ -86,3 +86,15 @@ export function canMutateSprintBacklog(role: string | null | undefined): boolean
 export function canCancelSprint(role: string | null | undefined): boolean {
   return String(role ?? '').toLowerCase() === 'product_owner';
 }
+
+/**
+ * Whether the given team role may order the Product Backlog.
+ *
+ * "The Product Owner orders Product Backlog items" (Scrum Guide), so moving an item in the
+ * backlog or changing its MoSCoW band is the Product Owner's call. The backend enforces this
+ * with `GATE_PRODUCT_OWNER_ONLY_BACKLOG_ORDER`; the interface mirrors it so the affordance is
+ * not offered where it would be refused. The role may be uppercase (backend enum) or lowercase.
+ */
+export function canOrderBacklog(role: string | null | undefined): boolean {
+  return String(role ?? '').toLowerCase() === 'product_owner';
+}

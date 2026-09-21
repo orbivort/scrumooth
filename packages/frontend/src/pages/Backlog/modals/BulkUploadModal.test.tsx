@@ -256,7 +256,10 @@ describe('Backlog - Loading State Tests', () => {
       });
 
       await waitFor(() => {
-        expect(screen.queryByText(/Product Backlog/i)).not.toBeInTheDocument();
+        // Probe the loading state itself rather than a label's text: every LoadingState variant
+        // exposes role="status", and the loaded page legitimately contains the term
+        // "Product Backlog" (the ordering hint names it).
+        expect(screen.queryByRole('status')).not.toBeInTheDocument();
       });
 
       expect(screen.getByTestId('product-backlog')).toBeInTheDocument();
@@ -343,7 +346,10 @@ describe('Backlog - Loading State Tests', () => {
       renderWithProviders(<ProductBacklog />);
 
       await waitFor(() => {
-        expect(screen.queryByText(/Product Backlog/i)).not.toBeInTheDocument();
+        // Probe the loading state itself rather than a label's text: every LoadingState variant
+        // exposes role="status", and the loaded page legitimately contains the term
+        // "Product Backlog" (the ordering hint names it).
+        expect(screen.queryByRole('status')).not.toBeInTheDocument();
       });
 
       expect(screen.getByTestId('product-backlog')).toBeInTheDocument();
@@ -362,7 +368,10 @@ describe('Backlog - Loading State Tests', () => {
       });
 
       await waitFor(() => {
-        expect(screen.queryByText(/Product Backlog/i)).not.toBeInTheDocument();
+        // Probe the loading state itself rather than a label's text: every LoadingState variant
+        // exposes role="status", and the loaded page legitimately contains the term
+        // "Product Backlog" (the ordering hint names it).
+        expect(screen.queryByRole('status')).not.toBeInTheDocument();
       });
     });
 
@@ -381,7 +390,10 @@ describe('Backlog - Loading State Tests', () => {
       });
 
       await waitFor(() => {
-        expect(screen.queryByText(/Product Backlog/i)).not.toBeInTheDocument();
+        // Probe the loading state itself rather than a label's text: every LoadingState variant
+        // exposes role="status", and the loaded page legitimately contains the term
+        // "Product Backlog" (the ordering hint names it).
+        expect(screen.queryByRole('status')).not.toBeInTheDocument();
       });
     });
 
@@ -400,7 +412,10 @@ describe('Backlog - Loading State Tests', () => {
       });
 
       await waitFor(() => {
-        expect(screen.queryByText(/Product Backlog/i)).not.toBeInTheDocument();
+        // Probe the loading state itself rather than a label's text: every LoadingState variant
+        // exposes role="status", and the loaded page legitimately contains the term
+        // "Product Backlog" (the ordering hint names it).
+        expect(screen.queryByRole('status')).not.toBeInTheDocument();
       });
     });
   });
@@ -469,7 +484,10 @@ describe('Backlog - Loading State Tests', () => {
       });
 
       await waitFor(() => {
-        expect(screen.queryByText(/Product Backlog/i)).not.toBeInTheDocument();
+        // Probe the loading state itself rather than a label's text: every LoadingState variant
+        // exposes role="status", and the loaded page legitimately contains the term
+        // "Product Backlog" (the ordering hint names it).
+        expect(screen.queryByRole('status')).not.toBeInTheDocument();
       });
     });
   });
@@ -489,7 +507,10 @@ describe('Backlog - Loading State Tests', () => {
       renderWithProviders(<ProductBacklog />);
 
       await waitFor(() => {
-        expect(screen.queryByText(/Product Backlog/i)).not.toBeInTheDocument();
+        // Probe the loading state itself rather than a label's text: every LoadingState variant
+        // exposes role="status", and the loaded page legitimately contains the term
+        // "Product Backlog" (the ordering hint names it).
+        expect(screen.queryByRole('status')).not.toBeInTheDocument();
       });
 
       expect(screen.getByTestId('product-backlog')).toBeInTheDocument();
@@ -528,7 +549,10 @@ describe('Backlog - Loading State Tests', () => {
       });
 
       await waitFor(() => {
-        expect(screen.queryByText(/Product Backlog/i)).not.toBeInTheDocument();
+        // Probe the loading state itself rather than a label's text: every LoadingState variant
+        // exposes role="status", and the loaded page legitimately contains the term
+        // "Product Backlog" (the ordering hint names it).
+        expect(screen.queryByRole('status')).not.toBeInTheDocument();
       });
     });
   });
@@ -578,7 +602,10 @@ describe('Backlog - Loading State Tests', () => {
 
       unmount();
 
-      expect(screen.queryByText(/Product Backlog/i)).not.toBeInTheDocument();
+      // Probe the loading state itself rather than a label's text: every LoadingState variant
+      // exposes role="status", and the loaded page legitimately contains the term
+      // "Product Backlog" (the ordering hint names it).
+      expect(screen.queryByRole('status')).not.toBeInTheDocument();
     });
 
     it('should not cause memory leaks with pending promises', async () => {
@@ -604,7 +631,10 @@ describe('Backlog - Loading State Tests', () => {
         vi.runAllTimersAsync();
       });
 
-      expect(screen.queryByText(/Product Backlog/i)).not.toBeInTheDocument();
+      // Probe the loading state itself rather than a label's text: every LoadingState variant
+      // exposes role="status", and the loaded page legitimately contains the term
+      // "Product Backlog" (the ordering hint names it).
+      expect(screen.queryByRole('status')).not.toBeInTheDocument();
     });
 
     it('should clean up loading state after error', async () => {
@@ -618,7 +648,10 @@ describe('Backlog - Loading State Tests', () => {
       });
 
       await waitFor(() => {
-        expect(screen.queryByText(/Product Backlog/i)).not.toBeInTheDocument();
+        // Probe the loading state itself rather than a label's text: every LoadingState variant
+        // exposes role="status", and the loaded page legitimately contains the term
+        // "Product Backlog" (the ordering hint names it).
+        expect(screen.queryByRole('status')).not.toBeInTheDocument();
       });
     });
   });
@@ -641,7 +674,10 @@ describe('Backlog - Loading State Tests', () => {
       });
 
       await waitFor(() => {
-        expect(screen.queryByText(/Product Backlog/i)).not.toBeInTheDocument();
+        // Probe the loading state itself rather than a label's text: every LoadingState variant
+        // exposes role="status", and the loaded page legitimately contains the term
+        // "Product Backlog" (the ordering hint names it).
+        expect(screen.queryByRole('status')).not.toBeInTheDocument();
       });
 
       expect(screen.getByTestId('product-backlog')).toBeInTheDocument();
@@ -671,7 +707,10 @@ describe('Backlog - Loading State Tests', () => {
       });
 
       await waitFor(() => {
-        expect(screen.queryByText(/Product Backlog/i)).not.toBeInTheDocument();
+        // Probe the loading state itself rather than a label's text: every LoadingState variant
+        // exposes role="status", and the loaded page legitimately contains the term
+        // "Product Backlog" (the ordering hint names it).
+        expect(screen.queryByRole('status')).not.toBeInTheDocument();
       });
     });
   });

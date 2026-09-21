@@ -91,6 +91,8 @@ class ApiService {
     productBacklogService.updateProductBacklogItem.bind(productBacklogService);
   updateBacklogItemPriority =
     productBacklogService.updateBacklogItemPriority.bind(productBacklogService);
+  reorderProductBacklogItems =
+    productBacklogService.reorderProductBacklogItems.bind(productBacklogService);
   getBacklogItemCountByGoal =
     productBacklogService.getBacklogItemCountByGoal.bind(productBacklogService);
   deleteProductBacklogItem =

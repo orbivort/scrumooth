@@ -670,6 +670,10 @@ describe('E2E: Workflow Operations', () => {
 
         const { team } = await setupTeamWithUser(email, ROLES.SCRUM_MASTER);
 
+        // Editing an item that carries no Product Goal anchors it to the team's ACTIVE
+        // goal, so the team needs one for the status update to be accepted.
+        await createTestProductGoalInDb(team.id, `Goal ${uniqueTestId()}`, 'ACTIVE');
+
         const pbi = await createTestPBIInDb(
           team.id,
           `PBI Status ${uniqueTestId()}`,

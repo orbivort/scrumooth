@@ -6,6 +6,7 @@ The Product Backlog is an ordered list of everything that might be needed in the
 
 - [Understanding the Product Backlog](#understanding-the-product-backlog)
 - [Backlog Item Components](#backlog-item-components)
+- [Ordering the Backlog](#ordering-the-backlog)
 - [MoSCoW Prioritization](#moscow-prioritization)
 - [Creating Backlog Items](#creating-backlog-items)
 - [Managing the Backlog](#managing-the-backlog)
@@ -22,18 +23,18 @@ The Product Backlog is an ordered list of everything that might be needed in the
 
 The Product Backlog is:
 
-- **Ordered**: Items are prioritized by value and dependency
+- **Ordered**: Items have a position, and the Product Owner decides what is next
 - **Dynamic**: Constantly evolving based on learning and feedback
 - **Detailed Appropriately**: Higher-priority items are more refined
 - **Single Source of Truth**: All work comes from the backlog
 
 ### Backlog Ownership
 
-| Role              | Responsibility                                                    |
-| ----------------- | ----------------------------------------------------------------- |
-| **Product Owner** | Owns the backlog, prioritizes items, ensures value                |
-| **Developers**    | Size the items, clarify requirements, add technical items         |
-| **Scrum Master**  | Facilitates refinement, removes impediments to backlog management |
+| Role              | Responsibility                                                            |
+| ----------------- | ------------------------------------------------------------------------- |
+| **Product Owner** | Owns the backlog, **orders** it (position and MoSCoW band), ensures value |
+| **Developers**    | Size the items, clarify requirements, add technical items                 |
+| **Scrum Master**  | Facilitates refinement, removes impediments to backlog management         |
 
 ---
 
@@ -49,6 +50,8 @@ Each backlog item contains several components:
 | **Priority** | MoSCoW classification   | Must Have                           |
 | **Status**   | Current workflow state  | Ready                               |
 
+Every item also has a **position** in the backlog order, assigned by the system when the item is created (it is appended to the end) and changed by the Product Owner from there — see [Ordering the Backlog](#ordering-the-backlog).
+
 ### Optional Fields
 
 | Field                   | Description                       | When to Use                             |
@@ -61,6 +64,34 @@ Each backlog item contains several components:
 | **Business Value**      | Relative value score (numeric)    | For ROI calculations and prioritization |
 
 > **Note**: Business Value is a numeric field that can be used to calculate ROI (Business Value ÷ Story Points) for prioritization decisions. This field is available in the item details but may not be prominently displayed in all views.
+
+---
+
+## Ordering the Backlog
+
+The Product Backlog is an **ordered** list, and ordering it is the Product Owner's accountability. Scrumooth stores that order rather than inferring it.
+
+### What the order is
+
+- Every item has a **position** (its `rank`) in the team's backlog. The list view numbers the rows from the top, so the backlog reads top-to-bottom as "what is next".
+- **MoSCoW priority is a categorisation, not the order.** Two Must Haves still have a first and a second. The board groups items into MoSCoW columns, and within each column the items are in the stored order.
+- A **new item is appended to the end** of the backlog, so creating one never inserts it into the middle of the Product Owner's sequence.
+- **Deleting an item leaves a gap** in the numbering until the next reorder tidies it up; the order itself is unchanged.
+
+### How to change the order
+
+| Action                     | How                                                                                                                                                                                             |
+| -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Move an item to a position | Drag the card onto another card in the board; drop on the **upper half** to place it before that item, the **lower half** to place it after. The insertion line shows where it will land.       |
+| Move an item between bands | Drag the card into another MoSCoW column — the band and the position change together.                                                                                                           |
+| Move without a mouse       | In the list view use the ▲/▼ controls in the **Position** column; on the board, focus a card, press **Space** to grab, **←/→** to change the MoSCoW band, **Space** to drop, **Esc** to cancel. |
+| Change the MoSCoW band     | The MoSCoW selector in the item's edit dialog.                                                                                                                                                  |
+
+### Who may order
+
+Only the **Product Owner** orders the Product Backlog. Anyone else sees the order as read-only: the position column has no move controls, cards cannot be dragged, and the MoSCoW selector is disabled with an explanation. The rule is enforced by the server as well, so it holds even if the request is made directly against the API — a refusal comes back as `GATE_PRODUCT_OWNER_ONLY_BACKLOG_ORDER`.
+
+Everything else about an item stays collaborative: any team member can create, edit, delete and move items through the workflow, and the **Developers** are the only ones who size them.
 
 ---
 
@@ -224,6 +255,8 @@ Backlog items progress through these states:
 
 > **Note**: If an item is blocked by an impediment, track it using the Impediments feature rather than a status change.
 
+> **Ready is a gate, not a label**: an item must be refined to **Ready** before it can enter a Sprint. Adding a New or Refined item to a Sprint is refused — at Sprint Planning, when the Sprint starts, and when the item is added to an active Sprint — with a message naming the items that are not ready yet.
+
 ### Refining Items
 
 Backlog refinement (formerly "grooming") is an ongoing activity:
@@ -238,10 +271,10 @@ Backlog refinement (formerly "grooming") is an ongoing activity:
    - Use planning poker with the team
    - Re-estimate if scope changes
 
-3. **Re-prioritize**
-   - Move items based on new information
-   - Consider dependencies
-   - Align with product goals
+3. **Re-order and re-band**
+   - Move an item to a different position based on new information
+   - Confirm its MoSCoW band still describes it
+   - Align with the Product Goal
 
 4. **Split Large Items**
    - Items > 13 points should be split
@@ -250,9 +283,10 @@ Backlog refinement (formerly "grooming") is an ongoing activity:
 
 ### Moving Items
 
-- **Drag and Drop**: Reorder items by priority
-- **Status Change**: Move items through workflow
-- **Sprint Assignment**: Add to upcoming sprint
+- **Drag and Drop** (Product Owner): move an item to a position in the order, and/or into another MoSCoW band — see [Ordering the Backlog](#ordering-the-backlog)
+- **Position controls** (Product Owner): the ▲/▼ buttons in the list view's Position column move an item one place
+- **Status Change**: move items through the workflow (any team member)
+- **Sprint Assignment**: add an item to a Sprint once it is Ready
 
 ---
 
@@ -264,17 +298,16 @@ Scrumooth provides multiple views for the backlog:
 
 #### List View
 
-- Traditional list format
-- Shows all items in a table
-- Sortable by any column
-- Best for: Overview, bulk operations
+- Traditional list format, in the backlog order
+- A **Position** column numbers the items top-to-bottom and holds the ▲/▼ move controls (Product Owner)
+- Shows all items in a table with their status, band, value, estimate and labels
+- Best for: overview, bulk operations, and reordering without a mouse
 
 #### Board View
 
-- Kanban-style columns by status
-- Drag items between columns
-- Visual workflow progress
-- Best for: Daily management, status updates
+- Columns for the four MoSCoW bands, with each column in the backlog order
+- Drag a card onto another card to set its position (drop on the upper half for before, the lower half for after); drag into another column to change the band as well
+- Best for: seeing the shape of the backlog and ordering it by hand
 
 ### Filtering Options
 
@@ -289,15 +322,14 @@ Filter the backlog by:
 | **Sprint**       | Assigned sprint               |
 | **Assignee**     | Team member                   |
 
-### Sorting
+### Order
 
-Sort by:
+The backlog is shown in **the order the Product Owner set**, not sorted by an attribute:
 
-- Priority (default)
-- Story Points (ascending/descending)
-- Creation Date
-- Last Updated
-- Business Value
+- The stored order (each item's position) is always the order of record, in both views.
+- The MoSCoW band groups the board's columns; within a column the position still decides the sequence.
+- Filtering and searching narrow what is shown without changing the order.
+- Changing the order is the Product Owner's decision — see [Ordering the Backlog](#ordering-the-backlog).
 
 ---
 
@@ -324,11 +356,12 @@ Import multiple items at once:
 
 Select multiple items to:
 
-- Change priority
 - Add/remove labels
-- Assign to sprint
+- Assign to sprint (Ready items only)
 - Change status
 - Link to product goal
+
+Changing the MoSCoW band of an item is a Product Owner action, so it is not offered as a bulk operation.
 
 ---
 
@@ -376,6 +409,7 @@ Scrumooth uses the Fibonacci sequence as the recommended scale for estimation:
 A healthy backlog is:
 
 - **DEEP**: Detailed appropriately, Estimated, Emergent, Prioritized
+- **Ordered**: The top of the list is genuinely the next work, not just the highest band
 - **Refined**: Top items are ready for sprint
 - **Sized**: Items are appropriately estimated
 - **Valuable**: Items deliver clear value
@@ -402,13 +436,15 @@ A healthy backlog is:
 
 ### Common Mistakes to Avoid
 
-| Mistake                    | Impact                       | Solution                      |
-| -------------------------- | ---------------------------- | ----------------------------- |
-| Too many "Must Have" items | Everything is priority       | Be ruthless in prioritization |
-| No acceptance criteria     | Unclear when done            | Always include criteria       |
-| Items too large            | Cannot complete in sprint    | Split into smaller items      |
-| Not refining regularly     | Sprint planning takes longer | Schedule regular refinement   |
-| Ignoring technical debt    | System degrades              | Include technical items       |
+| Mistake                           | Impact                       | Solution                         |
+| --------------------------------- | ---------------------------- | -------------------------------- |
+| Too many "Must Have" items        | Everything is priority       | Be ruthless in prioritization    |
+| Leaving everything in one band    | Nothing says what is next    | Order the items inside the band  |
+| No acceptance criteria            | Unclear when done            | Always include criteria          |
+| Items too large                   | Cannot complete in sprint    | Split into smaller items         |
+| Not refining regularly            | Sprint planning takes longer | Schedule regular refinement      |
+| Planning items that are not Ready | Sprint Planning is refused   | Refine to Ready before selecting |
+| Ignoring technical debt           | System degrades              | Include technical items          |
 
 ---
 

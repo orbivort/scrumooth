@@ -349,6 +349,7 @@
     "id": "ID",
     "labels": "Étiquettes",
     "moscow": "MoSCoW",
+    "position": "Position",
     "status": "Statut",
     "title": "Titre"
   },
@@ -389,6 +390,15 @@
     "WONT_HAVE": "N'aura pas"
   },
   "newItem": "Nouvel élément",
+  "order": {
+    "moveDownAria": "Déplacer {{title}} d'une position vers le bas dans le Product Backlog",
+    "moveDownLabel": "Déplacer vers le bas",
+    "moveUpAria": "Déplacer {{title}} d'une position vers le haut dans le Product Backlog",
+    "moveUpLabel": "Déplacer vers le haut",
+    "positionLabel": "Position {{position}} dans le Product Backlog",
+    "priorityProductOwnerOnly": "Seul le Product Owner peut modifier la priorité MoSCoW d'un élément, car le Product Owner ordonne le Product Backlog.",
+    "productOwnerOnlyHint": "Seul le Product Owner ordonne le Product Backlog : l'ordre et les priorités MoSCoW sont donc en lecture seule pour vous."
+  },
   "pendingAdjustments": {
     "add": "Ajouter",
     "all": "Tous",
@@ -704,6 +714,7 @@
     "itemCreated": "Élément du backlog créé avec succès",
     "itemDeleted": "Élément du backlog supprimé avec succès",
     "itemUpdated": "Élément du backlog mis à jour avec succès",
+    "orderUpdated": "Ordre du backlog mis à jour",
     "priorityUpdated": "Priorité mise à jour avec succès",
     "statusUpdated": "Statut mis à jour avec succès"
   },

@@ -139,6 +139,21 @@ describe('Cross-Feature Integration Tests', () => {
     return pbi;
   };
 
+  // Helper to give a team its single ACTIVE Product Goal. The Product Backlog is the emergent
+  // expression of the Product Goal, so creating an item through the API requires one.
+  const createActiveProductGoal = async (teamId: string, userId: string) => {
+    const goalId = generateUUIDv7();
+    return prisma.productGoal.create({
+      data: {
+        id: goalId,
+        teamId,
+        title: 'Active Goal',
+        status: 'ACTIVE',
+        createdBy: userId,
+      },
+    });
+  };
+
   const cleanupTestData = async (emails: string[]) => {
     try {
       for (const email of emails) {
@@ -714,6 +729,8 @@ describe('Cross-Feature Integration Tests', () => {
         const team = await createTestTeam(teamName);
         // Only Developers may set story points, so use a Developer here.
         await addTeamMember(team.id, await getUserIdFromEmail(email), 'DEVELOPERS');
+        // A PBI must serve the team's ACTIVE Product Goal, so give the team one first.
+        await createActiveProductGoal(team.id, await getUserIdFromEmail(email));
 
         // Test with each locale header - validation should be consistent
         for (const locale of SUPPORTED_LOCALES) {
@@ -793,6 +810,8 @@ describe('Cross-Feature Integration Tests', () => {
         const team = await createTestTeam(teamName);
         // Only Developers may set story points, so use a Developer here.
         await addTeamMember(team.id, await getUserIdFromEmail(email), 'DEVELOPERS');
+        // A PBI must serve the team's ACTIVE Product Goal, so give the team one first.
+        await createActiveProductGoal(team.id, await getUserIdFromEmail(email));
 
         // Create sprint with Italian locale
         const { csrfToken } = extractCsrfFromCookies(cookies);
@@ -899,6 +918,8 @@ describe('Cross-Feature Integration Tests', () => {
         const team = await createTestTeam(teamName);
         // Only Developers may set story points, so use a Developer here.
         await addTeamMember(team.id, await getUserIdFromEmail(email), 'DEVELOPERS');
+        // A PBI must serve the team's ACTIVE Product Goal, so give the team one first.
+        await createActiveProductGoal(team.id, await getUserIdFromEmail(email));
 
         // First operation with English
         const { csrfToken } = extractCsrfFromCookies(cookies);

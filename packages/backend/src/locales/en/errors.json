@@ -1,4 +1,16 @@
 {
+  "backlogItem": {
+    "notReady": "Only Product Backlog items refined to READY can enter a Sprint. {{count}} selected item(s) are not READY yet: {{items}}."
+  },
+  "backlogOrder": {
+    "duplicateItems": "A reorder cannot name the same Product Backlog item twice.",
+    "empty": "A reorder must name at least one Product Backlog item.",
+    "incompleteList": "A full reorder must contain every item of the team's Product Backlog: expected {{expected}}, received {{received}}. To reorder a filtered view, send a positional move (pbiId, targetPbiId, position) instead.",
+    "multipleTeams": "All reordered items must belong to the same team's Product Backlog.",
+    "productOwnerOnly": "Only the Product Owner orders the Product Backlog: changing an item's MoSCoW priority or its position is the Product Owner's decision.",
+    "selfMove": "An item cannot be moved before or after itself.",
+    "tooMany": "A reorder cannot contain more than {{max}} Product Backlog items."
+  },
   "databaseError": "A database error occurred",
   "developerOnlySizing": "Only Developers can set story points, as the Developers who perform the work are responsible for sizing.",
   "dodNotVerified": "This item cannot be marked Done until every active Definition of Done item is verified. {{count}} active item(s) still need verification.",
@@ -45,7 +57,8 @@
     "productGoalRequired": "The Sprint cannot be started without a linked Product Goal. Link the Sprint to the team's Product Goal first."
   },
   "sprintBacklog": {
-    "developersOnly": "Only Developers can save the Sprint Backlog, as the Developers who perform the work own the Sprint Backlog."
+    "developersOnly": "Only Developers can save the Sprint Backlog, as the Developers who perform the work own the Sprint Backlog.",
+    "pbiNotOfTeam": "Every item selected for a Sprint must belong to this team's Product Backlog."
   },
   "task": {
     "assigneeMustBeDeveloper": "Only Developers on the team can be assigned. Product Owners and Scrum Masters cannot assign tasks.",
