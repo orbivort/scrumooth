@@ -43,6 +43,7 @@ model User {
   retrospectiveItems     RetrospectiveItem[]        @relation("RetroItemAuthor")
   scheduledDeletions     ScheduledDeletion[]
   sprintBacklogChanges   SprintBacklogChange[]      @relation("SprintBacklogChangeCreator")
+  acknowledgedChanges    SprintBacklogChange[]      @relation("SprintBacklogChangeAcknowledger")
   sprintCapacity         SprintCapacity[]           @relation("SprintCapacityMember")
   retrospectives         SprintRetrospective[]      @relation("RetroFacilitator")
   sprintReviews          SprintReview[]             @relation("ReviewCreator")
@@ -231,6 +232,14 @@ model SprintBacklogItem {
   @@map("sprint_backlog_items")
 }
 
+/// A recorded change to an ACTIVE Sprint's Sprint Backlog.
+///
+/// "No changes are made that would endanger the Sprint Goal." A change therefore carries the
+/// goal it affected (`sprintGoalAtChange`), the caller's declaration of its impact
+/// (`goalImpact`), and an approval lifecycle (`approvalStatus`): a change declared as
+/// endangering the goal is recorded as `PENDING` and is deliberately NOT applied until the
+/// Product Owner acknowledges it (`acknowledgedBy` / `acknowledgedAt` /
+/// `acknowledgementNote`). Plain string columns mirror `changeType` / `taskAction`.
 model SprintBacklogChange {
   id                  String             @id @db.Uuid
   sprintId            String             @db.Uuid
@@ -242,9 +251,20 @@ model SprintBacklogChange {
   newStatus           String?
   taskAction          String?
   taskCount           Int                @default(0)
+  /// Sprint Goal text in force when the change was requested (immutable historical record).
+  sprintGoalAtChange  String?
+  /// `SUPPORTS_GOAL` | `ENDANGERS_GOAL` — the caller's declaration.
+  goalImpact          String?
+  /// `APPLIED` | `PENDING` | `REJECTED`.
+  approvalStatus      String             @default("APPLIED")
+  /// The Product Owner who acknowledged a PENDING change.
+  acknowledgedBy      String?            @db.Uuid
+  acknowledgedAt      DateTime?          @db.Timestamptz(3)
+  acknowledgementNote String?
   createdBy           String?            @db.Uuid
   createdAt           DateTime           @default(now()) @db.Timestamptz(3)
   creator             User?              @relation("SprintBacklogChangeCreator", fields: [createdBy], references: [id])
+  acknowledger        User?              @relation("SprintBacklogChangeAcknowledger", fields: [acknowledgedBy], references: [id])
   pbi                 ProductBacklogItem @relation(fields: [pbiId], references: [id], onDelete: Cascade)
   sprintBacklogItem   SprintBacklogItem? @relation(fields: [sprintBacklogItemId], references: [id])
   sprint              Sprint             @relation(fields: [sprintId], references: [id], onDelete: Cascade)
@@ -253,6 +273,7 @@ model SprintBacklogChange {
   @@index([pbiId])
   @@index([createdBy])
   @@index([createdAt])
+  @@index([sprintId, approvalStatus])
   @@map("sprint_backlog_changes")
 }
 

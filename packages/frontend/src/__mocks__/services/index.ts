@@ -86,6 +86,7 @@ export const apiService: Record<string, Mock<AnyFn>> = {
   getTasksByPbiId: vi.fn(),
   addPBIToSprint: vi.fn(),
   removePBIFromSprint: vi.fn(),
+  acknowledgeSprintBacklogChange: vi.fn(),
   getSprintBacklogChanges: vi.fn(),
   createImpediment: vi.fn(),
   updateImpediment: vi.fn(),

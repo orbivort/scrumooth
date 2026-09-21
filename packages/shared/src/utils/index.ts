@@ -60,6 +60,25 @@ export {
   type ScrumEvent,
 } from './timebox.js';
 
+export {
+  SPRINT_MAX_DURATION_DAYS,
+  SPRINT_CONTIGUITY_MAX_GAP_DAYS,
+  SPRINT_GOAL_IMPACTS,
+  SPRINT_GOAL_IMPACT_LIST,
+  SPRINT_CHANGE_APPROVAL_STATUSES,
+  SPRINT_CHANGE_DECISIONS,
+  toUtcDay,
+  sprintDurationDays,
+  rangesOverlap,
+  contiguityGapDays,
+  isSprintGoalImpact,
+  isSprintChangeApprovalStatus,
+  type SprintGoalImpact,
+  type SprintChangeApprovalStatus,
+  type SprintChangeDecision,
+  type DayRange,
+} from './sprintCalendar.js';
+
 export function isValidEmail(email: string): boolean {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   return emailRegex.test(email);

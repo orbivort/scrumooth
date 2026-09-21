@@ -60,6 +60,22 @@ export const createSprint = asyncHandler(async (req: Request, res: Response) => 
 });
 
 /**
+ * Update sprint
+ */
+export const updateSprint = asyncHandler(async (req: Request, res: Response) => {
+  const id = getParamValue(req.params.id);
+  if (!id) {
+    throw new BadRequestError('Sprint ID is required');
+  }
+  const userId = req.user?.id;
+  if (!userId) {
+    throw new BadRequestError('User not authenticated');
+  }
+  const sprint = await sprintService.updateSprint(id, userId, req.body);
+  res.json(createSuccessResponse(sprint));
+});
+
+/**
  * Start sprint
  */
 export const startSprint = asyncHandler(async (req: Request, res: Response) => {
@@ -363,6 +379,32 @@ export const removePBIFromSprint = asyncHandler(async (req: Request, res: Respon
   const result = await sprintBacklogManagerService.removePBIFromActiveSprint(
     sprintId,
     pbiId,
+    userId,
+    req.body
+  );
+  res.json(createSuccessResponse(result));
+});
+
+/**
+ * Acknowledge (approve) or reject a pending, goal-endangering Sprint Backlog change.
+ * Product-Owner-only; the refusal is raised by the service layer.
+ */
+export const acknowledgeSprintBacklogChange = asyncHandler(async (req: Request, res: Response) => {
+  const sprintId = getParamValue(req.params.sprintId);
+  const changeId = getParamValue(req.params.changeId);
+  if (!sprintId) {
+    throw new BadRequestError('Sprint ID is required');
+  }
+  if (!changeId) {
+    throw new BadRequestError('Change ID is required');
+  }
+  const userId = req.user?.id;
+  if (!userId) {
+    throw new BadRequestError('User not authenticated');
+  }
+  const result = await sprintBacklogManagerService.acknowledgeSprintBacklogChange(
+    sprintId,
+    changeId,
     userId,
     req.body
   );

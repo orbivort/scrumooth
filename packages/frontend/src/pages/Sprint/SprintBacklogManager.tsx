@@ -1,15 +1,30 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
+import { SPRINT_GOAL_IMPACTS } from '@scrumooth/shared';
 
 import { apiService } from '../../services';
 import { useTeamStore } from '../../store';
 import { logger } from '../../utils/logger';
-import { MoSCoWPriority, type ProductBacklogItem, type Task } from '../../types';
+import { canCancelSprint } from '../../utils/roleUtils';
+import {
+  MoSCoWPriority,
+  type BacklogChange,
+  type ProductBacklogItem,
+  type SprintChangeDecision,
+  type SprintGoalImpact,
+  type Task,
+} from '../../types';
 import { queryKeys } from '../../hooks/queryKeys';
 import { ToastContainer } from '../../components/common/ToastContainer';
 import { useToast } from '../../hooks/useToast';
-import { ArrowLeftIcon, PlusIcon } from '../../components/common/Icons';
+import {
+  ArrowLeftIcon,
+  CheckIcon,
+  InfoIcon,
+  PlusIcon,
+  ThumbsDownIcon,
+} from '../../components/common/Icons';
 
 import styles from './SprintBacklogManager.module.css';
 
@@ -99,6 +114,50 @@ const PRIORITY_LABEL_KEYS: Record<
   [MoSCoWPriority.WONT_HAVE]: 'sprintPlanning.moscow.wont',
 };
 
+interface GoalImpactChoiceProps {
+  name: string;
+  value: SprintGoalImpact | null;
+  onChange: (impact: SprintGoalImpact) => void;
+}
+
+/**
+ * "No changes are made that would endanger the Sprint Goal." Every mid-Sprint Sprint Backlog
+ * change must declare its impact on the commitment: the Developers state it explicitly, and a
+ * goal-endangering change is routed to the Product Owner instead of being applied silently.
+ */
+const GoalImpactChoice: React.FC<GoalImpactChoiceProps> = ({ name, value, onChange }) => {
+  const { t } = useTranslation('sprint');
+
+  return (
+    <fieldset className={styles['sbm-goal-impact']}>
+      <legend>{t('sprintBacklogManager.goalImpactQuestion')}</legend>
+      <label className={styles['sbm-goal-impact-option']}>
+        <input
+          type="radio"
+          name={name}
+          checked={value === SPRINT_GOAL_IMPACTS.SUPPORTS_GOAL}
+          onChange={() => onChange(SPRINT_GOAL_IMPACTS.SUPPORTS_GOAL)}
+        />
+        <span>{t('sprintBacklogManager.goalImpactSupports')}</span>
+      </label>
+      <label className={styles['sbm-goal-impact-option']}>
+        <input
+          type="radio"
+          name={name}
+          checked={value === SPRINT_GOAL_IMPACTS.ENDANGERS_GOAL}
+          onChange={() => onChange(SPRINT_GOAL_IMPACTS.ENDANGERS_GOAL)}
+        />
+        <span>{t('sprintBacklogManager.goalImpactEndangers')}</span>
+      </label>
+      {value === SPRINT_GOAL_IMPACTS.ENDANGERS_GOAL && (
+        <p className={styles['sbm-goal-impact-note']}>
+          {t('sprintBacklogManager.goalImpactEndangersHint')}
+        </p>
+      )}
+    </fieldset>
+  );
+};
+
 export const SprintBacklogManager: React.FC<SprintBacklogManagerProps> = ({
   sprintId,
   sprintName,
@@ -106,18 +165,29 @@ export const SprintBacklogManager: React.FC<SprintBacklogManagerProps> = ({
   onClose,
 }) => {
   const { t } = useTranslation('sprint');
-  const { currentTeam } = useTeamStore();
+  const { currentTeam, userRoleInCurrentTeam } = useTeamStore();
   const queryClient = useQueryClient();
   const teamId = currentTeam?.id;
 
-  const { toasts, success, error: showError, warning, removeToast } = useToast();
+  const { toasts, success, info, error: showError, warning, removeToast } = useToast();
   const [searchQuery, setSearchQuery] = useState('');
   const [showRemoveModal, setShowRemoveModal] = useState(false);
   const [selectedItemForRemoval, setSelectedItemForRemoval] = useState<RemoveItemData | null>(null);
   const [taskAction, setTaskAction] = useState<TaskAction>('return_to_backlog');
   const [removeReason, setRemoveReason] = useState('');
+  const [removeGoalImpact, setRemoveGoalImpact] = useState<SprintGoalImpact | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [addReason, setAddReason] = useState('');
+  const [addGoalImpact, setAddGoalImpact] = useState<SprintGoalImpact | null>(null);
+  // Product-Owner acknowledgement of a pending, goal-endangering Sprint Backlog change.
+  const [changeUnderReview, setChangeUnderReview] = useState<BacklogChange | null>(null);
+  const [reviewDecision, setReviewDecision] = useState<SprintChangeDecision>('APPROVE');
+  const [renegotiatedGoal, setRenegotiatedGoal] = useState('');
+  const [reviewNote, setReviewNote] = useState('');
+
+  // Only the Product Owner acknowledges a change that endangers the Sprint Goal (the same role
+  // that owns Sprint cancellation), so the approval actions are rendered for them alone.
+  const isProductOwner = canCancelSprint(userRoleInCurrentTeam);
 
   const { data: sprintData, isLoading: sprintLoading } = useQuery({
     queryKey: ['activeSprint', teamId],
@@ -200,12 +270,32 @@ export const SprintBacklogManager: React.FC<SprintBacklogManagerProps> = ({
 
   const addPBIMutation = useMutation({
     mutationFn: async (pbiId: string) => {
-      const result = await apiService.addPBIToSprint(sprintId, pbiId, addReason || undefined);
+      const result = await apiService.addPBIToSprint(
+        sprintId,
+        pbiId,
+        addReason.trim(),
+        addGoalImpact ?? SPRINT_GOAL_IMPACTS.SUPPORTS_GOAL
+      );
       return { ...result, pbiId };
     },
     onSuccess: async (response) => {
       const pbiId = response.pbiId;
       const pbi = availablePBIs.find((item) => item.id === pbiId);
+
+      // A change declared as endangering the Sprint Goal is recorded as pending and deliberately
+      // NOT applied: the Sprint Backlog is untouched, so no draft tasks are generated either.
+      if (response.data?.pending) {
+        info(
+          t('sprintBacklogManager.changePendingApproval', {
+            item: pbi?.title ?? '',
+          })
+        );
+        void queryClient.invalidateQueries({ queryKey: queryKeys.sprintBacklogChanges.all });
+        setShowAddModal(false);
+        setAddReason('');
+        setAddGoalImpact(null);
+        return;
+      }
 
       if (pbi) {
         const draftTasks = generateDraftTaskData(pbiId, pbi.title, pbi.storyPoints ?? 0);
@@ -242,6 +332,7 @@ export const SprintBacklogManager: React.FC<SprintBacklogManagerProps> = ({
       void queryClient.invalidateQueries({ queryKey: queryKeys.burndown.all });
       setShowAddModal(false);
       setAddReason('');
+      setAddGoalImpact(null);
     },
     onError: (error: unknown) => {
       const message =
@@ -258,19 +349,37 @@ export const SprintBacklogManager: React.FC<SprintBacklogManagerProps> = ({
         sprintId,
         selectedItemForRemoval.pbiId,
         taskAction,
-        removeReason || undefined
+        removeReason.trim(),
+        removeGoalImpact ?? SPRINT_GOAL_IMPACTS.SUPPORTS_GOAL
       );
     },
-    onSuccess: () => {
+    onSuccess: (response, _variables, _context) => {
+      const closeModal = () => {
+        setShowRemoveModal(false);
+        setSelectedItemForRemoval(null);
+        setRemoveReason('');
+        setRemoveGoalImpact(null);
+        setTaskAction('return_to_backlog');
+      };
+
+      // Pending: the item stays in the Sprint until the Product Owner acknowledges the change.
+      if (response.data?.pending) {
+        info(
+          t('sprintBacklogManager.changePendingApproval', {
+            item: selectedItemForRemoval?.pbiTitle ?? '',
+          })
+        );
+        void queryClient.invalidateQueries({ queryKey: queryKeys.sprintBacklogChanges.all });
+        closeModal();
+        return;
+      }
+
       void queryClient.invalidateQueries({ queryKey: queryKeys.sprint.all });
       void queryClient.invalidateQueries({ queryKey: queryKeys.sprintTasks.all });
       void queryClient.invalidateQueries({ queryKey: queryKeys.sprintBacklogChanges.all });
       void queryClient.invalidateQueries({ queryKey: queryKeys.availablePBIs.all });
       void queryClient.invalidateQueries({ queryKey: queryKeys.burndown.all });
-      setShowRemoveModal(false);
-      setSelectedItemForRemoval(null);
-      setRemoveReason('');
-      setTaskAction('return_to_backlog');
+      closeModal();
       success(t('sprintBacklogManager.pbiReturnedToBacklog'));
     },
     onError: (error: unknown) => {
@@ -280,6 +389,63 @@ export const SprintBacklogManager: React.FC<SprintBacklogManagerProps> = ({
       showError(message);
     },
   });
+
+  /**
+   * The Product Owner's decision on a pending, goal-endangering Sprint Backlog change. Approving
+   * applies the deferred change and records the renegotiated Sprint Goal; rejecting clears the
+   * pending state and leaves the Sprint Backlog untouched.
+   */
+  const acknowledgeChangeMutation = useMutation({
+    mutationFn: ({ changeId, decision }: { changeId: string; decision: SprintChangeDecision }) =>
+      apiService.acknowledgeSprintBacklogChange(sprintId, changeId, {
+        decision,
+        note: reviewNote.trim() || undefined,
+        ...(decision === 'APPROVE' ? { sprintGoal: renegotiatedGoal.trim() } : {}),
+      }),
+    onSuccess: (_response, variables) => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.sprint.all });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.sprintTasks.all });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.sprintBacklogChanges.all });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.availablePBIs.all });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.burndown.all });
+
+      success(
+        variables.decision === 'APPROVE'
+          ? t('sprintBacklogManager.changeApproved')
+          : t('sprintBacklogManager.changeRejected')
+      );
+
+      setChangeUnderReview(null);
+      setRenegotiatedGoal('');
+      setReviewNote('');
+    },
+    onError: (error: unknown) => {
+      const message =
+        (error as { response?: { data?: { error?: { message?: string } } } }).response?.data?.error
+          ?.message ?? t('sprintBacklogManager.failedToReviewChange');
+      showError(message);
+    },
+  });
+
+  const openChangeReview = useCallback(
+    (change: BacklogChange, decision: SprintChangeDecision) => {
+      setChangeUnderReview(change);
+      setReviewDecision(decision);
+      // Pre-fill with the goal that was in force so the Product Owner edits it rather than
+      // inventing a new one from scratch.
+      setRenegotiatedGoal(change.sprintGoalAtChange ?? sprintGoal ?? '');
+      setReviewNote('');
+    },
+    [sprintGoal]
+  );
+
+  const confirmChangeReview = useCallback(() => {
+    if (!changeUnderReview) return;
+    acknowledgeChangeMutation.mutate({
+      changeId: changeUnderReview.id,
+      decision: reviewDecision,
+    });
+  }, [acknowledgeChangeMutation, changeUnderReview, reviewDecision]);
 
   const handleAddPBI = useCallback(
     (pbiId: string) => {
@@ -304,6 +470,11 @@ export const SprintBacklogManager: React.FC<SprintBacklogManagerProps> = ({
   const confirmRemove = useCallback(() => {
     removePBIMutation.mutate();
   }, [removePBIMutation]);
+
+  // A mid-Sprint Sprint Backlog change is a deliberate act: it must state why it is made and
+  // whether it endangers the Sprint Goal, so the confirm action stays disabled until both exist.
+  const canSubmitAdd = addReason.trim().length > 0 && addGoalImpact !== null;
+  const canSubmitRemove = removeReason.trim().length > 0 && removeGoalImpact !== null;
 
   const getPriorityStyle = (priority: MoSCoWPriority) => {
     return {
@@ -488,25 +659,62 @@ export const SprintBacklogManager: React.FC<SprintBacklogManagerProps> = ({
                     <p>{t('sprintBacklogManager.noRecentChanges')}</p>
                   </div>
                 ) : (
-                  recentChanges.map((change) => (
-                    <div key={change.id} className={styles['sbm-change-item']}>
-                      <span
-                        className={`${styles['sbm-change-type']} ${styles[`sbm-change-${change.changeType.toLowerCase()}`]}`}
+                  recentChanges.map((change) => {
+                    const isPending = change.approvalStatus === 'PENDING';
+                    return (
+                      <div
+                        key={change.id}
+                        className={`${styles['sbm-change-item']} ${isPending ? styles['sbm-change-item-pending'] : ''}`}
                       >
-                        {change.changeType === 'ADDED' ? '➕' : '➖'}
-                      </span>
-                      <div className={styles['sbm-change-content']}>
-                        <span className={styles['sbm-change-title']}>{change.pbiTitle}</span>
-                        <span className={styles['sbm-change-meta']}>
-                          {t('sprintBacklogManager.byName', { name: change.changedByName })} •{' '}
-                          {formatTimeAgo(change.createdAt ?? change.changedAt)}
+                        <span
+                          className={`${styles['sbm-change-type']} ${styles[`sbm-change-${change.changeType.toLowerCase()}`]}`}
+                        >
+                          {change.changeType === 'ADDED' ? '➕' : '➖'}
                         </span>
-                        {change.reason && (
-                          <span className={styles['sbm-change-reason']}>"{change.reason}"</span>
-                        )}
+                        <div className={styles['sbm-change-content']}>
+                          <span className={styles['sbm-change-title']}>{change.pbiTitle}</span>
+                          <span className={styles['sbm-change-meta']}>
+                            {t('sprintBacklogManager.byName', { name: change.changedByName })} •{' '}
+                            {formatTimeAgo(change.createdAt ?? change.changedAt)}
+                          </span>
+                          {change.reason && (
+                            <span className={styles['sbm-change-reason']}>"{change.reason}"</span>
+                          )}
+                          {isPending && (
+                            <span className={styles['sbm-change-pending']}>
+                              <InfoIcon size={12} />
+                              {t('sprintBacklogManager.awaitingProductOwner')}
+                            </span>
+                          )}
+                          {change.goalImpact === 'ENDANGERS_GOAL' && (
+                            <span className={styles['sbm-change-goal-warning']}>
+                              {t('sprintBacklogManager.endangersGoal')}
+                            </span>
+                          )}
+                          {isPending && isProductOwner && (
+                            <div className={styles['sbm-change-actions']}>
+                              <button
+                                type="button"
+                                className={`${styles['sbm-btn']} ${styles['sbm-btn-approve']}`}
+                                onClick={() => openChangeReview(change, 'APPROVE')}
+                              >
+                                <CheckIcon size={14} />
+                                {t('sprintBacklogManager.approveChange')}
+                              </button>
+                              <button
+                                type="button"
+                                className={`${styles['sbm-btn']} ${styles['sbm-btn-reject']}`}
+                                onClick={() => openChangeReview(change, 'REJECT')}
+                              >
+                                <ThumbsDownIcon size={14} />
+                                {t('sprintBacklogManager.rejectChange')}
+                              </button>
+                            </div>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  ))
+                    );
+                  })
                 )}
               </div>
             </div>
@@ -532,6 +740,24 @@ export const SprintBacklogManager: React.FC<SprintBacklogManagerProps> = ({
                 placeholder={t('sprintBacklogManager.searchAvailableItems')}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
+              />
+
+              <div className={styles['sbm-reason-input']}>
+                <label htmlFor="sbm-add-reason">{t('sprintBacklogManager.reasonRequired')}</label>
+                <textarea
+                  id="sbm-add-reason"
+                  placeholder={t('sprintBacklogManager.whyAddingItem')}
+                  value={addReason}
+                  onChange={(e) => setAddReason(e.target.value)}
+                  rows={2}
+                  required
+                />
+              </div>
+
+              <GoalImpactChoice
+                name="sbm-add-goal-impact"
+                value={addGoalImpact}
+                onChange={setAddGoalImpact}
               />
 
               <div className={styles['sbm-available-items']}>
@@ -567,7 +793,7 @@ export const SprintBacklogManager: React.FC<SprintBacklogManagerProps> = ({
                         <button
                           className={styles['sbm-add-item-btn']}
                           onClick={() => handleAddPBI(pbi.id)}
-                          disabled={addPBIMutation.isPending}
+                          disabled={addPBIMutation.isPending || !canSubmitAdd}
                         >
                           <PlusIcon size={14} /> {t('sprintBacklogManager.add')}
                         </button>
@@ -575,16 +801,6 @@ export const SprintBacklogManager: React.FC<SprintBacklogManagerProps> = ({
                     );
                   })
                 )}
-              </div>
-
-              <div className={styles['sbm-reason-input']}>
-                <label>{t('sprintBacklogManager.reasonOptional')}</label>
-                <textarea
-                  placeholder={t('sprintBacklogManager.whyAddingItem')}
-                  value={addReason}
-                  onChange={(e) => setAddReason(e.target.value)}
-                  rows={2}
-                />
               </div>
             </div>
           </div>
@@ -634,14 +850,24 @@ export const SprintBacklogManager: React.FC<SprintBacklogManagerProps> = ({
               </div>
 
               <div className={styles['sbm-reason-input']}>
-                <label>{t('sprintBacklogManager.reasonOptional')}</label>
+                <label htmlFor="sbm-remove-reason">
+                  {t('sprintBacklogManager.reasonRequired')}
+                </label>
                 <textarea
+                  id="sbm-remove-reason"
                   placeholder={t('sprintBacklogManager.whyRemovingItem')}
                   value={removeReason}
                   onChange={(e) => setRemoveReason(e.target.value)}
                   rows={2}
+                  required
                 />
               </div>
+
+              <GoalImpactChoice
+                name="sbm-remove-goal-impact"
+                value={removeGoalImpact}
+                onChange={setRemoveGoalImpact}
+              />
             </div>
             <div className={styles['sbm-modal-footer']}>
               <button
@@ -653,12 +879,101 @@ export const SprintBacklogManager: React.FC<SprintBacklogManagerProps> = ({
               <button
                 className={`${styles['sbm-btn']} ${styles['sbm-btn-primary']}`}
                 onClick={confirmRemove}
-                disabled={removePBIMutation.isPending}
+                disabled={removePBIMutation.isPending || !canSubmitRemove}
               >
                 <ArrowLeftIcon size={16} />
                 {removePBIMutation.isPending
                   ? t('sprintBacklogManager.returning')
                   : t('sprintBacklogManager.returnToBacklogAction')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {changeUnderReview && (
+        <div className={styles['sbm-modal-overlay']} onClick={() => setChangeUnderReview(null)}>
+          <div className={styles['sbm-review-modal']} onClick={(e) => e.stopPropagation()}>
+            <div className={styles['sbm-modal-header']}>
+              <h3>
+                {reviewDecision === 'APPROVE'
+                  ? t('sprintBacklogManager.approveChange')
+                  : t('sprintBacklogManager.rejectChange')}
+              </h3>
+              <button
+                className={styles['sbm-modal-close']}
+                onClick={() => setChangeUnderReview(null)}
+              >
+                ×
+              </button>
+            </div>
+            <div className={styles['sbm-modal-body']}>
+              <div className={styles['sbm-remove-preview']}>
+                <strong>{changeUnderReview.pbiTitle}</strong>
+                <span>
+                  {changeUnderReview.changeType === 'ADDED'
+                    ? t('sprintBacklogManager.reviewAddsItem')
+                    : t('sprintBacklogManager.reviewRemovesItem')}
+                </span>
+                {changeUnderReview.sprintGoalAtChange && (
+                  <span className={styles['sbm-change-meta']}>
+                    {t('sprintBacklogManager.goalAtChange', {
+                      goal: changeUnderReview.sprintGoalAtChange,
+                    })}
+                  </span>
+                )}
+              </div>
+
+              {reviewDecision === 'APPROVE' && (
+                <div className={styles['sbm-reason-input']}>
+                  <label htmlFor="sbm-renegotiated-goal">
+                    {t('sprintBacklogManager.renegotiatedGoalLabel')}
+                  </label>
+                  <textarea
+                    id="sbm-renegotiated-goal"
+                    placeholder={t('sprintBacklogManager.renegotiatedGoalPlaceholder')}
+                    value={renegotiatedGoal}
+                    onChange={(e) => setRenegotiatedGoal(e.target.value)}
+                    rows={2}
+                    required
+                  />
+                  <span className={styles['sbm-hint']}>
+                    {t('sprintBacklogManager.renegotiatedGoalHint')}
+                  </span>
+                </div>
+              )}
+
+              <div className={styles['sbm-reason-input']}>
+                <label htmlFor="sbm-review-note">{t('sprintBacklogManager.reviewNoteLabel')}</label>
+                <textarea
+                  id="sbm-review-note"
+                  placeholder={t('sprintBacklogManager.reviewNotePlaceholder')}
+                  value={reviewNote}
+                  onChange={(e) => setReviewNote(e.target.value)}
+                  rows={2}
+                />
+              </div>
+            </div>
+            <div className={styles['sbm-modal-footer']}>
+              <button
+                className={`${styles['sbm-btn']} ${styles['sbm-btn-secondary']}`}
+                onClick={() => setChangeUnderReview(null)}
+              >
+                {t('sprintBacklogManager.cancel')}
+              </button>
+              <button
+                className={`${styles['sbm-btn']} ${styles['sbm-btn-primary']}`}
+                onClick={confirmChangeReview}
+                disabled={
+                  acknowledgeChangeMutation.isPending ||
+                  (reviewDecision === 'APPROVE' && renegotiatedGoal.trim().length === 0)
+                }
+              >
+                {acknowledgeChangeMutation.isPending
+                  ? t('sprintBacklogManager.reviewingChange')
+                  : reviewDecision === 'APPROVE'
+                    ? t('sprintBacklogManager.approveChange')
+                    : t('sprintBacklogManager.rejectChange')}
               </button>
             </div>
           </div>

@@ -178,7 +178,7 @@ vi.mock('../../services', () => ({
     getSprintTasks: vi.fn(),
     startSprint: vi.fn(),
     saveSprintBacklog: vi.fn(),
-    saveSprintPlanningDraft: vi.fn(),
+    saveSprintPlanningDraft: vi.fn().mockResolvedValue({ success: true }),
     getSprintPlanningDraft: vi.fn(),
     getVelocityData: vi.fn(),
     getPlanningParticipation: vi.fn(),

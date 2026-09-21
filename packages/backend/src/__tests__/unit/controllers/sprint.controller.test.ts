@@ -4,6 +4,7 @@ import {
   getActiveSprint,
   getSprintById,
   createSprint,
+  updateSprint,
   startSprint,
   saveSprintBacklog,
   rollbackSprintStart,
@@ -17,6 +18,7 @@ import {
   deleteTask,
   addPBIToSprint,
   removePBIFromSprint,
+  acknowledgeSprintBacklogChange,
   getSprintBacklogChanges,
   getAvailablePBIs,
 } from '../../../controllers/sprint.controller';
@@ -30,6 +32,7 @@ vi.mock('../../../services/sprint.service', () => ({
     getActiveSprint: vi.fn(),
     getSprintById: vi.fn(),
     createSprint: vi.fn(),
+    updateSprint: vi.fn(),
     startSprint: vi.fn(),
     saveSprintBacklog: vi.fn(),
     rollbackSprintStart: vi.fn(),
@@ -45,6 +48,7 @@ vi.mock('../../../services/sprint.service', () => ({
   sprintBacklogManagerService: {
     addPBIToActiveSprint: vi.fn(),
     removePBIFromActiveSprint: vi.fn(),
+    acknowledgeSprintBacklogChange: vi.fn(),
     getSprintBacklogChanges: vi.fn(),
     getAvailablePBIsForSprint: vi.fn(),
   },
@@ -609,6 +613,103 @@ describe('Sprint Controller', () => {
       await new Promise((resolve) => setTimeout(resolve, 0));
 
       expect(mockNext).toHaveBeenCalledWith(expect.any(BadRequestError));
+    });
+
+    it('should surface a pending goal-endangering change to the client', async () => {
+      mockReq.params = { sprintId: 'sprint-123' };
+      mockReq.user = { id: 'user-123' };
+      mockReq.body = {
+        pbiId: 'pbi-456',
+        reason: 'Scope grew',
+        goalImpact: 'ENDANGERS_GOAL',
+      };
+      const mockResult = {
+        sprintBacklogItem: null,
+        pending: true,
+        change: { id: 'change-1', approvalStatus: 'PENDING' },
+      };
+
+      (sprintBacklogManagerService.addPBIToActiveSprint as any).mockResolvedValue(mockResult);
+
+      addPBIToSprint(mockReq as any, mockRes as any, mockNext);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(mockNext).not.toHaveBeenCalled();
+      expect(mockRes._status).toBe(201);
+      expect(mockRes._json).toEqual({ success: true, data: mockResult });
+    });
+  });
+
+  describe('updateSprint', () => {
+    it('should update a Sprint that is still being planned', async () => {
+      mockReq.params = { id: 'sprint-123' };
+      mockReq.user = { id: 'user-123' };
+      mockReq.body = { name: 'Renamed' };
+      const mockResult = { id: 'sprint-123', name: 'Renamed' };
+
+      (sprintService.updateSprint as any).mockResolvedValue(mockResult);
+
+      updateSprint(mockReq as any, mockRes as any, mockNext);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(mockNext).not.toHaveBeenCalled();
+      expect(sprintService.updateSprint).toHaveBeenCalledWith(
+        'sprint-123',
+        'user-123',
+        mockReq.body
+      );
+      expect(mockRes._json).toEqual({ success: true, data: mockResult });
+    });
+
+    it('should throw BadRequestError when the caller is not authenticated', async () => {
+      mockReq.params = { id: 'sprint-123' };
+      mockReq.user = undefined;
+
+      updateSprint(mockReq as any, mockRes as any, mockNext);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(mockNext).toHaveBeenCalledWith(expect.any(BadRequestError));
+      expect(sprintService.updateSprint).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('acknowledgeSprintBacklogChange', () => {
+    it('should pass the Product Owner decision to the service', async () => {
+      mockReq.params = { sprintId: 'sprint-123', changeId: 'change-456' };
+      mockReq.user = { id: 'po-123' };
+      mockReq.body = { decision: 'APPROVE', sprintGoal: 'Renegotiated goal' };
+      const mockResult = {
+        change: { id: 'change-456', approvalStatus: 'APPLIED' },
+        sprint: { id: 'sprint-123', sprintGoal: 'Renegotiated goal' },
+        applied: true,
+      };
+
+      (sprintBacklogManagerService.acknowledgeSprintBacklogChange as any).mockResolvedValue(
+        mockResult
+      );
+
+      acknowledgeSprintBacklogChange(mockReq as any, mockRes as any, mockNext);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(mockNext).not.toHaveBeenCalled();
+      expect(sprintBacklogManagerService.acknowledgeSprintBacklogChange).toHaveBeenCalledWith(
+        'sprint-123',
+        'change-456',
+        'po-123',
+        mockReq.body
+      );
+      expect(mockRes._json).toEqual({ success: true, data: mockResult });
+    });
+
+    it('should throw BadRequestError when the caller is not authenticated', async () => {
+      mockReq.params = { sprintId: 'sprint-123', changeId: 'change-456' };
+      mockReq.user = undefined;
+
+      acknowledgeSprintBacklogChange(mockReq as any, mockRes as any, mockNext);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(mockNext).toHaveBeenCalledWith(expect.any(BadRequestError));
+      expect(sprintBacklogManagerService.acknowledgeSprintBacklogChange).not.toHaveBeenCalled();
     });
   });
 

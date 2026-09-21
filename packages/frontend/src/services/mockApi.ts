@@ -72,6 +72,10 @@ import {
   type SprintPlanningAttendee,
   type SprintPlanningCapacityEntry,
   type SprintPlanningParticipation,
+  type SprintBacklogChangeResult,
+  type SprintGoalImpact,
+  type AcknowledgeSprintBacklogChangeRequest,
+  type AcknowledgeSprintBacklogChangeResult,
 } from '../types';
 import type { BulkUploadItem } from '../pages/Backlog/BulkUpload/bulkUploadUtils';
 
@@ -4442,24 +4446,63 @@ class MockApiService {
   async addPBIToSprint(
     _sprintId: string,
     _pbiId: string,
-    _reason?: string
-  ): Promise<ApiResponse<{ sprintBacklogItem: SprintBacklogItem; change: BacklogChange }>> {
+    _reason: string,
+    _goalImpact: SprintGoalImpact
+  ): Promise<ApiResponse<SprintBacklogChangeResult>> {
     await delay(400);
+    const pending = _goalImpact === 'ENDANGERS_GOAL';
     return {
       success: true,
       data: {
-        sprintBacklogItem: {
-          id: `sbi-${Date.now()}`,
-          sprintId: _sprintId,
-          pbiId: _pbiId,
-          addedAt: new Date().toISOString(),
-        },
+        sprintBacklogItem: pending
+          ? null
+          : {
+              id: `sbi-${Date.now()}`,
+              sprintId: _sprintId,
+              pbiId: _pbiId,
+              addedAt: new Date().toISOString(),
+            },
+        pending,
         change: {
           id: `change-${Date.now()}`,
           sprintId: _sprintId,
           pbiId: _pbiId,
           changeType: 'ADDED' as const,
           reason: _reason,
+          goalImpact: _goalImpact,
+          approvalStatus: pending ? ('PENDING' as const) : ('APPLIED' as const),
+          changedBy: 'mock-user',
+          changedAt: new Date().toISOString(),
+        },
+      },
+    };
+  }
+
+  async acknowledgeSprintBacklogChange(
+    _sprintId: string,
+    _changeId: string,
+    payload: AcknowledgeSprintBacklogChangeRequest
+  ): Promise<ApiResponse<AcknowledgeSprintBacklogChangeResult>> {
+    await delay(400);
+    const applied = payload.decision === 'APPROVE';
+    const sprint = mockSprints.find((entry) => entry.id === _sprintId);
+    return {
+      success: true,
+      data: {
+        applied,
+        sprint:
+          applied && sprint
+            ? { ...sprint, sprintGoal: payload.sprintGoal ?? sprint.sprintGoal }
+            : null,
+        change: {
+          id: _changeId,
+          sprintId: _sprintId,
+          pbiId: 'mock-pbi',
+          changeType: 'ADDED' as const,
+          reason: 'Mock change',
+          goalImpact: 'ENDANGERS_GOAL' as const,
+          approvalStatus: applied ? ('APPLIED' as const) : ('REJECTED' as const),
+          acknowledgementNote: payload.note,
           changedBy: 'mock-user',
           changedAt: new Date().toISOString(),
         },
@@ -4470,19 +4513,25 @@ class MockApiService {
   async removePBIFromSprint(
     _sprintId: string,
     _pbiId: string,
-    _taskAction?: 'delete' | 'return_to_backlog' | 'keep_in_sprint',
-    _reason?: string
-  ): Promise<ApiResponse<{ change: BacklogChange }>> {
+    _taskAction: 'delete' | 'return_to_backlog' | 'keep_in_sprint',
+    _reason: string,
+    _goalImpact: SprintGoalImpact
+  ): Promise<ApiResponse<SprintBacklogChangeResult>> {
     await delay(400);
+    const pending = _goalImpact === 'ENDANGERS_GOAL';
     return {
       success: true,
       data: {
+        sprintBacklogItem: null,
+        pending,
         change: {
           id: `change-${Date.now()}`,
           sprintId: _sprintId,
           pbiId: _pbiId,
           changeType: 'REMOVED' as const,
           reason: _reason,
+          goalImpact: _goalImpact,
+          approvalStatus: pending ? ('PENDING' as const) : ('APPLIED' as const),
           changedBy: 'mock-user',
           changedAt: new Date().toISOString(),
           taskAction: _taskAction,

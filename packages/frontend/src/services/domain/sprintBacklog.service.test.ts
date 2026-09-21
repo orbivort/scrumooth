@@ -255,7 +255,7 @@ describe('SprintBacklogService', () => {
   });
 
   describe('addPBIToSprint', () => {
-    it('should add a PBI to sprint', async () => {
+    it('should add a PBI to sprint with a required reason and goal impact', async () => {
       const mockResponse = {
         data: {
           success: true,
@@ -266,6 +266,7 @@ describe('SprintBacklogService', () => {
               pbiId: 'pbi-2',
               addedAt: '2024-01-15T00:00:00Z',
             },
+            pending: false,
             change: {
               id: 'change-1',
               sprintId: 'sprint-1',
@@ -273,6 +274,9 @@ describe('SprintBacklogService', () => {
               pbiTitle: 'Feature B',
               changeType: 'ADDED',
               reason: 'Priority change',
+              goalImpact: 'SUPPORTS_GOAL',
+              approvalStatus: 'APPLIED',
+              sprintGoalAtChange: 'Ship the checkout flow',
               changedBy: 'user-1',
               changedByName: 'John Doe',
               changedAt: '2024-01-15T00:00:00Z',
@@ -285,34 +289,37 @@ describe('SprintBacklogService', () => {
       const result = await sprintBacklogService.addPBIToSprint(
         'sprint-1',
         'pbi-2',
-        'Priority change'
+        'Priority change',
+        'SUPPORTS_GOAL'
       );
 
       expect(mockApi.post).toHaveBeenCalledWith('/sprints/sprint-1/backlog-items', {
         pbiId: 'pbi-2',
         reason: 'Priority change',
+        goalImpact: 'SUPPORTS_GOAL',
       });
       expect(result.success).toBe(true);
-      expect(result.data?.sprintBacklogItem.pbiId).toBe('pbi-2');
+      expect(result.data?.pending).toBe(false);
+      expect(result.data?.sprintBacklogItem?.pbiId).toBe('pbi-2');
       expect(result.data?.change.changeType).toBe('ADDED');
+      expect(result.data?.change.sprintGoalAtChange).toBe('Ship the checkout flow');
     });
 
-    it('should add PBI without reason', async () => {
+    it('should surface a goal-endangering addition as pending', async () => {
       const mockResponse = {
         data: {
           success: true,
           data: {
-            sprintBacklogItem: {
-              id: 'sbi-2',
-              sprintId: 'sprint-1',
-              pbiId: 'pbi-3',
-              addedAt: '2024-01-15T00:00:00Z',
-            },
+            sprintBacklogItem: null,
+            pending: true,
             change: {
               id: 'change-2',
               sprintId: 'sprint-1',
               pbiId: 'pbi-3',
               changeType: 'ADDED',
+              reason: 'Scope grew',
+              goalImpact: 'ENDANGERS_GOAL',
+              approvalStatus: 'PENDING',
               changedBy: 'user-1',
               changedAt: '2024-01-15T00:00:00Z',
             },
@@ -321,13 +328,21 @@ describe('SprintBacklogService', () => {
       };
       vi.mocked(mockApi.post).mockResolvedValue(mockResponse);
 
-      const result = await sprintBacklogService.addPBIToSprint('sprint-1', 'pbi-3');
+      const result = await sprintBacklogService.addPBIToSprint(
+        'sprint-1',
+        'pbi-3',
+        'Scope grew',
+        'ENDANGERS_GOAL'
+      );
 
       expect(mockApi.post).toHaveBeenCalledWith('/sprints/sprint-1/backlog-items', {
         pbiId: 'pbi-3',
-        reason: undefined,
+        reason: 'Scope grew',
+        goalImpact: 'ENDANGERS_GOAL',
       });
-      expect(result.success).toBe(true);
+      expect(result.data?.pending).toBe(true);
+      expect(result.data?.sprintBacklogItem).toBeNull();
+      expect(result.data?.change.approvalStatus).toBe('PENDING');
     });
   });
 
@@ -337,6 +352,8 @@ describe('SprintBacklogService', () => {
         data: {
           success: true,
           data: {
+            sprintBacklogItem: null,
+            pending: false,
             change: {
               id: 'change-3',
               sprintId: 'sprint-1',
@@ -344,6 +361,8 @@ describe('SprintBacklogService', () => {
               pbiTitle: 'Feature B',
               changeType: 'REMOVED',
               reason: 'Not feasible',
+              goalImpact: 'SUPPORTS_GOAL',
+              approvalStatus: 'APPLIED',
               changedBy: 'user-1',
               changedByName: 'John Doe',
               changedAt: '2024-01-15T00:00:00Z',
@@ -358,11 +377,12 @@ describe('SprintBacklogService', () => {
         'sprint-1',
         'pbi-2',
         'delete',
-        'Not feasible'
+        'Not feasible',
+        'SUPPORTS_GOAL'
       );
 
       expect(mockApi.delete).toHaveBeenCalledWith('/sprints/sprint-1/backlog-items/pbi-2', {
-        data: { taskAction: 'delete', reason: 'Not feasible' },
+        data: { taskAction: 'delete', reason: 'Not feasible', goalImpact: 'SUPPORTS_GOAL' },
       });
       expect(result.success).toBe(true);
       expect(result.data?.change.changeType).toBe('REMOVED');
@@ -373,6 +393,8 @@ describe('SprintBacklogService', () => {
         data: {
           success: true,
           data: {
+            sprintBacklogItem: null,
+            pending: false,
             change: {
               id: 'change-4',
               sprintId: 'sprint-1',
@@ -388,23 +410,35 @@ describe('SprintBacklogService', () => {
       const result = await sprintBacklogService.removePBIFromSprint(
         'sprint-1',
         'pbi-3',
-        'return_to_backlog'
+        'return_to_backlog',
+        'Scope reduced',
+        'SUPPORTS_GOAL'
       );
 
       expect(mockApi.delete).toHaveBeenCalledWith('/sprints/sprint-1/backlog-items/pbi-3', {
-        data: { taskAction: 'return_to_backlog', reason: undefined },
+        data: {
+          taskAction: 'return_to_backlog',
+          reason: 'Scope reduced',
+          goalImpact: 'SUPPORTS_GOAL',
+        },
       });
       expect(result.success).toBe(true);
     });
 
-    it('should remove PBI with keep_in_sprint action', async () => {
+    it('should record a goal-endangering removal as pending', async () => {
       const mockResponse = {
         data: {
           success: true,
           data: {
+            sprintBacklogItem: null,
+            pending: true,
             change: {
               id: 'change-5',
+              sprintId: 'sprint-1',
+              pbiId: 'pbi-4',
               changeType: 'REMOVED',
+              goalImpact: 'ENDANGERS_GOAL',
+              approvalStatus: 'PENDING',
               taskAction: 'keep_in_sprint',
             },
           },
@@ -415,13 +449,93 @@ describe('SprintBacklogService', () => {
       const result = await sprintBacklogService.removePBIFromSprint(
         'sprint-1',
         'pbi-4',
-        'keep_in_sprint'
+        'keep_in_sprint',
+        'Cut for the goal',
+        'ENDANGERS_GOAL'
       );
 
       expect(mockApi.delete).toHaveBeenCalledWith('/sprints/sprint-1/backlog-items/pbi-4', {
-        data: { taskAction: 'keep_in_sprint', reason: undefined },
+        data: {
+          taskAction: 'keep_in_sprint',
+          reason: 'Cut for the goal',
+          goalImpact: 'ENDANGERS_GOAL',
+        },
       });
+      expect(result.data?.pending).toBe(true);
+      expect(result.data?.change.approvalStatus).toBe('PENDING');
+    });
+  });
+
+  describe('acknowledgeSprintBacklogChange', () => {
+    it('should approve a pending change with the renegotiated Sprint Goal', async () => {
+      const mockResponse = {
+        data: {
+          success: true,
+          data: {
+            applied: true,
+            sprint: { id: 'sprint-1', sprintGoal: 'Renegotiated goal' },
+            change: {
+              id: 'change-1',
+              sprintId: 'sprint-1',
+              pbiId: 'pbi-1',
+              changeType: 'ADDED',
+              approvalStatus: 'APPLIED',
+              acknowledgedByName: 'Pat Owner',
+              acknowledgementNote: 'Agreed with the team',
+            },
+          },
+        },
+      };
+      vi.mocked(mockApi.post).mockResolvedValue(mockResponse);
+
+      const result = await sprintBacklogService.acknowledgeSprintBacklogChange(
+        'sprint-1',
+        'change-1',
+        { decision: 'APPROVE', sprintGoal: 'Renegotiated goal', note: 'Agreed with the team' }
+      );
+
+      expect(mockApi.post).toHaveBeenCalledWith(
+        '/sprints/sprint-1/backlog-changes/change-1/acknowledge',
+        { decision: 'APPROVE', sprintGoal: 'Renegotiated goal', note: 'Agreed with the team' }
+      );
       expect(result.success).toBe(true);
+      expect(result.data?.applied).toBe(true);
+      expect(result.data?.sprint?.sprintGoal).toBe('Renegotiated goal');
+      expect(result.data?.change.approvalStatus).toBe('APPLIED');
+    });
+
+    it('should reject a pending change without a Sprint Goal', async () => {
+      const mockResponse = {
+        data: {
+          success: true,
+          data: {
+            applied: false,
+            sprint: null,
+            change: {
+              id: 'change-2',
+              sprintId: 'sprint-1',
+              pbiId: 'pbi-1',
+              changeType: 'REMOVED',
+              approvalStatus: 'REJECTED',
+              acknowledgementNote: 'Not now',
+            },
+          },
+        },
+      };
+      vi.mocked(mockApi.post).mockResolvedValue(mockResponse);
+
+      const result = await sprintBacklogService.acknowledgeSprintBacklogChange(
+        'sprint-1',
+        'change-2',
+        { decision: 'REJECT', note: 'Not now' }
+      );
+
+      expect(mockApi.post).toHaveBeenCalledWith(
+        '/sprints/sprint-1/backlog-changes/change-2/acknowledge',
+        { decision: 'REJECT', note: 'Not now' }
+      );
+      expect(result.data?.applied).toBe(false);
+      expect(result.data?.change.approvalStatus).toBe('REJECTED');
     });
   });
 

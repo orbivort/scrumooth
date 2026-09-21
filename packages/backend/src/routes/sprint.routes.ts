@@ -155,14 +155,37 @@ const saveSprintPlanningDraftSchema = z
   })
   .strict();
 
+// A mid-Sprint Sprint Backlog change must state why it is made and whether it endangers the
+// Sprint Goal. "No changes are made that would endanger the Sprint Goal": a change declared as
+// endangering the goal is recorded as pending and needs the Product Owner's acknowledgement.
+const sprintGoalImpactSchema = z.enum(['SUPPORTS_GOAL', 'ENDANGERS_GOAL'], {
+  error: 'Select whether this change endangers the Sprint Goal',
+});
+
 const addPBIToSprintSchema = z.object({
   pbiId: z.string().uuid('Invalid PBI ID'),
-  reason: z.string().max(500).optional(),
+  reason: z.string().min(1, 'Reason is required').max(500, 'Reason is too long'),
+  goalImpact: sprintGoalImpactSchema,
 });
 
 const removePBIFromSprintSchema = z.object({
   taskAction: z.enum(['delete', 'return_to_backlog', 'keep_in_sprint']),
-  reason: z.string().max(500).optional(),
+  reason: z.string().min(1, 'Reason is required').max(500, 'Reason is too long'),
+  goalImpact: sprintGoalImpactSchema,
+});
+
+const acknowledgeSprintBacklogChangeSchema = z
+  .object({
+    decision: z.enum(['APPROVE', 'REJECT'], { error: 'Decision must be APPROVE or REJECT' }),
+    note: z.string().max(1000, 'Note is too long').optional(),
+    // Required when approving a change that endangers the Sprint Goal: the renegotiated goal.
+    sprintGoal: z.string().min(1, 'Sprint Goal cannot be empty').max(500).optional(),
+  })
+  .strict();
+
+const backlogChangeIdSchema = z.object({
+  sprintId: z.string().uuid('Invalid sprint ID'),
+  changeId: z.string().uuid('Invalid change ID'),
 });
 
 const pbiIdSchema = z.object({
@@ -211,14 +234,15 @@ router.get('/:id', validateParams(sprintIdSchema), sprintController.getSprintByI
 
 /**
  * @route   PUT /api/v1/sprints/:id
- * @desc    Update sprint
- * @access  Private
+ * @desc    Update a Sprint that is still being planned (name, dates, Sprint Goal)
+ * @access  Private (team members). Only DRAFT/PLANNED Sprints; the Sprint container rules
+ *          (one month or less, no overlap, no sprint-less time) are re-applied.
  */
 router.put(
   '/:id',
   validateParams(sprintIdSchema),
   validateBody(updateSprintSchema),
-  sprintController.getSprintById // TODO: implement updateSprint
+  sprintController.updateSprint
 );
 
 /**
@@ -425,6 +449,12 @@ router.get(
   })
 );
 
+/**
+ * @route   POST /api/v1/sprints/:sprintId/backlog-items
+ * @desc    Add a Product Backlog item to an ACTIVE Sprint's Sprint Backlog
+ * @access  Private (Developers). Requires a reason and a goal-impact declaration; a change
+ *          declared as endangering the Sprint Goal is recorded as pending and not applied.
+ */
 router.post(
   '/:sprintId/backlog-items',
   validateParams(sprintIdParamSchema),
@@ -432,6 +462,12 @@ router.post(
   sprintController.addPBIToSprint
 );
 
+/**
+ * @route   DELETE /api/v1/sprints/:sprintId/backlog-items/:pbiId
+ * @desc    Remove a Product Backlog item from an ACTIVE Sprint's Sprint Backlog
+ * @access  Private (Developers). Requires a reason and a goal-impact declaration; a change
+ *          declared as endangering the Sprint Goal is recorded as pending and not applied.
+ */
 router.delete(
   '/:sprintId/backlog-items/:pbiId',
   validateParams(pbiIdSchema),
@@ -443,6 +479,20 @@ router.get(
   '/:sprintId/backlog-changes',
   validateParams(sprintIdParamSchema),
   sprintController.getSprintBacklogChanges
+);
+
+/**
+ * @route   POST /api/v1/sprints/:sprintId/backlog-changes/:changeId/acknowledge
+ * @desc    Acknowledge (approve) or reject a pending Sprint Backlog change that endangers the
+ *          Sprint Goal. Approving applies the deferred change and records the renegotiated
+ *          Sprint Goal; rejecting clears the pending state without touching the Sprint Backlog.
+ * @access  Private (Product Owner)
+ */
+router.post(
+  '/:sprintId/backlog-changes/:changeId/acknowledge',
+  validateParams(backlogChangeIdSchema),
+  validateBody(acknowledgeSprintBacklogChangeSchema),
+  sprintController.acknowledgeSprintBacklogChange
 );
 
 /**

@@ -465,6 +465,7 @@ describe('E2E: Workflow Operations', () => {
           .send({
             pbiId: pbi.id,
             reason: 'New priority requirement',
+            goalImpact: 'SUPPORTS_GOAL',
           })
           .expect(HTTP_STATUS.CREATED);
 
@@ -527,6 +528,8 @@ describe('E2E: Workflow Operations', () => {
           .set(CSRF_CONSTANTS.HEADER_NAME, csrfToken)
           .send({
             taskAction: 'return_to_backlog',
+            reason: 'Scope reduced after review',
+            goalImpact: 'SUPPORTS_GOAL',
           })
           .expect(HTTP_STATUS.OK);
 
@@ -808,6 +811,7 @@ describe('E2E: Workflow Operations', () => {
         .send({
           pbiId: pbi.id,
           reason: 'Adding to sprint 1',
+          goalImpact: 'SUPPORTS_GOAL',
         });
 
       expect(response1.body.success).toBe(true);
@@ -819,6 +823,7 @@ describe('E2E: Workflow Operations', () => {
         .send({
           pbiId: pbi.id,
           reason: 'Adding to sprint 2',
+          goalImpact: 'SUPPORTS_GOAL',
         });
 
       expect(response2.body.success).toBe(false);
@@ -911,6 +916,7 @@ describe('E2E: Workflow Operations', () => {
         .send({
           pbiId: pbi.id,
           reason: 'Scrum master adding PBI',
+          goalImpact: 'SUPPORTS_GOAL',
         })
         .expect(HTTP_STATUS.FORBIDDEN);
 
@@ -941,6 +947,7 @@ describe('E2E: Workflow Operations', () => {
         .send({
           pbiId: pbi.id,
           reason: 'Product owner adding PBI',
+          goalImpact: 'SUPPORTS_GOAL',
         })
         .expect(HTTP_STATUS.FORBIDDEN);
 

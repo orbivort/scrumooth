@@ -19,9 +19,11 @@ vi.mock('../../../utils/prisma', () => ({
       delete: vi.fn(),
     },
     generatedSprint: {
+      findMany: vi.fn(),
       findUnique: vi.fn(),
       findFirst: vi.fn(),
       update: vi.fn(),
+      updateMany: vi.fn(),
     },
     productGoal: {
       findFirst: vi.fn(),
@@ -34,10 +36,17 @@ vi.mock('../../../utils/prisma', () => ({
     },
     sprintBacklogItem: {
       findMany: vi.fn(),
+      findFirst: vi.fn(),
       create: vi.fn(),
       createMany: vi.fn(),
       delete: vi.fn(),
       deleteMany: vi.fn(),
+    },
+    sprintBacklogChange: {
+      findFirst: vi.fn(),
+      findMany: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
     },
     sprintPlanningAttendee: {
       findMany: vi.fn(),
@@ -140,17 +149,28 @@ vi.mock('../../../utils/dbTransaction', () => ({
     return callback({
       sprint: {
         findUnique: vi.fn(),
+        findMany: vi.fn().mockResolvedValue([]),
+        findFirst: vi.fn(),
         update: vi.fn(),
       },
       generatedSprint: {
+        update: vi.fn(),
         updateMany: vi.fn(),
       },
       sprintBacklogItem: {
         findMany: vi.fn().mockResolvedValue([]),
+        findFirst: vi.fn(),
+        create: vi.fn(),
         createMany: vi.fn(),
+        delete: vi.fn(),
         deleteMany: vi.fn(),
       },
+      sprintBacklogChange: {
+        create: vi.fn(),
+        update: vi.fn(),
+      },
       productBacklogItem: {
+        findUnique: vi.fn(),
         update: vi.fn(),
         updateMany: vi.fn(),
       },
@@ -222,6 +242,25 @@ const mockPlanningRecordsAsSatisfied = () => {
   (prisma.sprintCapacity.findMany as any).mockResolvedValue([]);
 };
 
+/**
+ * The Sprint container rules ("fixed length, one month or less" / "a new Sprint starts
+ * immediately after the conclusion of the previous Sprint") read the team's occupied calendar.
+ * Default to an empty one so happy-path tests are not blocked; container-rule tests override
+ * these mocks themselves.
+ *
+ * The same helper answers the membership gate (create/start/replan require a team member) and
+ * the duplicate-pending check of the two-phase Sprint Backlog change flow.
+ */
+const mockSprintContainerCalendarAsEmpty = () => {
+  (prisma.sprint.findMany as any).mockResolvedValue([]);
+  (prisma.generatedSprint.findMany as any).mockResolvedValue([]);
+  (prisma.teamMember.findFirst as any).mockResolvedValue({
+    id: 'member-1',
+    role: 'DEVELOPERS',
+  });
+  (prisma.sprintBacklogChange.findFirst as any).mockResolvedValue(null);
+};
+
 describe('SprintService', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -230,6 +269,7 @@ describe('SprintService', () => {
     (prisma.impediment.findMany as any).mockResolvedValue([]);
     mockPlanningPbiLookupAsReady();
     mockPlanningRecordsAsSatisfied();
+    mockSprintContainerCalendarAsEmpty();
   });
 
   describe('getSprints', () => {
@@ -1581,6 +1621,7 @@ describe('SprintBacklogManagerService', () => {
         id: 'sprint-1',
         teamId: 'team-1',
         status: 'ACTIVE',
+        sprintGoal: 'Ship the checkout flow',
         sprintBacklogItems: [],
       };
 
@@ -1620,6 +1661,14 @@ describe('SprintBacklogManagerService', () => {
           sprintBacklogItem: {
             create: vi.fn().mockResolvedValue(mockResult.sprintBacklogItem),
           },
+          sprintBacklogChange: {
+            create: vi.fn().mockResolvedValue({
+              id: 'change-1',
+              pbi: { title: 'Test PBI' },
+              creator: { firstName: 'John', lastName: 'Doe' },
+              createdAt: new Date(),
+            }),
+          },
           productBacklogItem: {
             update: vi.fn(),
           },
@@ -1637,9 +1686,17 @@ describe('SprintBacklogManagerService', () => {
 
       const result = await sprintBacklogManagerService.addPBIToActiveSprint('sprint-1', 'user-1', {
         pbiId: 'pbi-1',
+        reason: 'Urgent customer fix',
+        goalImpact: 'SUPPORTS_GOAL',
       });
 
       expect(result.sprintBacklogItem).toBeDefined();
+      expect(result.pending).toBe(false);
+      expect(result.change.approvalStatus).toBe('APPLIED');
+      expect(result.change.goalImpact).toBe('SUPPORTS_GOAL');
+      // The commitment in force at the time of the change is recorded verbatim.
+      expect(result.change.sprintGoalAtChange).toBe('Ship the checkout flow');
+      expect(result.change.reason).toBe('Urgent customer fix');
     });
 
     it('should throw NotFoundError when sprint not found', async () => {
@@ -1648,6 +1705,8 @@ describe('SprintBacklogManagerService', () => {
       await expect(
         sprintBacklogManagerService.addPBIToActiveSprint('nonexistent', 'user-1', {
           pbiId: 'pbi-1',
+          reason: 'Test reason',
+          goalImpact: 'SUPPORTS_GOAL',
         })
       ).rejects.toThrow(NotFoundError);
     });
@@ -1663,7 +1722,11 @@ describe('SprintBacklogManagerService', () => {
       (prisma.sprint.findUnique as any).mockResolvedValue(mockSprint);
 
       await expect(
-        sprintBacklogManagerService.addPBIToActiveSprint('sprint-1', 'user-1', { pbiId: 'pbi-1' })
+        sprintBacklogManagerService.addPBIToActiveSprint('sprint-1', 'user-1', {
+          pbiId: 'pbi-1',
+          reason: 'Test reason',
+          goalImpact: 'SUPPORTS_GOAL',
+        })
       ).rejects.toThrow(BadRequestError);
     });
 
@@ -1678,7 +1741,11 @@ describe('SprintBacklogManagerService', () => {
       (prisma.sprint.findUnique as any).mockResolvedValue(mockSprint);
 
       await expect(
-        sprintBacklogManagerService.addPBIToActiveSprint('sprint-1', 'user-1', { pbiId: 'pbi-1' })
+        sprintBacklogManagerService.addPBIToActiveSprint('sprint-1', 'user-1', {
+          pbiId: 'pbi-1',
+          reason: 'Test reason',
+          goalImpact: 'SUPPORTS_GOAL',
+        })
       ).rejects.toThrow(BadRequestError);
     });
 
@@ -1701,7 +1768,11 @@ describe('SprintBacklogManagerService', () => {
       (prisma.productBacklogItem.findUnique as any).mockResolvedValue(mockPBI);
 
       await expect(
-        sprintBacklogManagerService.addPBIToActiveSprint('sprint-1', 'user-1', { pbiId: 'pbi-1' })
+        sprintBacklogManagerService.addPBIToActiveSprint('sprint-1', 'user-1', {
+          pbiId: 'pbi-1',
+          reason: 'Test reason',
+          goalImpact: 'SUPPORTS_GOAL',
+        })
       ).rejects.toMatchObject({
         statusCode: 400,
         code: GATE_CODES.PBI_NOT_READY,
@@ -1728,7 +1799,11 @@ describe('SprintBacklogManagerService', () => {
       (prisma.productBacklogItem.findUnique as any).mockResolvedValue(mockPBI);
 
       await expect(
-        sprintBacklogManagerService.addPBIToActiveSprint('sprint-1', 'po-1', { pbiId: 'pbi-1' })
+        sprintBacklogManagerService.addPBIToActiveSprint('sprint-1', 'po-1', {
+          pbiId: 'pbi-1',
+          reason: 'Test reason',
+          goalImpact: 'SUPPORTS_GOAL',
+        })
       ).rejects.toThrow(ForbiddenError);
     });
   });
@@ -1739,6 +1814,7 @@ describe('SprintBacklogManagerService', () => {
         id: 'sprint-1',
         teamId: 'team-1',
         status: 'ACTIVE',
+        sprintGoal: 'Ship the checkout flow',
         sprintBacklogItems: [{ id: 'sbi-1', pbiId: 'pbi-1' }],
       };
 
@@ -1764,6 +1840,14 @@ describe('SprintBacklogManagerService', () => {
           sprintBacklogItem: {
             delete: vi.fn(),
           },
+          sprintBacklogChange: {
+            create: vi.fn().mockResolvedValue({
+              id: 'change-1',
+              pbi: { title: 'Test PBI' },
+              creator: { firstName: 'John', lastName: 'Doe' },
+              createdAt: new Date(),
+            }),
+          },
           task: {
             deleteMany: vi.fn(),
           },
@@ -1786,10 +1870,13 @@ describe('SprintBacklogManagerService', () => {
         'sprint-1',
         'pbi-1',
         'user-1',
-        { taskAction: 'delete' }
+        { taskAction: 'delete', reason: 'No longer needed', goalImpact: 'SUPPORTS_GOAL' }
       );
 
       expect(result.change).toBeDefined();
+      expect(result.pending).toBe(false);
+      expect(result.change.approvalStatus).toBe('APPLIED');
+      expect(result.change.sprintGoalAtChange).toBe('Ship the checkout flow');
     });
   });
 
@@ -1945,6 +2032,7 @@ describe('SprintService - Additional Coverage', () => {
     (prisma.impediment.findMany as any).mockResolvedValue([]);
     mockPlanningPbiLookupAsReady();
     mockPlanningRecordsAsSatisfied();
+    mockSprintContainerCalendarAsEmpty();
   });
 
   describe('startSprint with backlog items and tasks', () => {
@@ -3720,7 +3808,11 @@ describe('SprintService - Additional Coverage', () => {
       (prisma.productBacklogItem.findUnique as any).mockResolvedValue(null);
 
       await expect(
-        sprintBacklogManagerService.addPBIToActiveSprint('sprint-1', 'user-1', { pbiId: 'pbi-1' })
+        sprintBacklogManagerService.addPBIToActiveSprint('sprint-1', 'user-1', {
+          pbiId: 'pbi-1',
+          reason: 'Test reason',
+          goalImpact: 'SUPPORTS_GOAL',
+        })
       ).rejects.toThrow(NotFoundError);
     });
 
@@ -3743,7 +3835,11 @@ describe('SprintService - Additional Coverage', () => {
       (prisma.productBacklogItem.findUnique as any).mockResolvedValue(mockPBI);
 
       await expect(
-        sprintBacklogManagerService.addPBIToActiveSprint('sprint-1', 'user-1', { pbiId: 'pbi-1' })
+        sprintBacklogManagerService.addPBIToActiveSprint('sprint-1', 'user-1', {
+          pbiId: 'pbi-1',
+          reason: 'Test reason',
+          goalImpact: 'SUPPORTS_GOAL',
+        })
       ).rejects.toThrow(BadRequestError);
     });
 
@@ -3753,6 +3849,8 @@ describe('SprintService - Additional Coverage', () => {
       await expect(
         sprintBacklogManagerService.removePBIFromActiveSprint('sprint-1', 'pbi-1', 'user-1', {
           taskAction: 'delete',
+          reason: 'Test reason',
+          goalImpact: 'SUPPORTS_GOAL',
         })
       ).rejects.toThrow(NotFoundError);
     });
@@ -3770,6 +3868,8 @@ describe('SprintService - Additional Coverage', () => {
       await expect(
         sprintBacklogManagerService.removePBIFromActiveSprint('sprint-1', 'pbi-1', 'user-1', {
           taskAction: 'delete',
+          reason: 'Test reason',
+          goalImpact: 'SUPPORTS_GOAL',
         })
       ).rejects.toThrow(BadRequestError);
     });
@@ -3787,6 +3887,8 @@ describe('SprintService - Additional Coverage', () => {
       await expect(
         sprintBacklogManagerService.removePBIFromActiveSprint('sprint-1', 'pbi-1', 'user-1', {
           taskAction: 'delete',
+          reason: 'Test reason',
+          goalImpact: 'SUPPORTS_GOAL',
         })
       ).rejects.toThrow(NotFoundError);
     });
@@ -3805,6 +3907,8 @@ describe('SprintService - Additional Coverage', () => {
       await expect(
         sprintBacklogManagerService.removePBIFromActiveSprint('sprint-1', 'pbi-1', 'user-1', {
           taskAction: 'delete',
+          reason: 'Test reason',
+          goalImpact: 'SUPPORTS_GOAL',
         })
       ).rejects.toThrow(NotFoundError);
     });
@@ -3815,6 +3919,532 @@ describe('SprintService - Additional Coverage', () => {
       await expect(sprintBacklogManagerService.getSprintBacklogChanges('sprint-1')).rejects.toThrow(
         NotFoundError
       );
+    });
+  });
+});
+
+/**
+ * The Active Sprint module's Guide gates:
+ *
+ *  - C2: "Sprints are fixed length... a Sprint is one month or less" and "a new Sprint starts
+ *    immediately after the conclusion of the previous Sprint" — enforced on create and update.
+ *  - Major: only a member of the owning team creates, starts, or replans its container.
+ *  - Major: "no changes are made that would endanger the Sprint Goal" — a change declared as
+ *    goal-endangering is recorded as PENDING and needs the Product Owner's acknowledgement,
+ *    which records the renegotiated goal.
+ */
+describe('Active Sprint Guide gates', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    (prisma.impediment.findMany as any).mockResolvedValue([]);
+    mockPlanningPbiLookupAsReady();
+    mockPlanningRecordsAsSatisfied();
+    mockSprintContainerCalendarAsEmpty();
+    (prisma.sprint.create as any).mockImplementation(async (args: any) => ({
+      id: 'sprint-new',
+      ...args.data,
+    }));
+  });
+
+  const plannedSprint = (overrides: Record<string, unknown> = {}) => ({
+    id: 'sprint-1',
+    teamId: 'team-1',
+    status: 'PLANNED',
+    goalId: 'goal-1',
+    sprintGoal: 'Ship the checkout flow',
+    startDate: new Date('2026-01-05T00:00:00.000Z'),
+    endDate: new Date('2026-01-16T00:00:00.000Z'),
+    sprintBacklogItems: [],
+    ...overrides,
+  });
+
+  const activeSprint = (overrides: Record<string, unknown> = {}) => ({
+    id: 'sprint-1',
+    teamId: 'team-1',
+    status: 'ACTIVE',
+    sprintGoal: 'Ship the checkout flow',
+    sprintBacklogItems: [],
+    ...overrides,
+  });
+
+  const readyPbi = { id: 'pbi-1', teamId: 'team-1', title: 'Test PBI', status: 'READY' };
+
+  /** A persisted SprintBacklogChange row, shaped as the API mapper expects it. */
+  const changeRecord = (overrides: Record<string, unknown> = {}) => ({
+    id: 'change-1',
+    sprintId: 'sprint-1',
+    pbiId: 'pbi-1',
+    changeType: 'ADDED',
+    reason: 'Scope grew',
+    goalImpact: 'ENDANGERS_GOAL',
+    approvalStatus: 'PENDING',
+    sprintGoalAtChange: 'Ship the checkout flow',
+    acknowledgedBy: null,
+    acknowledgedAt: null,
+    acknowledgementNote: null,
+    createdBy: 'user-1',
+    createdAt: new Date('2026-01-07T10:00:00.000Z'),
+    pbi: { title: 'Test PBI' },
+    creator: { firstName: 'Dev', lastName: 'One' },
+    acknowledger: null,
+    ...overrides,
+  });
+
+  const createData = {
+    teamId: 'team-1',
+    name: 'Sprint 1',
+    startDate: '2026-01-05T00:00:00.000Z',
+    endDate: '2026-01-30T00:00:00.000Z',
+  };
+
+  describe('createSprint container rules', () => {
+    it('refuses a Sprint longer than one month', async () => {
+      await expect(
+        sprintService.createSprint('user-1', {
+          ...createData,
+          startDate: '2026-01-01T00:00:00.000Z',
+          endDate: '2026-02-05T00:00:00.000Z',
+        })
+      ).rejects.toMatchObject({
+        statusCode: 400,
+        code: GATE_CODES.SPRINT_DURATION_LIMIT,
+      });
+    });
+
+    it('accepts a Sprint of exactly one month', async () => {
+      const result = await sprintService.createSprint('user-1', {
+        ...createData,
+        startDate: '2026-01-01T00:00:00.000Z',
+        endDate: '2026-01-29T00:00:00.000Z',
+      });
+
+      expect(result).toBeDefined();
+    });
+
+    it('refuses a Sprint whose end date is not after its start date', async () => {
+      await expect(
+        sprintService.createSprint('user-1', { ...createData, endDate: createData.startDate })
+      ).rejects.toMatchObject({
+        statusCode: 400,
+        code: GATE_CODES.SPRINT_DURATION_LIMIT,
+      });
+    });
+
+    it('accepts the first Sprint of a team', async () => {
+      const result = await sprintService.createSprint('user-1', createData);
+
+      expect(result).toBeDefined();
+    });
+
+    it('refuses a Sprint that overlaps an existing Sprint', async () => {
+      (prisma.sprint.findMany as any).mockResolvedValue([
+        {
+          id: 'sprint-1',
+          name: 'Sprint 1',
+          startDate: new Date('2026-01-05T00:00:00.000Z'),
+          endDate: new Date('2026-01-30T00:00:00.000Z'),
+        },
+      ]);
+
+      await expect(sprintService.createSprint('user-1', createData)).rejects.toMatchObject({
+        statusCode: 409,
+        code: GATE_CODES.SPRINT_DATES_OVERLAP,
+      });
+    });
+
+    it('counts an unmaterialized generated Sprint as occupied calendar', async () => {
+      (prisma.generatedSprint.findMany as any).mockResolvedValue([
+        {
+          id: 'generated-1',
+          name: 'Sprint-2w-2602',
+          startDate: new Date('2026-01-19T00:00:00.000Z'),
+          endDate: new Date('2026-01-30T00:00:00.000Z'),
+        },
+      ]);
+
+      await expect(sprintService.createSprint('user-1', createData)).rejects.toMatchObject({
+        statusCode: 409,
+        code: GATE_CODES.SPRINT_DATES_OVERLAP,
+      });
+    });
+
+    it('refuses a Sprint that leaves Sprint-less time after the previous one', async () => {
+      (prisma.sprint.findMany as any).mockResolvedValue([
+        {
+          id: 'sprint-0',
+          name: 'Sprint 0',
+          startDate: new Date('2025-12-08T00:00:00.000Z'),
+          endDate: new Date('2025-12-19T00:00:00.000Z'),
+        },
+      ]);
+
+      await expect(sprintService.createSprint('user-1', createData)).rejects.toMatchObject({
+        statusCode: 400,
+        code: GATE_CODES.SPRINT_NOT_CONTIGUOUS,
+      });
+    });
+
+    it('accepts a Sprint that starts the day after the previous one concludes', async () => {
+      (prisma.sprint.findMany as any).mockResolvedValue([
+        {
+          id: 'sprint-0',
+          name: 'Sprint 0',
+          startDate: new Date('2026-01-01T00:00:00.000Z'),
+          endDate: new Date('2026-01-04T00:00:00.000Z'),
+        },
+      ]);
+
+      const result = await sprintService.createSprint('user-1', {
+        ...createData,
+        endDate: '2026-01-16T00:00:00.000Z',
+      });
+
+      expect(result).toBeDefined();
+    });
+
+    it('accepts resuming on the Monday after a Friday conclusion', async () => {
+      (prisma.sprint.findMany as any).mockResolvedValue([
+        {
+          id: 'sprint-0',
+          name: 'Sprint 0',
+          startDate: new Date('2026-01-05T00:00:00.000Z'),
+          endDate: new Date('2026-01-16T00:00:00.000Z'),
+        },
+      ]);
+
+      const result = await sprintService.createSprint('user-1', {
+        ...createData,
+        startDate: '2026-01-19T00:00:00.000Z',
+      });
+
+      expect(result).toBeDefined();
+    });
+
+    it('refuses a non-team-member with GATE_SPRINT_TEAM_MEMBERS_ONLY', async () => {
+      (prisma.teamMember.findFirst as any).mockResolvedValue(null);
+
+      await expect(sprintService.createSprint('outsider-1', createData)).rejects.toMatchObject({
+        statusCode: 403,
+        code: GATE_CODES.SPRINT_TEAM_MEMBERS_ONLY,
+      });
+    });
+  });
+
+  describe('updateSprint', () => {
+    it('refuses a non-member', async () => {
+      (prisma.sprint.findUnique as any).mockResolvedValue(plannedSprint());
+      (prisma.teamMember.findFirst as any).mockResolvedValue(null);
+
+      await expect(
+        sprintService.updateSprint('sprint-1', 'outsider-1', { name: 'Renamed' })
+      ).rejects.toMatchObject({
+        statusCode: 403,
+        code: GATE_CODES.SPRINT_TEAM_MEMBERS_ONLY,
+      });
+    });
+
+    it('refuses to replan a Sprint that is already running', async () => {
+      (prisma.sprint.findUnique as any).mockResolvedValue(plannedSprint({ status: 'ACTIVE' }));
+
+      await expect(
+        sprintService.updateSprint('sprint-1', 'user-1', { sprintGoal: 'Rewritten' })
+      ).rejects.toMatchObject({
+        statusCode: 400,
+        code: GATE_CODES.SPRINT_GOAL_LOCKED,
+      });
+    });
+
+    it('re-applies the container rules to the updated dates', async () => {
+      (prisma.sprint.findUnique as any).mockResolvedValue(plannedSprint());
+
+      await expect(
+        sprintService.updateSprint('sprint-1', 'user-1', {
+          startDate: '2026-01-01T00:00:00.000Z',
+          endDate: '2026-03-01T00:00:00.000Z',
+        })
+      ).rejects.toMatchObject({ code: GATE_CODES.SPRINT_DURATION_LIMIT });
+    });
+
+    it('updates a planned Sprint and keeps the generated calendar in sync', async () => {
+      (prisma.sprint.findUnique as any).mockResolvedValue(plannedSprint());
+
+      const updateSprintRecord = vi.fn().mockResolvedValue({ id: 'sprint-1', name: 'Renamed' });
+      const updateGeneratedSprint = vi.fn();
+      (withTransaction as any).mockImplementation(async (callback: any) =>
+        callback({
+          sprint: { update: updateSprintRecord },
+          generatedSprint: { updateMany: updateGeneratedSprint },
+        })
+      );
+
+      const result = await sprintService.updateSprint('sprint-1', 'user-1', {
+        name: 'Renamed',
+        endDate: '2026-01-20T00:00:00.000Z',
+      });
+
+      expect(result.name).toBe('Renamed');
+      expect(updateGeneratedSprint).toHaveBeenCalled();
+    });
+  });
+
+  describe('startSprint membership', () => {
+    it('refuses to start a Sprint for a non-member', async () => {
+      (prisma.sprint.findUnique as any).mockResolvedValue(plannedSprint());
+      (prisma.teamMember.findFirst as any).mockResolvedValue(null);
+
+      await expect(sprintService.startSprint('sprint-1', 'outsider-1')).rejects.toMatchObject({
+        statusCode: 403,
+        code: GATE_CODES.SPRINT_TEAM_MEMBERS_ONLY,
+      });
+    });
+  });
+
+  describe('mid-Sprint change goal protection', () => {
+    it('records an endangering addition as pending and applies nothing', async () => {
+      (prisma.sprint.findUnique as any).mockResolvedValue(activeSprint());
+      (prisma.productBacklogItem.findUnique as any).mockResolvedValue(readyPbi);
+      (prisma.sprintBacklogChange.create as any).mockResolvedValue(changeRecord());
+
+      const result = await sprintBacklogManagerService.addPBIToActiveSprint('sprint-1', 'user-1', {
+        pbiId: 'pbi-1',
+        reason: 'Scope grew',
+        goalImpact: 'ENDANGERS_GOAL',
+      });
+
+      expect(result.pending).toBe(true);
+      expect(result.sprintBacklogItem).toBeNull();
+      expect(result.change.approvalStatus).toBe('PENDING');
+      // The commitment that was in force when the change was requested is preserved.
+      expect(result.change.sprintGoalAtChange).toBe('Ship the checkout flow');
+      // Nothing was applied: no backlog item, no status change, no burndown refresh.
+      expect(prisma.sprintBacklogItem.create).not.toHaveBeenCalled();
+      expect(prisma.productBacklogItem.update).not.toHaveBeenCalled();
+      expect(prisma.burndownData.findMany).not.toHaveBeenCalled();
+    });
+
+    it('refuses a second pending change for the same item', async () => {
+      (prisma.sprint.findUnique as any).mockResolvedValue(activeSprint());
+      (prisma.productBacklogItem.findUnique as any).mockResolvedValue(readyPbi);
+      (prisma.sprintBacklogChange.findFirst as any).mockResolvedValue({ id: 'existing-pending' });
+
+      await expect(
+        sprintBacklogManagerService.addPBIToActiveSprint('sprint-1', 'user-1', {
+          pbiId: 'pbi-1',
+          reason: 'Scope grew again',
+          goalImpact: 'ENDANGERS_GOAL',
+        })
+      ).rejects.toMatchObject({
+        statusCode: 409,
+        code: GATE_CODES.SPRINT_SCOPE_CHANGE_ALREADY_PENDING,
+      });
+    });
+
+    it('records an endangering removal as pending and leaves the item in the Sprint', async () => {
+      (prisma.sprint.findUnique as any).mockResolvedValue(
+        activeSprint({ sprintBacklogItems: [{ id: 'sbi-1', pbiId: 'pbi-1' }] })
+      );
+      (prisma.productBacklogItem.findUnique as any).mockResolvedValue({
+        ...readyPbi,
+        status: 'IN_PROGRESS',
+      });
+      (prisma.task.findMany as any).mockResolvedValue([{ id: 'task-1' }, { id: 'task-2' }]);
+      (prisma.sprintBacklogChange.create as any).mockResolvedValue(
+        changeRecord({ changeType: 'REMOVED', taskAction: 'delete' })
+      );
+
+      const result = await sprintBacklogManagerService.removePBIFromActiveSprint(
+        'sprint-1',
+        'pbi-1',
+        'user-1',
+        { taskAction: 'delete', reason: 'Cut scope', goalImpact: 'ENDANGERS_GOAL' }
+      );
+
+      expect(result.pending).toBe(true);
+      expect(result.change.approvalStatus).toBe('PENDING');
+      expect(prisma.sprintBacklogItem.delete).not.toHaveBeenCalled();
+      expect(prisma.task.deleteMany).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('acknowledgeSprintBacklogChange', () => {
+    const pendingRemoval = changeRecord({ changeType: 'REMOVED', taskAction: 'delete' });
+
+    it('refuses acknowledgement by a non-Product-Owner', async () => {
+      (prisma.sprintBacklogChange.findFirst as any).mockResolvedValue({
+        ...pendingRemoval,
+        pbi: { id: 'pbi-1', title: 'Test PBI', status: 'IN_PROGRESS' },
+        sprint: activeSprint(),
+      });
+      (prisma.teamMember.findFirst as any).mockResolvedValue({ role: 'DEVELOPERS' });
+
+      await expect(
+        sprintBacklogManagerService.acknowledgeSprintBacklogChange(
+          'sprint-1',
+          'change-1',
+          'dev-1',
+          { decision: 'APPROVE', sprintGoal: 'Renegotiated goal' }
+        )
+      ).rejects.toMatchObject({
+        statusCode: 403,
+        code: GATE_CODES.SPRINT_SCOPE_CHANGE_NEEDS_PO,
+      });
+    });
+
+    it('refuses to decide a change that is not pending', async () => {
+      (prisma.sprintBacklogChange.findFirst as any).mockResolvedValue({
+        ...pendingRemoval,
+        approvalStatus: 'APPLIED',
+        pbi: { id: 'pbi-1', title: 'Test PBI', status: 'IN_PROGRESS' },
+        sprint: activeSprint(),
+      });
+      (prisma.teamMember.findFirst as any).mockResolvedValue({ role: 'PRODUCT_OWNER' });
+
+      await expect(
+        sprintBacklogManagerService.acknowledgeSprintBacklogChange('sprint-1', 'change-1', 'po-1', {
+          decision: 'APPROVE',
+          sprintGoal: 'Renegotiated goal',
+        })
+      ).rejects.toThrow(BadRequestError);
+    });
+
+    it('requires the renegotiated Sprint Goal when approving an endangering change', async () => {
+      (prisma.sprintBacklogChange.findFirst as any).mockResolvedValue({
+        ...changeRecord(),
+        pbi: { id: 'pbi-1', title: 'Test PBI', status: 'READY' },
+        sprint: activeSprint(),
+      });
+      (prisma.teamMember.findFirst as any).mockResolvedValue({ role: 'PRODUCT_OWNER' });
+
+      await expect(
+        sprintBacklogManagerService.acknowledgeSprintBacklogChange('sprint-1', 'change-1', 'po-1', {
+          decision: 'APPROVE',
+        })
+      ).rejects.toThrow(BadRequestError);
+    });
+
+    it('applies the deferred change and records the acknowledgement and the new goal', async () => {
+      (prisma.sprintBacklogChange.findFirst as any).mockResolvedValue({
+        ...changeRecord(),
+        pbi: { id: 'pbi-1', title: 'Test PBI', status: 'READY' },
+        sprint: activeSprint(),
+      });
+      (prisma.teamMember.findFirst as any).mockResolvedValue({ role: 'PRODUCT_OWNER' });
+
+      const applyItem = vi.fn().mockResolvedValue({ id: 'sbi-new', pbi: readyPbi });
+      const updateSprintGoal = vi
+        .fn()
+        .mockResolvedValue({ id: 'sprint-1', sprintGoal: 'Renegotiated goal' });
+      const updateGeneratedSprint = vi.fn();
+      const acknowledgeChange = vi.fn().mockResolvedValue({
+        ...changeRecord({
+          approvalStatus: 'APPLIED',
+          acknowledgedBy: 'po-1',
+          acknowledgedAt: new Date('2026-01-08T09:00:00.000Z'),
+          acknowledgementNote: 'Agreed with the team',
+          acknowledger: { firstName: 'Pat', lastName: 'Owner' },
+        }),
+      });
+
+      (withTransaction as any).mockImplementation(async (callback: any) =>
+        callback({
+          productBacklogItem: {
+            findUnique: vi.fn().mockResolvedValue({ status: 'READY', title: 'Test PBI' }),
+            update: vi.fn(),
+          },
+          sprintBacklogItem: {
+            findFirst: vi.fn().mockResolvedValue(null),
+            create: applyItem,
+            delete: vi.fn(),
+          },
+          task: { deleteMany: vi.fn() },
+          workflow: { findFirst: vi.fn().mockResolvedValue(null) },
+          workflowState: { findMany: vi.fn().mockResolvedValue([]) },
+          statusChangeHistory: { create: vi.fn() },
+          sprint: { update: updateSprintGoal },
+          generatedSprint: { updateMany: updateGeneratedSprint },
+          sprintBacklogChange: { update: acknowledgeChange },
+        })
+      );
+
+      const result = await sprintBacklogManagerService.acknowledgeSprintBacklogChange(
+        'sprint-1',
+        'change-1',
+        'po-1',
+        { decision: 'APPROVE', sprintGoal: 'Renegotiated goal', note: 'Agreed with the team' }
+      );
+
+      expect(result.applied).toBe(true);
+      expect(result.change.approvalStatus).toBe('APPLIED');
+      expect(result.change.acknowledgedByName).toBe('Pat Owner');
+      expect(result.sprint?.sprintGoal).toBe('Renegotiated goal');
+      expect(updateSprintGoal).toHaveBeenCalled();
+      expect(updateGeneratedSprint).toHaveBeenCalled();
+    });
+
+    it('refuses a stale approval when the item is no longer READY', async () => {
+      (prisma.sprintBacklogChange.findFirst as any).mockResolvedValue({
+        ...changeRecord(),
+        pbi: { id: 'pbi-1', title: 'Test PBI', status: 'READY' },
+        sprint: activeSprint(),
+      });
+      (prisma.teamMember.findFirst as any).mockResolvedValue({ role: 'PRODUCT_OWNER' });
+
+      (withTransaction as any).mockImplementation(async (callback: any) =>
+        callback({
+          productBacklogItem: {
+            findUnique: vi.fn().mockResolvedValue({ status: 'IN_PROGRESS', title: 'Test PBI' }),
+            update: vi.fn(),
+          },
+          sprintBacklogItem: { findFirst: vi.fn(), create: vi.fn(), delete: vi.fn() },
+          task: { deleteMany: vi.fn() },
+          workflow: { findFirst: vi.fn() },
+          workflowState: { findMany: vi.fn() },
+          statusChangeHistory: { create: vi.fn() },
+          sprint: { update: vi.fn() },
+          generatedSprint: { updateMany: vi.fn() },
+          sprintBacklogChange: { update: vi.fn() },
+        })
+      );
+
+      await expect(
+        sprintBacklogManagerService.acknowledgeSprintBacklogChange('sprint-1', 'change-1', 'po-1', {
+          decision: 'APPROVE',
+          sprintGoal: 'Renegotiated goal',
+        })
+      ).rejects.toMatchObject({ code: GATE_CODES.PBI_NOT_READY });
+    });
+
+    it('rejects a pending change without touching the Sprint Backlog', async () => {
+      (prisma.sprintBacklogChange.findFirst as any).mockResolvedValue({
+        ...pendingRemoval,
+        pbi: { id: 'pbi-1', title: 'Test PBI', status: 'IN_PROGRESS' },
+        sprint: activeSprint(),
+      });
+      (prisma.teamMember.findFirst as any).mockResolvedValue({ role: 'PRODUCT_OWNER' });
+      (prisma.sprintBacklogChange.update as any).mockResolvedValue(
+        changeRecord({
+          changeType: 'REMOVED',
+          approvalStatus: 'REJECTED',
+          acknowledgedBy: 'po-1',
+          acknowledgedAt: new Date('2026-01-08T09:00:00.000Z'),
+          acknowledgementNote: 'Not now',
+          acknowledger: { firstName: 'Pat', lastName: 'Owner' },
+        })
+      );
+
+      const result = await sprintBacklogManagerService.acknowledgeSprintBacklogChange(
+        'sprint-1',
+        'change-1',
+        'po-1',
+        { decision: 'REJECT', note: 'Not now' }
+      );
+
+      expect(result.applied).toBe(false);
+      expect(result.change.approvalStatus).toBe('REJECTED');
+      expect(result.change.acknowledgementNote).toBe('Not now');
+      expect(prisma.sprintBacklogItem.create).not.toHaveBeenCalled();
+      expect(prisma.sprintBacklogItem.delete).not.toHaveBeenCalled();
+      expect(prisma.task.deleteMany).not.toHaveBeenCalled();
     });
   });
 });

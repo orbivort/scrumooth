@@ -276,7 +276,14 @@ curl -X GET "https://api.scrumooth.dev/api/v1/sprints/available-pbis?teamId=550e
 
 ### Create Sprint
 
-Create a new sprint for a team. Requires Scrum Master role.
+Create a new sprint for a team. The caller must be a member of that team.
+
+The Sprint container rule is enforced here, not only in the interface: the Sprint may span at
+most one month (`SPRINT_MAX_DURATION_DAYS`, 28 days), it may not overlap another Sprint or an
+unmaterialized generated Sprint of the same team, and it must start immediately after the
+previous Sprint concludes (at most the intervening weekend may separate them). The generated
+Sprint calendar produced by `POST /sprint-configuration/generate` already satisfies these rules
+and is unaffected.
 
 **Endpoint**
 
@@ -287,7 +294,7 @@ POST /api/v1/sprints
 **Authentication**
 
 - Required
-- Scrum Master role required
+- Team member of the supplied `teamId` (`GATE_SPRINT_TEAM_MEMBERS_ONLY`)
 
 **Request Body**
 
@@ -347,14 +354,28 @@ Content-Type: application/json
 }
 ```
 
-**400 Bad Request - Invalid Date Range**
+**400 Bad Request - Sprint Longer Than One Month**
 
 ```json
 {
   "success": false,
   "error": {
-    "code": "VALIDATION_ERROR",
-    "message": "End date must be after start date"
+    "code": "GATE_SPRINT_DURATION_LIMIT",
+    "message": "The Sprint cannot be created: its span of 35 days exceeds the one-month maximum of 28 days. Shorten the Sprint to one month or less."
+  }
+}
+```
+
+The same code is returned when the end date is not after the start date.
+
+**400 Bad Request - Sprint-Less Time Between Sprints**
+
+```json
+{
+  "success": false,
+  "error": {
+    "code": "GATE_SPRINT_NOT_CONTIGUOUS",
+    "message": "A new Sprint must start immediately after the previous one concludes: the gap to \"Sprint 1\" is larger than the 3 days allowed for the intervening weekend. Adjust the dates so no Sprint-less time is left between them."
   }
 }
 ```
@@ -365,8 +386,20 @@ Content-Type: application/json
 {
   "success": false,
   "error": {
-    "code": "CONFLICT",
-    "message": "Sprint dates overlap with an existing sprint"
+    "code": "GATE_SPRINT_DATES_OVERLAP",
+    "message": "The Sprint dates overlap an existing Sprint (Sprint 1). A team cannot run two Sprints at the same time."
+  }
+}
+```
+
+**403 Forbidden - Not a Team Member**
+
+```json
+{
+  "success": false,
+  "error": {
+    "code": "GATE_SPRINT_TEAM_MEMBERS_ONLY",
+    "message": "The Sprint belongs to its Scrum Team: only a member of that team can create, start, or replan it."
   }
 }
 ```
@@ -458,7 +491,15 @@ curl -X GET https://api.scrumooth.dev/api/v1/sprints/660e8400-e29b-41d4-a716-446
 
 ### Update Sprint
 
-Update sprint information. Only allowed in PLANNING state. Requires Scrum Master role.
+Update sprint information (name, dates, Sprint Goal, linked Product Goal). The caller must be a
+member of the Sprint's team, and only a Sprint that is still being planned (`DRAFT` or
+`PLANNED`) can be updated: once a Sprint is running, its Goal and dates are the commitment the
+team inspects, and the sanctioned way to revise the Goal is the Product Owner's acknowledgement
+of a goal-endangering Sprint Backlog change (see _Acknowledge Sprint Backlog Change_).
+
+The container rules are re-applied to the resulting dates, so an update cannot introduce a
+Sprint the create path would refuse. When the dates change, the linked `GeneratedSprint` is
+updated in the same transaction so the planning calendar stays in sync.
 
 **Endpoint**
 
@@ -469,7 +510,7 @@ PUT /api/v1/sprints/:id
 **Authentication**
 
 - Required
-- Scrum Master role required
+- Team member of the Sprint's team (`GATE_SPRINT_TEAM_MEMBERS_ONLY`)
 
 **Path Parameters**
 
@@ -519,11 +560,16 @@ Content-Type: application/json
 {
   "success": false,
   "error": {
-    "code": "VALIDATION_ERROR",
-    "message": "Cannot update a sprint that is not in PLANNING state"
+    "code": "GATE_SPRINT_GOAL_LOCKED",
+    "message": "Only a Sprint that is still being planned (DRAFT or PLANNED) can be updated. This Sprint is in status ACTIVE."
   }
 }
 ```
+
+**400 Bad Request - Container Rule Violation**
+
+The same refusals as _Create Sprint_ apply to the resulting dates:
+`GATE_SPRINT_DURATION_LIMIT`, `GATE_SPRINT_NOT_CONTIGUOUS`, and `GATE_SPRINT_DATES_OVERLAP`.
 
 **403 Forbidden - Insufficient Permissions**
 
@@ -531,8 +577,8 @@ Content-Type: application/json
 {
   "success": false,
   "error": {
-    "code": "AUTHORIZATION_ERROR",
-    "message": "Scrum Master role required"
+    "code": "GATE_SPRINT_TEAM_MEMBERS_ONLY",
+    "message": "The Sprint belongs to its Scrum Team: only a member of that team can create, start, or replan it."
   }
 }
 ```
@@ -556,8 +602,8 @@ curl -X PUT https://api.scrumooth.dev/api/v1/sprints/660e8400-e29b-41d4-a716-446
 Start a sprint, transitioning it from `DRAFT`/`PLANNED` to `ACTIVE`. The transition is a
 **readiness** check against what was already recorded during Sprint Planning; any request body
 is ignored (the payload shape below is accepted for backward compatibility but not applied).
-Starting is not role-gated — any authenticated team member may start the Sprint — but the
-following must all hold:
+Starting is not role-gated — any member of the Sprint's team may start it
+(`GATE_SPRINT_TEAM_MEMBERS_ONLY` refuses a non-member) — but the following must all hold:
 
 - a committed Sprint Goal,
 - a linked Product Goal,
@@ -1521,7 +1567,18 @@ curl -X GET https://api.scrumooth.dev/api/v1/sprints/660e8400-e29b-41d4-a716-446
 
 ### Add PBI to Sprint
 
-Add a product backlog item to the sprint backlog. Requires Scrum Master or Product Owner role.
+Add a product backlog item to an `ACTIVE` Sprint's Sprint Backlog. Developers-only: the Sprint
+Backlog is owned by the Developers who do the work.
+
+The change must state **why** it is being made and whether it **endangers the Sprint Goal**:
+
+- `goalImpact: "SUPPORTS_GOAL"` — the change is applied immediately and recorded as `APPLIED`.
+- `goalImpact: "ENDANGERS_GOAL"` — nothing is applied. The request is recorded as `PENDING`, the
+  Sprint Backlog is left untouched, and the response carries `pending: true`. The Product Owner
+  must then acknowledge it (see _Acknowledge Sprint Backlog Change_).
+
+Every recorded change stores the Sprint Goal that was in force when it was requested
+(`sprintGoalAtChange`), so the audit trail cannot be rewritten by a later goal edit.
 
 **Endpoint**
 
@@ -1532,7 +1589,7 @@ POST /api/v1/sprints/:sprintId/backlog-items
 **Authentication**
 
 - Required
-- Scrum Master or Product Owner role required
+- Developer role on the Sprint's team
 
 **Path Parameters**
 
@@ -1543,11 +1600,12 @@ POST /api/v1/sprints/:sprintId/backlog-items
 ```json
 {
   "pbiId": "string (required, UUID of the product backlog item)",
-  "reason": "string (optional, max 500 chars)"
+  "reason": "string (required, 1-500 chars)",
+  "goalImpact": "string (required, one of: SUPPORTS_GOAL, ENDANGERS_GOAL)"
 }
 ```
 
-**Success Response**
+**Success Response — applied**
 
 ```http
 HTTP/1.1 201 Created
@@ -1556,41 +1614,91 @@ Content-Type: application/json
 {
   "success": true,
   "data": {
-    "backlogItem": {
+    "pending": false,
+    "sprintBacklogItem": {
       "id": "aa0e8400-e29b-41d4-a716-446655440001",
       "sprintId": "660e8400-e29b-41d4-a716-446655440000",
-      "pbiId": "880e8400-e29b-41d4-a716-446655440003",
-      "addedAt": "2026-05-05T10:00:00.000Z",
-      "addedBy": "550e8400-e29b-41d4-a716-446655440001",
-      "reason": "Critical bug fix needed for release"
+      "pbiId": "880e8400-e29b-41d4-a716-446655440003"
     },
-    "message": "PBI added to sprint backlog successfully"
+    "change": {
+      "id": "bb0e8400-e29b-41d4-a716-446655440002",
+      "changeType": "ADDED",
+      "reason": "Critical bug fix needed for release",
+      "goalImpact": "SUPPORTS_GOAL",
+      "approvalStatus": "APPLIED",
+      "sprintGoalAtChange": "Deliver user authentication module",
+      "changedBy": "550e8400-e29b-41d4-a716-446655440001",
+      "changedByName": "Dana Developer",
+      "createdAt": "2026-05-05T10:00:00.000Z"
+    }
+  }
+}
+```
+
+**Success Response — awaiting the Product Owner**
+
+```http
+HTTP/1.1 201 Created
+Content-Type: application/json
+
+{
+  "success": true,
+  "data": {
+    "pending": true,
+    "sprintBacklogItem": null,
+    "change": {
+      "id": "bb0e8400-e29b-41d4-a716-446655440003",
+      "changeType": "ADDED",
+      "reason": "Legal requirement arrived mid-Sprint",
+      "goalImpact": "ENDANGERS_GOAL",
+      "approvalStatus": "PENDING",
+      "sprintGoalAtChange": "Deliver user authentication module",
+      "createdAt": "2026-05-05T10:00:00.000Z"
+    }
   }
 }
 ```
 
 **Error Responses**
 
-**404 Not Found - PBI Not Found**
+**400 Bad Request - Missing Reason or Goal Impact**
 
 ```json
 {
   "success": false,
   "error": {
-    "code": "NOT_FOUND",
-    "message": "Product backlog item not found"
+    "code": "VALIDATION_ERROR",
+    "message": "Validation failed",
+    "details": [
+      {
+        "field": "reason",
+        "message": "Reason is required"
+      }
+    ]
   }
 }
 ```
 
-**409 Conflict - PBI Already in Sprint**
+**400 Bad Request - Item Not Refined**
 
 ```json
 {
   "success": false,
   "error": {
-    "code": "CONFLICT",
-    "message": "PBI is already in the sprint backlog"
+    "code": "GATE_PBI_NOT_READY",
+    "message": "Only Product Backlog items refined to READY can enter a Sprint. 1 selected item(s) are not READY yet: \"Checkout - retry\"."
+  }
+}
+```
+
+**409 Conflict - Goal-Endangering Change Already Pending**
+
+```json
+{
+  "success": false,
+  "error": {
+    "code": "GATE_SPRINT_SCOPE_CHANGE_ALREADY_PENDING",
+    "message": "A change to this item that endangers the Sprint Goal is already awaiting the Product Owner's acknowledgement. Resolve it before requesting another."
   }
 }
 ```
@@ -1603,7 +1711,8 @@ curl -X POST https://api.scrumooth.dev/api/v1/sprints/660e8400-e29b-41d4-a716-44
   -b cookies.txt \
   -d '{
     "pbiId": "880e8400-e29b-41d4-a716-446655440003",
-    "reason": "Critical bug fix needed for release"
+    "reason": "Critical bug fix needed for release",
+    "goalImpact": "SUPPORTS_GOAL"
   }'
 ```
 
@@ -1611,7 +1720,16 @@ curl -X POST https://api.scrumooth.dev/api/v1/sprints/660e8400-e29b-41d4-a716-44
 
 ### Remove PBI from Sprint
 
-Remove a product backlog item from the sprint backlog. Requires Scrum Master or Product Owner role.
+Remove a product backlog item from an `ACTIVE` Sprint's Sprint Backlog. Developers-only. The
+same two-phase contract as _Add PBI to Sprint_ applies: a change declared as endangering the
+Sprint Goal is recorded as `PENDING` and the Sprint Backlog is left unchanged until the Product
+Owner acknowledges it.
+
+`taskAction` decides what happens to the item's tasks once the change is applied:
+
+- `delete` — the tasks are deleted,
+- `return_to_backlog` — the item returns to `READY` and its tasks are deleted,
+- `keep_in_sprint` — the tasks remain.
 
 **Endpoint**
 
@@ -1622,7 +1740,7 @@ DELETE /api/v1/sprints/:sprintId/backlog-items/:pbiId
 **Authentication**
 
 - Required
-- Scrum Master or Product Owner role required
+- Developer role on the Sprint's team
 
 **Path Parameters**
 
@@ -1634,11 +1752,12 @@ DELETE /api/v1/sprints/:sprintId/backlog-items/:pbiId
 ```json
 {
   "taskAction": "string (required, one of: delete, return_to_backlog, keep_in_sprint)",
-  "reason": "string (optional, max 500 chars)"
+  "reason": "string (required, 1-500 chars)",
+  "goalImpact": "string (required, one of: SUPPORTS_GOAL, ENDANGERS_GOAL)"
 }
 ```
 
-**Success Response**
+**Success Response — applied**
 
 ```http
 HTTP/1.1 200 OK
@@ -1647,8 +1766,37 @@ Content-Type: application/json
 {
   "success": true,
   "data": {
-    "message": "PBI removed from sprint backlog successfully",
-    "taskAction": "return_to_backlog"
+    "pending": false,
+    "sprintBacklogItem": null,
+    "change": {
+      "id": "bb0e8400-e29b-41d4-a716-446655440004",
+      "changeType": "REMOVED",
+      "reason": "Scope reduced for this sprint",
+      "goalImpact": "SUPPORTS_GOAL",
+      "approvalStatus": "APPLIED",
+      "taskAction": "return_to_backlog",
+      "sprintGoalAtChange": "Deliver user authentication module",
+      "createdAt": "2026-05-06T09:00:00.000Z"
+    }
+  }
+}
+```
+
+**Success Response — awaiting the Product Owner**
+
+```json
+{
+  "success": true,
+  "data": {
+    "pending": true,
+    "sprintBacklogItem": null,
+    "change": {
+      "id": "bb0e8400-e29b-41d4-a716-446655440005",
+      "changeType": "REMOVED",
+      "goalImpact": "ENDANGERS_GOAL",
+      "approvalStatus": "PENDING",
+      "taskAction": "keep_in_sprint"
+    }
   }
 }
 ```
@@ -1662,7 +1810,7 @@ Content-Type: application/json
   "success": false,
   "error": {
     "code": "NOT_FOUND",
-    "message": "PBI is not in the sprint backlog"
+    "message": "Sprint Backlog Item not found"
   }
 }
 ```
@@ -1674,7 +1822,13 @@ Content-Type: application/json
   "success": false,
   "error": {
     "code": "VALIDATION_ERROR",
-    "message": "Invalid task action. Must be one of: delete, return_to_backlog, keep_in_sprint"
+    "message": "Validation failed",
+    "details": [
+      {
+        "field": "taskAction",
+        "message": "Invalid option"
+      }
+    ]
   }
 }
 ```
@@ -1687,7 +1841,141 @@ curl -X DELETE https://api.scrumooth.dev/api/v1/sprints/660e8400-e29b-41d4-a716-
   -b cookies.txt \
   -d '{
     "taskAction": "return_to_backlog",
-    "reason": "Scope reduced for this sprint"
+    "reason": "Scope reduced for this sprint",
+    "goalImpact": "SUPPORTS_GOAL"
+  }'
+```
+
+---
+
+### Acknowledge Sprint Backlog Change
+
+Acknowledge (approve) or reject a Sprint Backlog change that was recorded as `PENDING` because
+it endangers the Sprint Goal. Product-Owner-only: "no changes are made that would endanger the
+Sprint Goal", so the acknowledgement is the Product Owner's decision to conclude.
+
+- `APPROVE` re-validates the deferred change (an addition still requires the item to be `READY`
+  and absent; a removal still requires the item to be present), applies it in one transaction,
+  and requires `sprintGoal`: the renegotiated Sprint Goal, which replaces the commitment and is
+  mirrored onto the linked `GeneratedSprint`. The goal that was in force _before_ the change
+  stays recorded on the change row (`sprintGoalAtChange`).
+- `REJECT` clears the pending state without touching the Sprint Backlog, so a pending change can
+  never become un-clearable.
+
+**Endpoint**
+
+```
+POST /api/v1/sprints/:sprintId/backlog-changes/:changeId/acknowledge
+```
+
+**Authentication**
+
+- Required
+- Product Owner of the Sprint's team (`GATE_SPRINT_SCOPE_CHANGE_NEEDS_PO`)
+
+**Path Parameters**
+
+- `sprintId` (string, required): Sprint UUID
+- `changeId` (string, required): Sprint Backlog change UUID
+
+**Request Body**
+
+```json
+{
+  "decision": "string (required, one of: APPROVE, REJECT)",
+  "sprintGoal": "string (required when approving, 1-500 chars)",
+  "note": "string (optional, max 1000 chars)"
+}
+```
+
+**Success Response**
+
+```http
+HTTP/1.1 200 OK
+Content-Type: application/json
+
+{
+  "success": true,
+  "data": {
+    "applied": true,
+    "sprint": {
+      "id": "660e8400-e29b-41d4-a716-446655440000",
+      "sprintGoal": "Deliver checkout and authentication"
+    },
+    "change": {
+      "id": "bb0e8400-e29b-41d4-a716-446655440003",
+      "changeType": "ADDED",
+      "approvalStatus": "APPLIED",
+      "sprintGoalAtChange": "Deliver user authentication module",
+      "acknowledgedBy": "770e8400-e29b-41d4-a716-446655440009",
+      "acknowledgedByName": "Pat Owner",
+      "acknowledgedAt": "2026-05-06T08:00:00.000Z",
+      "acknowledgementNote": "Agreed with the team"
+    }
+  }
+}
+```
+
+**Error Responses**
+
+**403 Forbidden - Not the Product Owner**
+
+```json
+{
+  "success": false,
+  "error": {
+    "code": "GATE_SPRINT_SCOPE_CHANGE_NEEDS_PO",
+    "message": "Only the Product Owner can acknowledge a Sprint Backlog change that endangers the Sprint Goal."
+  }
+}
+```
+
+**400 Bad Request - Not Pending**
+
+```json
+{
+  "success": false,
+  "error": {
+    "code": "BAD_REQUEST",
+    "message": "This Sprint Backlog change is not awaiting acknowledgement (status: APPLIED)."
+  }
+}
+```
+
+**400 Bad Request - Renegotiated Goal Missing**
+
+```json
+{
+  "success": false,
+  "error": {
+    "code": "BAD_REQUEST",
+    "message": "Approving a change that endangers the Sprint Goal requires the renegotiated Sprint Goal, so the team knows what it is now working toward."
+  }
+}
+```
+
+**400 Bad Request - Stale Approval**
+
+```json
+{
+  "success": false,
+  "error": {
+    "code": "GATE_PBI_NOT_READY",
+    "message": "Only Product Backlog items refined to READY can enter a Sprint. 1 selected item(s) are not READY yet: \"Checkout - retry\"."
+  }
+}
+```
+
+**Example Request**
+
+```bash
+curl -X POST https://api.scrumooth.dev/api/v1/sprints/660e8400-e29b-41d4-a716-446655440000/backlog-changes/bb0e8400-e29b-41d4-a716-446655440003/acknowledge \
+  -H "Content-Type: application/json" \
+  -b cookies.txt \
+  -d '{
+    "decision": "APPROVE",
+    "sprintGoal": "Deliver checkout and authentication",
+    "note": "Agreed with the team"
   }'
 ```
 

@@ -1,7 +1,24 @@
 // Sprint Service
 import prisma from '../utils/prisma';
 import { NotFoundError, BadRequestError, ForbiddenError, localizedError } from '../utils/errors';
-import { GATE_CODES, type GateCode } from '@scrumooth/shared';
+import {
+  GATE_CODES,
+  SPRINT_CHANGE_APPROVAL_STATUSES,
+  SPRINT_CHANGE_DECISIONS,
+  SPRINT_CONTIGUITY_MAX_GAP_DAYS,
+  SPRINT_GOAL_IMPACTS,
+  SPRINT_MAX_DURATION_DAYS,
+  contiguityGapDays,
+  isSprintChangeApprovalStatus,
+  isSprintGoalImpact,
+  rangesOverlap,
+  sprintDurationDays,
+  toUtcDay,
+  type GateCode,
+  type SprintChangeApprovalStatus,
+  type SprintChangeDecision,
+  type SprintGoalImpact,
+} from '@scrumooth/shared';
 import { generateUUIDv7 } from '../utils/uuid';
 import { workflowService } from './workflow.service';
 import {
@@ -51,6 +68,18 @@ export interface CreateSprintData {
   endDate: string;
   sprintGoal?: string;
   goalId?: string;
+}
+
+/**
+ * Update sprint data. Only a Sprint that is still being planned (`DRAFT`/`PLANNED`) can be
+ * updated: once it is running, its Goal and dates are the commitment the team inspects.
+ */
+export interface UpdateSprintData {
+  name?: string;
+  startDate?: string;
+  endDate?: string;
+  sprintGoal?: string;
+  goalId?: string | null;
 }
 
 // Create task data
@@ -424,6 +453,14 @@ class SprintService {
    * Create a new sprint
    */
   async createSprint(userId: string, data: CreateSprintData): Promise<Sprint> {
+    // The Sprint is the Scrum Team's own container, so only a member of the owning team may
+    // create one. Without this, any authenticated user could open a container for a team they
+    // do not belong to, which undermines self-management and the transparency of who acted.
+    await this.assertTeamMember(data.teamId, userId, {
+      messageKey: 'errors:sprint.teamMembersOnly',
+      gateCode: GATE_CODES.SPRINT_TEAM_MEMBERS_ONLY,
+    });
+
     // Check if there's an active sprint
     const activeSprint = await prisma.sprint.findFirst({
       where: {
@@ -437,6 +474,15 @@ class SprintService {
       throw new BadRequestError('Cannot create a new sprint while another sprint is active');
     }
 
+    const startDate = new Date(data.startDate);
+    const endDate = new Date(data.endDate);
+
+    // "Sprints are fixed length... a Sprint is one month or less" and "a new Sprint starts
+    // immediately after the conclusion of the previous Sprint." Enforced here (not only in the
+    // interface) so a direct API call cannot create a Sprint that runs too long, overlaps
+    // another one, or leaves Sprint-less time in front of it.
+    await this.assertSprintContainerRules(data.teamId, { start: startDate, end: endDate });
+
     const sprintId = generateUUIDv7();
 
     const sprint = await prisma.sprint.create({
@@ -444,8 +490,8 @@ class SprintService {
         id: sprintId,
         teamId: data.teamId,
         name: data.name,
-        startDate: new Date(data.startDate),
-        endDate: new Date(data.endDate),
+        startDate,
+        endDate,
         sprintGoal: data.sprintGoal,
         goalId: data.goalId,
         status: 'PLANNED',
@@ -454,14 +500,85 @@ class SprintService {
     });
 
     // Create burndown data points
-    await this.initializeBurndownData(
-      sprint.id,
-      new Date(data.startDate),
-      new Date(data.endDate),
-      userId
-    );
+    await this.initializeBurndownData(sprint.id, startDate, endDate, userId);
 
     return sprint;
+  }
+
+  /**
+   * Update a Sprint that is still being planned.
+   *
+   * Only `DRAFT`/`PLANNED` Sprints are editable: once a Sprint is running its Goal is the
+   * commitment the team inspects, so revising it belongs to the Product Owner's acknowledgement
+   * of a goal-endangering Sprint Backlog change, not to a direct edit. The container rules
+   * (one month or less, no overlap, no sprint-less time) are re-applied to the resulting dates,
+   * so an update cannot smuggle in a container the create path would refuse.
+   */
+  async updateSprint(sprintId: string, userId: string, data: UpdateSprintData): Promise<Sprint> {
+    const sprint = await prisma.sprint.findUnique({
+      where: { id: sprintId },
+      select: { id: true, teamId: true, status: true, startDate: true, endDate: true },
+    });
+
+    if (!sprint) {
+      throw new NotFoundError('Sprint');
+    }
+
+    await this.assertTeamMember(sprint.teamId, userId, {
+      messageKey: 'errors:sprint.teamMembersOnly',
+      gateCode: GATE_CODES.SPRINT_TEAM_MEMBERS_ONLY,
+    });
+
+    if (sprint.status !== 'DRAFT' && sprint.status !== 'PLANNED') {
+      throw localizedError(
+        'errors:sprint.notReplannable',
+        { status: sprint.status },
+        400,
+        GATE_CODES.SPRINT_GOAL_LOCKED
+      );
+    }
+
+    const startDate = data.startDate ? new Date(data.startDate) : sprint.startDate;
+    const endDate = data.endDate ? new Date(data.endDate) : sprint.endDate;
+
+    await this.assertSprintContainerRules(
+      sprint.teamId,
+      { start: startDate, end: endDate },
+      { excludeSprintIds: [sprint.id] }
+    );
+
+    const datesChanged =
+      startDate.getTime() !== sprint.startDate.getTime() ||
+      endDate.getTime() !== sprint.endDate.getTime();
+
+    return withTransaction(
+      async (tx) => {
+        const updated = await tx.sprint.update({
+          where: { id: sprint.id },
+          data: {
+            ...(data.name !== undefined ? { name: data.name } : {}),
+            ...(data.startDate !== undefined ? { startDate } : {}),
+            ...(data.endDate !== undefined ? { endDate } : {}),
+            ...(data.sprintGoal !== undefined ? { sprintGoal: data.sprintGoal } : {}),
+            ...(data.goalId !== undefined ? { goalId: data.goalId } : {}),
+            updatedBy: userId,
+          },
+        });
+
+        // Keep the linked GeneratedSprint in sync: it is the calendar record the planning
+        // interface reads, so leaving stale dates behind would show two different containers
+        // for the same Sprint.
+        if (datesChanged) {
+          await tx.generatedSprint.updateMany({
+            where: { sprintId: sprint.id },
+            data: { startDate, endDate },
+          });
+        }
+
+        return updated;
+      },
+      { ...TRANSACTION_CONFIG.DEFAULT, operationName: 'updateSprint' }
+    );
   }
 
   /**
@@ -1247,8 +1364,18 @@ class SprintService {
       throw new BadRequestError(requestT('errors:sprint.notPlanned'));
     }
 
-    // Readiness validation (not role-gated): a Sprint can only start once its Sprint
-    // Goal is committed AND a non-empty backlog has been saved during Sprint Planning.
+    // The Sprint is the Scrum Team's own container: opening it requires membership of the team
+    // that owns it. The Guide assigns no specific role the right to start a Sprint, so this is a
+    // membership gate rather than a role gate (mirroring `completeSprint`) — but it does stop a
+    // non-member from opening another team's container through the API.
+    await this.assertTeamMember(sprint.teamId, userId, {
+      messageKey: 'errors:sprint.teamMembersOnly',
+      gateCode: GATE_CODES.SPRINT_TEAM_MEMBERS_ONLY,
+    });
+
+    // Readiness validation (not role-gated beyond team membership): a Sprint can only start
+    // once its Sprint Goal is committed AND a non-empty backlog has been saved during Sprint
+    // Planning.
     // The backlog and its decomposed tasks are persisted via `saveSprintBacklog`;
     // the start transition merely consumes what was already planned.
     //
@@ -2110,15 +2237,165 @@ class SprintService {
    * Assert that the acting user is a member of the given team (any Scrum Team role:
    * Developer, Product Owner, or Scrum Master). Throws `ForbiddenError` when the user is
    * not a member. Completing a Sprint is available to any Scrum Team member.
+   *
+   * When `options.messageKey` (and optionally `options.gateCode`) is supplied, the refusal is
+   * localized and typed so it is accounted as a Scrum Guide gate refusal rather than a generic
+   * 403. Callers that omit the options keep the original behaviour.
    */
-  private async assertTeamMember(teamId: string, userId: string): Promise<void> {
+  private async assertTeamMember(
+    teamId: string,
+    userId: string,
+    options?: { messageKey?: string; gateCode?: GateCode }
+  ): Promise<void> {
     const teamMember = await prisma.teamMember.findFirst({
       where: { teamId, userId },
       select: { id: true },
     });
 
     if (!teamMember) {
+      if (options?.messageKey) {
+        throw localizedError(
+          options.messageKey,
+          {},
+          403,
+          options.gateCode ?? GATE_CODES.SPRINT_TEAM_MEMBERS_ONLY
+        );
+      }
       throw new ForbiddenError(requestT('errors:notTeamMember'));
+    }
+  }
+
+  /**
+   * Enforce the Sprint container rules of the 2020 Scrum Guide:
+   *
+   *  - "Sprints are fixed length. ... a Sprint is one month or less." → the span between the
+   *    start and end date may not exceed `SPRINT_MAX_DURATION_DAYS` (the product's four-week
+   *    convention, which also caps every event timebox).
+   *  - A team runs one Sprint at a time → the new range may not intersect another of the team's
+   *    Sprints.
+   *  - "A new Sprint starts immediately after the conclusion of the previous Sprint." → the
+   *    range must be adjacent to its neighbours, tolerating only the intervening weekend, which
+   *    is the cadence the product's own generated calendar uses (Friday conclusion, Monday
+   *    start).
+   *
+   * The occupied calendar is the team's non-cancelled `Sprint` rows plus its generated Sprints
+   * that have not been materialized yet. A materialized generated Sprint is excluded on purpose:
+   * `convertGeneratedSprintToSprint` copies its dates verbatim, so counting both would make
+   * every legal Sprint self-overlapping.
+   */
+  private async assertSprintContainerRules(
+    teamId: string,
+    range: { start: Date; end: Date },
+    options?: { excludeSprintIds?: string[] }
+  ): Promise<void> {
+    const duration = sprintDurationDays(range.start, range.end);
+    if (duration === null) {
+      throw localizedError(
+        'errors:sprint.invalidDateRange',
+        {},
+        400,
+        GATE_CODES.SPRINT_DURATION_LIMIT
+      );
+    }
+
+    if (duration > SPRINT_MAX_DURATION_DAYS) {
+      throw localizedError(
+        'errors:sprint.durationLimit',
+        { days: duration, max: SPRINT_MAX_DURATION_DAYS },
+        400,
+        GATE_CODES.SPRINT_DURATION_LIMIT
+      );
+    }
+
+    const excludedIds = options?.excludeSprintIds ?? [];
+
+    const [sprints, generatedSprints] = await Promise.all([
+      prisma.sprint.findMany({
+        where: {
+          teamId,
+          status: { in: ['DRAFT', 'PLANNED', 'ACTIVE', 'COMPLETED'] },
+          ...(excludedIds.length > 0 ? { id: { notIn: excludedIds } } : {}),
+        },
+        select: { id: true, name: true, startDate: true, endDate: true },
+        orderBy: { startDate: 'asc' },
+      }),
+      prisma.generatedSprint.findMany({
+        where: { teamId, sprintId: null, status: { not: 'CANCELLED' } },
+        select: { id: true, name: true, startDate: true, endDate: true },
+        orderBy: { startDate: 'asc' },
+      }),
+    ]);
+
+    const occupied = [
+      ...sprints.map((sprint) => ({
+        id: sprint.id,
+        name: sprint.name,
+        startDate: sprint.startDate,
+        endDate: sprint.endDate,
+      })),
+      ...generatedSprints.map((generated) => ({
+        id: generated.id,
+        name: generated.name,
+        startDate: generated.startDate,
+        endDate: generated.endDate,
+      })),
+    ];
+
+    for (const entry of occupied) {
+      if (
+        rangesOverlap(
+          { start: range.start, end: range.end },
+          { start: entry.startDate, end: entry.endDate }
+        )
+      ) {
+        throw localizedError(
+          'errors:sprint.datesOverlap',
+          { sprintName: entry.name },
+          409,
+          GATE_CODES.SPRINT_DATES_OVERLAP
+        );
+      }
+    }
+
+    // Nearest neighbour before and after the candidate range: a Sprint inserted into the
+    // calendar must leave no Sprint-less time on either side of it.
+    const startDay = toUtcDay(range.start);
+    const endDay = toUtcDay(range.end);
+
+    const previous = occupied
+      .filter((entry) => {
+        const entryEnd = toUtcDay(entry.endDate);
+        return startDay !== null && entryEnd !== null && entryEnd < startDay;
+      })
+      .sort((a, b) => (toUtcDay(b.endDate) ?? 0) - (toUtcDay(a.endDate) ?? 0))[0];
+
+    const next = occupied
+      .filter((entry) => {
+        const entryStart = toUtcDay(entry.startDate);
+        return endDay !== null && entryStart !== null && entryStart > endDay;
+      })
+      .sort((a, b) => (toUtcDay(a.startDate) ?? 0) - (toUtcDay(b.startDate) ?? 0))[0];
+
+    const neighbours: Array<{ name: string; gap: number | null }> = [];
+    if (previous) {
+      neighbours.push({
+        name: previous.name,
+        gap: contiguityGapDays(previous.endDate, range.start),
+      });
+    }
+    if (next) {
+      neighbours.push({ name: next.name, gap: contiguityGapDays(range.end, next.startDate) });
+    }
+
+    for (const neighbour of neighbours) {
+      if (neighbour.gap === null || neighbour.gap > SPRINT_CONTIGUITY_MAX_GAP_DAYS) {
+        throw localizedError(
+          'errors:sprint.notContiguous',
+          { sprintName: neighbour.name, max: SPRINT_CONTIGUITY_MAX_GAP_DAYS },
+          400,
+          GATE_CODES.SPRINT_NOT_CONTIGUOUS
+        );
+      }
     }
   }
 
@@ -2617,6 +2894,14 @@ const incrementSprintService = {
   },
 };
 
+/**
+ * A Sprint Backlog change as returned by the API.
+ *
+ * `goalImpact` and `approvalStatus` make the two-phase contract visible to the client: a change
+ * declared as endangering the Sprint Goal is recorded as `PENDING` and is not applied until the
+ * Product Owner acknowledges it. `sprintGoalAtChange` is the commitment that was in force when
+ * the change was requested, so the audit trail cannot be rewritten by a later goal edit.
+ */
 export interface SprintBacklogChange {
   id: string;
   sprintId: string;
@@ -2624,22 +2909,86 @@ export interface SprintBacklogChange {
   pbiTitle: string;
   changeType: 'ADDED' | 'REMOVED';
   reason?: string;
+  goalImpact?: SprintGoalImpact;
+  approvalStatus?: SprintChangeApprovalStatus;
+  sprintGoalAtChange?: string;
+  acknowledgedBy?: string;
+  acknowledgedByName?: string;
+  acknowledgedAt?: Date;
+  acknowledgementNote?: string;
   changedBy: string;
   changedByName: string;
   createdAt: Date;
 }
 
+/**
+ * Result of a mid-Sprint Sprint Backlog change. `sprintBacklogItem` is `null` and `pending` is
+ * true when the change was recorded as awaiting the Product Owner's acknowledgement and the
+ * Sprint Backlog was deliberately left untouched.
+ */
+export interface SprintBacklogChangeResult {
+  sprintBacklogItem: (SprintBacklogItem & { pbi: ProductBacklogItem }) | null;
+  change: SprintBacklogChange;
+  pending: boolean;
+}
+
 export interface AddPBIToSprintData {
   pbiId: string;
-  reason?: string;
+  /** Required: why the change is being made. */
+  reason: string;
+  /** Required: whether the change endangers the Sprint Goal. */
+  goalImpact: SprintGoalImpact;
 }
 
 export interface RemovePBIFromSprintData {
   taskAction: 'delete' | 'return_to_backlog' | 'keep_in_sprint';
-  reason?: string;
+  /** Required: why the change is being made. */
+  reason: string;
+  /** Required: whether the change endangers the Sprint Goal. */
+  goalImpact: SprintGoalImpact;
+}
+
+/** The Product Owner's decision on a pending, goal-endangering Sprint Backlog change. */
+export interface AcknowledgeChangeData {
+  decision: SprintChangeDecision;
+  note?: string;
+  /**
+   * The renegotiated Sprint Goal. Required when approving a change that endangers the goal: the
+   * Guide permits scope to be "renegotiated with the Product Owner", and the renegotiation is
+   * the new commitment the team inspects.
+   */
+  sprintGoal?: string;
 }
 
 class SprintBacklogManagerService {
+  /**
+   * Assert that the acting user is the `PRODUCT_OWNER` of the given team.
+   *
+   * Acknowledge-or-reject of a change that endangers the Sprint Goal belongs to the Product
+   * Owner: they are the one accountable for the value the Sprint delivers, and the Guide's
+   * renegotiation ("scope may be clarified and renegotiated with the Product Owner") is theirs
+   * to conclude. Developers and the Scrum Master can read the pending change but not decide it.
+   */
+  private async assertProductOwnerRole(teamId: string, userId: string): Promise<void> {
+    const teamMember = await prisma.teamMember.findFirst({
+      where: { teamId, userId },
+      select: { role: true },
+    });
+
+    if (!teamMember) {
+      throw new ForbiddenError(requestT('errors:notTeamMember'));
+    }
+
+    if (teamMember.role !== 'PRODUCT_OWNER') {
+      throw localizedError(
+        'errors:sprint.changeNeedsPo',
+        {},
+        403,
+        GATE_CODES.SPRINT_SCOPE_CHANGE_NEEDS_PO
+      );
+    }
+  }
+
   /**
    * Assert that the acting user is a `DEVELOPERS`-role team member for the given team.
    * Managing the active Sprint Backlog (adding/removing PBIs) is a Developers' act.
@@ -2663,10 +3012,7 @@ class SprintBacklogManagerService {
     sprintId: string,
     userId: string,
     data: AddPBIToSprintData
-  ): Promise<{
-    sprintBacklogItem: SprintBacklogItem & { pbi: ProductBacklogItem };
-    change: SprintBacklogChange;
-  }> {
+  ): Promise<SprintBacklogChangeResult> {
     const sprint = await prisma.sprint.findUnique({
       where: { id: sprintId },
       include: {
@@ -2711,6 +3057,25 @@ class SprintBacklogManagerService {
         400,
         GATE_CODES.PBI_NOT_READY
       );
+    }
+
+    // "No changes are made that would endanger the Sprint Goal." A change declared as
+    // endangering the goal does NOT take effect: the Sprint Backlog, the item, and the burndown
+    // stay exactly as they are, and the request is recorded as pending until the Product Owner
+    // acknowledges it (which records the renegotiated goal).
+    if (data.goalImpact === SPRINT_GOAL_IMPACTS.ENDANGERS_GOAL) {
+      return this.recordPendingBacklogChange({
+        sprintId,
+        pbiId: data.pbiId,
+        userId,
+        changeType: 'ADDED',
+        reason: data.reason,
+        goalImpact: data.goalImpact,
+        sprintGoalAtChange: sprint.sprintGoal ?? null,
+        previousStatus: pbi.status,
+        newStatus: 'IN_PROGRESS',
+        taskCount: 0,
+      });
     }
 
     const user = await prisma.user.findUnique({
@@ -2759,91 +3124,60 @@ class SprintBacklogManagerService {
                 fromStateId: readyState.id,
                 toStateId: inProgressState.id,
                 changedBy: userId,
-                changeReason: data.reason ?? 'PBI added to active sprint',
+                changeReason: data.reason,
                 metadata: { source: 'sprint_backlog_addition' },
               },
             });
           }
         }
 
-        let changeRecord: {
-          id: string;
-          pbi?: { title: string } | null;
-          creator?: { firstName: string; lastName: string } | null;
-          createdAt: Date;
-        } | null = null;
-        // Check if sprintBacklogChange model exists (requires migration)
-        const txWithSprintBacklogChange = tx as Prisma.TransactionClient & {
-          sprintBacklogChange?: {
-            create: (args: {
-              data: {
-                id: string;
-                sprintId: string;
-                pbiId: string;
-                sprintBacklogItemId: string;
-                changeType: string;
-                reason?: string;
-                previousStatus: string;
-                newStatus: string;
-                taskCount: number;
-                createdBy: string;
-              };
-              include: {
-                pbi: { select: { title: true } };
-                creator: { select: { firstName: true; lastName: true } };
-              };
-            }) => Promise<{
-              id: string;
-              pbi?: { title: string } | null;
-              creator?: { firstName: string; lastName: string } | null;
-              createdAt: Date;
-            }>;
-          };
-        };
-        if ('sprintBacklogChange' in txWithSprintBacklogChange) {
-          try {
-            changeRecord = await txWithSprintBacklogChange.sprintBacklogChange.create({
-              data: {
-                id: generateUUIDv7(),
-                sprintId,
-                pbiId: data.pbiId,
-                sprintBacklogItemId: sprintBacklogItem.id,
-                changeType: 'ADDED',
-                reason: data.reason,
-                previousStatus: 'READY',
-                newStatus: 'IN_PROGRESS',
-                taskCount: 0,
-                createdBy: userId,
-              },
-              include: {
-                pbi: { select: { title: true } },
-                creator: { select: { firstName: true, lastName: true } },
-              },
-            });
-          } catch (e) {
-            logger.warn('Failed to create SprintBacklogChange record', {
-              error: e,
-            });
-          }
-        }
+        // The audit record is part of the transaction. The table has existed since the initial
+        // migration, so the old defensive feature-detect is gone: a change that cannot be
+        // recorded must not be applied at all.
+        const changeRecord = await tx.sprintBacklogChange.create({
+          data: {
+            id: generateUUIDv7(),
+            sprintId,
+            pbiId: data.pbiId,
+            sprintBacklogItemId: sprintBacklogItem.id,
+            changeType: 'ADDED',
+            reason: data.reason,
+            previousStatus: 'READY',
+            newStatus: 'IN_PROGRESS',
+            goalImpact: data.goalImpact,
+            approvalStatus: SPRINT_CHANGE_APPROVAL_STATUSES.APPLIED,
+            // The commitment in force at the time of the change, so a later goal edit cannot
+            // retroactively rewrite what the team inspected.
+            sprintGoalAtChange: sprint.sprintGoal ?? null,
+            taskCount: 0,
+            createdBy: userId,
+          },
+          include: {
+            pbi: { select: { title: true } },
+            creator: { select: { firstName: true, lastName: true } },
+          },
+        });
 
         const change: SprintBacklogChange = {
-          id: changeRecord?.id ?? generateUUIDv7(),
+          id: changeRecord.id,
           sprintId,
           pbiId: data.pbiId,
-          pbiTitle: changeRecord?.pbi?.title ?? pbi.title,
+          pbiTitle: changeRecord.pbi.title,
           changeType: 'ADDED',
           reason: data.reason,
+          goalImpact: data.goalImpact,
+          approvalStatus: SPRINT_CHANGE_APPROVAL_STATUSES.APPLIED,
+          sprintGoalAtChange: sprint.sprintGoal ?? undefined,
           changedBy: userId,
-          changedByName: changeRecord?.creator
+          changedByName: changeRecord.creator
             ? `${changeRecord.creator.firstName} ${changeRecord.creator.lastName}`.trim()
             : user
               ? `${user.firstName} ${user.lastName}`.trim()
               : 'Unknown',
-          createdAt: changeRecord?.createdAt ?? new Date(),
+          createdAt: changeRecord.createdAt,
         };
 
-        return { sprintBacklogItem, change };
+        return { sprintBacklogItem, change, pending: false };
       },
       { ...TRANSACTION_CONFIG.DEFAULT, operationName: 'addPBIToActiveSprint' }
     );
@@ -2858,7 +3192,7 @@ class SprintBacklogManagerService {
     pbiId: string,
     userId: string,
     data: RemovePBIFromSprintData
-  ): Promise<{ change: SprintBacklogChange }> {
+  ): Promise<SprintBacklogChangeResult> {
     const sprint = await prisma.sprint.findUnique({
       where: { id: sprintId },
       include: {
@@ -2900,6 +3234,28 @@ class SprintBacklogManagerService {
     const tasks = await prisma.task.findMany({
       where: { sprintId, pbiId },
     });
+
+    // "No changes are made that would endanger the Sprint Goal." A change declared as
+    // endangering the goal does NOT take effect: the Sprint Backlog, the item, its tasks, and
+    // the burndown stay exactly as they are, and the request is recorded as pending until the
+    // Product Owner acknowledges it (which records the renegotiated goal).
+    if (data.goalImpact === SPRINT_GOAL_IMPACTS.ENDANGERS_GOAL) {
+      const predictedStatus = data.taskAction === 'return_to_backlog' ? 'READY' : pbi.status;
+
+      return this.recordPendingBacklogChange({
+        sprintId,
+        pbiId,
+        userId,
+        changeType: 'REMOVED',
+        reason: data.reason,
+        goalImpact: data.goalImpact,
+        sprintGoalAtChange: sprint.sprintGoal ?? null,
+        previousStatus: pbi.status,
+        newStatus: predictedStatus,
+        taskAction: data.taskAction,
+        taskCount: tasks.length,
+      });
+    }
 
     const result = await withTransaction(
       async (tx) => {
@@ -2945,7 +3301,7 @@ class SprintBacklogManagerService {
                   fromStateId: fromState.id,
                   toStateId: toState.id,
                   changedBy: userId,
-                  changeReason: data.reason ?? 'PBI removed from sprint',
+                  changeReason: data.reason,
                   metadata: {
                     source: 'sprint_backlog_removal',
                     taskAction: data.taskAction,
@@ -2956,86 +3312,54 @@ class SprintBacklogManagerService {
           }
         }
 
-        let changeRecord: {
-          id: string;
-          pbi?: { title: string } | null;
-          creator?: { firstName: string; lastName: string } | null;
-          createdAt: Date;
-        } | null = null;
-        // Check if sprintBacklogChange model exists (requires migration)
-        const txWithSprintBacklogChange = tx as Prisma.TransactionClient & {
-          sprintBacklogChange?: {
-            create: (args: {
-              data: {
-                id: string;
-                sprintId: string;
-                pbiId: string;
-                sprintBacklogItemId: string | null;
-                changeType: string;
-                reason?: string;
-                previousStatus: string;
-                newStatus: string;
-                taskAction?: string;
-                taskCount: number;
-                createdBy: string;
-              };
-              include: {
-                pbi: { select: { title: true } };
-                creator: { select: { firstName: true; lastName: true } };
-              };
-            }) => Promise<{
-              id: string;
-              pbi?: { title: string } | null;
-              creator?: { firstName: string; lastName: string } | null;
-              createdAt: Date;
-            }>;
-          };
-        };
-        if ('sprintBacklogChange' in txWithSprintBacklogChange) {
-          try {
-            changeRecord = await txWithSprintBacklogChange.sprintBacklogChange.create({
-              data: {
-                id: generateUUIDv7(),
-                sprintId,
-                pbiId,
-                sprintBacklogItemId: null,
-                changeType: 'REMOVED',
-                reason: data.reason,
-                previousStatus: pbi.status,
-                newStatus,
-                taskAction: data.taskAction,
-                taskCount: tasks.length,
-                createdBy: userId,
-              },
-              include: {
-                pbi: { select: { title: true } },
-                creator: { select: { firstName: true, lastName: true } },
-              },
-            });
-          } catch (e) {
-            logger.warn('Failed to create SprintBacklogChange record', {
-              error: e,
-            });
-          }
-        }
+        // The audit record is part of the transaction. The table has existed since the initial
+        // migration, so the old defensive feature-detect is gone: a change that cannot be
+        // recorded must not be applied at all.
+        const changeRecord = await tx.sprintBacklogChange.create({
+          data: {
+            id: generateUUIDv7(),
+            sprintId,
+            pbiId,
+            sprintBacklogItemId: null,
+            changeType: 'REMOVED',
+            reason: data.reason,
+            previousStatus: pbi.status,
+            newStatus,
+            taskAction: data.taskAction,
+            goalImpact: data.goalImpact,
+            approvalStatus: SPRINT_CHANGE_APPROVAL_STATUSES.APPLIED,
+            // The commitment in force at the time of the change, so a later goal edit cannot
+            // retroactively rewrite what the team inspected.
+            sprintGoalAtChange: sprint.sprintGoal ?? null,
+            taskCount: tasks.length,
+            createdBy: userId,
+          },
+          include: {
+            pbi: { select: { title: true } },
+            creator: { select: { firstName: true, lastName: true } },
+          },
+        });
 
         const change: SprintBacklogChange = {
-          id: changeRecord?.id ?? generateUUIDv7(),
+          id: changeRecord.id,
           sprintId,
           pbiId,
-          pbiTitle: changeRecord?.pbi?.title ?? pbi.title,
+          pbiTitle: changeRecord.pbi.title,
           changeType: 'REMOVED',
           reason: data.reason,
+          goalImpact: data.goalImpact,
+          approvalStatus: SPRINT_CHANGE_APPROVAL_STATUSES.APPLIED,
+          sprintGoalAtChange: sprint.sprintGoal ?? undefined,
           changedBy: userId,
-          changedByName: changeRecord?.creator
+          changedByName: changeRecord.creator
             ? `${changeRecord.creator.firstName} ${changeRecord.creator.lastName}`.trim()
             : user
               ? `${user.firstName} ${user.lastName}`.trim()
               : 'Unknown',
-          createdAt: changeRecord?.createdAt ?? new Date(),
+          createdAt: changeRecord.createdAt,
         };
 
-        return { change };
+        return { sprintBacklogItem: null, change, pending: false };
       },
       { ...TRANSACTION_CONFIG.DEFAULT, operationName: 'removePBIFromActiveSprint' }
     );
@@ -3043,6 +3367,389 @@ class SprintBacklogManagerService {
     await this.updateBurndownData(sprintId);
 
     return result;
+  }
+
+  /**
+   * Map a persisted `SprintBacklogChange` row to the API shape.
+   *
+   * The `goalImpact` / `approvalStatus` columns are plain strings (mirroring `changeType` and
+   * `taskAction`), so they are narrowed with the shared type guards instead of being cast.
+   */
+  private toBacklogChangeView(
+    record: {
+      id: string;
+      sprintId: string;
+      pbiId: string;
+      changeType: string;
+      reason: string | null;
+      goalImpact: string | null;
+      approvalStatus: string;
+      sprintGoalAtChange: string | null;
+      acknowledgedBy: string | null;
+      acknowledgedAt: Date | null;
+      acknowledgementNote: string | null;
+      createdBy: string | null;
+      createdAt: Date;
+      pbi?: { title: string } | null;
+      creator?: { firstName: string; lastName: string } | null;
+      acknowledger?: { firstName: string; lastName: string } | null;
+    },
+    fallbackTitle: string
+  ): SprintBacklogChange {
+    return {
+      id: record.id,
+      sprintId: record.sprintId,
+      pbiId: record.pbiId,
+      pbiTitle: record.pbi?.title ?? fallbackTitle,
+      changeType: record.changeType === 'REMOVED' ? 'REMOVED' : 'ADDED',
+      reason: record.reason ?? undefined,
+      goalImpact: isSprintGoalImpact(record.goalImpact) ? record.goalImpact : undefined,
+      approvalStatus: isSprintChangeApprovalStatus(record.approvalStatus)
+        ? record.approvalStatus
+        : undefined,
+      sprintGoalAtChange: record.sprintGoalAtChange ?? undefined,
+      acknowledgedBy: record.acknowledgedBy ?? undefined,
+      acknowledgedByName: record.acknowledger
+        ? `${record.acknowledger.firstName} ${record.acknowledger.lastName}`.trim()
+        : undefined,
+      acknowledgedAt: record.acknowledgedAt ?? undefined,
+      acknowledgementNote: record.acknowledgementNote ?? undefined,
+      changedBy: record.createdBy ?? 'system',
+      changedByName: record.creator
+        ? `${record.creator.firstName} ${record.creator.lastName}`.trim()
+        : 'System',
+      createdAt: record.createdAt,
+    };
+  }
+
+  /**
+   * Record a Sprint Backlog change that endangers the Sprint Goal as `PENDING`.
+   *
+   * Nothing about the Sprint Backlog is mutated: no `SprintBacklogItem`, no item status, no
+   * task, and no burndown refresh. The request becomes visible in the audit trail immediately,
+   * and only the Product Owner's acknowledgement (`acknowledgeSprintBacklogChange`) can apply
+   * it. A second pending request for the same item and direction is refused so the pending
+   * queue cannot silently stack.
+   */
+  private async recordPendingBacklogChange(input: {
+    sprintId: string;
+    pbiId: string;
+    userId: string;
+    changeType: 'ADDED' | 'REMOVED';
+    reason: string;
+    goalImpact: SprintGoalImpact;
+    sprintGoalAtChange: string | null;
+    previousStatus: string;
+    newStatus: string;
+    taskAction?: string;
+    taskCount: number;
+  }): Promise<SprintBacklogChangeResult> {
+    const existingPending = await prisma.sprintBacklogChange.findFirst({
+      where: {
+        sprintId: input.sprintId,
+        pbiId: input.pbiId,
+        changeType: input.changeType,
+        approvalStatus: SPRINT_CHANGE_APPROVAL_STATUSES.PENDING,
+      },
+      select: { id: true },
+    });
+
+    if (existingPending) {
+      throw localizedError(
+        'errors:sprint.scopeChangeAlreadyPending',
+        {},
+        409,
+        GATE_CODES.SPRINT_SCOPE_CHANGE_ALREADY_PENDING
+      );
+    }
+
+    const [record, user] = await Promise.all([
+      prisma.sprintBacklogChange.create({
+        data: {
+          id: generateUUIDv7(),
+          sprintId: input.sprintId,
+          pbiId: input.pbiId,
+          sprintBacklogItemId: null,
+          changeType: input.changeType,
+          reason: input.reason,
+          previousStatus: input.previousStatus,
+          newStatus: input.newStatus,
+          taskAction: input.taskAction ?? null,
+          goalImpact: input.goalImpact,
+          approvalStatus: SPRINT_CHANGE_APPROVAL_STATUSES.PENDING,
+          // The commitment that was in force when the change was requested.
+          sprintGoalAtChange: input.sprintGoalAtChange,
+          taskCount: input.taskCount,
+          createdBy: input.userId,
+        },
+        include: {
+          pbi: { select: { title: true } },
+          creator: { select: { firstName: true, lastName: true } },
+        },
+      }),
+      prisma.user.findUnique({
+        where: { id: input.userId },
+        select: { firstName: true, lastName: true },
+      }),
+    ]);
+
+    return {
+      sprintBacklogItem: null,
+      pending: true,
+      change: {
+        ...this.toBacklogChangeView(record, record.pbi.title),
+        changedByName: record.creator
+          ? `${record.creator.firstName} ${record.creator.lastName}`.trim()
+          : user
+            ? `${user.firstName} ${user.lastName}`.trim()
+            : 'Unknown',
+      },
+    };
+  }
+
+  /**
+   * Acknowledge or reject a `PENDING`, goal-endangering Sprint Backlog change.
+   *
+   * Only the Product Owner may decide. Approving re-validates the deferred operation (the plan
+   * may have moved on while the change waited) and then applies it in one transaction, together
+   * with the acknowledgement audit columns. Approving a change that endangers the Sprint Goal
+   * additionally requires the renegotiated Sprint Goal: that restatement is the renegotiation
+   * the Guide permits ("scope may be clarified and renegotiated with the Product Owner"), and it
+   * becomes the commitment the team now inspects. Rejecting clears the pending state and leaves
+   * the Sprint Backlog untouched, so a pending change can never become un-clearable.
+   */
+  async acknowledgeSprintBacklogChange(
+    sprintId: string,
+    changeId: string,
+    userId: string,
+    data: AcknowledgeChangeData
+  ): Promise<{ change: SprintBacklogChange; sprint: Sprint | null; applied: boolean }> {
+    const change = await prisma.sprintBacklogChange.findFirst({
+      where: { id: changeId, sprintId },
+      include: {
+        pbi: { select: { id: true, title: true, status: true } },
+        creator: { select: { firstName: true, lastName: true } },
+        sprint: {
+          select: { id: true, teamId: true, status: true, sprintGoal: true },
+        },
+      },
+    });
+
+    if (!change) {
+      throw new NotFoundError('Sprint Backlog change');
+    }
+
+    await this.assertProductOwnerRole(change.sprint.teamId, userId);
+
+    if (change.approvalStatus !== SPRINT_CHANGE_APPROVAL_STATUSES.PENDING) {
+      throw new BadRequestError(
+        requestT('errors:sprint.changeNotPending', { status: change.approvalStatus })
+      );
+    }
+
+    const acknowledgedAt = new Date();
+    const audit = {
+      acknowledgedBy: userId,
+      acknowledgedAt,
+      acknowledgementNote: data.note ?? null,
+    };
+
+    if (data.decision === SPRINT_CHANGE_DECISIONS.REJECT) {
+      const rejected = await prisma.sprintBacklogChange.update({
+        where: { id: change.id },
+        data: { ...audit, approvalStatus: SPRINT_CHANGE_APPROVAL_STATUSES.REJECTED },
+        include: {
+          pbi: { select: { title: true } },
+          creator: { select: { firstName: true, lastName: true } },
+          acknowledger: { select: { firstName: true, lastName: true } },
+        },
+      });
+
+      return {
+        change: this.toBacklogChangeView(rejected, change.pbi.title),
+        sprint: null,
+        applied: false,
+      };
+    }
+
+    if (change.sprint.status !== 'ACTIVE') {
+      throw new BadRequestError('Can only change the backlog of an active sprint');
+    }
+
+    // A goal-endangering change is only legitimate as a renegotiation, so the Product Owner has
+    // to state the goal the team will now work toward.
+    const renegotiatedGoal = data.sprintGoal?.trim();
+    if (!renegotiatedGoal) {
+      throw new BadRequestError(requestT('errors:sprint.scopeGoalRenegotiationRequired'));
+    }
+
+    const applied = await withTransaction(
+      async (tx) => {
+        let sprintBacklogItemId: string | null = null;
+        let newItemStatus: string;
+
+        if (change.changeType === 'ADDED') {
+          const pbi = await tx.productBacklogItem.findUnique({
+            where: { id: change.pbiId },
+            select: { status: true, title: true },
+          });
+
+          if (!pbi) {
+            throw new NotFoundError('Product Backlog Item');
+          }
+
+          // The refinement rule still holds at approval time.
+          if (pbi.status !== 'READY') {
+            throw localizedError(
+              'errors:backlogItem.notReady',
+              { count: 1, items: pbi.title },
+              400,
+              GATE_CODES.PBI_NOT_READY
+            );
+          }
+
+          const alreadyInSprint = await tx.sprintBacklogItem.findFirst({
+            where: { sprintId, pbiId: change.pbiId },
+            select: { id: true },
+          });
+
+          if (alreadyInSprint) {
+            throw new BadRequestError('PBI is already in the sprint backlog');
+          }
+
+          const created = await tx.sprintBacklogItem.create({
+            data: {
+              id: generateUUIDv7(),
+              sprintId,
+              pbiId: change.pbiId,
+              createdBy: userId,
+            },
+            include: { pbi: true },
+          });
+
+          sprintBacklogItemId = created.id;
+          newItemStatus = 'IN_PROGRESS';
+        } else {
+          const sprintBacklogItem = await tx.sprintBacklogItem.findFirst({
+            where: { sprintId, pbiId: change.pbiId },
+            select: { id: true },
+          });
+
+          if (!sprintBacklogItem) {
+            throw new NotFoundError('Sprint Backlog Item');
+          }
+
+          await tx.sprintBacklogItem.delete({ where: { id: sprintBacklogItem.id } });
+
+          const taskAction = change.taskAction ?? 'return_to_backlog';
+          if (taskAction === 'delete' || taskAction === 'return_to_backlog') {
+            await tx.task.deleteMany({ where: { sprintId, pbiId: change.pbiId } });
+          }
+
+          newItemStatus = taskAction === 'return_to_backlog' ? 'READY' : change.pbi.status;
+        }
+
+        await tx.productBacklogItem.update({
+          where: { id: change.pbiId },
+          data: { status: newItemStatus as ItemStatus },
+        });
+
+        await this.recordItemStatusChange(tx, {
+          pbiId: change.pbiId,
+          fromStatus: change.pbi.status,
+          toStatus: newItemStatus,
+          userId,
+          reason: change.reason ?? 'Sprint Backlog change acknowledged by the Product Owner',
+          source: 'sprint_backlog_change_approval',
+        });
+
+        // The renegotiated Sprint Goal replaces the commitment, and the calendar mirror is kept
+        // in sync exactly as `updateGeneratedSprint` does during planning.
+        const updatedSprint = await tx.sprint.update({
+          where: { id: sprintId },
+          data: { sprintGoal: renegotiatedGoal, updatedBy: userId },
+        });
+
+        await tx.generatedSprint.updateMany({
+          where: { sprintId },
+          data: { sprintGoal: renegotiatedGoal },
+        });
+
+        const acknowledged = await tx.sprintBacklogChange.update({
+          where: { id: change.id },
+          data: {
+            ...audit,
+            approvalStatus: SPRINT_CHANGE_APPROVAL_STATUSES.APPLIED,
+            sprintBacklogItemId,
+            previousStatus: change.pbi.status,
+            newStatus: newItemStatus,
+          },
+          include: {
+            pbi: { select: { title: true } },
+            creator: { select: { firstName: true, lastName: true } },
+            acknowledger: { select: { firstName: true, lastName: true } },
+          },
+        });
+
+        return { acknowledged, updatedSprint };
+      },
+      { ...TRANSACTION_CONFIG.DEFAULT, operationName: 'acknowledgeSprintBacklogChange' }
+    );
+
+    await this.updateBurndownData(sprintId);
+
+    return {
+      change: this.toBacklogChangeView(applied.acknowledged, change.pbi.title),
+      sprint: applied.updatedSprint,
+      applied: true,
+    };
+  }
+
+  /**
+   * Record a Product Backlog item status transition in the workflow history, if the workflow
+   * defines both states. Shared by the acknowledgement path so an approved change leaves the
+   * same trail as a directly applied one.
+   */
+  private async recordItemStatusChange(
+    tx: Prisma.TransactionClient,
+    input: {
+      pbiId: string;
+      fromStatus: string;
+      toStatus: string;
+      userId: string;
+      reason: string;
+      source: string;
+    }
+  ): Promise<void> {
+    if (input.fromStatus === input.toStatus) {
+      return;
+    }
+
+    const workflow = await tx.workflow.findFirst({ where: { entityType: 'BacklogItem' } });
+    if (!workflow) {
+      return;
+    }
+
+    const states = await tx.workflowState.findMany({ where: { workflowId: workflow.id } });
+    const fromState = states.find((state) => state.name === input.fromStatus);
+    const toState = states.find((state) => state.name === input.toStatus);
+    if (!fromState || !toState) {
+      return;
+    }
+
+    await tx.statusChangeHistory.create({
+      data: {
+        id: generateUUIDv7(),
+        entityType: 'BacklogItem',
+        entityId: input.pbiId,
+        workflowId: workflow.id,
+        fromStateId: fromState.id,
+        toStateId: toState.id,
+        changedBy: input.userId,
+        changeReason: input.reason,
+        metadata: { source: input.source },
+      },
+    });
   }
 
   async getSprintBacklogChanges(
@@ -3057,69 +3764,18 @@ class SprintBacklogManagerService {
       throw new NotFoundError('Sprint');
     }
 
-    // Check if sprintBacklogChange model exists (requires migration)
-    const prismaWithSprintBacklogChange = prisma as typeof prisma & {
-      sprintBacklogChange?: {
-        findMany: (args: {
-          where: { sprintId: string };
-          include: {
-            pbi: { select: { title: true } };
-            creator: { select: { firstName: true; lastName: true } };
-          };
-          orderBy: { createdAt: 'desc' };
-          take: number;
-        }) => Promise<
-          Array<{
-            id: string;
-            sprintId: string;
-            pbiId: string;
-            changeType: string;
-            reason?: string | null;
-            createdBy?: string | null;
-            createdAt: Date;
-            pbi?: { title: string } | null;
-            creator?: { firstName: string; lastName: string } | null;
-          }>
-        >;
-      };
-    };
-    if (!('sprintBacklogChange' in prismaWithSprintBacklogChange)) {
-      logger.warn('SprintBacklogChange table not found. Please run: npx prisma migrate dev');
-      return [];
-    }
+    const changeRecords = await prisma.sprintBacklogChange.findMany({
+      where: { sprintId },
+      include: {
+        pbi: { select: { title: true } },
+        creator: { select: { firstName: true, lastName: true } },
+        acknowledger: { select: { firstName: true, lastName: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+    });
 
-    try {
-      const changeRecords = await prismaWithSprintBacklogChange.sprintBacklogChange.findMany({
-        where: { sprintId },
-        include: {
-          pbi: { select: { title: true } },
-          creator: { select: { firstName: true, lastName: true } },
-        },
-        orderBy: { createdAt: 'desc' },
-        take: limit,
-      });
-
-      const changes: SprintBacklogChange[] = changeRecords.map((record) => ({
-        id: record.id,
-        sprintId: record.sprintId,
-        pbiId: record.pbiId,
-        pbiTitle: record.pbi.title || 'Unknown',
-        changeType: record.changeType as 'ADDED' | 'REMOVED',
-        reason: record.reason ?? undefined,
-        changedBy: record.createdBy ?? 'system',
-        changedByName: record.creator
-          ? `${record.creator.firstName} ${record.creator.lastName}`.trim()
-          : 'System',
-        createdAt: record.createdAt,
-      }));
-
-      return changes;
-    } catch (error: unknown) {
-      logger.error('Error fetching sprint backlog changes', {
-        error: error instanceof Error ? error.message : 'Unknown error',
-      });
-      return [];
-    }
+    return changeRecords.map((record) => this.toBacklogChangeView(record, 'Unknown'));
   }
 
   async getAvailablePBIsForSprint(teamId: string): Promise<ProductBacklogItem[]> {

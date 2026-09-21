@@ -811,6 +811,7 @@ describe('Sprint Configuration Integration Tests', () => {
         .send({
           pbiId: pbi.id,
           reason: 'Added to sprint',
+          goalImpact: 'SUPPORTS_GOAL',
         })
         .expect(201);
 

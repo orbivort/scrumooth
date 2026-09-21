@@ -10,8 +10,8 @@ import {
 } from '../../constants/gateCodes.js';
 
 describe('gateCodes', () => {
-  it('should define twenty gates', () => {
-    expect(GATE_CODE_LIST).toHaveLength(20);
+  it('should define twenty-seven gates', () => {
+    expect(GATE_CODE_LIST).toHaveLength(27);
   });
 
   it('should prefix every gate code with GATE_', () => {
@@ -50,6 +50,39 @@ describe('gateCodes', () => {
     );
     expect(GATE_DEFINITIONS[GATE_CODES.CAPACITY_EXCEEDED].httpStatus).toBe(400);
     expect(GATE_DEFINITIONS[GATE_CODES.CAPACITY_EXCEEDED].i18nKey).toBe('capacityExceeded');
+  });
+
+  it('should identify the Sprint container, membership and goal gates', () => {
+    expect(isGateCode(GATE_CODES.SPRINT_DURATION_LIMIT)).toBe(true);
+    expect(isGateCode(GATE_CODES.SPRINT_DATES_OVERLAP)).toBe(true);
+    expect(isGateCode(GATE_CODES.SPRINT_NOT_CONTIGUOUS)).toBe(true);
+    expect(isGateCode(GATE_CODES.SPRINT_TEAM_MEMBERS_ONLY)).toBe(true);
+    expect(isGateCode(GATE_CODES.SPRINT_GOAL_LOCKED)).toBe(true);
+    expect(isGateCode(GATE_CODES.SPRINT_SCOPE_CHANGE_NEEDS_PO)).toBe(true);
+    expect(isGateCode(GATE_CODES.SPRINT_SCOPE_CHANGE_ALREADY_PENDING)).toBe(true);
+  });
+
+  it('should refuse container and membership gates with the documented status', () => {
+    expect(GATE_DEFINITIONS[GATE_CODES.SPRINT_DURATION_LIMIT].httpStatus).toBe(400);
+    expect(GATE_DEFINITIONS[GATE_CODES.SPRINT_DURATION_LIMIT].i18nKey).toBe('sprintDurationLimit');
+    expect(GATE_DEFINITIONS[GATE_CODES.SPRINT_DATES_OVERLAP].httpStatus).toBe(409);
+    expect(GATE_DEFINITIONS[GATE_CODES.SPRINT_DATES_OVERLAP].i18nKey).toBe('sprintDatesOverlap');
+    expect(GATE_DEFINITIONS[GATE_CODES.SPRINT_NOT_CONTIGUOUS].httpStatus).toBe(400);
+    expect(GATE_DEFINITIONS[GATE_CODES.SPRINT_NOT_CONTIGUOUS].i18nKey).toBe('sprintNotContiguous');
+    expect(GATE_DEFINITIONS[GATE_CODES.SPRINT_TEAM_MEMBERS_ONLY].httpStatus).toBe(403);
+    expect(GATE_DEFINITIONS[GATE_CODES.SPRINT_TEAM_MEMBERS_ONLY].i18nKey).toBe(
+      'sprintTeamMembersOnly'
+    );
+    expect(GATE_DEFINITIONS[GATE_CODES.SPRINT_GOAL_LOCKED].httpStatus).toBe(400);
+    expect(GATE_DEFINITIONS[GATE_CODES.SPRINT_GOAL_LOCKED].i18nKey).toBe('sprintGoalLocked');
+    expect(GATE_DEFINITIONS[GATE_CODES.SPRINT_SCOPE_CHANGE_NEEDS_PO].httpStatus).toBe(403);
+    expect(GATE_DEFINITIONS[GATE_CODES.SPRINT_SCOPE_CHANGE_NEEDS_PO].i18nKey).toBe(
+      'sprintScopeChangeNeedsPo'
+    );
+    expect(GATE_DEFINITIONS[GATE_CODES.SPRINT_SCOPE_CHANGE_ALREADY_PENDING].httpStatus).toBe(409);
+    expect(GATE_DEFINITIONS[GATE_CODES.SPRINT_SCOPE_CHANGE_ALREADY_PENDING].i18nKey).toBe(
+      'sprintScopeChangeAlreadyPending'
+    );
   });
 
   it('should reject unknown or non-string values', () => {

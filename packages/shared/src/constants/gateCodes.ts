@@ -67,6 +67,36 @@ export const GATE_CODES = {
    * Sprint Planning (beyond the configured over-commitment tolerance).
    */
   CAPACITY_EXCEEDED: 'GATE_CAPACITY_EXCEEDED',
+  /**
+   * "Sprints are fixed length... a Sprint is one month or less." A Sprint spanning more than
+   * `SPRINT_MAX_DURATION_DAYS` (the product's four-week convention) is refused.
+   */
+  SPRINT_DURATION_LIMIT: 'GATE_SPRINT_DURATION_LIMIT',
+  /** A Sprint cannot run at the same time as another Sprint of the same team. */
+  SPRINT_DATES_OVERLAP: 'GATE_SPRINT_DATES_OVERLAP',
+  /**
+   * "A new Sprint starts immediately after the conclusion of the previous Sprint." A Sprint
+   * that leaves Sprint-less time in front of it (beyond the tolerated weekend gap) is refused.
+   */
+  SPRINT_NOT_CONTIGUOUS: 'GATE_SPRINT_NOT_CONTIGUOUS',
+  /**
+   * The Sprint is the Scrum Team's own container: creating, starting, or replanning it
+   * requires membership of the team that owns it.
+   */
+  SPRINT_TEAM_MEMBERS_ONLY: 'GATE_SPRINT_TEAM_MEMBERS_ONLY',
+  /**
+   * The Sprint Goal is a commitment made during Sprint Planning. Once the Sprint is running it
+   * can only be revised through the Product Owner's acknowledgement of a goal-endangering
+   * scope change, not by editing the goal directly.
+   */
+  SPRINT_GOAL_LOCKED: 'GATE_SPRINT_GOAL_LOCKED',
+  /**
+   * "No changes are made that would endanger the Sprint Goal": a Sprint Backlog change
+   * declared as goal-endangering stays pending until the Product Owner acknowledges it.
+   */
+  SPRINT_SCOPE_CHANGE_NEEDS_PO: 'GATE_SPRINT_SCOPE_CHANGE_NEEDS_PO',
+  /** A goal-endangering change for the same item is already awaiting acknowledgement. */
+  SPRINT_SCOPE_CHANGE_ALREADY_PENDING: 'GATE_SPRINT_SCOPE_CHANGE_ALREADY_PENDING',
 } as const;
 
 export type GateCode = (typeof GATE_CODES)[keyof typeof GATE_CODES];
@@ -201,6 +231,41 @@ export const GATE_DEFINITIONS: Record<GateCode, GateDefinition> = {
     code: GATE_CODES.CAPACITY_EXCEEDED,
     httpStatus: 400,
     i18nKey: 'capacityExceeded',
+  },
+  [GATE_CODES.SPRINT_DURATION_LIMIT]: {
+    code: GATE_CODES.SPRINT_DURATION_LIMIT,
+    httpStatus: 400,
+    i18nKey: 'sprintDurationLimit',
+  },
+  [GATE_CODES.SPRINT_DATES_OVERLAP]: {
+    code: GATE_CODES.SPRINT_DATES_OVERLAP,
+    httpStatus: 409,
+    i18nKey: 'sprintDatesOverlap',
+  },
+  [GATE_CODES.SPRINT_NOT_CONTIGUOUS]: {
+    code: GATE_CODES.SPRINT_NOT_CONTIGUOUS,
+    httpStatus: 400,
+    i18nKey: 'sprintNotContiguous',
+  },
+  [GATE_CODES.SPRINT_TEAM_MEMBERS_ONLY]: {
+    code: GATE_CODES.SPRINT_TEAM_MEMBERS_ONLY,
+    httpStatus: 403,
+    i18nKey: 'sprintTeamMembersOnly',
+  },
+  [GATE_CODES.SPRINT_GOAL_LOCKED]: {
+    code: GATE_CODES.SPRINT_GOAL_LOCKED,
+    httpStatus: 400,
+    i18nKey: 'sprintGoalLocked',
+  },
+  [GATE_CODES.SPRINT_SCOPE_CHANGE_NEEDS_PO]: {
+    code: GATE_CODES.SPRINT_SCOPE_CHANGE_NEEDS_PO,
+    httpStatus: 403,
+    i18nKey: 'sprintScopeChangeNeedsPo',
+  },
+  [GATE_CODES.SPRINT_SCOPE_CHANGE_ALREADY_PENDING]: {
+    code: GATE_CODES.SPRINT_SCOPE_CHANGE_ALREADY_PENDING,
+    httpStatus: 409,
+    i18nKey: 'sprintScopeChangeAlreadyPending',
   },
 };
 

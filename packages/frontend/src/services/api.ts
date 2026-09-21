@@ -128,6 +128,8 @@ class ApiService {
   getTasksByPbiId = sprintBacklogService.getTasksByPbiId.bind(sprintBacklogService);
   addPBIToSprint = sprintBacklogService.addPBIToSprint.bind(sprintBacklogService);
   removePBIFromSprint = sprintBacklogService.removePBIFromSprint.bind(sprintBacklogService);
+  acknowledgeSprintBacklogChange =
+    sprintBacklogService.acknowledgeSprintBacklogChange.bind(sprintBacklogService);
   getSprintBacklogChanges = sprintBacklogService.getSprintBacklogChanges.bind(sprintBacklogService);
 
   // Daily Scrum endpoints (team-level, goal-focused)

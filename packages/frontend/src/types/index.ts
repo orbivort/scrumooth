@@ -18,6 +18,9 @@ import {
   type HealthCheckValueScore,
   type TimeboxState,
   type TimeboxStatus,
+  type SprintChangeApprovalStatus,
+  type SprintChangeDecision,
+  type SprintGoalImpact,
 } from '@scrumooth/shared';
 
 export type {
@@ -34,6 +37,9 @@ export type {
   HealthCheckValueScore,
   TimeboxState,
   TimeboxStatus,
+  SprintChangeApprovalStatus,
+  SprintChangeDecision,
+  SprintGoalImpact,
 };
 
 // Enums are runtime values; re-export as values.
@@ -243,11 +249,49 @@ export interface BacklogChange {
   pbiTitle?: string;
   changeType: 'ADDED' | 'REMOVED';
   reason?: string;
+  /** Whether the change supports or endangers the Sprint Goal (declared by the caller). */
+  goalImpact?: SprintGoalImpact;
+  /**
+   * `PENDING` means the change endangers the Sprint Goal and is awaiting the Product Owner's
+   * acknowledgement: it has been recorded but deliberately not applied to the Sprint Backlog.
+   */
+  approvalStatus?: SprintChangeApprovalStatus;
+  /** The Sprint Goal that was in force when the change was requested. */
+  sprintGoalAtChange?: string;
+  acknowledgedBy?: string;
+  acknowledgedByName?: string;
+  acknowledgedAt?: string;
+  acknowledgementNote?: string;
   changedBy: string;
   changedByName?: string;
   changedAt: string;
   createdAt?: string;
   taskAction?: 'delete' | 'return_to_backlog' | 'keep_in_sprint';
+}
+
+/**
+ * Result of a mid-Sprint Sprint Backlog change. `pending` is true (and `sprintBacklogItem` null)
+ * when the change was recorded as awaiting the Product Owner's acknowledgement and the Sprint
+ * Backlog was deliberately left untouched.
+ */
+export interface SprintBacklogChangeResult {
+  sprintBacklogItem: SprintBacklogItem | null;
+  change: BacklogChange;
+  pending: boolean;
+}
+
+/** The Product Owner's decision on a pending, goal-endangering Sprint Backlog change. */
+export interface AcknowledgeSprintBacklogChangeRequest {
+  decision: SprintChangeDecision;
+  note?: string;
+  /** The renegotiated Sprint Goal; required when approving a goal-endangering change. */
+  sprintGoal?: string;
+}
+
+export interface AcknowledgeSprintBacklogChangeResult {
+  change: BacklogChange;
+  sprint: Sprint | null;
+  applied: boolean;
 }
 
 export interface Impediment {

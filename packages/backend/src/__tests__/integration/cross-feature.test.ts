@@ -229,7 +229,11 @@ describe('Cross-Feature Integration Tests', () => {
         .post(`/api/v1/sprints/${sprint.id}/backlog-items`)
         .set('Cookie', cookies)
         .set(CSRF_CONSTANTS.HEADER_NAME, csrfToken)
-        .send({ pbiId: pbi.id })
+        .send({
+          pbiId: pbi.id,
+          reason: 'Cross-feature regression check',
+          goalImpact: 'SUPPORTS_GOAL',
+        })
         .expect(201);
 
       const response = await request(app)

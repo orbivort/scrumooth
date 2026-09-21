@@ -292,6 +292,8 @@ export const SprintPlanning: React.FC = () => {
   const [showCapacityModal, setShowCapacityModal] = useState(false);
   const [showStartSprintModal, setShowStartSprintModal] = useState(false);
   const [startSprintError, setStartSprintError] = useState<string | null>(null);
+  // The refusal's machine-readable gate code, so the dialog explains the rule that refused.
+  const [startSprintErrorCode, setStartSprintErrorCode] = useState<string | null>(null);
   const { toasts, success, error: showError, warning, info, removeToast } = useToast();
   const [showSprintGoalModal, setShowSprintGoalModal] = useState(false);
   const [draggedItemId, setDraggedItemId] = useState<string | null>(null);
@@ -389,11 +391,13 @@ export const SprintPlanning: React.FC = () => {
         void queryClient.removeQueries({ queryKey: queryKeys.sprintTasks.all });
         setShowStartSprintModal(false);
         setStartSprintError(null);
+        setStartSprintErrorCode(null);
         success(t('sprintPlanning.toast.sprintStarted'));
         setTimeout(() => void navigate('/sprint'), 1.5 * TIME.SECOND);
       } else {
         const errorMsg = response.error?.message ?? t('sprintPlanning.toast.failedToStartSprint');
         setStartSprintError(errorMsg);
+        setStartSprintErrorCode(response.error?.code ?? null);
         showError(errorMsg);
       }
     },
@@ -404,6 +408,12 @@ export const SprintPlanning: React.FC = () => {
         showToast: (msg) => showError(msg),
       });
       setStartSprintError(message);
+      // Keep the typed refusal available to the dialog even though the message pipeline only
+      // carries text, so a gate refusal is explained by its rule rather than by its status code.
+      setStartSprintErrorCode(
+        (error as { response?: { data?: { error?: { code?: string } } } }).response?.data?.error
+          ?.code ?? null
+      );
       showError(message);
       void queryClient.invalidateQueries({ queryKey: queryKeys.productBacklog.all });
       void queryClient.invalidateQueries({ queryKey: queryKeys.generatedSprint.all });
@@ -1381,6 +1391,7 @@ export const SprintPlanning: React.FC = () => {
   const handleCancelStartSprint = () => {
     setShowStartSprintModal(false);
     setStartSprintError(null);
+    setStartSprintErrorCode(null);
     startSprintMutation.reset();
   };
 
@@ -2339,6 +2350,7 @@ export const SprintPlanning: React.FC = () => {
           participationHasProductOwner={participationData?.data?.hasProductOwner ?? false}
           participationDeveloperCount={participationData?.data?.developerCount ?? 0}
           error={startSprintError}
+          errorCode={startSprintErrorCode}
           isLoading={startSprintMutation.isPending}
           hasSprintGoal={!!selectedSprint?.sprintGoal?.trim()}
           hasSavedBacklog={backlogSaved}

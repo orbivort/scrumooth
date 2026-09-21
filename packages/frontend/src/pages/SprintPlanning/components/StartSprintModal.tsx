@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
+import { GATE_CODES } from '@scrumooth/shared';
 
 import styles from './StartSprintModal.module.css';
 
@@ -42,12 +43,37 @@ export interface StartSprintModalProps {
   /** How many Developers are recorded as present. */
   participationDeveloperCount?: number;
   error?: string | null;
+  /** Stable gate code from the refusal envelope (`error.code`), when the server supplied one. */
+  errorCode?: string | null;
   isLoading?: boolean;
   hasSprintGoal?: boolean;
   hasSavedBacklog?: boolean;
 }
 
 // Icons imported from shared library
+
+/**
+ * Resolve the refusal copy from the machine-readable gate code.
+ *
+ * Branches on the stable contract rather than on the message text, so a localized refusal is
+ * explained by its rule instead of falling through to a generic HTTP-status message. Returns
+ * `null` for codes this dialog has no dedicated copy for, so the message matcher below stays the
+ * fallback.
+ */
+const getFriendlyErrorFromCode = (
+  code: string,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- TFunction signature varies by i18next version
+  t: any
+): { title: string; message: string } | null => {
+  if (code === GATE_CODES.SPRINT_TEAM_MEMBERS_ONLY) {
+    return {
+      title: t('sprintPlanning.startSprintModal.error.teamMembersOnly'),
+      message: t('sprintPlanning.startSprintModal.error.teamMembersOnlyMessage'),
+    };
+  }
+
+  return null;
+};
 
 // Helper function to get user-friendly error message
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- TFunction signature varies by i18next version
@@ -155,6 +181,7 @@ export const StartSprintModal: React.FC<StartSprintModalProps> = ({
   participationHasProductOwner = true,
   participationDeveloperCount = 0,
   error,
+  errorCode,
   isLoading = false,
   hasSprintGoal = false,
   hasSavedBacklog = false,
@@ -163,14 +190,18 @@ export const StartSprintModal: React.FC<StartSprintModalProps> = ({
   const modalRef = useRef<HTMLDivElement>(null);
   const previousActiveElement = useRef<HTMLElement | null>(null);
 
-  // Get friendly error message if error exists
-  // If error is already formatted (contains periods and spaces), display it directly
+  // Get friendly error message if error exists.
+  // The stable gate code wins over the message text, so the specific rule is explained instead
+  // of degrading to a generic HTTP-status message. Otherwise: an already formatted message is
+  // displayed directly, and a short one goes through the message matcher.
   const isPreFormatted = error && (error.includes('. ') || error.length > 100);
-  const friendlyError = error
+  const codeError = errorCode ? getFriendlyErrorFromCode(errorCode, t) : null;
+  const fallbackError = error
     ? isPreFormatted
       ? { title: t('sprintPlanning.startSprintModal.error.unableToStart'), message: error }
       : getFriendlyErrorMessage(error, t)
     : null;
+  const friendlyError = codeError ?? fallbackError;
 
   // Reset and handle modal open/close
   useEffect(() => {

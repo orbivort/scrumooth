@@ -102,6 +102,7 @@ vi.mock('./domain/sprintBacklog.service', () => ({
     getTasksByPbiId: vi.fn().mockResolvedValue({ data: [] }),
     addPBIToSprint: vi.fn().mockResolvedValue({}),
     removePBIFromSprint: vi.fn().mockResolvedValue({}),
+    acknowledgeSprintBacklogChange: vi.fn().mockResolvedValue({}),
     getSprintBacklogChanges: vi.fn().mockResolvedValue({ data: [] }),
   },
 }));
