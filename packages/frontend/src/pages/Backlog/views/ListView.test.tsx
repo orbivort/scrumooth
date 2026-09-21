@@ -61,6 +61,18 @@ describe('ListView', () => {
       expect(screen.getByText(i18nT('backlog:listView.labels'))).toBeInTheDocument();
     });
 
+    it('should keep the header and the rows in a single table so columns stay aligned', () => {
+      const { container } = renderWithProviders(
+        <ListView items={mockItems} onItemClick={mockOnItemClick} />
+      );
+
+      // Separate tables would be laid out independently and drift out of alignment.
+      const tables = container.querySelectorAll('table');
+      expect(tables).toHaveLength(1);
+      expect(tables[0]!.querySelectorAll('thead th')).toHaveLength(8);
+      expect(tables[0]!.querySelectorAll('tbody tr')).toHaveLength(mockItems.length);
+    });
+
     it('should render all items', () => {
       renderWithProviders(<ListView items={mockItems} onItemClick={mockOnItemClick} />);
 

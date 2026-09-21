@@ -62,10 +62,13 @@
   white-space: nowrap;
 }
 
-/* Virtualized Grid Layout */
+/* Virtualized Grid Layout.
+   The MoSCoW track (4th) is sized to fit the longest full badge label — "Dovrebbe avere" at
+   120px — plus the cell padding, so the badge never wraps or gets clipped. It stays the same at
+   every breakpoint because it is driven by the label, not by the viewport. */
 .virtualized-header {
   display: grid;
-  grid-template-columns: 104px 80px 1fr 140px 140px 120px 100px 200px;
+  grid-template-columns: 104px 80px 1fr 168px 140px 120px 100px 200px;
   background: linear-gradient(135deg, var(--color-gray-50) 0%, var(--color-gray-100) 100%);
   border-bottom: var(--border-width-2) solid var(--color-border-default);
 }
@@ -87,7 +90,7 @@
 
 .virtualized-row {
   display: grid;
-  grid-template-columns: 104px 80px 1fr 140px 140px 120px 100px 200px;
+  grid-template-columns: 104px 80px 1fr 168px 140px 120px 100px 200px;
   width: 100%;
   border-bottom: var(--border-width-1) solid var(--color-gray-100);
   background: var(--color-background-card);
@@ -610,7 +613,7 @@
 @media (width <= 1200px) {
   .virtualized-header,
   .virtualized-row {
-    grid-template-columns: 104px 70px 1fr 130px 130px 100px 90px 180px;
+    grid-template-columns: 104px 70px 1fr 168px 130px 100px 90px 180px;
   }
 
   .backlog-table col:nth-child(1) {
@@ -621,7 +624,7 @@
     width: 70px;
   }
 
-  .backlog-table col:nth-child(4),
+  /* MoSCoW (col 4) keeps its base width: the badge label, not the viewport, decides it. */
   .backlog-table col:nth-child(5) {
     width: 130px;
   }
@@ -642,7 +645,7 @@
 @media (width <= 900px) {
   .virtualized-header,
   .virtualized-row {
-    grid-template-columns: 104px 60px 1fr 120px 120px 90px 80px 160px;
+    grid-template-columns: 104px 60px 1fr 168px 120px 90px 80px 160px;
   }
 
   .virtualized-header-cell,
@@ -658,7 +661,7 @@
     width: 60px;
   }
 
-  .backlog-table col:nth-child(4),
+  /* MoSCoW (col 4) keeps its base width: the badge label, not the viewport, decides it. */
   .backlog-table col:nth-child(5) {
     width: 120px;
   }

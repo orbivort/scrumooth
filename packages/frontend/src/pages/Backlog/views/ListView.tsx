@@ -351,8 +351,9 @@ export const ListView = memo<ListViewProps>(({ items, onItemClick, onMove, canOr
 
   return (
     <div className={`${styles['list-view']} ${enableVirtualization ? styles['virtualized'] : ''}`}>
-      {/* Header - Table for non-virtualized, Grid for virtualized */}
-      {enableVirtualization ? (
+      {/* Header - only virtualized mode needs a detached header. In table mode the header lives
+          inside the same table as the rows, so both share one column layout and cannot drift. */}
+      {enableVirtualization && (
         <div ref={headerRef} className={styles['virtualized-header']} role="row">
           <div className={styles['virtualized-header-cell']} role="columnheader">
             {t('listView.position') as string}
@@ -379,35 +380,14 @@ export const ListView = memo<ListViewProps>(({ items, onItemClick, onMove, canOr
             {t('listView.labels') as string}
           </div>
         </div>
-      ) : (
-        <table className={styles['backlog-table']}>
-          <colgroup>
-            <col style={{ width: '104px' }} />
-            <col style={{ width: '80px' }} />
-            <col />
-            <col style={{ width: '140px' }} />
-            <col style={{ width: '140px' }} />
-            <col style={{ width: '120px' }} />
-            <col style={{ width: '100px' }} />
-            <col style={{ width: '200px' }} />
-          </colgroup>
-          <thead>
-            <tr>
-              <th>{t('listView.position') as string}</th>
-              <th>{t('listView.id') as string}</th>
-              <th>{t('listView.title') as string}</th>
-              <th>{t('listView.moscow') as string}</th>
-              <th>{t('listView.status') as string}</th>
-              <th>{t('listView.businessValue') as string}</th>
-              <th>{t('listView.estimate') as string}</th>
-              <th>{t('listView.labels') as string}</th>
-            </tr>
-          </thead>
-        </table>
       )}
 
       {/* Body */}
-      <div ref={containerRef} className={styles['table-body-container']} role="rowgroup">
+      <div
+        ref={containerRef}
+        className={styles['table-body-container']}
+        role={enableVirtualization ? 'rowgroup' : undefined}
+      >
         {enableVirtualization ? (
           <div
             className={styles['virtualized-body']}
@@ -439,12 +419,25 @@ export const ListView = memo<ListViewProps>(({ items, onItemClick, onMove, canOr
               <col style={{ width: '104px' }} />
               <col style={{ width: '80px' }} />
               <col />
-              <col style={{ width: '140px' }} />
+              {/* MoSCoW: fits the longest full badge label ("Dovrebbe avere") plus cell padding. */}
+              <col style={{ width: '168px' }} />
               <col style={{ width: '140px' }} />
               <col style={{ width: '120px' }} />
               <col style={{ width: '100px' }} />
               <col style={{ width: '200px' }} />
             </colgroup>
+            <thead>
+              <tr>
+                <th>{t('listView.position') as string}</th>
+                <th>{t('listView.id') as string}</th>
+                <th>{t('listView.title') as string}</th>
+                <th>{t('listView.moscow') as string}</th>
+                <th>{t('listView.status') as string}</th>
+                <th>{t('listView.businessValue') as string}</th>
+                <th>{t('listView.estimate') as string}</th>
+                <th>{t('listView.labels') as string}</th>
+              </tr>
+            </thead>
             <tbody>
               {items.map((item, index) => (
                 <TableRow

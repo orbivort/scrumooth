@@ -7,6 +7,11 @@
   color: var(--badge-color);
   text-transform: uppercase;
   letter-spacing: 0.3px;
+
+  /* A priority chip reads as one label, so it must never break across two lines.
+     Wrapping is what happens when a narrow column (e.g. the backlog list view) leaves the
+     label a fraction too little room: "SHOULD HAVE" needs 101.3px, not the ~100px available. */
+  white-space: nowrap;
 }
 
 .moscow-badge.compact {
