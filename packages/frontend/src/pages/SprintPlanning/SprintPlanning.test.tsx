@@ -180,6 +180,11 @@ vi.mock('../../services', () => ({
     saveSprintBacklog: vi.fn(),
     saveSprintPlanningDraft: vi.fn(),
     getSprintPlanningDraft: vi.fn(),
+    getVelocityData: vi.fn(),
+    getPlanningParticipation: vi.fn(),
+    addPlanningAttendee: vi.fn(),
+    updatePlanningAttendee: vi.fn(),
+    deletePlanningAttendee: vi.fn(),
     updateGeneratedSprint: vi.fn(),
     getProductGoals: vi.fn(),
   },
@@ -337,7 +342,44 @@ describe('SprintPlanning Integration Tests', () => {
           sprintGoal: null,
           items: [],
           tasks: [],
+          capacity: [],
+          attendees: [],
+          participation: {
+            attendees: [],
+            hasProductOwner: false,
+            developerCount: 0,
+            isReadyToStart: false,
+          },
           conflicts: [],
+        },
+      })
+    );
+    // Velocity is read from the reports endpoint (per-Sprint, server-computed).
+    mockApiMethod(
+      apiService.getVelocityData,
+      createMockApiResponse({
+        data: { sprints: [], planned: [], completed: [], statuses: [] },
+      })
+    );
+    // Planning participation defaults to recorded (PO + one Developer) so the Start action is
+    // not blocked; participation-specific tests override this.
+    mockApiMethod(
+      apiService.getPlanningParticipation,
+      createMockApiResponse({
+        data: {
+          attendees: [
+            {
+              id: 'pa-po',
+              name: 'Product Owner',
+              email: null,
+              role: 'product_owner',
+              attended: true,
+            },
+            { id: 'pa-dev', name: 'Developer', email: null, role: 'developers', attended: true },
+          ],
+          hasProductOwner: true,
+          developerCount: 1,
+          isReadyToStart: true,
         },
       })
     );
@@ -2710,8 +2752,8 @@ describe('SprintPlanning Integration Tests', () => {
     });
   });
 
-  describe('Handle useCallback for calculateVelocityData', () => {
-    it('should memoize calculateVelocityData correctly', async () => {
+  describe('Velocity is sourced from the reports endpoint', () => {
+    it('renders the velocity metric from the server report', async () => {
       const mockSprint = createMockGeneratedSprint();
 
       mockApiMethod(apiService.getGeneratedSprints, createMockApiResponse({ data: [mockSprint] }));
@@ -2723,6 +2765,34 @@ describe('SprintPlanning Integration Tests', () => {
 
       await waitFor(() => {
         expect(screen.getByText(/Avg Velocity/i)).toBeInTheDocument();
+      });
+      expect(apiService.getVelocityData).toHaveBeenCalled();
+    });
+
+    it('averages only completed Sprints and ignores the in-flight Sprint', async () => {
+      const mockSprint = createMockGeneratedSprint();
+
+      mockApiMethod(apiService.getGeneratedSprints, createMockApiResponse({ data: [mockSprint] }));
+      mockApiMethod(apiService.getProductBacklog, createMockApiResponse({ data: [] }));
+      mockApiMethod(apiService.getTeam, createMockApiResponse({ data: createMockTeam() }));
+      mockApiMethod(apiService.getSprintTasks, createMockApiResponse({ data: [] }));
+      mockApiMethod(
+        apiService.getVelocityData,
+        createMockApiResponse({
+          data: {
+            sprints: ['Sprint A', 'Sprint B', 'Sprint C'],
+            planned: [20, 20, 20],
+            completed: [10, 20, 5],
+            statuses: ['COMPLETED', 'COMPLETED', 'ACTIVE'],
+          },
+        })
+      );
+
+      renderWithProviders(<SprintPlanning />);
+
+      // (10 + 20) / 2 = 15: the ACTIVE Sprint's 5 points must not be counted.
+      await waitFor(() => {
+        expect(screen.getByText('15 pts')).toBeInTheDocument();
       });
     });
   });

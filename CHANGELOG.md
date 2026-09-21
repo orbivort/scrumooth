@@ -5,6 +5,35 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **Sprint Planning records participation and capacity as first-class facts** and enforces them
+  when a Sprint opens, closing the four Major conformance gaps recorded for the module:
+  - New `SprintPlanningAttendee` and `SprintCapacity` records (migration
+    `20260921120000_add_sprint_planning_attendance_and_capacity`). Planning attendance is managed
+    through `GET|POST|PUT|DELETE /api/v1/sprints/:id/planning-attendees`; capacity is persisted
+    with the planning draft (`PUT /api/v1/sprints/:id/backlog/draft`). Both are returned by
+    `GET /api/v1/sprints/:id/planning-draft`, and the planning page gains a **Planning
+    Participation** panel plus a capacity card that reports whether the figures are recorded.
+  - `POST /api/v1/sprints/:id/start` now refuses with `GATE_PLANNING_PARTICIPATION_REQUIRED`
+    (400) unless the recorded planning attendance includes the Product Owner and at least one
+    Developer, and with `GATE_CAPACITY_EXCEEDED` (400) when the planned task hours exceed the
+    recorded capacity by more than the new `SPRINT_CAPACITY_TOLERANCE_PCT` setting (default 10%).
+    The capacity check is skipped when no capacity was recorded, so existing plans are not
+    stranded.
+
+### Changed
+
+- Sprint Planning velocity is now the server-computed, per-Sprint velocity from
+  `GET /api/v1/reports/velocity`, averaged over **completed** Sprints only (the reports payload
+  now carries a `statuses` array so consumers can tell the in-flight Sprint apart). It is
+  presented as a descriptive average rather than a planning target. The page-local calculation
+  that mapped every historical Sprint to the currently `DONE` items has been removed.
+- The capacity card and the Start Sprint dialog align their over-commitment state with the
+  server tolerance: over capacity within the tolerance is a caution, beyond it is a refusal.
+
 ## [3.0.2] - 2026-09-13
 
 ### Security

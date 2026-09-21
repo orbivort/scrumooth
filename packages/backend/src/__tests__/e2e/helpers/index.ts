@@ -219,6 +219,7 @@ export {
   createTestReviewAttendeeInDb,
   createTestBurndownDataInDb,
   addPBIToSprintBacklog,
+  seedPlanningParticipation,
   addPBIToIncrement,
   cleanupUsers,
   cleanupTeams,

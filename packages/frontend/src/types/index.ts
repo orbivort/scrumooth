@@ -612,6 +612,28 @@ export interface VelocityData {
   completed: number;
 }
 
+// Sprint Planning — recorded participation and capacity (Scrum Guide conformance)
+export interface SprintPlanningAttendee {
+  id: string;
+  name: string;
+  email: string | null;
+  role: string;
+  attended: boolean;
+}
+
+export interface SprintPlanningCapacityEntry {
+  memberId: string | null;
+  userId: string;
+  availableHours: number;
+}
+
+export interface SprintPlanningParticipation {
+  attendees: SprintPlanningAttendee[];
+  hasProductOwner: boolean;
+  developerCount: number;
+  isReadyToStart: boolean;
+}
+
 export interface TeamMetrics {
   averageVelocity: number;
   velocityTrend: number;

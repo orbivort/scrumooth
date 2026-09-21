@@ -122,6 +122,72 @@ export const getSprintPlanningDraft = asyncHandler(async (req: Request, res: Res
 });
 
 /**
+ * Record one Sprint Planning attendee (Developers-only)
+ * @route POST /api/v1/sprints/:id/planning-attendees
+ */
+export const addPlanningAttendee = asyncHandler(async (req: Request, res: Response) => {
+  const id = getParamValue(req.params.id);
+  if (!id) {
+    throw new BadRequestError('Sprint ID is required');
+  }
+  const userId = req.user?.id;
+  if (!userId) {
+    throw new BadRequestError('User not authenticated');
+  }
+  const attendee = await sprintService.addPlanningAttendee(id, userId, req.body);
+  res.status(201).json(createSuccessResponse(attendee));
+});
+
+/**
+ * Update one Sprint Planning attendee (Developers-only)
+ * @route PUT /api/v1/sprints/:id/planning-attendees/:attendeeId
+ */
+export const updatePlanningAttendee = asyncHandler(async (req: Request, res: Response) => {
+  const id = getParamValue(req.params.id);
+  const attendeeId = getParamValue(req.params.attendeeId);
+  if (!id || !attendeeId) {
+    throw new BadRequestError('Sprint ID and attendee ID are required');
+  }
+  const userId = req.user?.id;
+  if (!userId) {
+    throw new BadRequestError('User not authenticated');
+  }
+  const attendee = await sprintService.updatePlanningAttendee(id, attendeeId, userId, req.body);
+  res.json(createSuccessResponse(attendee));
+});
+
+/**
+ * Remove one Sprint Planning attendee (Developers-only)
+ * @route DELETE /api/v1/sprints/:id/planning-attendees/:attendeeId
+ */
+export const deletePlanningAttendee = asyncHandler(async (req: Request, res: Response) => {
+  const id = getParamValue(req.params.id);
+  const attendeeId = getParamValue(req.params.attendeeId);
+  if (!id || !attendeeId) {
+    throw new BadRequestError('Sprint ID and attendee ID are required');
+  }
+  const userId = req.user?.id;
+  if (!userId) {
+    throw new BadRequestError('User not authenticated');
+  }
+  await sprintService.deletePlanningAttendee(id, attendeeId, userId);
+  res.json(createSuccessResponse({ message: 'Planning attendee deleted successfully' }));
+});
+
+/**
+ * Read the recorded Sprint Planning participation (read-only, authenticated team members)
+ * @route GET /api/v1/sprints/:id/planning-attendees
+ */
+export const getPlanningParticipation = asyncHandler(async (req: Request, res: Response) => {
+  const id = getParamValue(req.params.id);
+  if (!id) {
+    throw new BadRequestError('Sprint ID is required');
+  }
+  const participation = await sprintService.getPlanningParticipation(id);
+  res.json(createSuccessResponse(participation));
+});
+
+/**
  * Rollback sprint start
  * Used when sprint start fails after partial database updates
  */

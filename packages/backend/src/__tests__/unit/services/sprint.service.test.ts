@@ -39,6 +39,21 @@ vi.mock('../../../utils/prisma', () => ({
       delete: vi.fn(),
       deleteMany: vi.fn(),
     },
+    sprintPlanningAttendee: {
+      findMany: vi.fn(),
+      findFirst: vi.fn(),
+      create: vi.fn(),
+      createMany: vi.fn(),
+      update: vi.fn(),
+      delete: vi.fn(),
+      deleteMany: vi.fn(),
+    },
+    sprintCapacity: {
+      findMany: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
+      deleteMany: vi.fn(),
+    },
     task: {
       findMany: vi.fn(),
       findFirst: vi.fn(),
@@ -81,6 +96,7 @@ vi.mock('../../../utils/prisma', () => ({
     },
     teamMember: {
       findFirst: vi.fn(),
+      findMany: vi.fn(),
     },
     notification: {
       create: vi.fn(),
@@ -192,6 +208,20 @@ const mockPlanningPbiLookupAsReady = (teamId = 'team-1') =>
     }))
   );
 
+/**
+ * Sprint start now also gates on recorded planning participation (Product Owner + at least one
+ * Developer) and on the plan fitting the recorded capacity. Default to a satisfied participation
+ * record and no recorded capacity (the gate is skipped) so happy-path tests are not blocked.
+ * Gate-specific tests override these mocks themselves.
+ */
+const mockPlanningRecordsAsSatisfied = () => {
+  (prisma.sprintPlanningAttendee.findMany as any).mockResolvedValue([
+    { id: 'attendee-po', name: 'PO', email: null, role: 'product_owner', attended: true },
+    { id: 'attendee-dev', name: 'Dev', email: null, role: 'developers', attended: true },
+  ]);
+  (prisma.sprintCapacity.findMany as any).mockResolvedValue([]);
+};
+
 describe('SprintService', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -199,6 +229,7 @@ describe('SprintService', () => {
     // to none so happy-path tests are not blocked; gate-specific tests override this.
     (prisma.impediment.findMany as any).mockResolvedValue([]);
     mockPlanningPbiLookupAsReady();
+    mockPlanningRecordsAsSatisfied();
   });
 
   describe('getSprints', () => {
@@ -1913,6 +1944,7 @@ describe('SprintService - Additional Coverage', () => {
     // See the Sprint-close impediment gate default above.
     (prisma.impediment.findMany as any).mockResolvedValue([]);
     mockPlanningPbiLookupAsReady();
+    mockPlanningRecordsAsSatisfied();
   });
 
   describe('startSprint with backlog items and tasks', () => {
@@ -3203,6 +3235,306 @@ describe('SprintService - Additional Coverage', () => {
       expect(draft.items).toEqual([{ pbiId: 'pbi-1' }]);
       expect(draft.tasks).toHaveLength(1);
       expect(draft.tasks[0]?.pbiId).toBe('pbi-1');
+    });
+
+    it('should return recorded capacity and participation with the draft', async () => {
+      (prisma.sprint.findUnique as any).mockResolvedValue({
+        id: 'sprint-1',
+        teamId: 'team-1',
+        status: 'DRAFT',
+        sprintGoal: 'Goal 1',
+      });
+      (prisma.sprintBacklogItem.findMany as any).mockResolvedValue([]);
+      (prisma.task.findMany as any).mockResolvedValue([]);
+      (prisma.sprintCapacity.findMany as any).mockResolvedValue([
+        { memberId: 'member-1', userId: 'user-1', availableHours: 32 },
+      ]);
+      (prisma.sprintPlanningAttendee.findMany as any).mockResolvedValue([
+        { id: 'a-1', name: 'PO', email: null, role: 'product_owner', attended: true },
+        { id: 'a-2', name: 'Dev', email: null, role: 'developers', attended: true },
+      ]);
+
+      const draft = await sprintService.getSprintPlanningDraft('sprint-1');
+
+      expect(draft.capacity).toEqual([
+        { memberId: 'member-1', userId: 'user-1', availableHours: 32 },
+      ]);
+      expect(draft.attendees).toHaveLength(2);
+      expect(draft.participation.hasProductOwner).toBe(true);
+      expect(draft.participation.developerCount).toBe(1);
+      expect(draft.participation.isReadyToStart).toBe(true);
+    });
+  });
+
+  describe('startSprint planning participation and capacity gates', () => {
+    const startTransactionStub = () => ({
+      sprint: {
+        findUnique: vi.fn(),
+        update: vi.fn().mockResolvedValue({ id: 'sprint-1', status: 'ACTIVE' }),
+      },
+      generatedSprint: { updateMany: vi.fn() },
+      sprintBacklogItem: {
+        findMany: vi.fn().mockResolvedValue([]),
+        createMany: vi.fn(),
+        deleteMany: vi.fn(),
+      },
+      productBacklogItem: { update: vi.fn(), updateMany: vi.fn() },
+      task: { createMany: vi.fn(), deleteMany: vi.fn() },
+      burndownData: { deleteMany: vi.fn(), createMany: vi.fn() },
+      workflow: { findFirst: vi.fn() },
+      workflowState: { findMany: vi.fn() },
+      statusChangeHistory: { create: vi.fn() },
+      user: { findMany: vi.fn().mockResolvedValue([]) },
+    });
+
+    const planReadySprint = () => {
+      (prisma.sprint.findUnique as any).mockResolvedValue({
+        id: 'sprint-1',
+        teamId: 'team-1',
+        status: 'PLANNED',
+        sprintGoal: 'Goal',
+        goalId: 'goal-1',
+      });
+      (prisma.sprint.findFirst as any).mockResolvedValue(null);
+      (prisma.sprintBacklogItem.findMany as any)
+        .mockResolvedValueOnce([{ pbiId: 'pbi-1' }])
+        .mockResolvedValueOnce([]);
+      (prisma.task.findMany as any).mockResolvedValue([{ estimatedHours: 8 }]);
+    };
+
+    it('refuses to start without a recorded Product Owner', async () => {
+      planReadySprint();
+      (prisma.sprintPlanningAttendee.findMany as any).mockResolvedValue([
+        { id: 'a-1', name: 'Dev', email: null, role: 'developers', attended: true },
+      ]);
+
+      await expect(sprintService.startSprint('sprint-1', 'user-1')).rejects.toMatchObject({
+        statusCode: 400,
+        code: GATE_CODES.PLANNING_PARTICIPATION_REQUIRED,
+      });
+    });
+
+    it('refuses to start without at least one recorded Developer', async () => {
+      planReadySprint();
+      (prisma.sprintPlanningAttendee.findMany as any).mockResolvedValue([
+        { id: 'a-1', name: 'PO', email: null, role: 'product_owner', attended: true },
+      ]);
+
+      await expect(sprintService.startSprint('sprint-1', 'user-1')).rejects.toMatchObject({
+        statusCode: 400,
+        code: GATE_CODES.PLANNING_PARTICIPATION_REQUIRED,
+      });
+    });
+
+    it('ignores attendees recorded as absent when checking participation', async () => {
+      planReadySprint();
+      (prisma.sprintPlanningAttendee.findMany as any).mockResolvedValue([
+        { id: 'a-1', name: 'PO', email: null, role: 'product_owner', attended: false },
+        { id: 'a-2', name: 'Dev', email: null, role: 'developers', attended: true },
+      ]);
+
+      await expect(sprintService.startSprint('sprint-1', 'user-1')).rejects.toMatchObject({
+        statusCode: 400,
+        code: GATE_CODES.PLANNING_PARTICIPATION_REQUIRED,
+      });
+    });
+
+    it('refuses to start when the plan exceeds recorded capacity beyond the tolerance', async () => {
+      planReadySprint();
+      (prisma.task.findMany as any).mockResolvedValue([{ estimatedHours: 100 }]);
+      (prisma.sprintCapacity.findMany as any).mockResolvedValue([{ availableHours: 40 }]);
+
+      await expect(sprintService.startSprint('sprint-1', 'user-1')).rejects.toMatchObject({
+        statusCode: 400,
+        code: GATE_CODES.CAPACITY_EXCEEDED,
+      });
+    });
+
+    it('allows over-commitment inside the tolerance band', async () => {
+      planReadySprint();
+      // 42h planned against 40h recorded = 105%, inside the default 10% tolerance.
+      (prisma.task.findMany as any).mockResolvedValue([{ estimatedHours: 42 }]);
+      (prisma.sprintCapacity.findMany as any).mockResolvedValue([{ availableHours: 40 }]);
+      (withTransaction as any).mockImplementation(async (callback: any) =>
+        callback(startTransactionStub())
+      );
+
+      const result = await sprintService.startSprint('sprint-1', 'user-1');
+
+      expect(result.status).toBe('ACTIVE');
+    });
+
+    it('skips the capacity gate when no capacity was recorded', async () => {
+      planReadySprint();
+      (prisma.task.findMany as any).mockResolvedValue([{ estimatedHours: 999 }]);
+      (prisma.sprintCapacity.findMany as any).mockResolvedValue([]);
+      (withTransaction as any).mockImplementation(async (callback: any) =>
+        callback(startTransactionStub())
+      );
+
+      const result = await sprintService.startSprint('sprint-1', 'user-1');
+
+      expect(result.status).toBe('ACTIVE');
+    });
+  });
+
+  describe('planning attendance writes', () => {
+    it('records an attendee for a Developer', async () => {
+      (prisma.sprint.findUnique as any).mockResolvedValue({
+        id: 'sprint-1',
+        teamId: 'team-1',
+        status: 'DRAFT',
+      });
+      (prisma.teamMember.findFirst as any).mockResolvedValue({ role: 'DEVELOPERS' });
+      (prisma.sprintPlanningAttendee.create as any).mockResolvedValue({
+        id: 'attendee-1',
+        name: 'Ada',
+        email: null,
+        role: 'product_owner',
+        attended: true,
+      });
+
+      const result = await sprintService.addPlanningAttendee('sprint-1', 'user-1', {
+        name: 'Ada',
+        role: 'product_owner',
+        attended: true,
+      });
+
+      expect(result.id).toBe('attendee-1');
+    });
+
+    it('refuses planning attendance writes from a Product Owner', async () => {
+      (prisma.sprint.findUnique as any).mockResolvedValue({
+        id: 'sprint-1',
+        teamId: 'team-1',
+        status: 'DRAFT',
+      });
+      (prisma.teamMember.findFirst as any).mockResolvedValue({ role: 'PRODUCT_OWNER' });
+
+      await expect(
+        sprintService.addPlanningAttendee('sprint-1', 'user-1', {
+          name: 'Ada',
+          role: 'product_owner',
+          attended: true,
+        })
+      ).rejects.toMatchObject({
+        statusCode: 403,
+        code: GATE_CODES.DEVELOPER_ONLY_SPRINT_BACKLOG,
+      });
+    });
+
+    it('refuses attendance writes once the Sprint is no longer being planned', async () => {
+      (prisma.sprint.findUnique as any).mockResolvedValue({
+        id: 'sprint-1',
+        teamId: 'team-1',
+        status: 'ACTIVE',
+      });
+
+      await expect(
+        sprintService.addPlanningAttendee('sprint-1', 'user-1', {
+          name: 'Ada',
+          role: 'developers',
+          attended: true,
+        })
+      ).rejects.toThrow(BadRequestError);
+    });
+
+    it('refuses to update an attendee that belongs to another Sprint', async () => {
+      (prisma.sprint.findUnique as any).mockResolvedValue({
+        id: 'sprint-1',
+        teamId: 'team-1',
+        status: 'DRAFT',
+      });
+      (prisma.teamMember.findFirst as any).mockResolvedValue({ role: 'DEVELOPERS' });
+      (prisma.sprintPlanningAttendee.findFirst as any).mockResolvedValue(null);
+
+      await expect(
+        sprintService.updatePlanningAttendee('sprint-1', 'attendee-1', 'user-1', {
+          attended: true,
+        })
+      ).rejects.toThrow(NotFoundError);
+    });
+  });
+
+  describe('saveSprintPlanningDraft capacity persistence', () => {
+    it('persists recorded capacity through a diff upsert', async () => {
+      (prisma.sprint.findUnique as any).mockResolvedValue({
+        id: 'sprint-1',
+        teamId: 'team-1',
+        status: 'DRAFT',
+        sprintGoal: null,
+      });
+      (prisma.teamMember.findFirst as any).mockResolvedValue({ role: 'DEVELOPERS' });
+      (prisma.teamMember.findMany as any).mockResolvedValue([
+        { userId: 'user-1', role: 'DEVELOPERS' },
+      ]);
+      (prisma.productBacklogItem.findMany as any).mockResolvedValue([]);
+
+      const sprintCapacityCreate = vi.fn().mockResolvedValue({});
+      const sprintCapacityUpdate = vi.fn().mockResolvedValue({});
+      const sprintCapacityDeleteMany = vi.fn().mockResolvedValue({ count: 0 });
+
+      (withTransaction as any).mockImplementation(async (callback: any) =>
+        callback({
+          sprint: { update: vi.fn() },
+          sprintBacklogItem: {
+            findMany: vi.fn().mockResolvedValue([]),
+            createMany: vi.fn(),
+            deleteMany: vi.fn(),
+          },
+          task: {
+            findMany: vi.fn().mockResolvedValue([]),
+            create: vi.fn(),
+            update: vi.fn(),
+            deleteMany: vi.fn(),
+          },
+          sprintCapacity: {
+            findMany: vi.fn().mockResolvedValue([]),
+            create: sprintCapacityCreate,
+            update: sprintCapacityUpdate,
+            deleteMany: sprintCapacityDeleteMany,
+          },
+        })
+      );
+
+      await sprintService.saveSprintPlanningDraft('sprint-1', 'user-1', {
+        items: [],
+        tasks: [],
+        capacity: [{ memberId: 'member-1', userId: 'user-1', availableHours: 32 }],
+      });
+
+      expect(sprintCapacityCreate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            sprintId: 'sprint-1',
+            userId: 'user-1',
+            memberId: 'member-1',
+            availableHours: 32,
+          }),
+        })
+      );
+    });
+
+    it('refuses capacity that references a user who is not a Developer on the team', async () => {
+      (prisma.sprint.findUnique as any).mockResolvedValue({
+        id: 'sprint-1',
+        teamId: 'team-1',
+        status: 'DRAFT',
+        sprintGoal: null,
+      });
+      (prisma.teamMember.findFirst as any).mockResolvedValue({ role: 'DEVELOPERS' });
+      (prisma.teamMember.findMany as any).mockResolvedValue([
+        { userId: 'other-user', role: 'PRODUCT_OWNER' },
+      ]);
+      (prisma.productBacklogItem.findMany as any).mockResolvedValue([]);
+
+      await expect(
+        sprintService.saveSprintPlanningDraft('sprint-1', 'user-1', {
+          items: [],
+          tasks: [],
+          capacity: [{ userId: 'other-user', availableHours: 20 }],
+        })
+      ).rejects.toThrow(BadRequestError);
     });
   });
 

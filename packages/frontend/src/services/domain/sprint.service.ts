@@ -1,5 +1,12 @@
 // Sprint Service
-import type { Sprint, ProductBacklogItem, ApiResponse } from '../../types';
+import type {
+  Sprint,
+  ProductBacklogItem,
+  ApiResponse,
+  SprintPlanningAttendee,
+  SprintPlanningCapacityEntry,
+  SprintPlanningParticipation,
+} from '../../types';
 import { coreApiService } from '../core/api.core';
 
 class SprintService {
@@ -82,6 +89,8 @@ class SprintService {
         remainingHours?: number;
       }>;
       sprintGoal?: string;
+      capacity?: SprintPlanningCapacityEntry[];
+      attendees?: Array<{ name: string; email?: string; role: string; attended: boolean }>;
     }
   ): Promise<ApiResponse<{ sprintId: string; sprintGoal: string | null }>> {
     const { data: response } = await this.api.put(`/sprints/${id}/backlog/draft`, data);
@@ -105,10 +114,65 @@ class SprintService {
         estimatedHours: number | null;
         remainingHours: number | null;
       }>;
+      /**
+       * Recorded capacity, participation and the derived readiness summary. All three are
+       * additive: a server that predates them omits the fields, so consumers must tolerate
+       * their absence.
+       */
+      capacity?: SprintPlanningCapacityEntry[];
+      attendees?: SprintPlanningAttendee[];
+      participation?: SprintPlanningParticipation;
       conflicts: Array<{ pbiId: string; sprintName: string }>;
     }>
   > {
     const { data: response } = await this.api.get(`/sprints/${id}/planning-draft`);
+    return response;
+  }
+
+  /**
+   * Read the recorded planning participation (read-only, any authenticated team member).
+   */
+  async getPlanningParticipation(id: string): Promise<ApiResponse<SprintPlanningParticipation>> {
+    const { data: response } = await this.api.get(`/sprints/${id}/planning-attendees`);
+    return response;
+  }
+
+  /**
+   * Record a Sprint Planning attendee (Developers-only write).
+   */
+  async addPlanningAttendee(
+    id: string,
+    data: { name: string; email?: string; role: string; attended: boolean }
+  ): Promise<ApiResponse<SprintPlanningAttendee>> {
+    const { data: response } = await this.api.post(`/sprints/${id}/planning-attendees`, data);
+    return response;
+  }
+
+  /**
+   * Update a recorded Sprint Planning attendee (Developers-only write).
+   */
+  async updatePlanningAttendee(
+    id: string,
+    attendeeId: string,
+    data: { name?: string; email?: string; role?: string; attended?: boolean }
+  ): Promise<ApiResponse<SprintPlanningAttendee>> {
+    const { data: response } = await this.api.put(
+      `/sprints/${id}/planning-attendees/${attendeeId}`,
+      data
+    );
+    return response;
+  }
+
+  /**
+   * Remove a recorded Sprint Planning attendee (Developers-only write).
+   */
+  async deletePlanningAttendee(
+    id: string,
+    attendeeId: string
+  ): Promise<ApiResponse<{ message: string }>> {
+    const { data: response } = await this.api.delete(
+      `/sprints/${id}/planning-attendees/${attendeeId}`
+    );
     return response;
   }
 

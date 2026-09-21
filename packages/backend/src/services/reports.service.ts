@@ -4,6 +4,12 @@ export interface VelocityData {
   sprints: string[];
   planned: number[];
   completed: number[];
+  /**
+   * Lifecycle status of each entry in `sprints` (same order). Lets a consumer tell a genuinely
+   * closed Sprint from the in-flight one — Sprint Planning averages completed velocity only,
+   * while the Reports chart plots the active Sprint's progress as well.
+   */
+  statuses: string[];
 }
 
 export interface SprintHistoryItem {
@@ -183,6 +189,7 @@ class ReportsService {
       sprints: [],
       planned: [],
       completed: [],
+      statuses: [],
     };
 
     for (const sprint of sprints) {
@@ -190,6 +197,7 @@ class ReportsService {
       velocityData.sprints.push(sprint.name);
       velocityData.planned.push(planned);
       velocityData.completed.push(completed);
+      velocityData.statuses.push(sprint.status);
     }
 
     return velocityData;

@@ -45,18 +45,21 @@
   "sprint": {
     "anotherActive": "Ein anderer Sprint ist bereits aktiv",
     "cancelRequiresProductOwner": "Nur der Product Owner kann einen Sprint abbrechen",
+    "capacityExceeded": "Der Sprint kann nicht gestartet werden: Die geplante Arbeit ({{planned}} h) übersteigt die erfasste Kapazität ({{capacity}} h) um mehr als die zulässige Toleranz von {{tolerance}} %. Reduziere den Plan oder erfasse zuerst mehr Kapazität.",
     "eventSprintRetrospective": "Sprint Retrospective",
     "eventSprintReview": "Sprint Review",
     "impedimentsUnresolved": "Der Sprint kann nicht abgeschlossen werden, solange noch ungelöste Hindernisse bestehen: {{impediments}}. Löse oder schließe sie, bevor der Sprint abgeschlossen wird.",
     "missingGoal": "Der Sprint kann ohne Sprint-Ziel nicht gestartet werden",
     "notPlanned": "Nur geplante Sprints können gestartet werden",
     "notReadyToStart": "Das Sprint-Backlog muss gespeichert werden, bevor der Sprint gestartet werden kann",
+    "participationRequired": "Der Sprint kann nicht ohne erfasste Teilnahme an der Sprint-Planung gestartet werden. Erfasse die Anwesenheit, einschließlich des Product Owners und mindestens eines Entwicklers.",
     "pbiAlreadyCommitted": "Backlog-Element \"{{pbiTitle}}\" ist bereits einem anderen Sprint zugeordnet ({{sprintName}}). Ein Produkt-Backlog-Element kann jeweils nur in einem Sprint bearbeitet werden.",
     "pbiConflictAtStart": "Der Sprint kann nicht gestartet werden: Die folgenden Backlog-Elemente sind bereits einem anderen Sprint zugeordnet: {{items}}.",
     "prerequisiteEventsMissing": "Der Sprint kann nicht abgeschlossen werden, da die folgenden Ereignisse noch nicht beendet sind: {{events}}. Zeichne sie auf, bevor der Sprint abgeschlossen wird.",
     "productGoalRequired": "Der Sprint kann nicht ohne ein verknüpftes Produktziel gestartet werden. Verknüpfe den Sprint zuerst mit dem Produktziel des Teams."
   },
   "sprintBacklog": {
+    "capacityNotOfTeam": "Jeder Kapazitätseintrag muss zu einem Entwickler dieses Teams gehören.",
     "developersOnly": "Nur Entwickler können das Sprint-Backlog speichern, da die Entwickler, die die Arbeit ausführen, das Sprint-Backlog besitzen.",
     "pbiNotOfTeam": "Jedes für einen Sprint ausgewählte Element muss zum Product Backlog dieses Teams gehören."
   },

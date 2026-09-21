@@ -194,11 +194,18 @@ describe('StartSprintModal', () => {
       expect(capacityValue).toHaveClass('capacity-warning');
     });
 
-    it('should show danger status for capacity over 100%', () => {
-      renderWithProviders(<StartSprintModal {...defaultProps} capacityPercentage={110} />);
+    it('should show danger status for capacity beyond the tolerance', () => {
+      renderWithProviders(<StartSprintModal {...defaultProps} capacityPercentage={115} />);
 
-      const capacityValue = screen.getByText('110%');
+      const capacityValue = screen.getByText('115%');
       expect(capacityValue).toHaveClass('capacity-danger');
+    });
+
+    it('should stay in the warning state when slightly over capacity but within tolerance', () => {
+      renderWithProviders(<StartSprintModal {...defaultProps} capacityPercentage={105} />);
+
+      const capacityValue = screen.getByText('105%');
+      expect(capacityValue).toHaveClass('capacity-warning');
     });
 
     it('should show warning message when capacity is in warning range', () => {
@@ -211,12 +218,24 @@ describe('StartSprintModal', () => {
       ).toBeInTheDocument();
     });
 
-    it('should show danger message when capacity is over 100%', () => {
-      renderWithProviders(<StartSprintModal {...defaultProps} capacityPercentage={110} />);
+    it('should show danger message when capacity is beyond the tolerance', () => {
+      renderWithProviders(<StartSprintModal {...defaultProps} capacityPercentage={115} />);
 
       expect(
         screen.getByText(
           new RegExp(i18nT('sprint:sprintPlanning.startSprintModal.overCapacityWarning'))
+        )
+      ).toBeInTheDocument();
+    });
+
+    it('should explain the tolerance band when the plan is slightly over capacity', () => {
+      renderWithProviders(<StartSprintModal {...defaultProps} capacityPercentage={105} />);
+
+      expect(
+        screen.getByText(
+          i18nT('sprint:sprintPlanning.startSprintModal.withinToleranceWarning', {
+            tolerance: 10,
+          })
         )
       ).toBeInTheDocument();
     });
@@ -374,14 +393,46 @@ describe('StartSprintModal', () => {
       ).toBeDisabled();
     });
 
-    it('should disable start button when capacity is over 100%', () => {
-      renderWithProviders(<StartSprintModal {...defaultProps} capacityPercentage={110} />);
+    it('should disable start button when capacity is beyond the tolerance', () => {
+      renderWithProviders(<StartSprintModal {...defaultProps} capacityPercentage={115} />);
 
       expect(
         screen.getByRole('button', {
           name: new RegExp(`^${i18nT('sprint:sprintPlanning.startSprintModal.start')}$`),
         })
       ).toBeDisabled();
+    });
+
+    it('should keep start button enabled when over capacity but within tolerance', () => {
+      renderWithProviders(<StartSprintModal {...defaultProps} capacityPercentage={105} />);
+
+      expect(
+        screen.getByRole('button', {
+          name: new RegExp(`^${i18nT('sprint:sprintPlanning.startSprintModal.start')}$`),
+        })
+      ).not.toBeDisabled();
+    });
+
+    it('should disable start button and explain when planning participation is incomplete', () => {
+      renderWithProviders(
+        <StartSprintModal
+          {...defaultProps}
+          participationReady={false}
+          participationHasProductOwner={false}
+          participationDeveloperCount={0}
+        />
+      );
+
+      expect(
+        screen.getByRole('button', {
+          name: new RegExp(`^${i18nT('sprint:sprintPlanning.startSprintModal.start')}$`),
+        })
+      ).toBeDisabled();
+      expect(
+        screen.getByText(
+          new RegExp(i18nT('sprint:sprintPlanning.startSprintModal.participationMissingBoth'))
+        )
+      ).toBeInTheDocument();
     });
 
     it('should enable start button when capacity is under 100%', () => {

@@ -26,6 +26,7 @@ import {
   generateTestUUID,
   getCsrfToken,
   extractCsrfFromCookies,
+  seedPlanningParticipation,
   CSRF_CONSTANTS,
 } from '@e2e-helpers';
 
@@ -371,6 +372,8 @@ describe('E2E: Sprint Management', () => {
           createdBy: user.id,
         },
       });
+      // Planning participation is a start gate: the PO and a Developer must be recorded present.
+      await seedPlanningParticipation(sprint.id, user.id);
 
       const cookies = await loginAndGetCookies(email);
       const { csrfToken } = extractCsrfFromCookies(cookies);

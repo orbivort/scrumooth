@@ -88,9 +88,37 @@ const saveSprintBacklogSchema = z.object({
     .optional(),
 });
 
+// Sprint Planning attendance (Developers-only writes). Roles mirror the Sprint Review /
+// Retrospective attendee contract so all three events record participation identically.
+const planningAttendeeRoleSchema = z.enum(
+  ['product_owner', 'scrum_master', 'developers', 'stakeholder'],
+  { error: 'Invalid role selected' }
+);
+
+const planningAttendeeInputSchema = z.object({
+  name: z.string().min(1, 'Name is required').max(100, 'Name is too long'),
+  email: z.string().email('Invalid email format').max(255).optional().or(z.literal('')),
+  role: planningAttendeeRoleSchema,
+  attended: z.boolean().default(true),
+});
+
+const updatePlanningAttendeeSchema = z
+  .object({
+    name: z.string().min(1, 'Name is required').max(100, 'Name is too long').optional(),
+    email: z.string().email('Invalid email format').max(255).optional().or(z.literal('')),
+    role: planningAttendeeRoleSchema.optional(),
+    attended: z.boolean().optional(),
+  })
+  .strict();
+
+const planningAttendeeIdSchema = z.object({
+  id: z.string().uuid('Invalid sprint ID'),
+  attendeeId: z.string().uuid('Invalid attendee ID'),
+});
+
 // Incremental Sprint Planning draft payload (selected PBIs, decomposed tasks, working
-// Sprint Goal, optional capacity). `strict()` rejects unknown fields so a stale client
-// cannot drift the persisted state.
+// Sprint Goal, recorded capacity, and an optional attendance snapshot). `strict()` rejects
+// unknown fields so a stale client cannot drift the persisted state.
 const saveSprintPlanningDraftSchema = z
   .object({
     items: z
@@ -117,12 +145,13 @@ const saveSprintPlanningDraftSchema = z
     capacity: z
       .array(
         z.object({
-          memberId: z.string().uuid().optional(),
+          memberId: z.string().uuid().optional().nullable(),
           userId: z.string().uuid('Invalid user ID'),
           availableHours: z.number().min(0),
         })
       )
       .optional(),
+    attendees: z.array(planningAttendeeInputSchema).optional(),
   })
   .strict();
 
@@ -237,6 +266,52 @@ router.get(
   '/:id/planning-draft',
   validateParams(sprintIdSchema),
   sprintController.getSprintPlanningDraft
+);
+
+/**
+ * @route   GET /api/v1/sprints/:id/planning-attendees
+ * @desc    Read the recorded Sprint Planning participation (read-only)
+ * @access  Private (any authenticated team member)
+ */
+router.get(
+  '/:id/planning-attendees',
+  validateParams(sprintIdSchema),
+  sprintController.getPlanningParticipation
+);
+
+/**
+ * @route   POST /api/v1/sprints/:id/planning-attendees
+ * @desc    Record a Sprint Planning attendee (Developers-only)
+ * @access  Private (Developers)
+ */
+router.post(
+  '/:id/planning-attendees',
+  validateParams(sprintIdSchema),
+  validateBody(planningAttendeeInputSchema),
+  sprintController.addPlanningAttendee
+);
+
+/**
+ * @route   PUT /api/v1/sprints/:id/planning-attendees/:attendeeId
+ * @desc    Update a recorded Sprint Planning attendee (Developers-only)
+ * @access  Private (Developers)
+ */
+router.put(
+  '/:id/planning-attendees/:attendeeId',
+  validateParams(planningAttendeeIdSchema),
+  validateBody(updatePlanningAttendeeSchema),
+  sprintController.updatePlanningAttendee
+);
+
+/**
+ * @route   DELETE /api/v1/sprints/:id/planning-attendees/:attendeeId
+ * @desc    Remove a recorded Sprint Planning attendee (Developers-only)
+ * @access  Private (Developers)
+ */
+router.delete(
+  '/:id/planning-attendees/:attendeeId',
+  validateParams(planningAttendeeIdSchema),
+  sprintController.deletePlanningAttendee
 );
 
 /**

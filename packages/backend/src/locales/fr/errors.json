@@ -45,18 +45,21 @@
   "sprint": {
     "anotherActive": "Un autre sprint est déjà actif",
     "cancelRequiresProductOwner": "Seul le Product Owner peut annuler un sprint",
+    "capacityExceeded": "Le sprint ne peut pas démarrer : le travail planifié ({{planned}} h) dépasse la capacité enregistrée ({{capacity}} h) de plus que la tolérance autorisée de {{tolerance}} %. Réduisez le plan ou enregistrez davantage de capacité.",
     "eventSprintRetrospective": "Sprint Retrospective",
     "eventSprintReview": "Sprint Review",
     "impedimentsUnresolved": "Le Sprint ne peut pas être clôturé tant qu'il reste des obstacles non résolus : {{impediments}}. Résolvez-les ou clôturez-les avant de clôturer le Sprint.",
     "missingGoal": "Le sprint ne peut pas démarrer sans un objectif de sprint",
     "notPlanned": "Seuls les sprints planifiés peuvent démarrer",
     "notReadyToStart": "Le backlog du sprint doit être enregistré avant de pouvoir démarrer le sprint",
+    "participationRequired": "Le sprint ne peut pas démarrer sans participation enregistrée à la planification. Enregistrez la présence, y compris celle du Product Owner et d'au moins un développeur.",
     "pbiAlreadyCommitted": "L'élément du backlog « {{pbiTitle}} » est déjà engagé dans un autre sprint ({{sprintName}}). Un élément du Product Backlog ne peut être travaillé que dans un seul sprint à la fois.",
     "pbiConflictAtStart": "Le sprint ne peut pas démarrer : les éléments du backlog suivants sont déjà engagés dans un autre sprint : {{items}}.",
     "prerequisiteEventsMissing": "Le Sprint ne peut pas être clôturé car les événements suivants ne sont pas terminés : {{events}}. Enregistrez-les avant de clôturer le Sprint.",
     "productGoalRequired": "Le sprint ne peut pas démarrer sans un objectif de produit lié. Liez d'abord le sprint à l'objectif de produit de l'équipe."
   },
   "sprintBacklog": {
+    "capacityNotOfTeam": "Chaque entrée de capacité doit appartenir à un développeur de cette équipe.",
     "developersOnly": "Seuls les développeurs peuvent enregistrer le Sprint Backlog, car les développeurs qui effectuent le travail en sont responsables.",
     "pbiNotOfTeam": "Chaque élément sélectionné pour un Sprint doit appartenir au Product Backlog de cette équipe."
   },

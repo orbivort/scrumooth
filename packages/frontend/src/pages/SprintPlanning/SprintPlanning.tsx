@@ -21,6 +21,8 @@ import {
   type ProductBacklogItem,
   type GeneratedSprint,
   type TeamMember,
+  type SprintPlanningCapacityEntry,
+  type SprintPlanningAttendee,
 } from '../../types';
 import { EmptyState } from '../../components/EmptyState';
 import { LoadingState } from '../../components/common/Loading';
@@ -40,6 +42,8 @@ import {
   AlertCircleIcon,
   InfoIcon,
   LockIcon,
+  UsersIcon,
+  AlertTriangleIcon,
 } from '../../components/common/Icons';
 
 import { AddTaskModal } from './components/AddTaskModal';
@@ -48,10 +52,31 @@ import { StartSprintModal } from './components/StartSprintModal';
 import { TeamCapacityModal } from './components/TeamCapacityModal';
 import styles from './SprintPlanning.module.css';
 
+import { AttendeesSection, type AttendeeFormData } from '@/components/AttendeesSection';
 import { useI18nStore } from '@/i18n/useI18nStore';
 
 // Environment variable for backlog item limit (default: 100)
 const BACKLOG_ITEM_LIMIT = parseInt(import.meta.env.VITE_BACKLOG_ITEM_LIMIT ?? '100', 10);
+
+/**
+ * Over-commitment tolerance mirrored from the backend's `SPRINT_CAPACITY_TOLERANCE_PCT`.
+ * The server remains authoritative; the client mirrors the value so the Start button state and
+ * the server gate cannot visibly disagree.
+ */
+const SPRINT_CAPACITY_TOLERANCE_PCT = parseFloat(
+  import.meta.env.VITE_SPRINT_CAPACITY_TOLERANCE_PCT ?? '10'
+);
+
+/** Map a team-member role to the attendee role vocabulary used by the attendee section. */
+const mapTeamRoleToAttendeeRole = (role?: string): string => {
+  const normalized = String(role ?? '').toLowerCase();
+  if (normalized === 'product_owner') return 'product_owner';
+  if (normalized === 'scrum_master') return 'scrum_master';
+  return 'developers';
+};
+
+/** Stable empty list so the attendees section does not re-render on every parent render. */
+const EMPTY_ATTENDEES: SprintPlanningAttendee[] = [];
 
 interface SprintTask {
   id: string;
@@ -263,6 +288,7 @@ export const SprintPlanning: React.FC = () => {
   const [showTaskModal, setShowTaskModal] = useState(false);
   const [selectedItemForTask, setSelectedItemForTask] = useState<string | null>(null);
   const [teamAvailability, setTeamAvailability] = useState<TeamAvailability[]>([]);
+  const [capacityRecorded, setCapacityRecorded] = useState(false);
   const [showCapacityModal, setShowCapacityModal] = useState(false);
   const [showStartSprintModal, setShowStartSprintModal] = useState(false);
   const [startSprintError, setStartSprintError] = useState<string | null>(null);
@@ -287,6 +313,9 @@ export const SprintPlanning: React.FC = () => {
   const hydratedSprintRef = useRef<string | null>(null);
   const isHydratingRef = useRef(false);
   const dirtyRef = useRef(false);
+  // Capacity recorded server-side for the selected sprint, keyed by user id. Read when the
+  // member roster initialises so the plan shows what the team agreed on, not a 40h default.
+  const recordedCapacityRef = useRef<SprintPlanningCapacityEntry[]>([]);
 
   const MOSCOW_PRIORITY_CONFIG = useMemo(
     () => getMoscowPriorityConfig(t as (key: string) => string),
@@ -525,34 +554,98 @@ export const SprintPlanning: React.FC = () => {
   const capacityPercentage =
     totalTeamCapacity > 0 ? Math.round((capacityUsed / totalTeamCapacity) * 100) : 0;
 
-  const completedSprints = useMemo(
+  // Velocity is an observation, not a planning target. It is computed server-side from each
+  // Sprint's own committed/completed backlog set — never from the *current* item statuses, which
+  // would retro-fit history to the present — and only genuinely closed Sprints are averaged.
+  const { data: velocityReport } = useQuery({
+    queryKey: ['velocity', teamId],
+    queryFn: () => apiService.getVelocityData(teamId ?? ''),
+    enabled: !!teamId,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const velocityData = useMemo(() => {
+    const report = velocityReport?.data;
+    const completedPoints = (report?.sprints ?? [])
+      .map((_name, index) => ({
+        points: report?.completed[index] ?? 0,
+        status: report?.statuses?.[index],
+      }))
+      // `statuses` is optional for older payloads; when absent we cannot distinguish the
+      // in-flight Sprint, so every returned entry is treated as completed.
+      .filter((entry) => entry.status === undefined || entry.status === 'COMPLETED')
+      .map((entry) => entry.points);
+
+    if (completedPoints.length === 0) {
+      return { average: 0, min: 0, max: 0, range: '0 - 0', sampleSize: 0 };
+    }
+
+    const average = Math.round(
+      completedPoints.reduce((sum, points) => sum + points, 0) / completedPoints.length
+    );
+    const min = Math.min(...completedPoints);
+    const max = Math.max(...completedPoints);
+
+    return { average, min, max, range: `${min} - ${max}`, sampleSize: completedPoints.length };
+  }, [velocityReport]);
+
+  // Recorded planning participation. The 2020 Scrum Guide says the Sprint Backlog is "created by
+  // the collaborative work of the entire Scrum Team", so who planned is recorded and inspectable
+  // rather than assumed. Reads are open to any team member; writes are Developers-only and
+  // mirror the backend gate.
+  const participationQueryKey = ['sprint-planning-participation', selectedSprintId] as const;
+  const { data: participationData } = useQuery({
+    queryKey: participationQueryKey,
+    queryFn: () => apiService.getPlanningParticipation(selectedSprintId ?? ''),
+    enabled: !!selectedSprintId,
+  });
+  const planningAttendees = participationData?.data?.attendees ?? EMPTY_ATTENDEES;
+  const participationReady = participationData?.data?.isReadyToStart ?? false;
+  // The attendees section expects `email?: string`; the API returns `email: string | null`.
+  const attendeeSectionItems = useMemo(
     () =>
-      generatedSprintsData?.data?.filter(
-        (s: GeneratedSprint) => s.status === SprintStatus.COMPLETED
-      ) ?? [],
-    [generatedSprintsData]
+      planningAttendees.map((attendee) => ({
+        id: attendee.id,
+        name: attendee.name,
+        email: attendee.email ?? undefined,
+        role: attendee.role,
+        attended: attendee.attended,
+      })),
+    [planningAttendees]
   );
 
-  const calculateVelocityData = useCallback(() => {
-    if (completedSprints.length === 0) return { average: 0, min: 0, max: 0, range: '0 - 0' };
+  const invalidateParticipation = useCallback(() => {
+    void queryClient.invalidateQueries({
+      queryKey: ['sprint-planning-participation', selectedSprintId],
+    });
+  }, [queryClient, selectedSprintId]);
 
-    const velocities = completedSprints
-      .map(() => {
-        const sprintItems = backlogData?.data.filter((i) => i.status === ItemStatus.DONE) ?? [];
-        return sprintItems.reduce((s, i) => s + (i.storyPoints ?? 0), 0);
-      })
-      .filter((v) => v > 0);
+  const addPlanningAttendeeMutation = useMutation({
+    mutationFn: (data: AttendeeFormData) =>
+      apiService.addPlanningAttendee(selectedSprintId ?? '', {
+        name: data.name,
+        email: data.email,
+        role: data.role,
+        attended: data.attended,
+      }),
+    onSuccess: invalidateParticipation,
+    onError: (error: unknown) =>
+      handleMutationError(error, {
+        operationName: 'record planning attendance',
+        showToast: (msg) => showError(msg),
+      }),
+  });
 
-    if (velocities.length === 0) return { average: 0, min: 0, max: 0, range: '0 - 0' };
-
-    const average = Math.round(velocities.reduce((a, b) => a + b, 0) / velocities.length);
-    const min = Math.min(...velocities);
-    const max = Math.max(...velocities);
-
-    return { average, min, max, range: `${min} - ${max}` };
-  }, [completedSprints, backlogData]);
-
-  const velocityData = calculateVelocityData();
+  const updatePlanningAttendeeMutation = useMutation({
+    mutationFn: ({ attendeeId, attended }: { attendeeId: string; attended: boolean }) =>
+      apiService.updatePlanningAttendee(selectedSprintId ?? '', attendeeId, { attended }),
+    onSuccess: invalidateParticipation,
+    onError: (error: unknown) =>
+      handleMutationError(error, {
+        operationName: 'update planning attendance',
+        showToast: (msg) => showError(msg),
+      }),
+  });
 
   useEffect(() => {
     const members: TeamMember[] = teamMembersData?.data?.members ?? [];
@@ -563,12 +656,20 @@ export const SprintPlanning: React.FC = () => {
     );
     if (developers.length > 0) {
       setTeamAvailability(
-        developers.map((member) => ({
-          memberId: member.id,
-          userId: member.userId,
-          memberName: member.user ? `${member.user.firstName} ${member.user.lastName}` : 'Unknown',
-          availableHours: 40,
-        }))
+        developers.map((member) => {
+          // Prefer the capacity the team recorded for this Sprint; fall back to a full week.
+          const recorded = recordedCapacityRef.current.find(
+            (entry) => entry.userId === member.userId
+          );
+          return {
+            memberId: member.id,
+            userId: member.userId,
+            memberName: member.user
+              ? `${member.user.firstName} ${member.user.lastName}`
+              : 'Unknown',
+            availableHours: recorded?.availableHours ?? 40,
+          };
+        })
       );
     } else {
       setTeamAvailability([]); // Clear availability if no developers
@@ -585,6 +686,10 @@ export const SprintPlanning: React.FC = () => {
     dirtyRef.current = false;
     setDraftStatus('idle');
     setDraftConflicts([]);
+    // Drop the previous sprint's recorded capacity: the roster effect re-applies the newly
+    // selected sprint's recorded values (or falls back to a full week).
+    recordedCapacityRef.current = [];
+    setCapacityRecorded(false);
   }, [selectedSprintId]);
 
   // Incremental auto-save: persist the planning draft server-side whenever the selection or
@@ -610,14 +715,36 @@ export const SprintPlanning: React.FC = () => {
         estimatedHours: task.estimatedHours,
         remainingHours: task.remainingHours,
       }));
-      void apiService.saveSprintPlanningDraft(selectedSprintId, {
-        items,
-        tasks,
-        sprintGoal: selectedSprint?.sprintGoal,
-      });
+      // Capacity is now a persisted planning fact, not a client-only convenience.
+      const capacity = teamAvailability.map((member) => ({
+        memberId: member.memberId,
+        userId: member.userId,
+        availableHours: member.availableHours,
+      }));
+      void apiService
+        .saveSprintPlanningDraft(selectedSprintId, {
+          items,
+          tasks,
+          sprintGoal: selectedSprint?.sprintGoal,
+          capacity,
+        })
+        .then((response) => {
+          if (response.success && capacity.length > 0) {
+            setCapacityRecorded(true);
+          }
+        })
+        .catch(() => {
+          // A failed autosave is surfaced by the explicit Save action; nothing to do here.
+        });
     }, 700);
     return () => clearTimeout(timer);
-  }, [sprintBacklogItems, selectedSprintId, selectedSprint?.sprintGoal, currentUser?.id]);
+  }, [
+    sprintBacklogItems,
+    teamAvailability,
+    selectedSprintId,
+    selectedSprint?.sprintGoal,
+    currentUser?.id,
+  ]);
 
   // Flush any pending draft changes when the user leaves the page.
   useEffect(() => {
@@ -642,6 +769,11 @@ export const SprintPlanning: React.FC = () => {
             remainingHours: task.remainingHours,
           })),
           sprintGoal: selectedSprint?.sprintGoal,
+          capacity: teamAvailability.map((member) => ({
+            memberId: member.memberId,
+            userId: member.userId,
+            availableHours: member.availableHours,
+          })),
         });
         void fetch(`${API_BASE_URL}/sprints/${selectedSprintId}/backlog/draft`, {
           method: 'PUT',
@@ -660,7 +792,13 @@ export const SprintPlanning: React.FC = () => {
     };
     window.addEventListener('beforeunload', handler);
     return () => window.removeEventListener('beforeunload', handler);
-  }, [selectedSprintId, sprintBacklogItems, selectedSprint?.sprintGoal, currentUser?.id]);
+  }, [
+    selectedSprintId,
+    sprintBacklogItems,
+    teamAvailability,
+    selectedSprint?.sprintGoal,
+    currentUser?.id,
+  ]);
 
   const checkItemReadiness = useCallback(
     (item: ProductBacklogItem): { isReady: boolean; checklist: ReadyChecklistItem[] } => {
@@ -696,6 +834,21 @@ export const SprintPlanning: React.FC = () => {
         }
         const draft = response.data;
         setDraftConflicts(draft.conflicts);
+
+        // Apply the capacity the team recorded for this Sprint (it may be recorded before any
+        // work is selected), so the plan resumes on the agreed figures, not a 40h default.
+        // `?? []` keeps the page resilient to payloads from a server that predates the field.
+        const recordedCapacity = draft.capacity ?? [];
+        recordedCapacityRef.current = recordedCapacity;
+        if (recordedCapacity.length > 0) {
+          setCapacityRecorded(true);
+          setTeamAvailability((prev) =>
+            prev.map((member) => {
+              const recorded = recordedCapacity.find((entry) => entry.userId === member.userId);
+              return recorded ? { ...member, availableHours: recorded.availableHours } : member;
+            })
+          );
+        }
 
         if (draft.items.length === 0 && draft.tasks.length === 0) {
           // No saved draft for this sprint: clear any backlog left over from a previously
@@ -1260,6 +1413,8 @@ export const SprintPlanning: React.FC = () => {
 
   const handleSaveCapacity = useCallback((newAvailability: TeamAvailability[]) => {
     setTeamAvailability(newAvailability);
+    // Mark the plan dirty so the debounced autosave persists the recorded capacity.
+    dirtyRef.current = true;
   }, []);
 
   const calculateSprintDuration = () => {
@@ -1411,6 +1566,11 @@ export const SprintPlanning: React.FC = () => {
             <div className={styles['sprint-planning-metric-hint']}>
               {t('sprintPlanning.range')} {velocityData.range}
             </div>
+            <div className={styles['sprint-planning-metric-hint']}>
+              {velocityData.sampleSize > 0
+                ? t('sprintPlanning.velocityDescriptiveHint', { count: velocityData.sampleSize })
+                : t('sprintPlanning.velocityDescriptiveEmpty')}
+            </div>
             <div
               className={styles['velocity-indicator']}
               aria-label={t('sprintPlanning.velocityRangeAria', {
@@ -1435,13 +1595,15 @@ export const SprintPlanning: React.FC = () => {
             </div>
           </div>
           <div
-            className={`${styles['sprint-planning-metric-card']} ${styles.clickable}`}
-            onClick={handleOpenCapacityModal}
-            role="button"
-            tabIndex={0}
-            onKeyDown={(e) => e.key === 'Enter' && handleOpenCapacityModal()}
+            className={`${styles['sprint-planning-metric-card']} ${canModifyBacklog ? styles.clickable : ''}`}
+            onClick={canModifyBacklog ? handleOpenCapacityModal : undefined}
+            role={canModifyBacklog ? 'button' : 'group'}
+            tabIndex={canModifyBacklog ? 0 : undefined}
+            onKeyDown={
+              canModifyBacklog ? (e) => e.key === 'Enter' && handleOpenCapacityModal() : undefined
+            }
             aria-labelledby="capacity-label"
-            aria-describedby="capacity-hint"
+            aria-describedby="capacity-hint capacity-recorded"
           >
             <div className={styles['sprint-planning-metric-label']} id="capacity-label">
               {t('sprintPlanning.teamCapacity')}
@@ -1450,7 +1612,19 @@ export const SprintPlanning: React.FC = () => {
               {totalTeamCapacity} {t('sprintPlanning.hrs')}
             </div>
             <div className={styles['sprint-planning-metric-hint']} id="capacity-hint">
-              {t('sprintPlanning.clickToAdjust')}
+              {canModifyBacklog
+                ? t('sprintPlanning.clickToAdjust')
+                : t('sprintPlanning.capacityReadOnly')}
+            </div>
+            <div className={styles['sprint-planning-metric-hint']} id="capacity-recorded">
+              {capacityRecorded ? (
+                <>
+                  <CheckCircleIcon size={12} aria-hidden="true" />{' '}
+                  {t('sprintPlanning.capacityRecorded')}
+                </>
+              ) : (
+                t('sprintPlanning.capacityNotRecorded')
+              )}
             </div>
           </div>
           <div
@@ -1522,6 +1696,87 @@ export const SprintPlanning: React.FC = () => {
               })}
             </div>
           </div>
+        )}
+
+        {/* Planning Participation — recorded evidence that the Sprint Backlog was created by the
+            collaborative work of the entire Scrum Team (2020 Scrum Guide, Sprint Planning). */}
+        {selectedSprintId && (
+          <section
+            className={styles['participation-panel']}
+            aria-labelledby="participation-title"
+            role="region"
+          >
+            <div className={styles['participation-panel-header']}>
+              <h3 id="participation-title" className={styles['participation-panel-title']}>
+                <UsersIcon size={16} aria-hidden="true" />
+                {t('sprintPlanning.participation.title')}
+              </h3>
+              <span
+                className={`${styles['participation-status']} ${
+                  participationReady ? styles.ready : styles.incomplete
+                }`}
+                role="status"
+                aria-live="polite"
+              >
+                {participationReady ? (
+                  <>
+                    <CheckCircleIcon size={14} aria-hidden="true" />
+                    {t('sprintPlanning.participation.ready')}
+                  </>
+                ) : (
+                  <>
+                    <AlertTriangleIcon size={14} aria-hidden="true" />
+                    {t('sprintPlanning.participation.incomplete')}
+                  </>
+                )}
+              </span>
+            </div>
+            <div className={styles['participation-panel-body']}>
+              <p className={styles['participation-hint']}>
+                {t('sprintPlanning.participation.hint')}
+              </p>
+              <AttendeesSection
+                entityId={selectedSprintId}
+                sprintId={selectedSprintId}
+                attendees={attendeeSectionItems}
+                teamMembers={teamMembersData?.data?.members ?? []}
+                isCompleted={!canModifyBacklog}
+                apiConfig={{
+                  addAttendee: (data: AttendeeFormData) =>
+                    apiService.addPlanningAttendee(selectedSprintId, {
+                      name: data.name,
+                      email: data.email,
+                      role: data.role,
+                      attended: data.attended,
+                    }),
+                  updateAttendee: (id: string, data: AttendeeFormData) =>
+                    apiService.updatePlanningAttendee(selectedSprintId, id, {
+                      name: data.name,
+                      email: data.email,
+                      role: data.role,
+                      attended: data.attended,
+                    }),
+                  deleteAttendee: (id: string) =>
+                    apiService.deletePlanningAttendee(selectedSprintId, id),
+                }}
+                queryKey={['sprint-planning-participation', selectedSprintId]}
+                defaultRole="stakeholder"
+                onToggleAttendance={(attendeeId, attended) => {
+                  updatePlanningAttendeeMutation.mutate({ attendeeId, attended });
+                }}
+                onAddTeamMember={(member, attended) => {
+                  addPlanningAttendeeMutation.mutate({
+                    name: `${member.user?.firstName ?? ''} ${member.user?.lastName ?? ''}`.trim(),
+                    email: member.user?.email,
+                    role: mapTeamRoleToAttendeeRole(member.role),
+                    attended,
+                  });
+                }}
+                isAdding={addPlanningAttendeeMutation.isPending}
+                isUpdating={updatePlanningAttendeeMutation.isPending}
+              />
+            </div>
+          </section>
         )}
 
         {/* Main Content */}
@@ -2079,6 +2334,10 @@ export const SprintPlanning: React.FC = () => {
           stats={sprintStats}
           teamCapacity={totalTeamCapacity}
           capacityPercentage={capacityPercentage}
+          capacityTolerancePct={SPRINT_CAPACITY_TOLERANCE_PCT}
+          participationReady={participationReady}
+          participationHasProductOwner={participationData?.data?.hasProductOwner ?? false}
+          participationDeveloperCount={participationData?.data?.developerCount ?? 0}
           error={startSprintError}
           isLoading={startSprintMutation.isPending}
           hasSprintGoal={!!selectedSprint?.sprintGoal?.trim()}

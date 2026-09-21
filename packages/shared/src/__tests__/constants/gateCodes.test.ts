@@ -10,8 +10,8 @@ import {
 } from '../../constants/gateCodes.js';
 
 describe('gateCodes', () => {
-  it('should define eighteen gates', () => {
-    expect(GATE_CODE_LIST).toHaveLength(18);
+  it('should define twenty gates', () => {
+    expect(GATE_CODE_LIST).toHaveLength(20);
   });
 
   it('should prefix every gate code with GATE_', () => {
@@ -39,6 +39,17 @@ describe('gateCodes', () => {
   it('should identify known gate codes', () => {
     expect(isGateCode(GATE_CODES.SPRINT_EVENTS_MISSING)).toBe(true);
     expect(isGateCode(GATE_CODES.IMPEDIMENTS_UNRESOLVED)).toBe(true);
+    expect(isGateCode(GATE_CODES.PLANNING_PARTICIPATION_REQUIRED)).toBe(true);
+    expect(isGateCode(GATE_CODES.CAPACITY_EXCEEDED)).toBe(true);
+  });
+
+  it('should refuse participation and capacity gates with HTTP 400', () => {
+    expect(GATE_DEFINITIONS[GATE_CODES.PLANNING_PARTICIPATION_REQUIRED].httpStatus).toBe(400);
+    expect(GATE_DEFINITIONS[GATE_CODES.PLANNING_PARTICIPATION_REQUIRED].i18nKey).toBe(
+      'planningParticipationRequired'
+    );
+    expect(GATE_DEFINITIONS[GATE_CODES.CAPACITY_EXCEEDED].httpStatus).toBe(400);
+    expect(GATE_DEFINITIONS[GATE_CODES.CAPACITY_EXCEEDED].i18nKey).toBe('capacityExceeded');
   });
 
   it('should reject unknown or non-string values', () => {

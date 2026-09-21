@@ -232,6 +232,15 @@ export const config = {
     maxSize: parseInt(process.env.TEAM_MAX_SIZE ?? '10', 10),
   },
 
+  // Sprint Configuration (Scrum Guide compliance)
+  sprint: {
+    // Over-commitment tolerance, as a percentage, allowed when comparing the plan's summed
+    // task hours against the capacity the team recorded during Sprint Planning. Estimation is
+    // inherently approximate, so a plan may exceed recorded capacity by up to this amount
+    // before `startSprint` refuses it. `0` disables the tolerance (strict > 100% refusal).
+    capacityTolerancePct: parseFloat(process.env.SPRINT_CAPACITY_TOLERANCE_PCT ?? '10'),
+  },
+
   // Database Transaction Configuration
   database: {
     transaction: {
@@ -452,6 +461,11 @@ export const validateConfig = (): void => {
   // Validate team configuration
   if (config.team.maxSize < 1) {
     throw new Error('TEAM_MAX_SIZE must be a positive integer');
+  }
+
+  // Validate sprint configuration
+  if (Number.isNaN(config.sprint.capacityTolerancePct) || config.sprint.capacityTolerancePct < 0) {
+    throw new Error('SPRINT_CAPACITY_TOLERANCE_PCT must be a non-negative number');
   }
 
   // Validate event loop monitoring configuration

@@ -69,6 +69,9 @@ import {
   type WorkflowTransition,
   type BulkCreateResponseData,
   type BulkCreateError,
+  type SprintPlanningAttendee,
+  type SprintPlanningCapacityEntry,
+  type SprintPlanningParticipation,
 } from '../types';
 import type { BulkUploadItem } from '../pages/Backlog/BulkUpload/bulkUploadUtils';
 
@@ -115,6 +118,10 @@ const getMockSessionInfo = (): SessionInfo => ({
 
 class MockApiService {
   private consentStore: ConsentRecord[] = [];
+
+  /** Recorded Sprint Planning capacity and participation (keyed by sprint id). */
+  private planningCapacityStore = new Map<string, SprintPlanningCapacityEntry[]>();
+  private planningAttendeeStore = new Map<string, SprintPlanningAttendee[]>();
 
   async login(
     credentials: LoginCredentials
@@ -948,6 +955,8 @@ class MockApiService {
         remainingHours?: number;
       }>;
       sprintGoal?: string;
+      capacity?: SprintPlanningCapacityEntry[];
+      attendees?: Array<{ name: string; email?: string; role: string; attended: boolean }>;
     }
   ): Promise<ApiResponse<{ sprintId: string; sprintGoal: string | null }>> {
     await delay(400);
@@ -989,10 +998,105 @@ class MockApiService {
       };
     }
 
+    // Persist recorded capacity/participation exactly as the backend does: capacity is a diff
+    // upsert keyed by user, attendance (when supplied) is a full snapshot replace.
+    if (data?.capacity !== undefined) {
+      this.planningCapacityStore.set(
+        id,
+        data.capacity.map((entry) => ({
+          memberId: entry.memberId ?? null,
+          userId: entry.userId,
+          availableHours: entry.availableHours,
+        }))
+      );
+    }
+
+    if (data?.attendees !== undefined) {
+      this.planningAttendeeStore.set(
+        id,
+        data.attendees.map((attendee, index) => ({
+          id: `planning-attendee-${id}-${index}`,
+          name: attendee.name,
+          email: attendee.email ?? null,
+          role: attendee.role,
+          attended: attendee.attended,
+        }))
+      );
+    }
+
     return {
       success: true,
       data: { sprintId: id, sprintGoal: data?.sprintGoal ?? null },
     };
+  }
+
+  /** Derive the participation readiness the same way the backend gate does. */
+  private buildPlanningParticipation(attendees: SprintPlanningAttendee[]) {
+    const present = attendees.filter((attendee) => attendee.attended);
+    const hasProductOwner = present.some((attendee) => attendee.role === 'product_owner');
+    const developerCount = present.filter((attendee) => attendee.role === 'developers').length;
+    return {
+      attendees,
+      hasProductOwner,
+      developerCount,
+      isReadyToStart: hasProductOwner && developerCount > 0,
+    };
+  }
+
+  async getPlanningParticipation(id: string): Promise<ApiResponse<SprintPlanningParticipation>> {
+    await delay(200);
+    const attendees = this.planningAttendeeStore.get(id) ?? [];
+    return { success: true, data: this.buildPlanningParticipation(attendees) };
+  }
+
+  async addPlanningAttendee(
+    id: string,
+    data: { name: string; email?: string; role: string; attended: boolean }
+  ): Promise<ApiResponse<SprintPlanningAttendee>> {
+    await delay(200);
+    const attendees = this.planningAttendeeStore.get(id) ?? [];
+    const attendee: SprintPlanningAttendee = {
+      id: `planning-attendee-${id}-${attendees.length}-${Date.now()}`,
+      name: data.name,
+      email: data.email ?? null,
+      role: data.role,
+      attended: data.attended,
+    };
+    this.planningAttendeeStore.set(id, [...attendees, attendee]);
+    return { success: true, data: attendee };
+  }
+
+  async updatePlanningAttendee(
+    id: string,
+    attendeeId: string,
+    data: { name?: string; email?: string; role?: string; attended?: boolean }
+  ): Promise<ApiResponse<SprintPlanningAttendee>> {
+    await delay(200);
+    const attendees = this.planningAttendeeStore.get(id) ?? [];
+    const index = attendees.findIndex((attendee) => attendee.id === attendeeId);
+    if (index === -1 || !attendees[index]) {
+      return { success: false, error: { code: 'NOT_FOUND', message: 'Attendee not found' } };
+    }
+    const updated: SprintPlanningAttendee = {
+      ...attendees[index],
+      ...data,
+    };
+    attendees[index] = updated;
+    this.planningAttendeeStore.set(id, [...attendees]);
+    return { success: true, data: updated };
+  }
+
+  async deletePlanningAttendee(
+    id: string,
+    attendeeId: string
+  ): Promise<ApiResponse<{ message: string }>> {
+    await delay(200);
+    const attendees = this.planningAttendeeStore.get(id) ?? [];
+    this.planningAttendeeStore.set(
+      id,
+      attendees.filter((attendee) => attendee.id !== attendeeId)
+    );
+    return { success: true, data: { message: 'Planning attendee deleted successfully' } };
   }
 
   /**
@@ -1079,6 +1183,39 @@ class MockApiService {
     };
   }
 
+  /**
+   * Seed the demo planning session's capacity and attendance deterministically from the current
+   * team roster, so the prototype opens with a ready-to-start planning record.
+   */
+  private seedPlanningRecords(): {
+    capacity: SprintPlanningCapacityEntry[];
+    attendees: SprintPlanningAttendee[];
+  } {
+    const members = getCurrentTeam().members ?? [];
+    const capacity: SprintPlanningCapacityEntry[] = [];
+    const attendees: SprintPlanningAttendee[] = [];
+
+    members.forEach((member, index) => {
+      const user = member.user;
+      const name = user ? `${user.firstName} ${user.lastName}` : `Team member ${index + 1}`;
+      const role = String(member.role).toLowerCase();
+
+      attendees.push({
+        id: `seed-planning-attendee-${member.id}`,
+        name,
+        email: user?.email ?? null,
+        role,
+        attended: true,
+      });
+
+      if (role === 'developers') {
+        capacity.push({ memberId: member.id, userId: member.userId, availableHours: 40 });
+      }
+    });
+
+    return { capacity, attendees };
+  }
+
   async getSprintPlanningDraft(id: string): Promise<
     ApiResponse<{
       sprintId: string | null;
@@ -1093,6 +1230,9 @@ class MockApiService {
         estimatedHours: number | null;
         remainingHours: number | null;
       }>;
+      capacity: SprintPlanningCapacityEntry[];
+      attendees: SprintPlanningAttendee[];
+      participation: SprintPlanningParticipation;
       conflicts: Array<{ pbiId: string; sprintName: string }>;
     }>
   > {
@@ -1111,11 +1251,16 @@ class MockApiService {
       }));
     const itemPbiIds = Array.from(new Set(tasks.map((t) => t.pbiId)));
 
+    const storedCapacity = this.planningCapacityStore.get(id);
+    const storedAttendees = this.planningAttendeeStore.get(id);
+
     // When the selected sprint is the first selectable draft sprint and it has no persisted
     // draft yet, seed a realistic planning draft (items + task assignment) so the demo shows
     // the full planning flow and enables the "Save Sprint Backlog" action immediately.
     if (tasks.length === 0 && id === this.getFirstSelectableSprintId()) {
       const seeded = this.buildSeededPlanningDraft();
+      const seededRecords = this.seedPlanningRecords();
+      const attendees = storedAttendees ?? seededRecords.attendees;
       return {
         success: true,
         data: {
@@ -1123,11 +1268,15 @@ class MockApiService {
           sprintGoal: seeded.sprintGoal,
           items: seeded.items,
           tasks: seeded.tasks,
+          capacity: storedCapacity ?? seededRecords.capacity,
+          attendees,
+          participation: this.buildPlanningParticipation(attendees),
           conflicts: seeded.conflicts,
         },
       };
     }
 
+    const attendees = storedAttendees ?? [];
     return {
       success: true,
       data: {
@@ -1135,6 +1284,9 @@ class MockApiService {
         sprintGoal: null,
         items: itemPbiIds.map((pbiId) => ({ pbiId })),
         tasks,
+        capacity: storedCapacity ?? [],
+        attendees,
+        participation: this.buildPlanningParticipation(attendees),
         conflicts: [],
       },
     };
@@ -1639,18 +1791,27 @@ class MockApiService {
   }
 
   // ==================== Reports ====================
-  async getVelocityData(
-    _teamId: string
-  ): Promise<ApiResponse<{ sprints: string[]; planned: number[]; completed: number[] }>> {
+  async getVelocityData(_teamId: string): Promise<
+    ApiResponse<{
+      sprints: string[];
+      planned: number[];
+      completed: number[];
+      statuses: string[];
+    }>
+  > {
     await delay(300);
 
     const sprints = mockVelocityData.map((v) => v.sprintName);
     const planned = mockVelocityData.map((v) => v.planned);
     const completed = mockVelocityData.map((v) => v.completed);
+    // The most recent entry is the in-flight Sprint: planning averages completed velocity only.
+    const statuses = mockVelocityData.map((_v, index) =>
+      index === mockVelocityData.length - 1 ? 'ACTIVE' : 'COMPLETED'
+    );
 
     return {
       success: true,
-      data: { sprints, planned, completed },
+      data: { sprints, planned, completed, statuses },
     };
   }
 

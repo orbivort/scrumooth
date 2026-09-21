@@ -17,6 +17,7 @@ import {
   createTestRetrospectiveInDb,
   createTestRetrospectiveItemInDb,
   addPBIToSprintBacklog,
+  seedPlanningParticipation,
   cleanupUsers,
   cleanupTeams,
   ROLES,
@@ -572,6 +573,8 @@ describe('E2E: Workflow Operations', () => {
           PBI_STATUSES.READY
         );
         await addPBIToSprintBacklog(sprint.id, pbi.id);
+        // Planning participation is a start gate: the PO and a Developer must be recorded present.
+        await seedPlanningParticipation(sprint.id);
 
         const cookies = await loginAndGetCookies(email);
         const { csrfToken } = extractCsrfFromCookies(cookies);
@@ -749,6 +752,7 @@ describe('E2E: Workflow Operations', () => {
         PBI_STATUSES.READY
       );
       await addPBIToSprintBacklog(sprint.id, pbi.id);
+      await seedPlanningParticipation(sprint.id);
 
       const cookies = await loginAndGetCookies(email);
       const { csrfToken } = extractCsrfFromCookies(cookies);

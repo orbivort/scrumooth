@@ -8,14 +8,24 @@ import type {
 } from '../../types';
 import { coreApiService } from '../core/api.core';
 
+/** Velocity report payload: one entry per Sprint, arrays aligned by index. */
+export interface VelocityApiData {
+  sprints: string[];
+  planned: number[];
+  completed: number[];
+  /**
+   * Lifecycle status of each Sprint, aligned with `sprints`. Optional for older payloads;
+   * consumers that need completed-only velocity (Sprint Planning) should filter on it.
+   */
+  statuses?: string[];
+}
+
 class ReportsService {
   private get api() {
     return coreApiService.axiosInstance;
   }
 
-  async getVelocityData(
-    teamId: string
-  ): Promise<ApiResponse<{ sprints: string[]; planned: number[]; completed: number[] }>> {
+  async getVelocityData(teamId: string): Promise<ApiResponse<VelocityApiData>> {
     const { data } = await this.api.get('/reports/velocity', {
       params: { teamId },
     });

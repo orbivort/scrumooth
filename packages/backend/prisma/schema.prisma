@@ -43,6 +43,7 @@ model User {
   retrospectiveItems     RetrospectiveItem[]        @relation("RetroItemAuthor")
   scheduledDeletions     ScheduledDeletion[]
   sprintBacklogChanges   SprintBacklogChange[]      @relation("SprintBacklogChangeCreator")
+  sprintCapacity         SprintCapacity[]           @relation("SprintCapacityMember")
   retrospectives         SprintRetrospective[]      @relation("RetroFacilitator")
   sprintReviews          SprintReview[]             @relation("ReviewCreator")
   stakeholderFeedbacks   StakeholderFeedback[]
@@ -192,6 +193,8 @@ model Sprint {
   increments         Increment[]
   backlogChanges     SprintBacklogChange[]
   sprintBacklogItems SprintBacklogItem[]
+  planningAttendees  SprintPlanningAttendee[]
+  capacity           SprintCapacity[]
   retrospective      SprintRetrospective?
   sprintReview       SprintReview?
   healthChecks       TeamHealthCheck[]
@@ -251,6 +254,50 @@ model SprintBacklogChange {
   @@index([createdBy])
   @@index([createdAt])
   @@map("sprint_backlog_changes")
+}
+
+/// Attendance record for a Sprint Planning session. The 2020 Scrum Guide states the Sprint
+/// Backlog is "created by the collaborative work of the entire Scrum Team", so planning
+/// participation is recorded as inspectable evidence rather than inferred. Mirrors the
+/// `ReviewAttendee` / `RetroAttendee` shape so all three events are recorded identically.
+model SprintPlanningAttendee {
+  id        String   @id @db.Uuid
+  sprintId  String   @db.Uuid
+  name      String
+  email     String?
+  role      String
+  attended  Boolean  @default(true)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  createdBy String?  @db.Uuid
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+  updatedBy String?  @db.Uuid
+  sprint    Sprint   @relation(fields: [sprintId], references: [id], onDelete: Cascade)
+
+  @@index([sprintId])
+  @@map("sprint_planning_attendees")
+}
+
+/// Per-member capacity the team agreed on during Sprint Planning. The capacity is an input to
+/// the Sprint Backlog, so it is persisted (and reloaded on resume) instead of being collected
+/// in the interface and discarded. `@@unique([sprintId, userId])` makes the draft save a safe
+/// upsert rather than a blind replace.
+model SprintCapacity {
+  id             String   @id @db.Uuid
+  sprintId       String   @db.Uuid
+  userId         String   @db.Uuid
+  memberId       String?  @db.Uuid
+  availableHours Float
+  createdAt      DateTime @default(now()) @db.Timestamptz(3)
+  createdBy      String?  @db.Uuid
+  updatedAt      DateTime @updatedAt @db.Timestamptz(3)
+  updatedBy      String?  @db.Uuid
+  sprint         Sprint   @relation(fields: [sprintId], references: [id], onDelete: Cascade)
+  user           User     @relation("SprintCapacityMember", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([sprintId, userId])
+  @@index([sprintId])
+  @@index([userId])
+  @@map("sprint_capacity")
 }
 
 model Task {

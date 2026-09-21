@@ -56,6 +56,17 @@ export const GATE_CODES = {
   PRODUCT_GOAL_NOT_ACTIVE: 'GATE_PRODUCT_GOAL_NOT_ACTIVE',
   /** A Product Goal cannot be completed without recorded evidence of progress toward it. */
   PRODUCT_GOAL_EVIDENCE_REQUIRED: 'GATE_PRODUCT_GOAL_EVIDENCE_REQUIRED',
+  /**
+   * The Sprint Backlog is "created by the collaborative work of the entire Scrum Team"
+   * (Sprint Planning), so a Sprint cannot open unless planning participation is recorded and
+   * includes the Product Owner and at least one Developer.
+   */
+  PLANNING_PARTICIPATION_REQUIRED: 'GATE_PLANNING_PARTICIPATION_REQUIRED',
+  /**
+   * A Sprint cannot open when the planned work exceeds the capacity the team recorded during
+   * Sprint Planning (beyond the configured over-commitment tolerance).
+   */
+  CAPACITY_EXCEEDED: 'GATE_CAPACITY_EXCEEDED',
 } as const;
 
 export type GateCode = (typeof GATE_CODES)[keyof typeof GATE_CODES];
@@ -180,6 +191,16 @@ export const GATE_DEFINITIONS: Record<GateCode, GateDefinition> = {
     code: GATE_CODES.PRODUCT_GOAL_EVIDENCE_REQUIRED,
     httpStatus: 409,
     i18nKey: 'productGoalEvidenceRequired',
+  },
+  [GATE_CODES.PLANNING_PARTICIPATION_REQUIRED]: {
+    code: GATE_CODES.PLANNING_PARTICIPATION_REQUIRED,
+    httpStatus: 400,
+    i18nKey: 'planningParticipationRequired',
+  },
+  [GATE_CODES.CAPACITY_EXCEEDED]: {
+    code: GATE_CODES.CAPACITY_EXCEEDED,
+    httpStatus: 400,
+    i18nKey: 'capacityExceeded',
   },
 };
 

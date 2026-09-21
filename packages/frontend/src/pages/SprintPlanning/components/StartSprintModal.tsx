@@ -33,6 +33,14 @@ export interface StartSprintModalProps {
   stats: SprintStats;
   teamCapacity: number;
   capacityPercentage: number;
+  /** Over-commitment tolerance mirrored from the server (`SPRINT_CAPACITY_TOLERANCE_PCT`). */
+  capacityTolerancePct?: number;
+  /** True when recorded planning participation includes the PO and at least one Developer. */
+  participationReady?: boolean;
+  /** Whether the Product Owner is recorded as present (drives the actionable refusal copy). */
+  participationHasProductOwner?: boolean;
+  /** How many Developers are recorded as present. */
+  participationDeveloperCount?: number;
   error?: string | null;
   isLoading?: boolean;
   hasSprintGoal?: boolean;
@@ -142,6 +150,10 @@ export const StartSprintModal: React.FC<StartSprintModalProps> = ({
   stats,
   teamCapacity,
   capacityPercentage,
+  capacityTolerancePct = 10,
+  participationReady = true,
+  participationHasProductOwner = true,
+  participationDeveloperCount = 0,
   error,
   isLoading = false,
   hasSprintGoal = false,
@@ -215,16 +227,27 @@ export const StartSprintModal: React.FC<StartSprintModalProps> = ({
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, isLoading, onClose]);
 
-  // Determine capacity status
+  // Determine capacity status. The danger threshold mirrors the server gate: a plan may exceed
+  // recorded capacity by up to `capacityTolerancePct` before starting is refused.
   const getCapacityStatus = () => {
-    if (capacityPercentage > 100) return 'danger';
+    if (capacityPercentage > 100 + capacityTolerancePct) return 'danger';
     if (capacityPercentage > 80) return 'warning';
     return 'success';
   };
 
   const capacityStatus = getCapacityStatus();
-  // Starting a Sprint is readiness-gated (Sprint Goal + saved backlog), not role-gated.
-  const readyToStart = canStartSprint({ hasSprintGoal, hasSavedBacklog });
+  // Over capacity, but still inside the tolerance band the server accepts: a caution, not a block.
+  const withinTolerance =
+    capacityPercentage > 100 && capacityPercentage <= 100 + capacityTolerancePct;
+  // Starting a Sprint is readiness-gated (Sprint Goal + saved backlog + recorded team
+  // participation), not role-gated. `backlogReady` is tracked separately only so the two
+  // distinct reasons can be explained side by side.
+  const backlogReady = hasSprintGoal && hasSavedBacklog;
+  const readyToStart = canStartSprint({
+    hasSprintGoal,
+    hasSavedBacklog,
+    hasPlanningParticipation: participationReady,
+  });
 
   if (!isOpen) return null;
 
@@ -283,7 +306,7 @@ export const StartSprintModal: React.FC<StartSprintModalProps> = ({
         {/* Body */}
         <div className={styles.body}>
           {/* Readiness Warning */}
-          {!readyToStart && (
+          {!backlogReady && (
             <div className={styles['error-banner']} role="alert">
               <span className={styles['error-icon']}>
                 <AlertTriangleIcon size={16} />
@@ -294,6 +317,27 @@ export const StartSprintModal: React.FC<StartSprintModalProps> = ({
                 </span>
                 <span className={styles['error-text']}>
                   {t('sprintPlanning.startSprintModal.saveBacklogFirstMessage')}
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* Participation Warning — the Sprint Backlog is created by the whole Scrum Team. */}
+          {!participationReady && (
+            <div className={styles['error-banner']} role="alert">
+              <span className={styles['error-icon']}>
+                <AlertTriangleIcon size={16} />
+              </span>
+              <div className={styles['error-content']}>
+                <span className={styles['error-title']}>
+                  {t('sprintPlanning.startSprintModal.participationIncomplete')}
+                </span>
+                <span className={styles['error-text']}>
+                  {!participationHasProductOwner && participationDeveloperCount === 0
+                    ? t('sprintPlanning.startSprintModal.participationMissingBoth')
+                    : !participationHasProductOwner
+                      ? t('sprintPlanning.startSprintModal.participationMissingProductOwner')
+                      : t('sprintPlanning.startSprintModal.participationMissingDeveloper')}
                 </span>
               </div>
             </div>
@@ -319,7 +363,9 @@ export const StartSprintModal: React.FC<StartSprintModalProps> = ({
                 {t('sprintPlanning.startSprintModal.sprintSummary')}
               </h3>
               <span className={styles['summary-badge']}>
-                {t('sprintPlanning.startSprintModal.readyToStart')}
+                {readyToStart
+                  ? t('sprintPlanning.startSprintModal.readyToStart')
+                  : t('sprintPlanning.startSprintModal.notReady')}
               </span>
             </div>
 
@@ -423,7 +469,15 @@ export const StartSprintModal: React.FC<StartSprintModalProps> = ({
                   {t('sprintPlanning.startSprintModal.overCapacityWarning')}
                 </p>
               )}
-              {capacityStatus === 'warning' && (
+              {capacityStatus === 'warning' && withinTolerance && (
+                <p className={styles['capacity-warning-message']}>
+                  <AlertTriangleIcon size={16} />
+                  {t('sprintPlanning.startSprintModal.withinToleranceWarning', {
+                    tolerance: capacityTolerancePct,
+                  })}
+                </p>
+              )}
+              {capacityStatus === 'warning' && !withinTolerance && (
                 <p className={styles['capacity-warning-message']}>
                   <AlertTriangleIcon size={16} />
                   {t('sprintPlanning.startSprintModal.nearCapacityWarning')}
@@ -475,7 +529,11 @@ export const StartSprintModal: React.FC<StartSprintModalProps> = ({
             disabled={isLoading || capacityStatus === 'danger' || !readyToStart}
             aria-busy={isLoading}
             title={
-              !readyToStart ? t('sprintPlanning.startSprintModal.saveBacklogFirstHint') : undefined
+              !readyToStart
+                ? !participationReady
+                  ? t('sprintPlanning.startSprintModal.participationIncomplete')
+                  : t('sprintPlanning.startSprintModal.saveBacklogFirstHint')
+                : undefined
             }
           >
             {isLoading ? (

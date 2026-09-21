@@ -14,6 +14,34 @@ import { setLocaleHeader, expectLocaleCookie, SUPPORTED_LOCALES } from '../helpe
 
 const uniqueId = () => `${Date.now()}-${Math.random().toString(36).substring(7)}`;
 
+/**
+ * Seed the planning participation the Sprint-start gate requires: the Product Owner and at least
+ * one Developer recorded as present. Written directly so lifecycle tests focus on the behaviour
+ * under test; the planning-attendance API has its own tests.
+ */
+const seedPlanningParticipation = async (sprintId: string, createdBy?: string): Promise<void> => {
+  await prisma.sprintPlanningAttendee.createMany({
+    data: [
+      {
+        id: generateUUIDv7(),
+        sprintId,
+        name: 'Product Owner',
+        role: 'product_owner',
+        attended: true,
+        createdBy,
+      },
+      {
+        id: generateUUIDv7(),
+        sprintId,
+        name: 'Developer',
+        role: 'developers',
+        attended: true,
+        createdBy,
+      },
+    ],
+  });
+};
+
 describe('Sprint Configuration Integration Tests', () => {
   const createTestUserInDb = async (
     email: string,
@@ -523,6 +551,8 @@ describe('Sprint Configuration Integration Tests', () => {
           createdBy: user.id,
         },
       });
+      // Planning participation is a start gate: record the PO and a Developer as present.
+      await seedPlanningParticipation(sprint.id, user.id);
 
       const cookies = await loginAndGetCookies(email);
 

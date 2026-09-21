@@ -45,18 +45,21 @@
   "sprint": {
     "anotherActive": "Another sprint is already active",
     "cancelRequiresProductOwner": "Only the Product Owner can cancel a Sprint",
+    "capacityExceeded": "The Sprint cannot be started: the planned work ({{planned}}h) exceeds the recorded capacity ({{capacity}}h) by more than the allowed tolerance of {{tolerance}}%. Reduce the plan or record more capacity first.",
     "eventSprintRetrospective": "Sprint Retrospective",
     "eventSprintReview": "Sprint Review",
     "impedimentsUnresolved": "The Sprint cannot be completed while it still has unresolved impediments: {{impediments}}. Resolve or close them before closing the Sprint.",
     "missingGoal": "The sprint cannot be started without a Sprint Goal",
     "notPlanned": "Only planned sprints can be started",
     "notReadyToStart": "The Sprint Backlog must be saved before the sprint can be started",
+    "participationRequired": "The Sprint cannot be started without recorded planning participation. Record attendance that includes the Product Owner and at least one Developer.",
     "pbiAlreadyCommitted": "Backlog item \"{{pbiTitle}}\" is already committed to another sprint ({{sprintName}}). A Product Backlog Item can be worked in only one sprint at a time.",
     "pbiConflictAtStart": "The Sprint cannot be started: the following backlog items are already committed to another sprint: {{items}}.",
     "prerequisiteEventsMissing": "The Sprint cannot be completed because the following event(s) have not concluded: {{events}}. Record them before closing the Sprint.",
     "productGoalRequired": "The Sprint cannot be started without a linked Product Goal. Link the Sprint to the team's Product Goal first."
   },
   "sprintBacklog": {
+    "capacityNotOfTeam": "Every capacity entry must belong to a Developer on this team.",
     "developersOnly": "Only Developers can save the Sprint Backlog, as the Developers who perform the work own the Sprint Backlog.",
     "pbiNotOfTeam": "Every item selected for a Sprint must belong to this team's Product Backlog."
   },

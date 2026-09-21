@@ -15,6 +15,34 @@ import type { Locale } from '@scrumooth/shared';
 // Helper to generate unique test identifier
 const uniqueId = () => `${Date.now()}-${Math.random().toString(36).substring(7)}`;
 
+/**
+ * Seed the planning participation the Sprint-start gate requires: the Product Owner and at least
+ * one Developer recorded as present. Written directly so lifecycle tests focus on the behaviour
+ * under test; the planning-attendance API has its own tests.
+ */
+const seedPlanningParticipation = async (sprintId: string, createdBy?: string): Promise<void> => {
+  await prisma.sprintPlanningAttendee.createMany({
+    data: [
+      {
+        id: generateUUIDv7(),
+        sprintId,
+        name: 'Product Owner',
+        role: 'product_owner',
+        attended: true,
+        createdBy,
+      },
+      {
+        id: generateUUIDv7(),
+        sprintId,
+        name: 'Developer',
+        role: 'developers',
+        attended: true,
+        createdBy,
+      },
+    ],
+  });
+};
+
 describe('Sprint Management Integration Tests', () => {
   // Helper to create a test user directly in the database
   const createTestUserInDb = async (
@@ -510,6 +538,8 @@ describe('Sprint Management Integration Tests', () => {
           createdBy: user.id,
         },
       });
+      // Planning participation is a start gate: record the PO and a Developer as present.
+      await seedPlanningParticipation(sprint.id, user.id);
 
       const response = await request(app)
         .post(`/api/v1/sprints/${sprint.id}/start`)
@@ -519,6 +549,133 @@ describe('Sprint Management Integration Tests', () => {
         .expect(200);
 
       expect(response.body.success).toBe(true);
+      expect(response.body.data.status).toBe('ACTIVE');
+    });
+  });
+
+  describe('Sprint Planning participation and capacity gates', () => {
+    const testEmails: string[] = [];
+    const testTeams: string[] = [];
+
+    afterEach(async () => {
+      await cleanupTeams(testTeams);
+      await cleanupTestData(testEmails);
+      testEmails.length = 0;
+      testTeams.length = 0;
+    });
+
+    const setupPlanningSprint = async (options: { withCapacity?: boolean } = {}) => {
+      const email = `planning-gates-${uniqueId()}@example.com`;
+      testEmails.push(email);
+
+      const user = await createTestUserInDb(email);
+      const teamName = `Planning Gates Team ${uniqueId()}`;
+      testTeams.push(teamName);
+
+      const team = await createTestTeam(teamName);
+      await addTeamMember(team.id, user.id, 'DEVELOPERS');
+      await createTestProductGoal(team.id, 'Test Product Goal');
+      const sprint = await createTestSprint(team.id, 'Planning Gates Sprint', 'PLANNED');
+      const pbi = await createTestPBI(team.id, 'Ready PBI', 'READY');
+
+      await prisma.sprintBacklogItem.create({
+        data: {
+          id: generateUUIDv7(),
+          sprintId: sprint.id,
+          pbiId: pbi.id,
+          createdBy: user.id,
+        },
+      });
+
+      if (options.withCapacity) {
+        // 10h recorded capacity against a 40h plan: far beyond the default 10% tolerance.
+        await prisma.sprintCapacity.create({
+          data: {
+            id: generateUUIDv7(),
+            sprintId: sprint.id,
+            userId: user.id,
+            availableHours: 10,
+          },
+        });
+        await prisma.task.create({
+          data: {
+            id: generateUUIDv7(),
+            sprintId: sprint.id,
+            pbiId: pbi.id,
+            title: 'Over-committed task',
+            status: 'TODO',
+            estimatedHours: 40,
+            remainingHours: 40,
+            createdBy: user.id,
+          },
+        });
+      }
+
+      const cookies = await loginAndGetCookies(email);
+      const { csrfToken } = extractCsrfFromCookies(cookies);
+      return { user, team, sprint, pbi, cookies, csrfToken };
+    };
+
+    it('records planning attendance and exposes readiness', async () => {
+      const { sprint, cookies, csrfToken } = await setupPlanningSprint();
+
+      const addAttendee = await request(app)
+        .post(`/api/v1/sprints/${sprint.id}/planning-attendees`)
+        .set('Cookie', cookies)
+        .set(CSRF_CONSTANTS.HEADER_NAME, csrfToken)
+        .send({ name: 'Grace Hopper', role: 'developers', attended: true })
+        .expect(201);
+      expect(addAttendee.body.success).toBe(true);
+
+      const participation = await request(app)
+        .get(`/api/v1/sprints/${sprint.id}/planning-attendees`)
+        .set('Cookie', cookies)
+        .expect(200);
+
+      expect(participation.body.data.attendees).toHaveLength(1);
+      expect(participation.body.data.developerCount).toBe(1);
+      // Without a recorded Product Owner the record is not ready to start.
+      expect(participation.body.data.isReadyToStart).toBe(false);
+    });
+
+    it('refuses to start without recorded planning participation', async () => {
+      const { sprint, cookies, csrfToken } = await setupPlanningSprint();
+
+      const response = await request(app)
+        .post(`/api/v1/sprints/${sprint.id}/start`)
+        .set('Cookie', cookies)
+        .set(CSRF_CONSTANTS.HEADER_NAME, csrfToken)
+        .send({})
+        .expect(400);
+
+      expect(response.body.error.code).toBe('GATE_PLANNING_PARTICIPATION_REQUIRED');
+    });
+
+    it('refuses to start when the plan exceeds recorded capacity beyond the tolerance', async () => {
+      const { sprint, cookies, csrfToken } = await setupPlanningSprint({ withCapacity: true });
+      await seedPlanningParticipation(sprint.id);
+
+      const response = await request(app)
+        .post(`/api/v1/sprints/${sprint.id}/start`)
+        .set('Cookie', cookies)
+        .set(CSRF_CONSTANTS.HEADER_NAME, csrfToken)
+        .send({})
+        .expect(400);
+
+      expect(response.body.error.code).toBe('GATE_CAPACITY_EXCEEDED');
+    });
+
+    it('starts once participation is recorded and the plan fits capacity', async () => {
+      const { sprint, cookies, csrfToken } = await setupPlanningSprint();
+      await seedPlanningParticipation(sprint.id);
+
+      const response = await request(app)
+        .post(`/api/v1/sprints/${sprint.id}/start`)
+        .set('Cookie', cookies)
+        .set(CSRF_CONSTANTS.HEADER_NAME, csrfToken)
+        .send({})
+        .expect(200);
+
       expect(response.body.data.status).toBe('ACTIVE');
     });
   });
@@ -776,6 +933,7 @@ describe('Sprint Management Integration Tests', () => {
       expect(resumeResponse.body.data.tasks[0].pbiId).toBe(pbi.id);
 
       // 3. Start the sprint from the resumed draft.
+      await seedPlanningParticipation(sprint.id, user.id);
       const startResponse = await request(app)
         .post(`/api/v1/sprints/${sprint.id}/start`)
         .set('Cookie', cookies)
@@ -1144,6 +1302,7 @@ describe('Sprint Management Integration Tests', () => {
       const { csrfToken } = extractCsrfFromCookies(cookies);
 
       // Draft B goes ACTIVE.
+      await seedPlanningParticipation(draftB.id);
       await request(app)
         .post(`/api/v1/sprints/${draftB.id}/start`)
         .set('Cookie', cookies)
@@ -1835,6 +1994,7 @@ describe('Sprint Management Integration Tests', () => {
             createdBy: user.id,
           },
         });
+        await seedPlanningParticipation(sprint.id, user.id);
 
         const response = await request(app)
           .post(`/api/v1/sprints/${sprint.id}/start`)

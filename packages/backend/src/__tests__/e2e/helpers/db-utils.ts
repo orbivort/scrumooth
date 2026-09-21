@@ -857,6 +857,37 @@ export const createTestBurndownDataInDb = async (
   };
 };
 
+/**
+ * Seed the Sprint Planning participation the start gate requires: the Product Owner and at least
+ * one Developer recorded as present. Written directly so sprint-lifecycle tests can focus on the
+ * behaviour under test; the planning-attendance API is covered by its own tests.
+ */
+export const seedPlanningParticipation = async (
+  sprintId: string,
+  createdBy?: string
+): Promise<void> => {
+  await prisma.sprintPlanningAttendee.createMany({
+    data: [
+      {
+        id: generateUUIDv7(),
+        sprintId,
+        name: 'Product Owner',
+        role: 'product_owner',
+        attended: true,
+        createdBy,
+      },
+      {
+        id: generateUUIDv7(),
+        sprintId,
+        name: 'Developer',
+        role: 'developers',
+        attended: true,
+        createdBy,
+      },
+    ],
+  });
+};
+
 export const addPBIToSprintBacklog = async (
   sprintId: string,
   pbiId: string

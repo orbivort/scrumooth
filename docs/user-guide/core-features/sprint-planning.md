@@ -165,17 +165,45 @@ Capacity = Available time × Team members × Focus factor
 3. Adjust individual member hours as needed (e.g., for vacations)
 4. Use the total to guide sprint commitment
 
+> **Capacity is recorded, not just displayed.** Saving the plan persists the capacity per member
+> for this Sprint, and resuming the plan reloads the figures the team agreed on (instead of a
+> default 40 hours). The capacity card shows whether the figures are already recorded. Capacity
+> stays editable while the Sprint is being planned; once the Sprint is active it is read-only.
+
 ### Velocity-Based Planning
 
-Use historical velocity to guide planning:
+Velocity is shown as a **descriptive average of recently completed Sprints**, computed from
+each Sprint's own committed and completed backlog — it is an observation of what happened, not
+a commitment target:
 
 ```
-Average Velocity: 40 story points
+Average Velocity: 40 story points (last 4 completed Sprints)
 Team Capacity: Normal (no vacations)
 Recommended Commitment: 35-40 story points (leave buffer)
 ```
 
+- Only **completed** Sprints are averaged; the in-flight Sprint has no final velocity yet.
+- The average is a starting point for the conversation, never a quota.
+- If no Sprint has completed yet, the metric says so instead of showing a fabricated number.
+
 > **Tip**: Don't commit to more than 80-90% of average velocity to allow for unexpected work.
+
+---
+
+## Recording Planning Participation
+
+The 2020 Scrum Guide says the Sprint Backlog is "created by the collaborative work of the entire
+Scrum Team", so Scrumooth records **who planned**. The **Planning Participation** panel on the
+planning page lists the team roster (and any guests), and lets a Developer mark each person as
+present or absent.
+
+- **Developers** record attendance; other roles can see the record but not change it.
+- Attendance can only be edited while the Sprint is being planned.
+- The panel header states plainly whether the record is complete.
+
+To start a Sprint, the recorded participation must include **the Product Owner and at least one
+Developer** marked present. If either is missing, the Start dialog explains exactly who is
+missing and the Start action stays disabled.
 
 ---
 
@@ -346,7 +374,8 @@ Before starting the sprint, verify:
 
 - [ ] Sprint Goal is defined and agreed
 - [ ] **The Sprint Backlog has been saved** (required — "Start Sprint" stays disabled until you save)
-- [ ] Selected items fit within capacity
+- [ ] **Planning participation is recorded** — the Product Owner and at least one Developer are marked present
+- [ ] Capacity has been recorded and the selected items fit within it (a plan may exceed the recorded capacity by up to the configured tolerance, default 10%)
 - [ ] All items have acceptance criteria
 - [ ] Team commits to the sprint backlog
 - [ ] Dependencies are resolved or planned for
@@ -370,6 +399,12 @@ Before starting the sprint, verify:
    - Sprint status changes to "Active"
    - Items and tasks move to the Sprint Board
    - Automatic redirect to Sprint Board
+
+> **If the Start action is unavailable**, the dialog names the reason: a missing Sprint Goal or
+> unsaved Sprint Backlog, incomplete planning participation (the Product Owner or a Developer is
+> not recorded as present), or a plan that exceeds the recorded capacity beyond the configured
+> tolerance. The same rules are enforced by the server, so the API cannot open a Sprint that the
+> interface would refuse.
 
 ### After Starting
 

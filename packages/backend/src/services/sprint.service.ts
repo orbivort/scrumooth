@@ -25,6 +25,7 @@ import {
 import { logger } from '../utils/logger';
 import { processBatch } from '../utils/batch';
 import { notificationService } from './notification.service';
+import { config } from '../config';
 import { PRODUCT_BACKLOG_ORDER } from '../config/backlogOrder';
 import { t as requestT } from '../i18n/requestT.js';
 
@@ -87,8 +88,8 @@ export interface SaveSprintBacklogData {
 }
 
 // Incremental Sprint Planning draft payload (selected PBIs, decomposed tasks,
-// working Sprint Goal, and optional capacity). Saved server-side so an interrupted
-// planning event can be resumed by the Developers.
+// working Sprint Goal, recorded capacity, and recorded participation). Saved server-side so
+// an interrupted planning event can be resumed by the Developers.
 export interface SaveSprintPlanningDraftData {
   items?: Array<{ pbiId: string }>;
   tasks?: Array<{
@@ -102,10 +103,52 @@ export interface SaveSprintPlanningDraftData {
   }>;
   sprintGoal?: string;
   capacity?: Array<{
-    memberId: string;
+    memberId?: string | null;
     userId: string;
     availableHours: number;
   }>;
+  /**
+   * Full attendance snapshot for the planning session. When present it replaces the recorded
+   * attendance (mirroring the Sprint Review attendee contract); when omitted the recorded
+   * attendance is left untouched, so a routine draft save never clears participation.
+   */
+  attendees?: PlanningAttendeeInput[];
+}
+
+/** A single attendance record captured during Sprint Planning. */
+export interface PlanningAttendeeInput {
+  name: string;
+  email?: string;
+  role: string;
+  attended: boolean;
+}
+
+/** A persisted planning attendee, as returned by the API. */
+export interface PlanningAttendeeView {
+  id: string;
+  name: string;
+  email: string | null;
+  role: string;
+  attended: boolean;
+}
+
+/**
+ * Whether the recorded planning participation satisfies the Scrum Guide's requirement that the
+ * Sprint Backlog is "created by the collaborative work of the entire Scrum Team": the Product
+ * Owner and at least one Developer must be recorded as present.
+ */
+export interface PlanningParticipation {
+  attendees: PlanningAttendeeView[];
+  hasProductOwner: boolean;
+  developerCount: number;
+  isReadyToStart: boolean;
+}
+
+/** A persisted per-member capacity entry for a planning Sprint. */
+export interface SprintCapacityEntry {
+  memberId: string | null;
+  userId: string;
+  availableHours: number;
 }
 
 // Loaded Sprint Planning draft returned to the frontend for resume.
@@ -122,14 +165,46 @@ export interface SprintPlanningDraft {
     estimatedHours: number | null;
     remainingHours: number | null;
   }>;
-  capacity: Array<{
-    memberId: string;
-    userId: string;
-    availableHours: number;
-  }>;
+  capacity: SprintCapacityEntry[];
+  attendees: PlanningAttendeeView[];
+  participation: PlanningParticipation;
   /** PBIs selected in this draft that are already committed to another non-draft sprint. */
   conflicts: Array<{ pbiId: string; sprintName: string }>;
 }
+
+/** Attendance roles accepted for planning participation, mirroring the Review/Retro contract. */
+const PLANNING_ATTENDEE_ROLES = [
+  'product_owner',
+  'scrum_master',
+  'developers',
+  'stakeholder',
+] as const;
+
+const PRODUCT_OWNER_ATTENDEE_ROLE = 'product_owner';
+const DEVELOPER_ATTENDEE_ROLE = 'developers';
+
+/**
+ * Derive the planning-participation readiness from a set of recorded attendees.
+ *
+ * The 2020 Scrum Guide says the Sprint Backlog is "created by the collaborative work of the
+ * entire Scrum Team". Inspectable evidence for that is the Product Owner proposing value and
+ * the Developers selecting/planning the work, so readiness requires the Product Owner and at
+ * least one Developer to be recorded as present.
+ */
+const buildPlanningParticipation = (attendees: PlanningAttendeeView[]): PlanningParticipation => {
+  const present = attendees.filter((attendee) => attendee.attended);
+  const hasProductOwner = present.some((attendee) => attendee.role === PRODUCT_OWNER_ATTENDEE_ROLE);
+  const developerCount = present.filter(
+    (attendee) => attendee.role === DEVELOPER_ATTENDEE_ROLE
+  ).length;
+
+  return {
+    attendees,
+    hasProductOwner,
+    developerCount,
+    isReadyToStart: hasProductOwner && developerCount > 0,
+  };
+};
 
 export interface SprintStartResult {
   sprint: Sprint;
@@ -589,6 +664,12 @@ class SprintService {
       }
     }
 
+    // Capacity is the Developers' own capacity, so every referenced user must be a
+    // DEVELOPERS-role member of this team. Guarded with a single team query (no N+1).
+    if (data?.capacity && data.capacity.length > 0) {
+      await this.assertCapacityUsersAreTeamDevelopers(sprint.teamId, data.capacity);
+    }
+
     // Layer 2 — Selection-time conflict: a PBI that is already committed to another
     // non-draft (ACTIVE/PLANNED/COMPLETED) sprint cannot be added to this planning draft.
     // PBIs shared across multiple DRAFT sprints remain allowed (planning reconsideration).
@@ -760,18 +841,81 @@ class SprintService {
         });
       }
 
-      // Persist optional capacity. No dedicated table exists; store as audit-friendly
-      // metadata on the sprint is not possible, so capacity is intentionally carried in
-      // the returned draft payload and not persisted beyond this point (see Open Questions).
+      // Persist the recorded capacity. Diff (create/update/delete) rather than blind replace:
+      // the `(sprintId, userId)` unique key is respected, and a save by one Developer cannot
+      // silently wipe a row another Developer wrote.
+      if (data?.capacity !== undefined) {
+        const existingCapacity = await tx.sprintCapacity.findMany({
+          where: { sprintId: resolvedSprintId },
+          select: { id: true, userId: true },
+        });
+        const existingByUserId = new Map(existingCapacity.map((entry) => [entry.userId, entry.id]));
+        const incomingUserIds = new Set(data.capacity.map((entry) => entry.userId));
+
+        const staleCapacityIds = existingCapacity
+          .filter((entry) => !incomingUserIds.has(entry.userId))
+          .map((entry) => entry.id);
+        if (staleCapacityIds.length > 0) {
+          await tx.sprintCapacity.deleteMany({ where: { id: { in: staleCapacityIds } } });
+        }
+
+        for (const entry of data.capacity) {
+          const existingId = existingByUserId.get(entry.userId);
+          if (existingId) {
+            await tx.sprintCapacity.update({
+              where: { id: existingId },
+              data: {
+                memberId: entry.memberId ?? null,
+                availableHours: entry.availableHours,
+                updatedBy: userId,
+              },
+            });
+          } else {
+            await tx.sprintCapacity.create({
+              data: {
+                id: generateUUIDv7(),
+                sprintId: resolvedSprintId,
+                userId: entry.userId,
+                memberId: entry.memberId ?? null,
+                availableHours: entry.availableHours,
+                createdBy: userId,
+              },
+            });
+          }
+        }
+      }
+
+      // Record planning participation. Only touched when the payload carries an attendance
+      // snapshot, so a routine draft save never clears who was recorded as present.
+      if (data?.attendees !== undefined) {
+        await tx.sprintPlanningAttendee.deleteMany({
+          where: { sprintId: resolvedSprintId },
+        });
+
+        if (data.attendees.length > 0) {
+          await tx.sprintPlanningAttendee.createMany({
+            data: data.attendees.map((attendee) => ({
+              id: generateUUIDv7(),
+              sprintId: resolvedSprintId,
+              name: attendee.name,
+              email: attendee.email ?? null,
+              role: attendee.role,
+              attended: attendee.attended,
+              createdBy: userId,
+            })),
+          });
+        }
+      }
     }, transactionOptions);
 
     return { sprintId: resolvedSprintId, sprintGoal };
   }
 
   /**
-   * Load an existing Sprint Planning draft (selected backlog items, tasks, capacity, and
-   * working Sprint Goal) for a Sprint id. Returns an empty draft when none exists. This is
-   * read-only and open to any authenticated team member (transparency), so no role gate here.
+   * Load an existing Sprint Planning draft (selected backlog items, tasks, recorded capacity,
+   * recorded participation, and working Sprint Goal) for a Sprint id. Returns an empty draft
+   * when none exists. This is read-only and open to any authenticated team member
+   * (transparency), so no role gate here.
    */
   async getSprintPlanningDraft(sprintId: string): Promise<SprintPlanningDraft> {
     const emptyDraft = (): SprintPlanningDraft => ({
@@ -780,6 +924,8 @@ class SprintService {
       items: [],
       tasks: [],
       capacity: [],
+      attendees: [],
+      participation: buildPlanningParticipation([]),
       conflicts: [],
     });
 
@@ -820,7 +966,7 @@ class SprintService {
       return emptyDraft();
     }
 
-    const [backlogItems, tasks] = await Promise.all([
+    const [backlogItems, tasks, capacity, attendees] = await Promise.all([
       prisma.sprintBacklogItem.findMany({
         where: { sprintId: sprint.id },
         select: { pbiId: true },
@@ -836,6 +982,16 @@ class SprintService {
           estimatedHours: true,
           remainingHours: true,
         },
+      }),
+      prisma.sprintCapacity.findMany({
+        where: { sprintId: sprint.id },
+        select: { memberId: true, userId: true, availableHours: true },
+        orderBy: { createdAt: 'asc' },
+      }),
+      prisma.sprintPlanningAttendee.findMany({
+        where: { sprintId: sprint.id },
+        select: { id: true, name: true, email: true, role: true, attended: true },
+        orderBy: { createdAt: 'asc' },
       }),
     ]);
 
@@ -870,12 +1026,197 @@ class SprintService {
         estimatedHours: task.estimatedHours,
         remainingHours: task.remainingHours,
       })),
-      capacity: [],
+      capacity: capacity.map((entry) => ({
+        memberId: entry.memberId,
+        userId: entry.userId,
+        availableHours: entry.availableHours,
+      })),
+      attendees,
+      participation: buildPlanningParticipation(attendees),
       conflicts: committedConflicts.map((item) => ({
         pbiId: item.pbi.id,
         sprintName: item.sprint.name,
       })),
     };
+  }
+
+  /**
+   * Resolve the planning Sprint behind an id that may be either a materialised `Sprint` or a
+   * pre-generated `GeneratedSprint`.
+   *
+   * Sprint Planning operates on pre-generated sprints, which acquire a real `Sprint` row only
+   * when planning starts. `materialize` mirrors `saveSprintPlanningDraft`: it creates that row
+   * as a `DRAFT` and links it back via `GeneratedSprint.sprintId`, so writes have a target.
+   */
+  private async resolvePlanningSprint(
+    sprintId: string,
+    options?: { materialize?: boolean; userId?: string }
+  ): Promise<Sprint | null> {
+    const sprint = await prisma.sprint.findUnique({ where: { id: sprintId } });
+    if (sprint) {
+      return sprint;
+    }
+
+    const generatedSprint = await prisma.generatedSprint.findUnique({ where: { id: sprintId } });
+    if (!generatedSprint) {
+      return null;
+    }
+
+    if (options?.materialize) {
+      return this.convertGeneratedSprintToSprint(generatedSprint, options.userId, 'DRAFT');
+    }
+
+    if (!generatedSprint.sprintId) {
+      return null;
+    }
+    return prisma.sprint.findUnique({ where: { id: generatedSprint.sprintId } });
+  }
+
+  /**
+   * Record one attendance entry for a planning session. Planning is the Developers' event to
+   * run but the whole Scrum Team's to attend, so writes are Developers-only and the record is
+   * the evidence that the Sprint Backlog was created collaboratively. The Sprint is materialised
+   * as `DRAFT` on the first write, exactly as a first draft save is.
+   */
+  async addPlanningAttendee(
+    sprintId: string,
+    userId: string,
+    data: PlanningAttendeeInput
+  ): Promise<PlanningAttendeeView> {
+    this.assertValidAttendeeRole(data.role);
+
+    const sprint = await this.resolvePlanningSprint(sprintId, { materialize: true, userId });
+    if (!sprint) {
+      throw new NotFoundError('Sprint');
+    }
+
+    this.assertPlanningIsEditable(sprint.status);
+    await this.assertDeveloperRole(sprint.teamId, userId, {
+      messageKey: 'errors:sprintBacklog.developersOnly',
+      gateCode: GATE_CODES.DEVELOPER_ONLY_SPRINT_BACKLOG,
+    });
+
+    return prisma.sprintPlanningAttendee.create({
+      data: {
+        id: generateUUIDv7(),
+        sprintId: sprint.id,
+        name: data.name,
+        email: data.email ?? null,
+        role: data.role,
+        attended: data.attended,
+        createdBy: userId,
+      },
+      select: { id: true, name: true, email: true, role: true, attended: true },
+    });
+  }
+
+  /**
+   * Update one attendance entry. The entry must belong to the given Sprint, so a caller cannot
+   * edit attendance through a different Sprint's id.
+   */
+  async updatePlanningAttendee(
+    sprintId: string,
+    attendeeId: string,
+    userId: string,
+    data: Partial<PlanningAttendeeInput>
+  ): Promise<PlanningAttendeeView> {
+    if (data.role !== undefined) {
+      this.assertValidAttendeeRole(data.role);
+    }
+
+    const sprint = await this.resolvePlanningSprint(sprintId);
+    if (!sprint) {
+      throw new NotFoundError('Sprint');
+    }
+
+    this.assertPlanningIsEditable(sprint.status);
+    await this.assertDeveloperRole(sprint.teamId, userId, {
+      messageKey: 'errors:sprintBacklog.developersOnly',
+      gateCode: GATE_CODES.DEVELOPER_ONLY_SPRINT_BACKLOG,
+    });
+
+    await this.assertAttendeeBelongsToSprint(sprint.id, attendeeId);
+
+    return prisma.sprintPlanningAttendee.update({
+      where: { id: attendeeId },
+      data: {
+        name: data.name,
+        email: data.email,
+        role: data.role,
+        attended: data.attended,
+        updatedBy: userId,
+      },
+      select: { id: true, name: true, email: true, role: true, attended: true },
+    });
+  }
+
+  /** Remove one attendance entry (Developers-only, planning Sprint only). */
+  async deletePlanningAttendee(
+    sprintId: string,
+    attendeeId: string,
+    userId: string
+  ): Promise<void> {
+    const sprint = await this.resolvePlanningSprint(sprintId);
+    if (!sprint) {
+      throw new NotFoundError('Sprint');
+    }
+
+    this.assertPlanningIsEditable(sprint.status);
+    await this.assertDeveloperRole(sprint.teamId, userId, {
+      messageKey: 'errors:sprintBacklog.developersOnly',
+      gateCode: GATE_CODES.DEVELOPER_ONLY_SPRINT_BACKLOG,
+    });
+
+    await this.assertAttendeeBelongsToSprint(sprint.id, attendeeId);
+    await prisma.sprintPlanningAttendee.delete({ where: { id: attendeeId } });
+  }
+
+  /**
+   * Read the recorded planning participation for a Sprint. Read-only and open to any
+   * authenticated team member (planning is transparent). Returns an empty participation when no
+   * Sprint has been materialised yet.
+   */
+  async getPlanningParticipation(sprintId: string): Promise<PlanningParticipation> {
+    const sprint = await this.resolvePlanningSprint(sprintId);
+    if (!sprint) {
+      return buildPlanningParticipation([]);
+    }
+
+    const attendees = await prisma.sprintPlanningAttendee.findMany({
+      where: { sprintId: sprint.id },
+      select: { id: true, name: true, email: true, role: true, attended: true },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    return buildPlanningParticipation(attendees);
+  }
+
+  /**
+   * Refuse attendance edits once a Sprint is no longer being planned: attendance is part of the
+   * planning record, and once the container is open the record becomes evidence, not a draft.
+   */
+  private assertPlanningIsEditable(status: string): void {
+    if (status !== 'DRAFT' && status !== 'PLANNED') {
+      throw new BadRequestError(requestT('errors:sprint.notPlanned'));
+    }
+  }
+
+  /** Defense-in-depth role validation (the route schema validates too). */
+  private assertValidAttendeeRole(role: string): void {
+    if (!(PLANNING_ATTENDEE_ROLES as readonly string[]).includes(role)) {
+      throw new BadRequestError('Invalid attendee role');
+    }
+  }
+
+  /** Assert that an attendance entry exists and belongs to the given Sprint. */
+  private async assertAttendeeBelongsToSprint(sprintId: string, attendeeId: string): Promise<void> {
+    const attendee = await prisma.sprintPlanningAttendee.findFirst({
+      where: { id: attendeeId, sprintId },
+      select: { id: true },
+    });
+    if (!attendee) {
+      throw new NotFoundError('Planning attendee');
+    }
   }
 
   /**
@@ -1025,6 +1366,17 @@ class SprintService {
     // moved back to REFINED afterwards. Starting the Sprint is the moment the selection becomes
     // the Sprint Backlog, so the refinement rule has to hold here too.
     await this.assertSelectedPBIsAreReady(sprint.teamId, pbiIds);
+
+    // Collaboration gate: the Sprint Backlog is "created by the collaborative work of the entire
+    // Scrum Team" (Sprint Planning). Opening the Sprint on evidence that only one person planned
+    // is the anti-pattern that clause exists to prevent, so the recorded participation must
+    // include the Product Owner and at least one Developer.
+    await this.assertPlanningParticipationIsRecorded(sprint.id);
+
+    // Capacity gate: the plan must fit what the team recorded it could take on, within the
+    // configured estimation tolerance. Enforced here (not only in the interface) so a direct API
+    // call cannot open an arbitrarily over-committed Sprint.
+    await this.assertPlanFitsRecordedCapacity(sprint.id, totalEstimatedHours);
 
     const transactionOptions: TransactionOptions = {
       ...TRANSACTION_CONFIG.START_SPRINT,
@@ -1631,6 +1983,100 @@ class SprintService {
         400,
         GATE_CODES.PBI_NOT_READY
       );
+    }
+  }
+
+  /**
+   * Refuse to open a Sprint unless planning participation is recorded and includes the Product
+   * Owner and at least one Developer present.
+   *
+   * Scrum Guide: the Sprint Backlog is "created by the collaborative work of the entire Scrum
+   * Team" (Sprint Planning). Without this, planning can be performed by a single Developer
+   * through the API, reducing the event to an individual act.
+   */
+  private async assertPlanningParticipationIsRecorded(sprintId: string): Promise<void> {
+    const attendees = await prisma.sprintPlanningAttendee.findMany({
+      where: { sprintId },
+      select: { id: true, name: true, email: true, role: true, attended: true },
+    });
+
+    if (!buildPlanningParticipation(attendees).isReadyToStart) {
+      throw localizedError(
+        'errors:sprint.participationRequired',
+        {},
+        400,
+        GATE_CODES.PLANNING_PARTICIPATION_REQUIRED
+      );
+    }
+  }
+
+  /**
+   * Refuse to open a Sprint when the planned hours exceed the capacity the team recorded during
+   * Sprint Planning by more than the configured tolerance.
+   *
+   * The tolerance absorbs estimation noise; `SPRINT_CAPACITY_TOLERANCE_PCT` (default 10) sets
+   * it. A Sprint with no recorded capacity is not gated (backward compatible), and a recorded
+   * but zero total is treated the same way so a plan can never deadlock on unusable capacity.
+   */
+  private async assertPlanFitsRecordedCapacity(
+    sprintId: string,
+    plannedHours: number
+  ): Promise<void> {
+    const capacity = await prisma.sprintCapacity.findMany({
+      where: { sprintId },
+      select: { availableHours: true },
+    });
+
+    if (capacity.length === 0) {
+      return;
+    }
+
+    const totalCapacity = capacity.reduce((sum, entry) => sum + entry.availableHours, 0);
+    if (totalCapacity <= 0) {
+      return;
+    }
+
+    const tolerancePct = config.sprint.capacityTolerancePct;
+    const allowedHours = totalCapacity * (1 + tolerancePct / 100);
+
+    if (plannedHours > allowedHours) {
+      throw localizedError(
+        'errors:sprint.capacityExceeded',
+        {
+          planned: Math.round(plannedHours * 10) / 10,
+          capacity: Math.round(totalCapacity * 10) / 10,
+          tolerance: tolerancePct,
+        },
+        400,
+        GATE_CODES.CAPACITY_EXCEEDED
+      );
+    }
+  }
+
+  /**
+   * Assert that every user referenced by a capacity snapshot is a DEVELOPERS-role member of the
+   * team. One query guards the whole list (no N+1) and keeps capacity a Developers' fact.
+   */
+  private async assertCapacityUsersAreTeamDevelopers(
+    teamId: string,
+    capacity: Array<{ userId: string }>
+  ): Promise<void> {
+    const uniqueUserIds = [...new Set(capacity.map((entry) => entry.userId))];
+    if (uniqueUserIds.length === 0) {
+      return;
+    }
+
+    const members = await prisma.teamMember.findMany({
+      where: { teamId, userId: { in: uniqueUserIds } },
+      select: { userId: true, role: true },
+    });
+
+    const developerIds = new Set(
+      members.filter((member) => member.role === 'DEVELOPERS').map((member) => member.userId)
+    );
+
+    if (uniqueUserIds.some((userId) => !developerIds.has(userId))) {
+      throw new BadRequestError(requestT('errors:sprintBacklog.capacityNotOfTeam'));
     }
   }
 

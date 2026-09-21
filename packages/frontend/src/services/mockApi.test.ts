@@ -223,6 +223,56 @@ describe('MockApiService', () => {
       expect(result.data?.items).toEqual([]);
       expect(result.data?.tasks).toEqual([]);
       expect(result.data?.sprintGoal).toBeNull();
+      expect(result.data?.capacity).toEqual([]);
+      expect(result.data?.attendees).toEqual([]);
+      expect(result.data?.participation.isReadyToStart).toBe(false);
+    });
+
+    it('persists recorded capacity and participation across a draft save and reload', async () => {
+      // Use an existing mock sprint that is not the first selectable draft sprint, so this test
+      // does not interfere with the seeded-draft assertions above.
+      const sprintId = 'sprint-2';
+
+      const saveResult = await mockApiService.saveSprintPlanningDraft(sprintId, {
+        capacity: [{ memberId: 'member-1', userId: 'user-1', availableHours: 24 }],
+        attendees: [
+          { name: 'Product Owner', role: 'product_owner', attended: true },
+          { name: 'Developer', role: 'developers', attended: true },
+        ],
+      });
+      expect(saveResult.success).toBe(true);
+
+      const draft = await mockApiService.getSprintPlanningDraft(sprintId);
+      expect(draft.data?.capacity).toEqual([
+        { memberId: 'member-1', userId: 'user-1', availableHours: 24 },
+      ]);
+      expect(draft.data?.participation.hasProductOwner).toBe(true);
+      expect(draft.data?.participation.developerCount).toBe(1);
+      expect(draft.data?.participation.isReadyToStart).toBe(true);
+
+      const participation = await mockApiService.getPlanningParticipation(sprintId);
+      expect(participation.data?.isReadyToStart).toBe(true);
+    });
+
+    it('supports planning attendance CRUD without touching the recorded capacity', async () => {
+      const added = await mockApiService.addPlanningAttendee('sprint-attendee-1', {
+        name: 'Ada',
+        role: 'developers',
+        attended: true,
+      });
+      expect(added.success).toBe(true);
+      const attendeeId = added.data?.id ?? '';
+
+      const updated = await mockApiService.updatePlanningAttendee('sprint-attendee-1', attendeeId, {
+        attended: false,
+      });
+      expect(updated.data?.attended).toBe(false);
+
+      const deleted = await mockApiService.deletePlanningAttendee('sprint-attendee-1', attendeeId);
+      expect(deleted.success).toBe(true);
+
+      const participation = await mockApiService.getPlanningParticipation('sprint-attendee-1');
+      expect(participation.data?.attendees).toEqual([]);
     });
   });
 

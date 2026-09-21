@@ -553,7 +553,21 @@ curl -X PUT https://api.scrumooth.dev/api/v1/sprints/660e8400-e29b-41d4-a716-446
 
 ### Start Sprint
 
-Start a sprint, transitioning it from PLANNING to ACTIVE. Optionally include backlog items and tasks. Requires Scrum Master role.
+Start a sprint, transitioning it from `DRAFT`/`PLANNED` to `ACTIVE`. The transition is a
+**readiness** check against what was already recorded during Sprint Planning; any request body
+is ignored (the payload shape below is accepted for backward compatibility but not applied).
+Starting is not role-gated — any authenticated team member may start the Sprint — but the
+following must all hold:
+
+- a committed Sprint Goal,
+- a linked Product Goal,
+- a non-empty saved Sprint Backlog with every item refined to `READY`,
+- recorded planning participation that includes the Product Owner and at least one Developer,
+- no other `ACTIVE` Sprint for the team,
+- no selected item already committed to another non-draft Sprint,
+- and, when capacity was recorded during planning, planned hours within the recorded total
+  plus `SPRINT_CAPACITY_TOLERANCE_PCT` (default 10%). When no capacity was recorded the check
+  is skipped.
 
 **Endpoint**
 
@@ -644,6 +658,39 @@ Content-Type: application/json
 > Goal. The refusal is returned only when the team has no active Product Goal to adopt, because
 > the Product Backlog's commitment is the Product Goal (Scrum Guide, 2020).
 
+**400 Bad Request - Planning Participation Missing**
+
+The 2020 Scrum Guide states the Sprint Backlog is "created by the collaborative work of the
+entire Scrum Team". A Sprint cannot open on evidence that only one person planned.
+
+```json
+{
+  "success": false,
+  "error": {
+    "code": "GATE_PLANNING_PARTICIPATION_REQUIRED",
+    "message": "The Sprint cannot be started without recorded planning participation. Record attendance that includes the Product Owner and at least one Developer."
+  }
+}
+```
+
+**400 Bad Request - Plan Exceeds Recorded Capacity**
+
+Returned only when capacity was recorded during planning **and** the planned task hours exceed
+the recorded total by more than `SPRINT_CAPACITY_TOLERANCE_PCT` (default 10%).
+
+```json
+{
+  "success": false,
+  "error": {
+    "code": "GATE_CAPACITY_EXCEEDED",
+    "message": "The Sprint cannot be started: the planned work (120h) exceeds the recorded capacity (80h) by more than the allowed tolerance of 10%."
+  }
+}
+```
+
+> Capacity is only enforced against a _recorded_ capacity. A Sprint whose planning never
+> recorded capacity starts on the remaining gates alone, so existing plans are not stranded.
+
 **409 Conflict - Team Already Has Active Sprint**
 
 ```json
@@ -677,6 +724,78 @@ curl -X POST https://api.scrumooth.dev/api/v1/sprints/660e8400-e29b-41d4-a716-44
     ]
   }'
 ```
+
+---
+
+### Sprint Planning records (capacity and attendance)
+
+Sprint Planning persists two facts beyond the selected backlog and its tasks. Both are read
+back with the planning draft and are enforced when the Sprint opens.
+
+**Recorded capacity** — `PUT /api/v1/sprints/:id/backlog/draft` accepts a `capacity` array
+(one entry per Developer) and persists it:
+
+```json
+{
+  "items": [{ "pbiId": "880e8400-e29b-41d4-a716-446655440001" }],
+  "tasks": [],
+  "sprintGoal": "Deliver the auth module",
+  "capacity": [
+    {
+      "memberId": "990e8400-e29b-41d4-a716-446655440001",
+      "userId": "user-1",
+      "availableHours": 40
+    },
+    { "userId": "user-2", "availableHours": 32 }
+  ]
+}
+```
+
+- Every `userId` must be a `DEVELOPERS`-role member of the Sprint's team.
+- The write is a diff keyed by `(sprintId, userId)`: entries not present are removed, existing
+  entries are updated, new ones are created. Omitting `capacity` entirely leaves the recorded
+  capacity untouched.
+- `GET /api/v1/sprints/:id/planning-draft` returns the recorded `capacity` array (readable by
+  any authenticated team member).
+
+**Recorded participation** — the planning draft also accepts an `attendees` array, and the
+following endpoints manage attendance incrementally:
+
+| Method   | Endpoint                                             | Access                        |
+| -------- | ---------------------------------------------------- | ----------------------------- |
+| `GET`    | `/api/v1/sprints/:id/planning-attendees`             | Any authenticated team member |
+| `POST`   | `/api/v1/sprints/:id/planning-attendees`             | Developers only (`403`)       |
+| `PUT`    | `/api/v1/sprints/:id/planning-attendees/:attendeeId` | Developers only (`403`)       |
+| `DELETE` | `/api/v1/sprints/:id/planning-attendees/:attendeeId` | Developers only (`403`)       |
+
+Attendee body: `{ "name": string, "email"?: string, "role": "product_owner" | "scrum_master" |
+"developers" | "stakeholder", "attended": boolean }`.
+
+The `GET` response carries the derived readiness used by the start gate:
+
+```json
+{
+  "success": true,
+  "data": {
+    "attendees": [
+      {
+        "id": "…",
+        "name": "Ada Lovelace",
+        "email": null,
+        "role": "product_owner",
+        "attended": true
+      },
+      { "id": "…", "name": "Grace Hopper", "email": null, "role": "developers", "attended": true }
+    ],
+    "hasProductOwner": true,
+    "developerCount": 1,
+    "isReadyToStart": true
+  }
+}
+```
+
+Writes are refused once the Sprint is no longer being planned (`DRAFT`/`PLANNED`), and with
+`GATE_DEVELOPER_ONLY_SPRINT_BACKLOG` (`403`) for non-Developers.
 
 ---
 
