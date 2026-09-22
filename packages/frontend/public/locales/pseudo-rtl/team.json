@@ -109,7 +109,6 @@
     },
     "memberSince": "Member since",
     "roleNames": {
-      "administrator": "Administrator",
       "developers": "Developers",
       "productOwner": "Product Owner",
       "scrumMaster": "Scrum Master"

@@ -46,6 +46,7 @@
     "none": "Nicht abgedeckt",
     "note": "Notiz",
     "onlyScrumMaster": "Nur der Scrum Master des Teams erfasst die Einschätzung.",
+    "openFacilitation": "Einschätzung erfassen oder prüfen",
     "partial": "Teilweise abgedeckt",
     "record": "Einschätzung erfassen",
     "summary": "{{covered}} abgedeckt · {{partial}} teilweise · {{gaps}} nicht abgedeckt",

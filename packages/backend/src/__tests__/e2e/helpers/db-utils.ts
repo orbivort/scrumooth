@@ -307,7 +307,9 @@ export const createTestDoDInDb = async (
 
   return {
     id: dod.id,
-    teamId: dod.teamId,
+    // A Definition of Done is created for a team here, so this is the scope it was made with. The
+    // column is nullable since a group can own one instead, which this helper never does.
+    teamId,
   };
 };
 

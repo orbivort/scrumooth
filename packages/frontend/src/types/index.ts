@@ -32,6 +32,14 @@ import {
   type CompletionProvenance,
   type SprintGoalOutcome,
   type SprintItemCompletion,
+  type TeamGroupSummary,
+  type TeamGroupDetail,
+  type TeamGroupMember,
+  type SharedDefinitionOfDone,
+  type SharedDoDItem,
+  type JoinTeamGroupInput,
+  type UpdateTeamGroupInput,
+  type UpdateSharedDoDInput,
 } from '@scrumooth/shared';
 
 export type {
@@ -61,13 +69,24 @@ export type {
   CompletionProvenance,
   SprintGoalOutcome,
   SprintItemCompletion,
+  TeamGroupSummary,
+  TeamGroupDetail,
+  TeamGroupMember,
+  SharedDefinitionOfDone,
+  SharedDoDItem,
+  JoinTeamGroupInput,
+  UpdateTeamGroupInput,
+  UpdateSharedDoDInput,
 };
 
 // Enums are runtime values; re-export as values.
 export { IntegrationTestResult, IntegrationVerificationBasis, ScrumValue, HealthCheckStatus };
 
+// The three roles the Guide defines, and the only three the backend can grant: a Scrum Team holds
+// one Product Owner, one Scrum Master, and its Developers. There is no administrator role in
+// Scrumooth, so none is declared here -- a role the interface can render but nobody can hold would
+// undermine the one claim this product makes about roles.
 export enum UserRole {
-  ADMINISTRATOR = 'administrator',
   PRODUCT_OWNER = 'product_owner',
   SCRUM_MASTER = 'scrum_master',
   DEVELOPERS = 'developers',
@@ -147,6 +166,15 @@ export interface Team {
   memberCount?: number;
   maxSize?: number;
   members?: TeamMember[];
+  /**
+   * The group this team shares a product with, when it works with other Scrum Teams: *"they must
+   * mutually define and comply with the same Definition of Done."* `dodVersion` is the version in
+   * force, which the team's own adoption is compared against.
+   */
+  group?: TeamGroupSummary | null;
+  /** The shared Definition of Done version the team adopted when it joined. */
+  groupDodVersionAtJoin?: number | null;
+  groupJoinedAt?: string | null;
 }
 
 export interface ProductGoal {

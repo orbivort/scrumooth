@@ -2845,7 +2845,11 @@ describe('TeamManagement - Multiple Teams', () => {
 
       const emailInput = screen.getByLabelText('Email Address');
       const longLocalPart = 'a'.repeat(250);
-      await user.type(emailInput, `${longLocalPart}@b.com`);
+
+      // Set the whole value in a single change event instead of typing it character by
+      // character: 256 keystrokes on this page are slow enough to exceed the test timeout
+      // when the full suite runs under load.
+      fireEvent.change(emailInput, { target: { value: `${longLocalPart}@b.com` } });
 
       // Use fireEvent.submit to bypass native HTML5 form validation on the
       // `type="email"` input, so the component's validateEmail logic runs.

@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { AxiosError } from 'axios';
 import { formatLocaleDate, GATE_CODES } from '@scrumooth/shared';
 
-import { apiService, healthCheckService } from '../../services';
+import { apiService, crossFunctionalityService, healthCheckService } from '../../services';
 import { useTeamStore, useAuthStore } from '../../store';
 import { logger } from '../../utils/logger';
 import { TeamSwitcher } from '../../components/TeamSwitcher/TeamSwitcher';
@@ -41,10 +41,13 @@ import {
 } from '../../components/common/Icons';
 import { queryKeys } from '../../hooks/queryKeys';
 import { HealthCheckSurvey } from '../../components/common/HealthCheckSurvey';
+import { CrossFunctionalitySummary } from '../../components/CrossFunctionalitySummary/CrossFunctionalitySummary';
 import type { Team, TeamMember, ApiResponse, TeamMetrics, SprintHistoryItem } from '../../types';
+import type { CrossFunctionalityRecord } from '../../services/domain/crossFunctionality.service';
 import { HealthCheckStatus } from '../../types';
 
 import { MemberCard } from './MemberCard';
+import { TeamGroupPanel } from './components/TeamGroupPanel';
 import styles from './Team.module.css';
 
 import { useI18nStore } from '@/i18n/useI18nStore';
@@ -596,6 +599,40 @@ export const TeamManagement: React.FC = () => {
   const latestHealthCheck = healthCheckLatestData?.success ? healthCheckLatestData.data : null;
   const hasOpenHealthCheck = latestHealthCheck?.status === HealthCheckStatus.OPEN;
 
+  // Composition, not membership: the size is capped but the *mix* is what decides whether the team
+  // can produce an Increment at all. The reading is the team's own, so it is the same record the
+  // facilitation page writes -- one signal, shown where the team is assembled.
+  const { data: crossFunctionalityData } = useQuery<ApiResponse<CrossFunctionalityRecord>, Error>({
+    queryKey: queryKeys.crossFunctionality.byTeam(teamId ?? ''),
+    queryFn: () => {
+      if (!teamId || isUninvitedUser) {
+        throw new Error('No team available');
+      }
+      return crossFunctionalityService.getRecord(teamId);
+    },
+    enabled: !!teamId && !isUninvitedUser,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const crossFunctionalityRecord =
+    crossFunctionalityData?.success && crossFunctionalityData.data
+      ? crossFunctionalityData.data
+      : null;
+
+  // Joining or leaving a group decides which Definition of Done the team is held to, so it is the
+  // team's own leadership's decision -- the same roles that may add or remove its members.
+  const canDecideOnGroup = useMemo(() => {
+    const membership = team?.members?.find((member) => member.userId === user?.id);
+    // Roles arrive as the API spells them and are compared as the interface spells them, the same
+    // normalisation the member badges use.
+    const role = membership?.role.toLowerCase();
+    return role === 'product_owner' || role === 'scrum_master';
+  }, [team?.members, user?.id]);
+
+  const handleGroupChanged = useCallback(async () => {
+    await queryClient.invalidateQueries({ queryKey: ['team', teamId] });
+  }, [queryClient, teamId]);
+
   const { data: sprintHistoryData } = useQuery<ApiResponse<SprintHistoryItem[]>, Error>({
     queryKey: ['sprintHistory', teamId],
     queryFn: () => {
@@ -1071,6 +1108,38 @@ export const TeamManagement: React.FC = () => {
           </div>
         </div>
       </section>
+
+      {/*
+        Composition, not membership. The size cap says the team is small enough; it says nothing
+        about whether the team collectively holds the skills it needs, and *"collectively they have
+        all the skills necessary to create value each Sprint"* is the half of the definition that a
+        member list cannot show. This reads the team's own assessment -- the same record the
+        facilitation page writes -- and points there to record or review it, so there is one signal
+        with one implementation rather than a second, divergent copy of it.
+      */}
+      <section className={styles['team-composition']}>
+        <CrossFunctionalitySummary
+          record={crossFunctionalityRecord}
+          recordHref="/working-agreements"
+          showHeading
+        />
+      </section>
+
+      {/*
+        And the other half of "the same Definition of Done": when this team works on a product with
+        other Scrum Teams, the group owns the DoD they all comply with, and this is where the team
+        sees which version governs it -- and, for its leadership, where it joins or leaves.
+      */}
+      {teamId && !isUninvitedUser && (
+        <TeamGroupPanel
+          teamId={teamId}
+          group={team?.group ?? null}
+          adoptedVersion={team?.groupDodVersionAtJoin ?? null}
+          joinedAt={team?.groupJoinedAt ?? null}
+          canDecide={canDecideOnGroup}
+          onChanged={handleGroupChanged}
+        />
+      )}
 
       {hasOpenHealthCheck && (
         <section className={styles['health-check']} aria-label={t('healthCheck.sectionTitle')}>

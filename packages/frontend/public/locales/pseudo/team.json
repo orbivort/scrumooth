@@ -110,7 +110,6 @@
     },
     "memberSince": "[Mémbér síncééééé]",
     "roleNames": {
-      "administrator": "[Àdmínístràtórrrrr]",
       "developers": "[Dévélópérssss]",
       "productOwner": "[Pródúct Ównérrrrr]",
       "scrumMaster": "[Scrúm Màstérrrrr]"
@@ -181,6 +180,22 @@
     }
   },
   "subtitle": "[Mànàgé téàm mémbérs ànd téàm stàndàrdsssssssssssss]",
+  "teamGroup": {
+    "adopt": "[Jóíín ànd àddópt vérsíónnnnn {{version}}]",
+    "adopted": "[Àddóptéd vérsíón {{version}} ón {{date}}.]",
+    "choose": "[Grróóuppp]",
+    "current": "[Cóómplýííng wííth {{name}} — shàréd vérsíón {{version}}.]",
+    "drift": "[Thé shàréd Défínítíón óf Dóóné hàs chàngéd sííncé thíís téàm àddóptéd íítttttttttt. Révíéw íít sóó thé téàms stííll àgréé ón ónééééé.]",
+    "hint": "[Scrúm téàms wórkííng tógéthér ón óné pródúct cóómplý wííth thé sàmé Défínítíón óf Dóónééééé. Thé grróóupp óówns thàt ónéé, íts téàms réàd íít ànd cànnót édít théíír óównnnnnnnnnn.]",
+    "joinError": "[Thé téàm cóúld nót jóíín thé grróóuppp.]",
+    "leave": "[Léàvéé thé grróóuppp]",
+    "leaveError": "[Thé téàm cóúld nót léàvéé thé grróóuppp.]",
+    "leaveMessage": "[Thé téàm kééps thé Défínítíón óf Dóóné íít hàs bééén cóómplýííng wííth, ànd càn thén chàngé íít ón íts óównnnnnnnn.]",
+    "leaveTitle": "[Léàvéé {{name}}?]",
+    "none": "[Thíís téàm wórks ón íts óówn, sóó íít défíínés íts óówn Défínítíón óf Dóónéééé.]",
+    "review": "[Révíééw whàt wóúld béé àddóptédddddd]",
+    "title": "[Shàréd Défínítíón óf Dóónéééé]"
+  },
   "teamInfo": {
     "created": "[Créàtédddd: {{date}}]",
     "lastUpdated": "[Làst úpdàtédddddd: {{date}}]",

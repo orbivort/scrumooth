@@ -305,6 +305,15 @@ export const queryKeys = {
     all: ['cross-functionality'] as const,
     byTeam: (teamId: string) => [...queryKeys.crossFunctionality.all, teamId] as const,
   },
+
+  // The groups the Scrum Teams share a product (and one Definition of Done) with
+  teamGroup: {
+    all: ['team-groups'] as const,
+    directory: () => [...queryKeys.teamGroup.all, 'directory'] as const,
+    detail: (groupId: string) => [...queryKeys.teamGroup.all, 'detail', groupId] as const,
+    /** The shared Definition of Done of a group: what a team would adopt, and what it complies with. */
+    sharedDoD: (groupId: string) => [...queryKeys.teamGroup.all, 'shared-dod', groupId] as const,
+  },
 } as const;
 
 // Type helper for query keys

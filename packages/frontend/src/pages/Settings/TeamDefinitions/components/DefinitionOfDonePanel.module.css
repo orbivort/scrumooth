@@ -81,6 +81,22 @@
   color: var(--color-text-secondary);
 }
 
+/* The team complies with the Definition of Done its group owns, so this page reports it instead
+   of offering an editor whose save would be refused. */
+.group-notice {
+  margin: 0;
+  padding: var(--space-3);
+  border: var(--border-width-1) solid var(--color-border-default);
+  border-radius: var(--radius-lg);
+  background: var(--color-background-page);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.group-notice strong {
+  color: var(--color-text-primary);
+}
+
 .button {
   display: inline-flex;
   align-items: center;

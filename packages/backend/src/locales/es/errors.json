@@ -21,6 +21,7 @@
   },
   "databaseError": "Ocurrió un error de base de datos",
   "developerOnlySizing": "Solo los desarrolladores pueden establecer puntos de historia, ya que los desarrolladores que realizan el trabajo son responsables de la estimación.",
+  "dodGroupGoverned": "Este equipo trabaja con otros equipos Scrum en un mismo producto, por lo que cumple su Definición de Terminado compartida. Modifique la Definición de Terminado compartida en el grupo, donde todos los equipos que la comparten pueden ver el cambio.",
   "dodNotVerified": "Este elemento no puede marcarse como Terminado hasta que se verifique cada criterio activo de la Definición de Terminado. Aún deben verificarse {{count}} criterio(s) activo(s).",
   "dodRequired": "Nada está Terminado hasta que el equipo ha definido qué significa Terminado, por lo que una Definición de Terminado debe conservar al menos un criterio activo. Una lista vacía permitiría marcar cualquier elemento como Terminado sin revisión.",
   "dodTeamMembersOnly": "La Definición de Terminado es el acuerdo del propio Scrum Team sobre qué significa «Terminado»: solo un miembro de ese equipo puede leerla o modificarla.",
@@ -136,6 +137,13 @@
   "task": {
     "assigneeMustBeDeveloper": "Solo los desarrolladores del equipo pueden ser asignados. Los Product Owners y Scrum Masters no pueden asignar tareas.",
     "creationRequiresDeveloper": "Solo los desarrolladores pueden crear y descomponer tareas, ya que los desarrolladores que realizan el trabajo son responsables de la descomposición de tareas."
+  },
+  "teamGroup": {
+    "alreadyMember": "Este equipo ya trabaja con un grupo en un mismo producto, y un equipo cumple una sola Definición de Terminado. Salga primero del grupo actual.",
+    "dodAcknowledgementRequired": "Unirse a un grupo significa adoptar su Definición de Terminado compartida. Indique la versión que adopta —la versión actual del grupo es {{version}}— para que el cumplimiento del equipo quede registrado y no supuesto.",
+    "leadershipOnly": "Unirse a un grupo o salir de él decide a qué Definición de Terminado estará sujeto el equipo, así que solo el Product Owner o el Scrum Master del equipo puede hacerlo.",
+    "membersOnly": "Un grupo es la colaboración de sus equipos Scrum: solo un miembro de uno de ellos puede verlo.",
+    "notEmpty": "Este grupo todavía tiene equipos que cumplen su Definición de Terminado. Muévalos a otro grupo o haga que salgan antes de eliminarlo."
   },
   "teamSizeLimitReached": "Este equipo ha alcanzado el tamaño máximo de {{max}} miembros. No se pueden agregar más miembros.",
   "tokenExpired": "El token ha expirado",

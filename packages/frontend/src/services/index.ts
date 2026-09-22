@@ -48,6 +48,8 @@ import {
   mockWorkingAgreementsService,
   mockCrossFunctionalityService,
 } from './mockFacilitation.service';
+import { teamGroupService as realTeamGroupService } from './domain/teamGroup.service';
+import { mockTeamGroupService } from './mockTeamGroups.service';
 
 // Use mock API in development mode (when no backend is available)
 // Set VITE_USE_MOCK_API=false in .env to use real API
@@ -78,6 +80,11 @@ export const workingAgreementsService = (
 export const crossFunctionalityService = (
   USE_MOCK_API ? mockCrossFunctionalityService : realCrossFunctionalityService
 ) as typeof realCrossFunctionalityService;
+
+// The groups the Scrum Teams share a product -- and one Definition of Done -- with.
+export const teamGroupService = (
+  USE_MOCK_API ? mockTeamGroupService : realTeamGroupService
+) as typeof realTeamGroupService;
 
 // Stub for setAuthCallbacks when using mock API
 const mockSetAuthCallbacks = (_onLogout: () => void) => {

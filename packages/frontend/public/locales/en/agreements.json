@@ -46,6 +46,7 @@
     "none": "Not covered",
     "note": "Note",
     "onlyScrumMaster": "Only the team’s Scrum Master records the assessment.",
+    "openFacilitation": "Record or review the assessment",
     "partial": "Partially covered",
     "record": "Record an assessment",
     "summary": "{{covered}} covered · {{partial}} partial · {{gaps}} not covered",

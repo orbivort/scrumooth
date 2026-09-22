@@ -233,6 +233,10 @@
       "message": "[Pléàsé séléct à téàm tó víéw ànd mànàgé thé Défínítíón óf Dónéééééééééééééééééééé.]",
       "title": "[Nó Téàm Séléctédddddd]"
     },
+    "sharedDoD": {
+      "message": "[Thíís téàm wórks ín {{name}} wííth óthér Scrúm téàms ón óné pródúct, sóó íít cóómplýíís wííth théíír shàréd Défínítíón óf Dóónéééé. Chàngés àréé màdé thééréééé.]",
+      "title": "[Shàréd Défínítíón óf Dóónéééé.]"
+    },
     "shortLabel": "[DóDD]",
     "title": "[Défínítíón óf Dónééééééé]",
     "toast": {

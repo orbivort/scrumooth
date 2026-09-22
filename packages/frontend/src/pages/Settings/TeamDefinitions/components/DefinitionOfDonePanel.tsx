@@ -6,12 +6,12 @@ import { formatLocaleDate } from '@scrumooth/shared';
 
 import { LoadingState } from '../../../../components/common/Loading';
 import { ToastContainer } from '../../../../components/common/ToastContainer';
-import { definitionService } from '../../../../services';
+import { apiService, definitionService } from '../../../../services';
 import { useTeamStore } from '../../../../store';
 import { useToast } from '../../../../hooks/useToast';
 import { queryKeys } from '../../../../hooks/queryKeys';
 import { DEFAULT_DOD_ITEMS } from '../constants/defaults';
-import type { DefinitionOfDone, DoDItem, ApiResponse } from '../../../../types';
+import type { DefinitionOfDone, DoDItem, ApiResponse, Team } from '../../../../types';
 
 import { DefinitionEditor } from './DefinitionEditor';
 import { DOD_CATEGORIES, getCategoryColor } from './categories';
@@ -68,6 +68,8 @@ export function DefinitionOfDonePanel(): React.ReactElement {
       if (!teamId) throw new Error('Team ID is required');
       return definitionService.updateDefinitionOfDone(teamId, items);
     },
+    // The refusal for a grouped team is a gate, not a failure, and it is already documented: the
+    // interface keeps the editor away from it below so it is rarely reached at all.
     onSuccess: () => {
       void queryClient.invalidateQueries({
         queryKey: queryKeys.definitionOfDone.byTeam(teamId ?? ''),
@@ -80,6 +82,21 @@ export function DefinitionOfDonePanel(): React.ReactElement {
       showError(message);
     },
   });
+
+  /**
+   * The team's group, when it shares a product with other Scrum Teams.
+   *
+   * Read from the same query key the Team page uses, so the two surfaces share one cached read
+   * rather than asking twice for the same fact.
+   */
+  const { data: teamData } = useQuery<ApiResponse<Team>>({
+    queryKey: ['team', teamId],
+    queryFn: () => apiService.getTeam(teamId as string),
+    enabled: !!teamId,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const sharedWithGroup = teamData?.success && teamData.data ? (teamData.data.group ?? null) : null;
 
   const handleSave = async (items: DoDItem[]): Promise<void> => {
     await updateMutation.mutateAsync(items);
@@ -191,15 +208,29 @@ export function DefinitionOfDonePanel(): React.ReactElement {
             </div>
           </div>
           <div className={styles['header-right']}>
-            <button
-              className={`${styles.button} ${styles['button-primary']}`}
-              onClick={() => setIsEditMode(true)}
-            >
-              <EditIcon size={16} />
-              {t('dodPanel.editButton')}
-            </button>
+            {/*
+              A grouped team complies with the Definition of Done its group owns, so its own row is
+              inert and the API refuses a team-scoped write (`GATE_DOD_GROUP_GOVERNED`). Saying so
+              beats offering an editor whose save would be rejected.
+            */}
+            {sharedWithGroup ? null : (
+              <button
+                className={`${styles.button} ${styles['button-primary']}`}
+                onClick={() => setIsEditMode(true)}
+              >
+                <EditIcon size={16} />
+                {t('dodPanel.editButton')}
+              </button>
+            )}
           </div>
         </div>
+
+        {sharedWithGroup && (
+          <p className={styles['group-notice']} role="status">
+            <strong>{t('dodPanel.sharedDoD.title')}</strong>{' '}
+            {t('dodPanel.sharedDoD.message', { name: sharedWithGroup.name })}
+          </p>
+        )}
 
         <div className={styles.list}>
           {activeItems.map((item, index) => {

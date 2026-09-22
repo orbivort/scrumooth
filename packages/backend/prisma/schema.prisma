@@ -63,6 +63,7 @@ model User {
   raisedBarriers         OrganizationalBarrier[]    @relation("BarrierRaisedBy")
   barrierActions         BarrierStakeholderAction[] @relation("BarrierActionOwner")
   coachingEntries        CoachingEntry[]            @relation("CoachingEntryAuthor")
+  createdTeamGroups      TeamGroup[]                @relation("TeamGroupCreator")
 
   @@map("users")
 }
@@ -99,9 +100,59 @@ model Team {
   workingAgreements   WorkingAgreement[]
   crossFunctionalityAssessments CrossFunctionalityAssessment[]
   creator             User?                 @relation("TeamCreator", fields: [createdBy], references: [id], onDelete: SetNull)
+  /// The group this team belongs to, if any: a set of Scrum Teams working together on one
+  /// product, bound to the single Definition of Done the group owns. A team is in at most one
+  /// group, and joining is the team's explicit adoption of the group's DoD version below.
+  ///
+  /// The three columns travel together or not at all, and the database holds that:
+  /// `chk_teams_group_membership_complete` asserts `(groupId IS NULL) = (groupJoinedAt IS NULL)`
+  /// and the same for the adopted version, so a membership can never be half-recorded.
+  ///
+  /// Deletion is restricted rather than detaching, precisely so that invariant can hold: a group
+  /// cannot be removed while a team still complies with its Definition of Done
+  /// (`GATE_TEAM_GROUP_NOT_EMPTY` in the API, `ON DELETE RESTRICT` here), because a detached team
+  /// would be left complying with a Definition of Done nobody owns.
+  groupId             String?               @db.Uuid
+  groupJoinedAt       DateTime?             @db.Timestamptz(3)
+  /// The version of the group's Definition of Done the team adopted when it joined. A later
+  /// change to the shared DoD leaves this behind, which is what makes the drift visible.
+  groupDodVersionAtJoin Int?
+  group               TeamGroup?            @relation(fields: [groupId], references: [id], onDelete: Restrict)
 
   @@index([createdBy])
+  @@index([groupId])
   @@map("teams")
+}
+
+/// A set of Scrum Teams working together on one product.
+///
+/// The 2020 Scrum Guide: *"If there are multiple Scrum Teams working together on a product, they
+/// must mutually define and comply with the same Definition of Done."* Scrumooth modelled a team
+/// and its own DoD, so two teams on one product could hold two different DoDs and nothing could
+/// express the rule. A group is that rule made structural rather than conventional:
+///
+///  * The group owns the **only** Definition of Done row (`definition_of_done.groupId`). A member
+///    team's own row is inert while it is grouped, so the group's teams cannot diverge by
+///    construction rather than by agreement.
+///  * Joining records *which version* the team adopted (`Team.groupDodVersionAtJoin`), so "mutually
+///    define and comply" is an act the database remembers, not a checkbox in a meeting.
+///  * A group is a product-collaboration device, not a team decomposition: nothing inside a Scrum
+///    Team changes, so *"no sub-teams or hierarchies"* is not infringed.
+model TeamGroup {
+  id               String                @id @db.Uuid
+  name             String                @unique
+  description      String?
+  createdAt        DateTime              @default(now()) @db.Timestamptz(3)
+  createdBy        String?               @db.Uuid
+  updatedAt        DateTime              @updatedAt @db.Timestamptz(3)
+  updatedBy        String?               @db.Uuid
+  definitionOfDone DefinitionOfDone?
+  dodVersionSnapshots DoDVersionSnapshot[]
+  teams            Team[]
+  creator          User?                 @relation("TeamGroupCreator", fields: [createdBy], references: [id], onDelete: SetNull)
+
+  @@index([createdBy])
+  @@map("team_groups")
 }
 
 model TeamMember {
@@ -516,15 +567,29 @@ model Impediment {
   @@map("impediments")
 }
 
+/// The Definition of Done, owned by exactly one scope.
+///
+/// A Definition of Done belongs either to a single team (`teamId`) or to the group of Scrum Teams
+/// that work together on one product (`groupId`) -- never both, never neither. The database holds
+/// that with `CHECK ((team_id IS NULL) <> (group_id IS NULL))` (see the migration that introduced
+/// it; Prisma cannot express a CHECK, so the invariant lives in SQL and the columns stay nullable
+/// here). One group therefore has one Definition of Done, which is the Guide's *"they must mutually
+/// define and comply with the same Definition of Done"* encoded structurally.
+///
+/// While a team belongs to a group, its own team-scoped row is inert: it is retained (deleting it
+/// would cascade away its version history) but it governs nothing, and the team cannot edit it.
+/// Re-scoping on leave materializes the group's items back into it.
 model DefinitionOfDone {
   id        String    @id @db.Uuid
-  teamId    String    @unique @db.Uuid
+  teamId    String?   @unique @db.Uuid
+  groupId   String?   @unique @db.Uuid
   version   Int       @default(1)
   createdAt DateTime  @default(now()) @db.Timestamptz(3)
   createdBy String?   @db.Uuid
   updatedAt DateTime  @updatedAt @db.Timestamptz(3)
   updatedBy String?   @db.Uuid
-  team      Team      @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  team      Team?     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  group     TeamGroup? @relation(fields: [groupId], references: [id], onDelete: Cascade)
   items     DoDItem[]
   snapshots DoDVersionSnapshot[]
 
@@ -581,7 +646,12 @@ model DoDChecklistVerification {
 model DoDVersionSnapshot {
   id        String   @id @db.Uuid
   dodId     String   @db.Uuid
-  teamId    String   @db.Uuid
+  /// Mirrors the scope of the Definition of Done this snapshot belongs to: `teamId` for a
+  /// team-scoped DoD, `groupId` for the shared one a group owns. Exactly one is set, held by the
+  /// same CHECK as the live rows, so a version's history cannot become attached to the wrong owner
+  /// when a team joins or leaves a group.
+  teamId    String?  @db.Uuid
+  groupId   String?  @db.Uuid
   /// The superseded version this snapshot preserves; unique per Definition of Done.
   version   Int
   items     Json
@@ -589,12 +659,14 @@ model DoDVersionSnapshot {
   createdBy String?  @db.Uuid
   creator           User?              @relation("DoDVersionSnapshotCreator", fields: [createdBy], references: [id], onDelete: SetNull)
   definitionOfDone  DefinitionOfDone   @relation(fields: [dodId], references: [id], onDelete: Cascade)
-  team              Team               @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  team              Team?              @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  group             TeamGroup?         @relation(fields: [groupId], references: [id], onDelete: Cascade)
 
   // The unique index is the read path too: history is always "for this Definition of Done, in
   // version order", so a separate index on ("dodId", "version") would duplicate it.
   @@unique([dodId, version])
   @@index([teamId])
+  @@index([groupId])
   @@index([createdBy])
   @@map("dod_version_snapshots")
 }

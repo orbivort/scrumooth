@@ -17,7 +17,6 @@ const getRoleBadgeClass = (role: string, prefix: string = 'team-role'): string =
     scrum_master: `${prefix}-scrum-master`,
     product_owner: `${prefix}-product-owner`,
     developers: `${prefix}-developer`,
-    administrator: `${prefix}-administrator`,
   };
   return classMap[normalizedRole] ?? `${prefix}-default`;
 };

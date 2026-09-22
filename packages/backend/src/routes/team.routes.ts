@@ -4,10 +4,12 @@ import * as teamController from '../controllers/team.controller';
 import * as dodController from '../controllers/dod.controller';
 import * as dorController from '../controllers/dor.controller';
 import * as healthCheckController from '../controllers/teamHealthCheck.controller';
+import * as teamGroupController from '../controllers/teamGroup.controller';
 import { authenticate, requireRoles } from '../middleware/auth.middleware';
 import { createRequireTeamContext } from '../middleware/teamContext.middleware';
 import { validateBody, validateParams } from '../middleware/validation.middleware';
 import { GATE_CODES, UserRole } from '@scrumooth/shared';
+import { joinTeamGroupSchema } from '../validations/teamGroup.validation';
 import { z } from 'zod';
 
 const router: RouterType = Router();
@@ -111,7 +113,7 @@ router.get('/:teamId', validateParams(teamIdSchema), teamController.getTeamById)
 /**
  * @route   PUT /api/v1/teams/:teamId
  * @desc    Update team
- * @access  Private (Administrator)
+ * @access  Private
  */
 router.put(
   '/:teamId',
@@ -123,7 +125,7 @@ router.put(
 /**
  * @route   DELETE /api/v1/teams/:teamId
  * @desc    Delete team
- * @access  Private (Administrator)
+ * @access  Private
  */
 router.delete('/:teamId', validateParams(teamIdSchema), teamController.deleteTeam);
 
@@ -175,6 +177,27 @@ router.get('/:teamId/my-role', validateParams(teamIdSchema), teamController.getM
  * @access  Private
  */
 router.post('/select-team', teamController.selectTeam);
+
+/**
+ * @route   POST /api/v1/teams/:teamId/group
+ * @desc    Adopt a group's shared Definition of Done. Refused when the team already belongs to a
+ *          group, or when the acknowledged version is not the one in force, so a team cannot be
+ *          recorded as complying with a Definition of Done it never saw.
+ * @access  Private (the team's Product Owner or Scrum Master)
+ */
+router.post(
+  '/:teamId/group',
+  validateParams(teamIdSchema),
+  validateBody(joinTeamGroupSchema),
+  teamGroupController.joinTeamGroup
+);
+
+/**
+ * @route   DELETE /api/v1/teams/:teamId/group
+ * @desc    Leave the group, keeping the Definition of Done the team has been complying with.
+ * @access  Private (the team's Product Owner or Scrum Master)
+ */
+router.delete('/:teamId/group', validateParams(teamIdSchema), teamGroupController.leaveTeamGroup);
 
 /**
  * @route   GET /api/v1/teams/:teamId/definition-of-done

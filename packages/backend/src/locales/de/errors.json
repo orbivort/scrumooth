@@ -21,6 +21,7 @@
   },
   "databaseError": "Ein Datenbankfehler ist aufgetreten",
   "developerOnlySizing": "Nur Entwickler können Story Points festlegen, da die Entwickler, die die Arbeit ausführen, für die Schätzung verantwortlich sind.",
+  "dodGroupGoverned": "Dieses Team arbeitet mit anderen Scrum-Teams an einem Produkt und befolgt daher deren gemeinsame Definition of Done. Ändern Sie stattdessen die gemeinsame Definition of Done in der Gruppe, wo jedes Team, das sie teilt, die Änderung sehen kann.",
   "dodNotVerified": "Dieses Element kann nicht als Fertig markiert werden, solange nicht jede aktive Definition-of-Done-Anforderung verifiziert ist. {{count}} aktive Anforderung(en) müssen noch verifiziert werden.",
   "dodRequired": "Nichts ist fertig, solange das Team nicht definiert hat, was fertig bedeutet: Eine Definition of Done muss mindestens eine aktive Anforderung behalten. Eine leere Checkliste würde jedes Element ungeprüft als fertig durchgehen lassen.",
   "dodTeamMembersOnly": "Die Definition of Done ist die eigene Vereinbarung des Scrum Teams darüber, was „fertig“ bedeutet: Nur ein Mitglied dieses Teams kann sie lesen oder ändern.",
@@ -136,6 +137,13 @@
   "task": {
     "assigneeMustBeDeveloper": "Nur Entwickler im Team können zugewiesen werden. Product Owner und Scrum Master können keine Aufgaben zuweisen.",
     "creationRequiresDeveloper": "Nur Entwickler können Aufgaben erstellen und zerlegen, da die Entwickler, die die Arbeit ausführen, die Aufgabenzerlegung verantworten."
+  },
+  "teamGroup": {
+    "alreadyMember": "Dieses Team arbeitet bereits mit einer Gruppe an einem Produkt, und ein Team befolgt eine Definition of Done. Verlassen Sie zuerst die aktuelle Gruppe.",
+    "dodAcknowledgementRequired": "Der Beitritt zu einer Gruppe bedeutet, deren gemeinsame Definition of Done zu übernehmen. Nennen Sie die Version, die Sie übernehmen — die aktuelle Version der Gruppe ist {{version}} —, damit die Einhaltung des Teams festgehalten statt vorausgesetzt wird.",
+    "leadershipOnly": "Der Beitritt zu oder das Verlassen einer Gruppe entscheidet, an welche Definition of Done das Team gebunden ist. Nur der Product Owner oder der Scrum Master des Teams kann das tun.",
+    "membersOnly": "Eine Gruppe ist die Zusammenarbeit ihrer Scrum-Teams: Nur ein Mitglied eines dieser Teams kann sie sehen.",
+    "notEmpty": "Diese Gruppe hat noch Teams, die ihre Definition of Done befolgen. Verschieben Sie sie in eine andere Gruppe oder lassen Sie sie austreten, bevor Sie die Gruppe entfernen."
   },
   "teamSizeLimitReached": "Dieses Team hat die maximale Größe von {{max}} Mitgliedern erreicht. Es können keine weiteren Mitglieder hinzugefügt werden.",
   "tokenExpired": "Token ist abgelaufen",

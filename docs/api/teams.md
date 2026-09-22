@@ -666,14 +666,14 @@ Content-Type: application/json
 }
 ```
 
-**403 Forbidden - Cannot Remove Last Admin**
+**403 Forbidden - Cannot Remove Yourself**
 
 ```json
 {
   "success": false,
   "error": {
     "code": "AUTHORIZATION_ERROR",
-    "message": "Cannot remove the last administrator"
+    "message": "You cannot remove yourself from the team. Ask another Product Owner or Scrum Master of this team to remove you."
   }
 }
 ```
@@ -857,6 +857,46 @@ For Definition of Done and Definition of Ready endpoints, see:
 
 - [Definition of Done API](./definition-of-done.md)
 - [Definition of Ready API](./definition-of-ready.md)
+
+## Team groups
+
+A team that works on a product with other Scrum Teams complies with **one shared Definition of
+Done**, owned by a team group. The team detail response reports it:
+
+```json
+{
+  "id": "550e8400-...",
+  "name": "Team A",
+  "group": { "id": "0199a2c1-...", "name": "Payments product", "dodVersion": 3 },
+  "groupDodVersionAtJoin": 2,
+  "groupJoinedAt": "2026-09-01T09:00:00.000Z"
+}
+```
+
+`group.dodVersion` is the version in force; `groupDodVersionAtJoin` is the version the team adopted.
+A team whose adopted version is behind has not re-adopted a change made after it agreed, and the
+interface surfaces that as drift.
+
+Membership is decided on the team, by its Product Owner or Scrum Master:
+
+- `POST /api/v1/teams/:teamId/group` — adopt a group's shared Definition of Done, naming the version
+  adopted (`409 GATE_TEAM_GROUP_ALREADY_MEMBER`, `400 GATE_TEAM_GROUP_DOD_ACKNOWLEDGEMENT_REQUIRED`).
+- `DELETE /api/v1/teams/:teamId/group` — leave, keeping the Definition of Done the team has been
+  complying with.
+
+Group management itself lives under `/api/v1/team-groups`:
+[Team Groups API](./team-groups.md).
+
+## Guarantees under concurrency
+
+- **One Product Owner and one Scrum Master per team, and no more than `TEAM_MAX_SIZE` members.** Both
+  are read-modify-write rules, so the count and the write share one `Serializable` transaction
+  (`packages/backend/src/utils/serializableTransaction.ts`). Where two requests race, PostgreSQL
+  aborts one and the bounded retry re-runs it, which then sees the winner's row and returns the same
+  refusal a single request would have produced — `409 GATE_LEADERSHIP_ROLE_TAKEN` or
+  `409 GATE_TEAM_SIZE_LIMIT`. The refusal is never a server error.
+- **A group cannot be removed while a team still complies with its Definition of Done**
+  (`409 GATE_TEAM_GROUP_NOT_EMPTY`), enforced by the API and by `teams.groupId ON DELETE RESTRICT`.
 
 ## Error Codes
 

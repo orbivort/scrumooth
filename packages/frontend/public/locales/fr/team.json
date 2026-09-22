@@ -110,7 +110,6 @@
     },
     "memberSince": "Membre depuis",
     "roleNames": {
-      "administrator": "Administrateur",
       "developers": "Developers",
       "productOwner": "Product Owner",
       "scrumMaster": "Scrum Master"
@@ -181,6 +180,22 @@
     }
   },
   "subtitle": "Gérer les membres de l'équipe et les standards de l'équipe",
+  "teamGroup": {
+    "adopt": "Rejoindre et adopter la version {{version}}",
+    "adopted": "Version {{version}} adoptée le {{date}}.",
+    "choose": "Groupe",
+    "current": "Respecte celle de {{name}} — version commune {{version}}.",
+    "drift": "La Definition of Done commune a changé depuis que cette équipe l'a adoptée. Examinez-la pour que les équipes en respectent toujours une seule.",
+    "hint": "Les équipes Scrum qui travaillent ensemble sur un même produit respectent la même Definition of Done. Le groupe possède cette unique Definition of Done ; ses équipes la lisent et ne peuvent pas modifier la leur.",
+    "joinError": "L'équipe n'a pas pu rejoindre le groupe.",
+    "leave": "Quitter le groupe",
+    "leaveError": "L'équipe n'a pas pu quitter le groupe.",
+    "leaveMessage": "L'équipe conserve la Definition of Done qu'elle respectait et peut ensuite la modifier elle-même.",
+    "leaveTitle": "Quitter {{name}} ?",
+    "none": "Cette équipe travaille seule et définit donc sa propre Definition of Done.",
+    "review": "Examiner ce qui serait adopté",
+    "title": "Definition of Done commune"
+  },
   "teamInfo": {
     "created": "Créé : {{date}}",
     "lastUpdated": "Dernière mise à jour : {{date}}",

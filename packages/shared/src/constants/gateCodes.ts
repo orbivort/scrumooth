@@ -285,6 +285,40 @@ export const GATE_CODES = {
    * and receiving the work, not to the whole installation.
    */
   FACILITATION_TEAM_MEMBERS_ONLY: 'GATE_FACILITATION_TEAM_MEMBERS_ONLY',
+  /**
+   * *"If there are multiple Scrum Teams working together on a product, they must mutually define and
+   * comply with the same Definition of Done."* A team that belongs to such a group is governed by
+   * the group's single Definition of Done, so it cannot create or replace a team-scoped one: a team
+   * that could still edit its own would not be complying with the same Definition of Done, and the
+   * change would be invisible to the teams that share it. The change is made at the group.
+   */
+  DOD_GROUP_GOVERNED: 'GATE_DOD_GROUP_GOVERNED',
+  /**
+   * A group is the collaboration of its Scrum Teams, so reading what it is and which teams are in
+   * it asks for membership of one of them.
+   */
+  TEAM_GROUP_MEMBERS_ONLY: 'GATE_TEAM_GROUP_MEMBERS_ONLY',
+  /**
+   * Joining or leaving a group decides which Definition of Done the team will be held to, so it is
+   * the team's own leadership's decision -- a Product Owner or Scrum Master acting for that team --
+   * and not something any member of any group can do on a team's behalf.
+   */
+  TEAM_GROUP_LEADERSHIP_ONLY: 'GATE_TEAM_GROUP_LEADERSHIP_ONLY',
+  /**
+   * "Mutually define and comply" is an act, not an assumption: joining a group requires naming the
+   * version of the shared Definition of Done the team is adopting. A join that recorded no version
+   * would make the team's compliance unverifiable and would let a change made afterwards pass as
+   * something the team had agreed to.
+   */
+  TEAM_GROUP_DOD_ACKNOWLEDGEMENT_REQUIRED: 'GATE_TEAM_GROUP_DOD_ACKNOWLEDGEMENT_REQUIRED',
+  /** A team belongs to at most one group: it works on one product's Definition of Done, not two. */
+  TEAM_GROUP_ALREADY_MEMBER: 'GATE_TEAM_GROUP_ALREADY_MEMBER',
+  /**
+   * A group's Definition of Done is the commitment of its teams, so a group that still has teams
+   * cannot be dissolved out from under them: removing the group would take away the Definition of
+   * Done they are complying with rather than moving them to another one.
+   */
+  TEAM_GROUP_NOT_EMPTY: 'GATE_TEAM_GROUP_NOT_EMPTY',
 } as const;
 
 export type GateCode = (typeof GATE_CODES)[keyof typeof GATE_CODES];
@@ -609,6 +643,36 @@ export const GATE_DEFINITIONS: Record<GateCode, GateDefinition> = {
     code: GATE_CODES.FACILITATION_TEAM_MEMBERS_ONLY,
     httpStatus: 403,
     i18nKey: 'facilitationTeamMembersOnly',
+  },
+  [GATE_CODES.DOD_GROUP_GOVERNED]: {
+    code: GATE_CODES.DOD_GROUP_GOVERNED,
+    httpStatus: 409,
+    i18nKey: 'dodGroupGoverned',
+  },
+  [GATE_CODES.TEAM_GROUP_MEMBERS_ONLY]: {
+    code: GATE_CODES.TEAM_GROUP_MEMBERS_ONLY,
+    httpStatus: 403,
+    i18nKey: 'teamGroupMembersOnly',
+  },
+  [GATE_CODES.TEAM_GROUP_LEADERSHIP_ONLY]: {
+    code: GATE_CODES.TEAM_GROUP_LEADERSHIP_ONLY,
+    httpStatus: 403,
+    i18nKey: 'teamGroupLeadershipOnly',
+  },
+  [GATE_CODES.TEAM_GROUP_DOD_ACKNOWLEDGEMENT_REQUIRED]: {
+    code: GATE_CODES.TEAM_GROUP_DOD_ACKNOWLEDGEMENT_REQUIRED,
+    httpStatus: 400,
+    i18nKey: 'teamGroupDodAcknowledgementRequired',
+  },
+  [GATE_CODES.TEAM_GROUP_ALREADY_MEMBER]: {
+    code: GATE_CODES.TEAM_GROUP_ALREADY_MEMBER,
+    httpStatus: 409,
+    i18nKey: 'teamGroupAlreadyMember',
+  },
+  [GATE_CODES.TEAM_GROUP_NOT_EMPTY]: {
+    code: GATE_CODES.TEAM_GROUP_NOT_EMPTY,
+    httpStatus: 409,
+    i18nKey: 'teamGroupNotEmpty',
   },
 };
 

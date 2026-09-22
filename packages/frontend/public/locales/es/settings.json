@@ -233,6 +233,10 @@
       "message": "Por favor seleccione un equipo para ver y gestionar la Definition of Done.",
       "title": "Sin equipo seleccionado"
     },
+    "sharedDoD": {
+      "message": "Este equipo trabaja en {{name}} con otros equipos Scrum en un mismo producto, por lo que cumple su Definición de Terminado compartida. Los cambios se hacen allí.",
+      "title": "Definición de Terminado compartida."
+    },
     "shortLabel": "DoD",
     "title": "Definition of Done",
     "toast": {

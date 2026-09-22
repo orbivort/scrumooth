@@ -46,6 +46,7 @@
     "none": "Sin cubrir",
     "note": "Nota",
     "onlyScrumMaster": "Solo el Scrum Master del equipo registra la evaluación.",
+    "openFacilitation": "Registrar o revisar la evaluación",
     "partial": "Parcialmente cubierta",
     "record": "Registrar una evaluación",
     "summary": "{{covered}} cubiertas · {{partial}} parciales · {{gaps}} sin cubrir",

@@ -21,6 +21,7 @@
   },
   "databaseError": "A database error occurred",
   "developerOnlySizing": "Only Developers can set story points, as the Developers who perform the work are responsible for sizing.",
+  "dodGroupGoverned": "This team works with other Scrum Teams on one product, so it complies with their shared Definition of Done. Change the shared Definition of Done at the group instead, where every team that shares it can see the change.",
   "dodNotVerified": "This item cannot be marked Done until every active Definition of Done item is verified. {{count}} active item(s) still need verification.",
   "dodRequired": "Nothing is Done until the team has defined what Done means, so a Definition of Done must keep at least one active item. An empty checklist would let every item be marked Done unchecked.",
   "dodTeamMembersOnly": "The Definition of Done is the Scrum Team's own agreement about what \"Done\" means: only a member of that team can read or change it.",
@@ -136,6 +137,13 @@
   "task": {
     "assigneeMustBeDeveloper": "Only Developers on the team can be assigned. Product Owners and Scrum Masters cannot assign tasks.",
     "creationRequiresDeveloper": "Only Developers can create and decompose tasks, as the Developers who perform the work own task decomposition."
+  },
+  "teamGroup": {
+    "alreadyMember": "This team already works with a group on one product, and a team complies with one Definition of Done. Leave the current group first.",
+    "dodAcknowledgementRequired": "Joining a group means adopting its shared Definition of Done. Name the version you are adopting — the group's current version is {{version}} — so the team's compliance is recorded rather than assumed.",
+    "leadershipOnly": "Joining or leaving a group decides which Definition of Done the team will be held to, so only the team's Product Owner or Scrum Master can do it.",
+    "membersOnly": "A group is the collaboration of its Scrum Teams, so only a member of one of them can see it.",
+    "notEmpty": "This group still has teams complying with its Definition of Done. Move them to another group, or have them leave, before removing it."
   },
   "teamSizeLimitReached": "This team has reached the maximum size of {{max}} members. No additional members can be added.",
   "tokenExpired": "Token has expired",

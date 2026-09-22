@@ -750,11 +750,43 @@ curl -X GET https://api.scrumooth.dev/api/v1/sprints/550e8400-e29b-41d4-a716-446
 
 ---
 
-**Last Updated**: 2026-05-10
+## Shared Definition of Done (team groups)
+
+> _"If there are multiple Scrum Teams working together on a product, they must mutually define and
+> comply with the same Definition of Done."_
+
+A Definition of Done belongs either to one team (`teamId`) or to the group of Scrum Teams working on
+one product (`groupId`) — never both, held by `CHECK ((team_id IS NULL) <> (group_id IS NULL))`. The
+`GET` and `PUT` endpoints on `/teams/:teamId/definition-of-done` therefore do not always act on a
+team-owned row:
+
+- **Reading** resolves the Definition of Done that _governs_ the team: the group's row when the team
+  belongs to a group, otherwise the team's own. The response is still reported under the team that
+  asked, so the shape is unchanged.
+- **Writing** is refused with `409 GATE_DOD_GROUP_GOVERNED` for a grouped team. A team that could
+  still edit its own Definition of Done would not be complying with the same one, and the change
+  would be invisible to the teams that share it. Change it at the group:
+  `PUT /api/v1/team-groups/:groupId/shared-definition-of-done`.
+- **Version history** follows the same resolution, so a group's history stays with the group and a
+  team's adoption is visible as `Team.groupDodVersionAtJoin`.
+- The same resolution applies to the Done gate: `checkDoDEligibility` and the batch check in
+  `incrementAccess.ts` verify against the governing Definition of Done, so the gate and the editor
+  cannot disagree about which commitment an item has to satisfy.
+
+A team that leaves a group keeps the Definition of Done it has been complying with: the shared items
+are written into its own row through the ordinary versioned update, which is snapshotted like any
+other change.
+
+See [Team Groups API](./team-groups.md).
+
+---
+
+**Last Updated**: 2026-09-24
 
 **Related Documentation**
 
 - [Definition of Ready API](./definition-of-ready.md)
 - [Teams API](./teams.md)
+- [Team Groups API](./team-groups.md)
 - [Product Backlog API](./product-backlog.md)
 - [Sprints API](./sprints.md)

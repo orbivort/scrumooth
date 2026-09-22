@@ -233,6 +233,10 @@
       "message": "Veuillez sélectionner une équipe pour voir et gérer la Definition of Done.",
       "title": "Aucune équipe sélectionnée"
     },
+    "sharedDoD": {
+      "message": "Cette équipe travaille dans {{name}} avec d'autres équipes Scrum sur un même produit et respecte donc leur Definition of Done commune. Les modifications se font là-bas.",
+      "title": "Definition of Done commune."
+    },
     "shortLabel": "DoD",
     "title": "Definition of Done",
     "toast": {

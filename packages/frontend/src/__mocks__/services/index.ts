@@ -160,6 +160,18 @@ export const crossFunctionalityService: Record<string, Mock<AnyFn>> = {
   createAssessment: vi.fn(),
 };
 
+export const teamGroupService: Record<string, Mock<AnyFn>> = {
+  listGroups: vi.fn(),
+  getGroup: vi.fn(),
+  createGroup: vi.fn(),
+  updateGroup: vi.fn(),
+  deleteGroup: vi.fn(),
+  getSharedDefinitionOfDone: vi.fn(),
+  updateSharedDefinitionOfDone: vi.fn(),
+  joinGroup: vi.fn(),
+  leaveGroup: vi.fn(),
+};
+
 export const healthCheckService: Record<string, Mock<AnyFn>> = {
   getHealthChecks: vi.fn(),
   createHealthCheck: vi.fn(),

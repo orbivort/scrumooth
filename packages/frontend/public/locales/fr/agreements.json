@@ -46,6 +46,7 @@
     "none": "Non couverte",
     "note": "Note",
     "onlyScrumMaster": "Seul le Scrum Master de l'équipe enregistre l'évaluation.",
+    "openFacilitation": "Enregistrer ou consulter l'évaluation",
     "partial": "Partiellement couverte",
     "record": "Enregistrer une évaluation",
     "summary": "{{covered}} couvertes · {{partial}} partielles · {{gaps}} non couvertes",

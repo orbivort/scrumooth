@@ -1,5 +1,17 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
+// Shared between the client and the transaction client on purpose: the leadership and size rules
+// are held *inside* the transaction, so a test that asserts the count or the insert is asserting
+// the same call whichever client performed it.
+const teamMemberMock = vi.hoisted(() => ({
+  findUnique: vi.fn(),
+  findMany: vi.fn(),
+  create: vi.fn(),
+  update: vi.fn(),
+  delete: vi.fn(),
+  count: vi.fn(),
+}));
+
 // Mock modules with factory functions (hoisted, so no external variables allowed)
 vi.mock('../../../utils/prisma', () => ({
   default: {
@@ -11,14 +23,7 @@ vi.mock('../../../utils/prisma', () => ({
       delete: vi.fn(),
       count: vi.fn(),
     },
-    teamMember: {
-      findUnique: vi.fn(),
-      findMany: vi.fn(),
-      create: vi.fn(),
-      update: vi.fn(),
-      delete: vi.fn(),
-      count: vi.fn(),
-    },
+    teamMember: teamMemberMock,
     user: {
       findUnique: vi.fn(),
       findMany: vi.fn(),
@@ -33,6 +38,10 @@ vi.mock('../../../utils/prisma', () => ({
     task: {
       count: vi.fn(),
     },
+    // The interactive form is what the membership writes use; the callback gets the stub client.
+    $transaction: vi.fn((callback: (tx: unknown) => Promise<unknown>) =>
+      callback({ teamMember: teamMemberMock })
+    ),
   },
 }));
 
@@ -935,6 +944,59 @@ describe('TeamService', () => {
       expect(result).toBeDefined();
       expect(result.userId).toBe(newUserId);
       expect(result.role).toBe('PRODUCT_OWNER');
+      expect(prisma.teamMember.create).toHaveBeenCalled();
+    });
+
+    it('holds the leadership and size guarantees inside one serializable transaction', async () => {
+      const userId = 'test-user-id';
+      const teamId = 'team-id';
+      const memberEmail = 'concurrent-po@example.com';
+      const newUserId = 'concurrent-po-id';
+      const mockTeam = fixtures.teams.validTeam({ id: teamId });
+
+      vi.mocked(prisma.teamMember.findUnique).mockResolvedValueOnce({
+        id: 'requester-member-id',
+        teamId,
+        userId,
+        role: 'SCRUM_MASTER',
+        joinedAt: new Date(),
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        createdBy: null,
+        updatedBy: null,
+      } as any);
+
+      vi.mocked(prisma.user.findUnique)
+        .mockResolvedValueOnce(
+          fixtures.users.validUser({ id: newUserId, email: memberEmail }) as any
+        )
+        .mockResolvedValue(fixtures.users.validUser({ id: userId }) as any);
+
+      vi.mocked(prisma.teamMember.count).mockResolvedValue(0 as any);
+      vi.mocked(prisma.team.findUnique).mockResolvedValue(mockTeam as any);
+      vi.mocked(prisma.teamMember.create).mockResolvedValue({
+        id: 'concurrent-member-id',
+        teamId,
+        userId: newUserId,
+        role: 'PRODUCT_OWNER',
+        joinedAt: new Date(),
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        createdBy: userId,
+        updatedBy: null,
+        user: fixtures.users.validUser({ id: newUserId }),
+        team: mockTeam,
+      } as any);
+
+      await teamService.addMember(teamId, userId, { email: memberEmail, role: 'PRODUCT_OWNER' });
+
+      // The count of holders and the insert that adds another are one transaction at Serializable.
+      // At the default isolation level two concurrent adds would each read "no Product Owner yet"
+      // and both insert, which is the defect the report recorded.
+      expect(prisma.$transaction).toHaveBeenCalledWith(expect.any(Function), {
+        isolationLevel: 'Serializable',
+      });
+      expect(prisma.teamMember.count).toHaveBeenCalledWith({ where: { teamId } });
       expect(prisma.teamMember.create).toHaveBeenCalled();
     });
 

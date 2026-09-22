@@ -12,6 +12,7 @@
 // each caller would be the real debt — two answers to one rule.
 import prisma from '../utils/prisma';
 import { localizedError } from '../utils/errors';
+import { doDScopeWhere, resolveDoDScope } from './dodScope';
 import { GATE_CODES } from '@scrumooth/shared';
 import type { GateCode } from '@scrumooth/shared';
 
@@ -89,15 +90,22 @@ export async function assertDoDTeamMember(userId: string, teamId: string): Promi
  * @param teamId - the team whose Definition of Done applies
  */
 export async function checkDoDEligibility(pbiId: string, teamId: string): Promise<DoDEligibility> {
-  const dod = await prisma.definitionOfDone.findUnique({
-    where: { teamId },
-    select: {
-      items: {
-        where: { isActive: true },
-        select: { id: true },
-      },
-    },
-  });
+  // "The team whose Definition of Done applies" is the group's shared one while the team is in a
+  // group, so the gate and the DoD editor must resolve it the same way or they would disagree
+  // about which commitment an item has to satisfy.
+  const scope = await resolveDoDScope(teamId);
+
+  const dod = scope
+    ? await prisma.definitionOfDone.findUnique({
+        where: doDScopeWhere(scope),
+        select: {
+          items: {
+            where: { isActive: true },
+            select: { id: true },
+          },
+        },
+      })
+    : null;
 
   const activeDodItemIds = (dod?.items ?? []).map((item) => item.id);
   if (activeDodItemIds.length === 0) {
@@ -141,15 +149,19 @@ export async function getFullyDoDVerifiedPbiIds(
     return new Set();
   }
 
-  const dod = await prisma.definitionOfDone.findUnique({
-    where: { teamId },
-    select: {
-      items: {
-        where: { isActive: true },
-        select: { id: true },
-      },
-    },
-  });
+  const scope = await resolveDoDScope(teamId);
+
+  const dod = scope
+    ? await prisma.definitionOfDone.findUnique({
+        where: doDScopeWhere(scope),
+        select: {
+          items: {
+            where: { isActive: true },
+            select: { id: true },
+          },
+        },
+      })
+    : null;
 
   const activeDodItemIds = (dod?.items ?? []).map((item) => item.id);
   if (activeDodItemIds.length === 0) {

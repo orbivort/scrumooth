@@ -37,6 +37,11 @@ vi.mock('../../../utils/prisma', () => ({
     teamMember: {
       findUnique: vi.fn(),
     },
+    team: {
+      // A team is not in a group unless a test puts it in one, so a Definition of Done resolves to
+      // the team's own row by default.
+      findUnique: vi.fn().mockResolvedValue({ groupId: null }),
+    },
     $transaction: vi.fn(),
   },
 }));
@@ -185,6 +190,9 @@ describe('DefinitionOfDoneService', () => {
         data: {
           id: 'mock-uuid-v7',
           teamId: 'team-1',
+          // Written explicitly so the database's exactly-one-owner CHECK is satisfied: this row is
+          // a team's, so there is no group to name.
+          groupId: null,
           version: 1,
           createdBy: 'user-1',
           items: {
@@ -315,6 +323,8 @@ describe('DefinitionOfDoneService', () => {
           id: 'mock-uuid-v7',
           dodId: 'dod-1',
           teamId: 'team-1',
+          // The snapshot mirrors the owner of the Definition of Done it preserves.
+          groupId: null,
           version: 1,
           items: [{ description: 'Superseded item', category: 'review', isActive: true, order: 0 }],
           createdBy: 'user-1',
@@ -1272,6 +1282,92 @@ describe('DefinitionOfDoneService', () => {
       expect(result.pbiDetails[0]!.compliancePercentage).toBe(100);
       expect(result.pbiDetails[1]!.compliancePercentage).toBe(50);
       expect(result.complianceRate).toBe(50);
+    });
+  });
+
+  describe('a Definition of Done shared by a group', () => {
+    /** Put the team in a group, so the group's row is the one that governs it. */
+    const placeTeamInGroup = () => {
+      vi.mocked(prisma.team.findUnique).mockResolvedValue({ groupId: 'group-1' } as never);
+    };
+
+    it("reads the group's row rather than the team's inert one", async () => {
+      placeTeamInGroup();
+      vi.mocked(prisma.definitionOfDone.findUnique).mockResolvedValue({
+        id: 'dod-group',
+        teamId: null,
+        groupId: 'group-1',
+        version: 3,
+        items: [{ id: 'item-1', description: 'Integrated', category: 'quality', isActive: true }],
+      } as never);
+
+      const result = await definitionOfDoneService.getDefinitionOfDone('team-1');
+
+      // The read targets the one row the group owns, never the team's own row by `teamId`.
+      expect(prisma.definitionOfDone.findUnique).toHaveBeenCalledWith({
+        where: { groupId: 'group-1' },
+        include: { items: { orderBy: { order: 'asc' } } },
+      });
+      // The response is still a team-scoped view of the commitment: it is reported under the team
+      // that asked, so no consumer has to handle a null team on a field that has always been one.
+      expect(result?.teamId).toBe('team-1');
+      expect(result?.version).toBe(3);
+    });
+
+    it('refuses a team-scoped write, because the shared Definition of Done is changed at the group', async () => {
+      placeTeamInGroup();
+
+      await expect(
+        definitionOfDoneService.updateDefinitionOfDone(
+          'team-1',
+          [{ description: 'Reviewed', isActive: true, order: 0 }],
+          'user-1'
+        )
+      ).rejects.toMatchObject({
+        statusCode: 409,
+        code: GATE_CODES.DOD_GROUP_GOVERNED,
+      });
+
+      expect(prisma.definitionOfDone.create).not.toHaveBeenCalled();
+      expect(prisma.definitionOfDone.update).not.toHaveBeenCalled();
+      expect(tx.definitionOfDone.update).not.toHaveBeenCalled();
+    });
+
+    it('hands a leaving team the shared items as its own Definition of Done', async () => {
+      vi.mocked(prisma.definitionOfDone.findUnique)
+        .mockResolvedValueOnce({
+          id: 'dod-team',
+          teamId: 'team-1',
+          groupId: null,
+          version: 2,
+        } as never)
+        .mockResolvedValueOnce(null as never);
+      vi.mocked(prisma.definitionOfDone.findUnique).mockResolvedValue({
+        id: 'dod-team',
+        teamId: 'team-1',
+        groupId: null,
+        version: 2,
+      } as never);
+      vi.mocked(prisma.definitionOfDone.create).mockResolvedValue({ version: 1 } as never);
+      tx.definitionOfDone.update.mockResolvedValue({
+        id: 'dod-team',
+        teamId: 'team-1',
+        groupId: null,
+        version: 3,
+      } as never);
+
+      const result = await definitionOfDoneService.adoptDefinitionOfDoneAsOwn(
+        'team-1',
+        [{ description: 'Integrated', category: 'quality', isActive: true, order: 0 }],
+        'user-1'
+      );
+
+      // The write names the team scope directly, so it is the one path allowed behind the gate.
+      expect(prisma.definitionOfDone.findUnique).toHaveBeenCalledWith({
+        where: { teamId: 'team-1' },
+      });
+      expect(tx.definitionOfDone.update).toHaveBeenCalled();
+      expect(result.teamId).toBe('team-1');
     });
   });
 });

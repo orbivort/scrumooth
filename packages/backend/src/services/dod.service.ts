@@ -7,6 +7,14 @@ import {
 } from '../utils/errors';
 import { generateUUIDv7 } from '../utils/uuid';
 import { assertDoDTeamMember } from './incrementAccess';
+import {
+  doDScopeFields,
+  doDScopeWhere,
+  groupDoDScope,
+  isGroupScope,
+  resolveDoDScope,
+  type DoDScope,
+} from './dodScope';
 import { GATE_CODES } from '@scrumooth/shared';
 import type { DoDVersionItem, DoDVersionSnapshot } from '@scrumooth/shared';
 import type { DoDItem, DoDChecklistVerification, Prisma } from '../generated/prisma/client';
@@ -48,7 +56,29 @@ type DefinitionOfDoneWithItems = Awaited<ReturnType<typeof prisma.definitionOfDo
   items: DoDItem[];
 };
 
-interface DoDItemInput {
+/**
+ * Present a Definition of Done as the read the caller asked for.
+ *
+ * A group-owned row carries no `teamId`, but the caller asked about a team and the response is a
+ * team-scoped view of the commitment that team works to -- so the row is reported under the team
+ * that asked. Nothing is hidden by this: the team's membership of a group (and the version it
+ * adopted) is reported on the team itself, which is where the interface reads the shared-DoD state
+ * from. Without it, every consumer of this response would have to handle a null team on a field
+ * that has always been a string.
+ */
+function withRequestingTeam<T extends { teamId: string | null }>(dod: T, teamId: string): T {
+  return { ...dod, teamId } as T;
+}
+
+/**
+ * A team in a group is held to the group's Definition of Done, so the team-scoped write path is
+ * refused rather than silently redirected: the change would otherwise be invisible to the other
+ * teams that share it, which is the opposite of "mutually define".
+ */
+const sharedDoDRefusal = () =>
+  localizedError('errors:dodGroupGoverned', {}, 409, GATE_CODES.DOD_GROUP_GOVERNED);
+
+export interface DoDItemInput {
   id?: string;
   description: string;
   category?: string;
@@ -102,9 +132,37 @@ interface DoDComplianceReport {
 }
 
 class DefinitionOfDoneService {
+  /**
+   * The Definition of Done that governs a team: its own, or the shared one its group owns.
+   *
+   * A team-scoped row the team still holds while it is grouped is inert and is never returned, so
+   * a grouped team can only ever see the commitment it is actually held to.
+   */
   async getDefinitionOfDone(teamId: string): Promise<DefinitionOfDoneWithItems | null> {
+    const scope = await resolveDoDScope(teamId);
+
+    if (!scope) {
+      return null;
+    }
+
+    const dod = await this.readDefinitionOfDone(scope);
+
+    return dod ? withRequestingTeam(dod, teamId) : null;
+  }
+
+  /**
+   * The Definition of Done a group owns, for the group's own surfaces.
+   *
+   * Returned as the group's row rather than as a team's: `teamId` is null and `groupId` names the
+   * owner, which is what lets the interface say *whose* commitment it is showing.
+   */
+  async getSharedDefinitionOfDone(groupId: string): Promise<DefinitionOfDoneWithItems | null> {
+    return this.readDefinitionOfDone(groupDoDScope(groupId));
+  }
+
+  private async readDefinitionOfDone(scope: DoDScope): Promise<DefinitionOfDoneWithItems | null> {
     const dod = await prisma.definitionOfDone.findUnique({
-      where: { teamId },
+      where: doDScopeWhere(scope),
       include: {
         items: {
           orderBy: { order: 'asc' },
@@ -117,6 +175,35 @@ class DefinitionOfDoneService {
 
   async createDefaultDefinitionOfDone(
     teamId: string,
+    userId?: string
+  ): Promise<DefinitionOfDoneWithItems> {
+    const scope = await resolveDoDScope(teamId);
+
+    if (!scope) {
+      throw new NotFoundError('Team');
+    }
+
+    const dod = await this.createDefinitionOfDone(scope, userId);
+
+    return withRequestingTeam(dod, teamId);
+  }
+
+  /**
+   * Create the shared Definition of Done a group owns.
+   *
+   * A group always has one from creation, so this is called when the group is made rather than
+   * lazily: "adopt the shared Definition of Done" is only a meaningful act if there is one to
+   * adopt, and a group whose teams had nothing to comply with would be a promise about nothing.
+   */
+  async createDefaultSharedDefinitionOfDone(
+    groupId: string,
+    userId?: string
+  ): Promise<DefinitionOfDoneWithItems> {
+    return this.createDefinitionOfDone(groupDoDScope(groupId), userId);
+  }
+
+  private async createDefinitionOfDone(
+    scope: DoDScope,
     userId?: string
   ): Promise<DefinitionOfDoneWithItems> {
     const dodId = generateUUIDv7();
@@ -156,7 +243,7 @@ class DefinitionOfDoneService {
     const dod = await prisma.definitionOfDone.create({
       data: {
         id: dodId,
-        teamId,
+        ...doDScopeFields(scope),
         version: 1,
         createdBy: userId,
         items: {
@@ -181,7 +268,65 @@ class DefinitionOfDoneService {
   }
 
   /**
-   * Replace the team's Definition of Done with a new version.
+   * Replace the team's own Definition of Done with a new version.
+   *
+   * @throws AppError (409, `GATE_DOD_GROUP_GOVERNED`) when the team is in a group: it complies
+   * with the group's shared Definition of Done, so the change belongs at the group where every team
+   * that shares it can see it.
+   */
+  async updateDefinitionOfDone(
+    teamId: string,
+    items: DoDItemInput[],
+    userId?: string
+  ): Promise<DefinitionOfDoneWithItems> {
+    const scope = await resolveDoDScope(teamId);
+
+    if (!scope) {
+      throw new NotFoundError('Team');
+    }
+
+    if (isGroupScope(scope)) {
+      throw sharedDoDRefusal();
+    }
+
+    const dod = await this.writeDefinitionOfDone(scope, items, userId);
+
+    return withRequestingTeam(dod, teamId);
+  }
+
+  /**
+   * Replace the Definition of Done a group owns -- the one every team in the group complies with.
+   *
+   * This is the write the Guide's *"mutually define"* points at: one change, seen by every team
+   * that shares the commitment, instead of each team editing its own copy.
+   */
+  async updateSharedDefinitionOfDone(
+    groupId: string,
+    items: DoDItemInput[],
+    userId?: string
+  ): Promise<DefinitionOfDoneWithItems> {
+    return this.writeDefinitionOfDone(groupDoDScope(groupId), items, userId);
+  }
+
+  /**
+   * Give a team its own Definition of Done again, carrying over the commitment it complied with.
+   *
+   * Called only when a team leaves a group. The team-scoped path is named explicitly rather than
+   * resolved, because at that moment the team is still grouped and the user-facing write path would
+   * -- correctly -- refuse it: this is the one write that is *supposed* to happen behind the
+   * `GATE_DOD_GROUP_GOVERNED` gate, and it is what keeps a leaving team from being left with
+   * nothing, or with whatever inert row it happened to keep.
+   */
+  async adoptDefinitionOfDoneAsOwn(
+    teamId: string,
+    items: DoDItemInput[],
+    userId?: string
+  ): Promise<DefinitionOfDoneWithItems> {
+    return this.writeDefinitionOfDone({ kind: 'TEAM', teamId }, items, userId);
+  }
+
+  /**
+   * Write a new version of the Definition of Done a scope owns.
    *
    * Two rules make this safe, and both exist because the Definition of Done is the Increment's
    * commitment:
@@ -195,8 +340,8 @@ class DefinitionOfDoneService {
    * @throws AppError (400, `GATE_DOD_REQUIRED`) when the resulting Definition of Done would hold
    * no active item.
    */
-  async updateDefinitionOfDone(
-    teamId: string,
+  private async writeDefinitionOfDone(
+    scope: DoDScope,
     items: DoDItemInput[],
     userId?: string
   ): Promise<DefinitionOfDoneWithItems> {
@@ -205,12 +350,12 @@ class DefinitionOfDoneService {
     }
 
     const existingDod = await prisma.definitionOfDone.findUnique({
-      where: { teamId },
+      where: doDScopeWhere(scope),
     });
 
     if (!existingDod) {
-      await this.createDefaultDefinitionOfDone(teamId, userId);
-      return this.updateDefinitionOfDone(teamId, items, userId);
+      await this.createDefinitionOfDone(scope, userId);
+      return this.writeDefinitionOfDone(scope, items, userId);
     }
 
     const dod = await prisma.$transaction(async (tx) => {
@@ -241,7 +386,9 @@ class DefinitionOfDoneService {
         create: {
           id: generateUUIDv7(),
           dodId: existingDod.id,
-          teamId,
+          // The snapshot mirrors the owner of the Definition of Done it preserves, so a group's
+          // history stays with the group when a team joins or leaves it.
+          ...doDScopeFields(scope),
           version: currentVersion.version,
           items: supersededItems as unknown as Prisma.InputJsonValue,
           createdBy: userId,
@@ -288,14 +435,13 @@ class DefinitionOfDoneService {
    * entry, marked current.
    */
   async getDoDVersionSnapshots(teamId: string): Promise<DoDVersionSnapshot[]> {
-    const dod = await prisma.definitionOfDone.findUnique({
-      where: { teamId },
-      include: {
-        items: {
-          orderBy: { order: 'asc' },
-        },
-      },
-    });
+    const scope = await resolveDoDScope(teamId);
+
+    if (!scope) {
+      return [];
+    }
+
+    const dod = await this.readDefinitionOfDone(scope);
 
     if (!dod) {
       return [];
@@ -324,7 +470,9 @@ class DefinitionOfDoneService {
 
     const current: DoDVersionSnapshot = {
       id: dod.id,
-      teamId: dod.teamId,
+      // Reported under the team that asked: a grouped team reads the group's history as the
+      // commitment it works to, and the row itself may hold no `teamId` at all.
+      teamId,
       version: dod.version,
       items: dod.items.map((item) => ({
         description: item.description,
@@ -342,7 +490,7 @@ class DefinitionOfDoneService {
       current,
       ...snapshots.map((snapshot) => ({
         id: snapshot.id,
-        teamId: snapshot.teamId,
+        teamId,
         version: snapshot.version,
         items: parseSnapshotItems(snapshot.items),
         createdAt: snapshot.createdAt.toISOString(),
@@ -387,10 +535,10 @@ class DefinitionOfDoneService {
 
     await assertDoDTeamMember(userId, pbi.teamId);
 
-    const dod = await prisma.definitionOfDone.findUnique({
-      where: { teamId: pbi.teamId },
-      include: { items: true },
-    });
+    // The item is verified against the Definition of Done that governs its team, which is the
+    // group's shared one while the team belongs to a group.
+    const scope = await resolveDoDScope(pbi.teamId);
+    const dod = scope ? await this.readDefinitionOfDone(scope) : null;
 
     if (!dod) {
       throw new NotFoundError('Definition of Done');
@@ -510,15 +658,18 @@ class DefinitionOfDoneService {
       // client directly instead of re-checking the same team for every PBI.
       await assertDoDTeamMember(userId, sprint.teamId);
 
-      // Get team's DoD items
-      const dod = await prisma.definitionOfDone.findUnique({
-        where: { teamId: sprint.teamId },
-        include: {
-          items: {
-            where: { isActive: true },
-          },
-        },
-      });
+      // Get the DoD items the team is held to: its own, or the shared one its group owns.
+      const scope = await resolveDoDScope(sprint.teamId);
+      const dod = scope
+        ? await prisma.definitionOfDone.findUnique({
+            where: doDScopeWhere(scope),
+            include: {
+              items: {
+                where: { isActive: true },
+              },
+            },
+          })
+        : null;
 
       const dodItems = dod?.items ?? [];
       const totalDoDItems = dodItems.length;

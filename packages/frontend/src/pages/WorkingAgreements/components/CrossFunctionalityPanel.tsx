@@ -3,21 +3,22 @@
 // The Guide defines the Scrum Team as cross-functional -- *"collectively they have all the skills
 // necessary to create value each Sprint"* -- and makes the Scrum Master accountable for coaching it.
 // Until now the tool could not express the difference between a team that can produce an Increment
-// and one that depends on a single person, so this panel is that signal: the skills the team needs,
-// how far the team covers each one, and the gaps the Scrum Master coaches toward.
+// and one that depends on a single person, so this panel is that signal.
 //
-// It is a team-level assessment, never a per-person inventory: recording who can do what would turn
-// a composition signal into an appraisal of individuals.
+// The reading half is `CrossFunctionalitySummary`, shared with the Team page: the composition signal
+// shown beside the member list and the one shown here are the same signal, and one component keeps
+// them from disagreeing about what the team covers. What this panel adds is the recording, which is
+// the Scrum Master's act and belongs where the assessment is written.
 import React, { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   SKILL_COVERAGES,
   SkillCoverage,
   type CrossFunctionalityAssessment,
-  type SkillCoverageSummary,
 } from '@scrumooth/shared';
 
 import { Button } from '../../../components/common/Button';
+import { CrossFunctionalitySummary } from '../../../components/CrossFunctionalitySummary/CrossFunctionalitySummary';
 import type { CrossFunctionalityRecord } from '../../../services/domain/crossFunctionality.service';
 import type { CrossFunctionalityAssessmentValues } from '../WorkingAgreements';
 import styles from '../WorkingAgreements.module.css';
@@ -35,12 +36,6 @@ interface SkillDraft {
   coverage: SkillCoverage;
   note: string;
 }
-
-const COVERAGE_CLASS: Record<SkillCoverage, string> = {
-  NONE: 'coverage-none',
-  PARTIAL: 'coverage-partial',
-  COVERED: 'coverage-covered',
-};
 
 const COVERAGE_LABEL_KEY = {
   NONE: 'crossFunctionality.none',
@@ -63,12 +58,6 @@ export const CrossFunctionalityPanel: React.FC<CrossFunctionalityPanelProps> = (
   const [error, setError] = useState<string | null>(null);
 
   const assessment: CrossFunctionalityAssessment | null = record?.latest ?? null;
-  const coverage: SkillCoverageSummary = assessment?.coverage ?? {
-    total: 0,
-    covered: 0,
-    partial: 0,
-    gaps: 0,
-  };
 
   const updateSkill = useCallback((index: number, patch: Partial<SkillDraft>) => {
     setSkills((previous) =>
@@ -112,66 +101,7 @@ export const CrossFunctionalityPanel: React.FC<CrossFunctionalityPanelProps> = (
       </div>
       <p className={styles.muted}>{t('crossFunctionality.hint')}</p>
 
-      {assessment ? (
-        <>
-          <p className={styles['coverage-summary']}>
-            {t('crossFunctionality.summary', {
-              covered: coverage.covered,
-              partial: coverage.partial,
-              gaps: coverage.gaps,
-            })}
-          </p>
-          <p className={styles.muted}>
-            {t('crossFunctionality.assessedAt')}: {assessment.assessedAt.slice(0, 10)} ·{' '}
-            {t('crossFunctionality.assessedBy')}: {assessment.createdByName ?? '—'}
-          </p>
-
-          <table className={styles.table}>
-            <thead>
-              <tr>
-                <th scope="col">{t('crossFunctionality.need')}</th>
-                <th scope="col">{t('crossFunctionality.coverage')}</th>
-                <th scope="col">{t('crossFunctionality.note')}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {assessment.skills.map((skill) => (
-                <tr key={skill.id}>
-                  <td>{skill.name}</td>
-                  <td>
-                    <span className={`${styles.badge} ${styles[COVERAGE_CLASS[skill.coverage]]}`}>
-                      {t(COVERAGE_LABEL_KEY[skill.coverage])}
-                    </span>
-                  </td>
-                  <td>{skill.note ?? '—'}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-
-          {record && record.history.length > 0 && (
-            <>
-              <h3 className={styles['section-title']}>{t('crossFunctionality.history')}</h3>
-              <ul className={styles['history-list']}>
-                {record.history.map((entry) => (
-                  <li key={entry.id} className={styles['history-item']}>
-                    <span>{entry.assessedAt.slice(0, 10)}</span>
-                    <span>
-                      {t('crossFunctionality.summary', {
-                        covered: entry.coverage.covered,
-                        partial: entry.coverage.partial,
-                        gaps: entry.coverage.gaps,
-                      })}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </>
-          )}
-        </>
-      ) : (
-        <p className={styles.muted}>{t('crossFunctionality.empty')}</p>
-      )}
+      <CrossFunctionalitySummary record={record} />
 
       {canRecord && !assessment && !recording && (
         <p className={styles.muted}>{t('crossFunctionality.onlyScrumMaster')}</p>

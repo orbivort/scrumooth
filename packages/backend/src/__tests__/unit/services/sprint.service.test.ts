@@ -111,6 +111,11 @@ vi.mock('../../../utils/prisma', () => ({
       findFirst: vi.fn(),
       findMany: vi.fn(),
     },
+    team: {
+      // A team is not in a group unless a test puts it in one, so a Definition of Done resolves to
+      // the team's own row by default.
+      findUnique: vi.fn().mockResolvedValue({ groupId: null }),
+    },
     notification: {
       create: vi.fn(),
     },

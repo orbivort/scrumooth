@@ -110,7 +110,6 @@
     },
     "memberSince": "Miembro desde",
     "roleNames": {
-      "administrator": "Administrador",
       "developers": "Developers",
       "productOwner": "Product Owner",
       "scrumMaster": "Scrum Master"
@@ -181,6 +180,22 @@
     }
   },
   "subtitle": "Gestionar miembros del equipo y estándares del equipo",
+  "teamGroup": {
+    "adopt": "Unirse y adoptar la versión {{version}}",
+    "adopted": "Adoptó la versión {{version}} el {{date}}.",
+    "choose": "Grupo",
+    "current": "Cumple la de {{name}} — versión compartida {{version}}.",
+    "drift": "La Definición de Terminado compartida ha cambiado desde que este equipo la adoptó. Revísela para que los equipos sigan cumpliendo una sola.",
+    "hint": "Los equipos Scrum que trabajan juntos en un mismo producto cumplen la misma Definición de Terminado. El grupo posee esa única Definición de Terminado; sus equipos la leen y no pueden editar la suya.",
+    "joinError": "El equipo no pudo unirse al grupo.",
+    "leave": "Salir del grupo",
+    "leaveError": "El equipo no pudo salir del grupo.",
+    "leaveMessage": "El equipo conserva la Definición de Terminado que ha estado cumpliendo y puede cambiarla por su cuenta.",
+    "leaveTitle": "¿Salir de {{name}}?",
+    "none": "Este equipo trabaja por su cuenta, así que define su propia Definición de Terminado.",
+    "review": "Revisar lo que se adoptaría",
+    "title": "Definición de Terminado compartida"
+  },
   "teamInfo": {
     "created": "Creado: {{date}}",
     "lastUpdated": "Última actualización: {{date}}",
