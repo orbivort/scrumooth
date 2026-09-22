@@ -332,6 +332,10 @@ Scrumooth enforces the 2020 Scrum Guide server-side, so the same gates that hold
 | `GATE_SPRINT_GOAL_LOCKED`                          | 400  | The Sprint Goal is a commitment once the Sprint is running: it is only editable while the Sprint is `DRAFT`/`PLANNED`.                                                                                      |
 | `GATE_SPRINT_SCOPE_CHANGE_NEEDS_PO`                | 403  | "No changes are made that would endanger the Sprint Goal": only the Product Owner acknowledges a goal-endangering Sprint Backlog change.                                                                    |
 | `GATE_SPRINT_SCOPE_CHANGE_ALREADY_PENDING`         | 409  | One goal-endangering change per item may await the Product Owner at a time.                                                                                                                                 |
+| `GATE_SPRINT_REVIEW_TEAM_MEMBERS_ONLY`             | 403  | The Sprint Review is the Scrum Team's own event: recording attendance, feedback, backlog adjustments, or completing it requires membership of the team that owns the Review.                                |
+| `GATE_SPRINT_REVIEW_SM_NOTES_SM_ONLY`              | 403  | The Scrum Master's notes are coaching observations: only the team's Scrum Master may write them.                                                                                                            |
+| `GATE_SPRINT_RETROSPECTIVE_REQUIRES_REVIEW`        | 400  | "The Sprint Review is the second-to-last event of the Sprint and the Sprint Retrospective concludes the Sprint": the Retrospective cannot complete before its Review is completed.                          |
+| `GATE_SPRINT_EVENT_BEFORE_END_DATE`                | 400  | The Review inspects the outcome of the Sprint and the Retrospective concludes it, so neither can be completed before the Sprint's end date has passed.                                                      |
 
 ```json
 {

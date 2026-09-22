@@ -91,6 +91,12 @@
     "developersOnly": "Nur Entwickler können das Sprint-Backlog speichern, da die Entwickler, die die Arbeit ausführen, das Sprint-Backlog besitzen.",
     "pbiNotOfTeam": "Jedes für einen Sprint ausgewählte Element muss zum Product Backlog dieses Teams gehören."
   },
+  "sprintReview": {
+    "eventBeforeEndDate": "Die Sprint Review untersucht das Ergebnis des Sprints und die Sprint-Retrospektive schließt ihn ab. Daher kann keine von beiden vor dem Enddatum des Sprints ({{endDate}}) abgeschlossen werden.",
+    "retrospectiveRequiresReview": "Die Sprint Review ist das vorletzte Ereignis des Sprints und die Sprint-Retrospektive schließt den Sprint ab. Schließe zuerst die Sprint Review ab, bevor du die Retrospektive abschließt.",
+    "smNotesSmOnly": "Die Notizen des Scrum Masters sind Coaching-Beobachtungen zur Sprint Review. Nur der Scrum Master des Teams kann sie schreiben.",
+    "teamMembersOnly": "Die Sprint Review ist die eigene Veranstaltung ihres Scrum Teams: Nur ein Mitglied dieses Teams kann Anwesenheit erfassen, Feedback hinterlassen, das Product Backlog anpassen oder sie abschließen."
+  },
   "task": {
     "assigneeMustBeDeveloper": "Nur Entwickler im Team können zugewiesen werden. Product Owner und Scrum Master können keine Aufgaben zuweisen.",
     "creationRequiresDeveloper": "Nur Entwickler können Aufgaben erstellen und zerlegen, da die Entwickler, die die Arbeit ausführen, die Aufgabenzerlegung verantworten."

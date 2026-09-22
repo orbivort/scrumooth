@@ -188,6 +188,8 @@ describe('ProductBacklog handlers coverage', () => {
       getStakeholderFeedback: vi.fn().mockResolvedValue({ success: true, data: [] }),
       getPendingFeedback: vi.fn().mockResolvedValue({ success: true, data: [] }),
       getPendingAdjustments: vi.fn().mockResolvedValue({ success: true, data: [] }),
+      materializeAdjustment: vi.fn().mockResolvedValue({ success: true, data: {} }),
+      linkAdjustmentToPbi: vi.fn().mockResolvedValue({ success: true, data: {} }),
       getPendingRetroActionItems: vi.fn().mockResolvedValue({ success: true, data: [] }),
       getRetroActionItems: vi.fn().mockResolvedValue({ success: true, data: [] }),
       getTasksByPbiId: vi.fn().mockResolvedValue({ success: true, data: [] }),
@@ -416,7 +418,7 @@ describe('ProductBacklog handlers coverage', () => {
       ).toBeInTheDocument();
     });
 
-    it('should open the create modal prefilled when implementing a pending adjustment', async () => {
+    it('should materialise a pending adjustment into a linked backlog item', async () => {
       vi.mocked(apiService.getPendingAdjustments).mockResolvedValue({
         success: true,
         data: [
@@ -438,9 +440,10 @@ describe('ProductBacklog handlers coverage', () => {
       );
       await user.click(implementButton);
 
-      expect(
-        await screen.findByLabelText(i18nT('backlog:createItem.titleLabel'), { exact: false })
-      ).toBeInTheDocument();
+      // The item is created and linked server-side, so no prefill modal opens.
+      await waitFor(() => {
+        expect(apiService.materializeAdjustment).toHaveBeenCalledWith('adj-1');
+      });
     });
 
     it('should open the create modal prefilled when creating from a pending retro action item', async () => {

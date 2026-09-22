@@ -3598,6 +3598,7 @@ class MockApiService {
     await delay(300);
     const newAttendee: ReviewAttendee = {
       id: `attendee-${Date.now()}`,
+      userId: attendee.userId ?? null,
       name: attendee.name ?? 'New Attendee',
       email: attendee.email,
       role: attendee.role ?? 'stakeholder',
@@ -4869,6 +4870,64 @@ class MockApiService {
         description: 'Implemented',
         reason: '',
         implemented: true,
+        createdAt: new Date().toISOString(),
+      },
+    };
+  }
+
+  async materializeAdjustment(
+    adjustmentId: string,
+    _overrides: {
+      title?: string;
+      description?: string;
+      storyPoints?: number;
+      acceptanceCriteria?: string;
+    } = {}
+  ): Promise<ApiResponse<{ adjustment: BacklogAdjustment; pbi: ProductBacklogItem }>> {
+    await delay(300);
+    const pbiId = `pbi-${Date.now()}`;
+    return {
+      success: true,
+      data: {
+        adjustment: {
+          id: adjustmentId,
+          reviewId: '',
+          action: 'add',
+          description: _overrides.title ?? 'Created from a review adjustment',
+          reason: '',
+          implemented: true,
+          createdPbiId: pbiId,
+          createdAt: new Date().toISOString(),
+        },
+        pbi: {
+          id: pbiId,
+          teamId: '',
+          title: _overrides.title ?? 'Created from a review adjustment',
+          priority: 'COULD_HAVE' as ProductBacklogItem['priority'],
+          status: 'NEW' as ProductBacklogItem['status'],
+          labels: ['review-adjustment'],
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        } as ProductBacklogItem,
+      },
+    };
+  }
+
+  async linkAdjustmentToPbi(
+    adjustmentId: string,
+    pbiId: string
+  ): Promise<ApiResponse<BacklogAdjustment>> {
+    await delay(300);
+    return {
+      success: true,
+      data: {
+        id: adjustmentId,
+        reviewId: '',
+        action: 'modify',
+        description: 'Linked',
+        reason: '',
+        implemented: true,
+        createdPbiId: pbiId,
         createdAt: new Date().toISOString(),
       },
     };

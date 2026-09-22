@@ -10,8 +10,8 @@ import {
 } from '../../constants/gateCodes.js';
 
 describe('gateCodes', () => {
-  it('should define thirty-six gates', () => {
-    expect(GATE_CODE_LIST).toHaveLength(36);
+  it('should define forty gates', () => {
+    expect(GATE_CODE_LIST).toHaveLength(40);
   });
 
   it('should prefix every gate code with GATE_', () => {
@@ -129,6 +129,32 @@ describe('gateCodes', () => {
     expect(GATE_DEFINITIONS[GATE_CODES.INCREMENT_DELIVERY_METHOD_REQUIRED].httpStatus).toBe(400);
     expect(GATE_DEFINITIONS[GATE_CODES.INCREMENT_DELIVERY_METHOD_REQUIRED].i18nKey).toBe(
       'incrementDeliveryMethodRequired'
+    );
+  });
+
+  it('should identify the Sprint Review ownership, notes and ordering gates', () => {
+    expect(isGateCode(GATE_CODES.SPRINT_REVIEW_TEAM_MEMBERS_ONLY)).toBe(true);
+    expect(isGateCode(GATE_CODES.SPRINT_REVIEW_SM_NOTES_SM_ONLY)).toBe(true);
+    expect(isGateCode(GATE_CODES.SPRINT_RETROSPECTIVE_REQUIRES_REVIEW)).toBe(true);
+    expect(isGateCode(GATE_CODES.SPRINT_EVENT_BEFORE_END_DATE)).toBe(true);
+  });
+
+  it('should refuse the Review ownership and notes gates with 403 and the ordering gates with 400', () => {
+    expect(GATE_DEFINITIONS[GATE_CODES.SPRINT_REVIEW_TEAM_MEMBERS_ONLY].httpStatus).toBe(403);
+    expect(GATE_DEFINITIONS[GATE_CODES.SPRINT_REVIEW_TEAM_MEMBERS_ONLY].i18nKey).toBe(
+      'sprintReviewTeamMembersOnly'
+    );
+    expect(GATE_DEFINITIONS[GATE_CODES.SPRINT_REVIEW_SM_NOTES_SM_ONLY].httpStatus).toBe(403);
+    expect(GATE_DEFINITIONS[GATE_CODES.SPRINT_REVIEW_SM_NOTES_SM_ONLY].i18nKey).toBe(
+      'sprintReviewSmNotesSmOnly'
+    );
+    expect(GATE_DEFINITIONS[GATE_CODES.SPRINT_RETROSPECTIVE_REQUIRES_REVIEW].httpStatus).toBe(400);
+    expect(GATE_DEFINITIONS[GATE_CODES.SPRINT_RETROSPECTIVE_REQUIRES_REVIEW].i18nKey).toBe(
+      'sprintRetrospectiveRequiresReview'
+    );
+    expect(GATE_DEFINITIONS[GATE_CODES.SPRINT_EVENT_BEFORE_END_DATE].httpStatus).toBe(400);
+    expect(GATE_DEFINITIONS[GATE_CODES.SPRINT_EVENT_BEFORE_END_DATE].i18nKey).toBe(
+      'sprintEventBeforeEndDate'
     );
   });
 

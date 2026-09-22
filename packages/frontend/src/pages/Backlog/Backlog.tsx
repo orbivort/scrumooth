@@ -16,7 +16,6 @@ import {
   TaskStatus,
   type ProductBacklogItem,
   type Task,
-  type BacklogAdjustment,
   type StakeholderFeedback,
   type RetroActionItem,
 } from '../../types';
@@ -578,21 +577,9 @@ const BacklogContent: React.FC = () => {
           onBulkImport={() => setShowBulkUploadModal(true)}
         />
 
-        <PendingAdjustments
-          onImplementAdd={(adjustment: BacklogAdjustment) => {
-            setFormData({
-              title: adjustment.description,
-              description: `Reason: ${adjustment.reason}`,
-              estimate: undefined,
-              moscowPriority: MoSCoWPriority.COULD_HAVE,
-              businessValue: undefined,
-              labels: '',
-              acceptanceCriteria: '',
-              status: ItemStatus.NEW,
-            });
-            setShowCreateModal(true);
-          }}
-        />
+        {/* Adjustments materialise into a backlog item through the panel itself, so the created
+            item is linked back to the adjustment as its evidence. */}
+        <PendingAdjustments />
 
         <PendingFeedback
           onCreateWorkItem={(feedback: StakeholderFeedback) => {

@@ -212,6 +212,8 @@ class ApiService {
   getPendingAdjustments = sprintReviewService.getPendingAdjustments.bind(sprintReviewService);
   markAdjustmentImplemented =
     sprintReviewService.markAdjustmentImplemented.bind(sprintReviewService);
+  materializeAdjustment = sprintReviewService.materializeAdjustment.bind(sprintReviewService);
+  linkAdjustmentToPbi = sprintReviewService.linkAdjustmentToPbi.bind(sprintReviewService);
   getPendingFeedback = sprintReviewService.getPendingFeedback.bind(sprintReviewService);
   markFeedbackAddressed = sprintReviewService.markFeedbackAddressed.bind(sprintReviewService);
   addAttendee = sprintReviewService.addAttendee.bind(sprintReviewService);

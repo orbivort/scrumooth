@@ -84,24 +84,37 @@ const addFeedbackSchema = z.object({
   ownerId: z.string().uuid().nullable().optional(),
 });
 
+const attendeeRoleSchema = z.enum(['product_owner', 'scrum_master', 'developers', 'stakeholder'], {
+  error: 'Invalid role selected',
+});
+
 const addAttendeeSchema = z.object({
+  // Linking an attendee to a registered user is optional: a genuinely external stakeholder is
+  // recorded with free-text name/email instead.
+  userId: z.string().uuid('Invalid user ID').nullable().optional(),
   name: z.string().min(1, 'Name is required').max(100, 'Name is too long'),
   email: z.string().email('Invalid email format').max(255).optional().or(z.literal('')),
-  role: z.enum(['product_owner', 'scrum_master', 'developers', 'stakeholder'], {
-    error: 'Invalid role selected',
-  }),
+  role: attendeeRoleSchema,
   attended: z.boolean().default(true),
 });
 
 const updateAttendeeSchema = z.object({
+  userId: z.string().uuid('Invalid user ID').nullable().optional(),
   name: z.string().min(1, 'Name is required').max(100, 'Name is too long').optional(),
   email: z.string().email('Invalid email format').max(255).optional().or(z.literal('')),
-  role: z
-    .enum(['product_owner', 'scrum_master', 'developers', 'stakeholder'], {
-      error: 'Invalid role selected',
-    })
-    .optional(),
+  role: attendeeRoleSchema.optional(),
   attended: z.boolean().optional(),
+});
+
+const materializeAdjustmentSchema = z.object({
+  title: z.string().min(1).max(500).optional(),
+  description: z.string().max(5000).optional(),
+  storyPoints: z.number().int().positive().optional(),
+  acceptanceCriteria: z.string().max(5000).optional(),
+});
+
+const linkAdjustmentSchema = z.object({
+  pbiId: z.string().uuid('Invalid product backlog item ID'),
 });
 
 router.get('/', validateQuery(teamQuerySchema), sprintReviewController.getSprintReviews);
@@ -116,6 +129,20 @@ router.put(
   '/adjustments/:id/implement',
   validateParams(z.object({ id: z.string().uuid('Invalid adjustment ID') })),
   sprintReviewController.markAdjustmentImplemented
+);
+
+router.post(
+  '/adjustments/:id/materialize',
+  validateParams(z.object({ id: z.string().uuid('Invalid adjustment ID') })),
+  validateBody(materializeAdjustmentSchema),
+  sprintReviewController.materializeAdjustment
+);
+
+router.put(
+  '/adjustments/:id/link',
+  validateParams(z.object({ id: z.string().uuid('Invalid adjustment ID') })),
+  validateBody(linkAdjustmentSchema),
+  sprintReviewController.linkAdjustmentToPbi
 );
 
 router.get(

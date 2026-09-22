@@ -344,6 +344,31 @@
   text-transform: capitalize;
 }
 
+/* Marks an attendee record that is attributable to a registered user. */
+.linked-user-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  align-self: flex-start;
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-full);
+  background-color: var(--color-primary-50, var(--color-gray-100));
+  color: var(--color-primary-700, var(--color-gray-700));
+  font-size: var(--font-size-xs);
+  line-height: var(--line-height-normal);
+}
+
+.linked-user-badge-icon {
+  width: 0.75rem;
+  height: 0.75rem;
+}
+
+/* Guidance under a form control, e.g. the optional attendee user link. */
+.field-hint {
+  font-size: var(--font-size-xs);
+  color: var(--color-gray-500);
+}
+
 /* ============================================
    Quick Actions (Unmarked Section)
    ============================================ */

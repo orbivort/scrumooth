@@ -15,6 +15,9 @@ vi.mock('../../../utils/prisma', () => ({
       findUnique: vi.fn(),
       update: vi.fn(),
     },
+    teamMember: {
+      findFirst: vi.fn(),
+    },
   },
 }));
 
@@ -28,6 +31,7 @@ function freezeDate(fixed: Date): void {
 import { smNotesService } from '../../../services/smNotes.service';
 import prisma from '../../../utils/prisma';
 import { NotFoundError } from '../../../utils/errors';
+import { GATE_CODES } from '@scrumooth/shared';
 
 describe('SM Notes Service', () => {
   beforeEach(() => {
@@ -123,17 +127,25 @@ describe('SM Notes Service', () => {
     const updatedAt = new Date('2024-01-16T10:00:00.000Z');
 
     it('should update notes for an existing sprint review', async () => {
-      const existingReview = { id: reviewId };
+      const existingReview = { id: reviewId, teamId: 'team-1' };
       const updatedReview = { id: reviewId, smNotes: notes };
 
       vi.mocked(prisma.sprintReview.findUnique).mockResolvedValue(existingReview as any);
+      vi.mocked(prisma.teamMember.findFirst).mockResolvedValue({ role: 'SCRUM_MASTER' } as any);
       vi.mocked(prisma.sprintReview.update).mockResolvedValue(updatedReview as any);
       freezeDate(updatedAt);
 
       const result = await smNotesService.updateSprintReviewNotes(reviewId, notes, userId);
 
       expect(result).toEqual(updatedReview);
-      expect(prisma.sprintReview.findUnique).toHaveBeenCalledWith({ where: { id: reviewId } });
+      expect(prisma.sprintReview.findUnique).toHaveBeenCalledWith({
+        where: { id: reviewId },
+        select: { id: true, teamId: true },
+      });
+      expect(prisma.teamMember.findFirst).toHaveBeenCalledWith({
+        where: { teamId: 'team-1', userId },
+        select: { role: true },
+      });
       expect(prisma.sprintReview.update).toHaveBeenCalledWith({
         where: { id: reviewId },
         data: { smNotes: notes, updatedBy: userId, updatedAt },
@@ -141,22 +153,29 @@ describe('SM Notes Service', () => {
       });
     });
 
-    it('should update notes when userId is undefined', async () => {
-      vi.mocked(prisma.sprintReview.findUnique).mockResolvedValue({ id: reviewId } as any);
-      vi.mocked(prisma.sprintReview.update).mockResolvedValue({
+    it('should refuse notes from a caller with no identity', async () => {
+      vi.mocked(prisma.sprintReview.findUnique).mockResolvedValue({
         id: reviewId,
-        smNotes: notes,
+        teamId: 'team-1',
       } as any);
-      freezeDate(updatedAt);
 
-      const result = await smNotesService.updateSprintReviewNotes(reviewId, notes, undefined);
+      await expect(
+        smNotesService.updateSprintReviewNotes(reviewId, notes, undefined)
+      ).rejects.toThrow('Authentication required');
+      expect(prisma.sprintReview.update).not.toHaveBeenCalled();
+    });
 
-      expect(result.smNotes).toBe(notes);
-      expect(prisma.sprintReview.update).toHaveBeenCalledWith({
-        where: { id: reviewId },
-        data: { smNotes: notes, updatedBy: undefined, updatedAt },
-        select: { id: true, smNotes: true },
-      });
+    it('should refuse notes from a non-Scrum-Master', async () => {
+      vi.mocked(prisma.sprintReview.findUnique).mockResolvedValue({
+        id: reviewId,
+        teamId: 'team-1',
+      } as any);
+      vi.mocked(prisma.teamMember.findFirst).mockResolvedValue({ role: 'DEVELOPERS' } as any);
+
+      await expect(
+        smNotesService.updateSprintReviewNotes(reviewId, notes, userId)
+      ).rejects.toMatchObject({ code: GATE_CODES.SPRINT_REVIEW_SM_NOTES_SM_ONLY });
+      expect(prisma.sprintReview.update).not.toHaveBeenCalled();
     });
 
     it('should throw NotFoundError when sprint review does not exist', async () => {
@@ -170,7 +189,11 @@ describe('SM Notes Service', () => {
     });
 
     it('should propagate errors from update', async () => {
-      vi.mocked(prisma.sprintReview.findUnique).mockResolvedValue({ id: reviewId } as any);
+      vi.mocked(prisma.sprintReview.findUnique).mockResolvedValue({
+        id: reviewId,
+        teamId: 'team-1',
+      } as any);
+      vi.mocked(prisma.teamMember.findFirst).mockResolvedValue({ role: 'SCRUM_MASTER' } as any);
       vi.mocked(prisma.sprintReview.update).mockRejectedValue(new Error('db failure'));
       freezeDate(updatedAt);
 

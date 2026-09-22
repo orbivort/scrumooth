@@ -11,6 +11,8 @@ import {
   createTestTeamInDb,
   addTeamMember,
   createTestSprintInDb,
+  createTestIncrementInDb,
+  createTestSprintReviewInDb,
   createTestRetrospectiveInDb,
   createTestRetrospectiveItemInDb,
   createTestRetroActionItemInDb,
@@ -372,10 +374,26 @@ describe('E2E: Retrospective Management', () => {
       testEmails.push(email);
 
       const { user, team } = await setupTeamWithUser(email, ROLES.SCRUM_MASTER);
+      const now = Date.now();
+      const day = 24 * 60 * 60 * 1000;
       const sprint = await createTestSprintInDb(
         team.id,
         `Sprint ${uniqueTestId()}`,
-        SPRINT_STATUSES.COMPLETED
+        SPRINT_STATUSES.COMPLETED,
+        new Date(now - 28 * day),
+        new Date(now - 14 * day)
+      );
+
+      // The Sprint Review is the second-to-last event, so it must be completed before the
+      // Retrospective may conclude the Sprint.
+      const increment = await createTestIncrementInDb(sprint.id, team.id);
+      await createTestSprintReviewInDb(
+        sprint.id,
+        team.id,
+        increment.id,
+        user.id,
+        undefined,
+        'completed'
       );
 
       const retro = await createTestRetrospectiveInDb(sprint.id, team.id, user.id, 'IN_PROGRESS');
@@ -395,6 +413,37 @@ describe('E2E: Retrospective Management', () => {
 
       expect(response.body.success).toBe(true);
       expect(response.body.data.status).toBe('COMPLETED');
+    });
+
+    it('should refuse to complete before the sprint review is completed', async () => {
+      const email = `complete-retro-order-${uniqueTestId()}@example.com`;
+      testEmails.push(email);
+
+      const { user, team } = await setupTeamWithUser(email, ROLES.SCRUM_MASTER);
+      const now = Date.now();
+      const day = 24 * 60 * 60 * 1000;
+      const sprint = await createTestSprintInDb(
+        team.id,
+        `Sprint ${uniqueTestId()}`,
+        SPRINT_STATUSES.COMPLETED,
+        new Date(now - 28 * day),
+        new Date(now - 14 * day)
+      );
+
+      const retro = await createTestRetrospectiveInDb(sprint.id, team.id, user.id, 'IN_PROGRESS');
+
+      const cookies = await loginAndGetCookies(email);
+      const { csrfToken } = extractCsrfFromCookies(cookies);
+
+      const response = await request(app)
+        .put(`/api/v1/retrospectives/${retro.id}`)
+        .set('Cookie', cookies)
+        .set(CSRF_CONSTANTS.HEADER_NAME, csrfToken)
+        .send({ status: 'COMPLETED' })
+        .expect(HTTP_STATUS.BAD_REQUEST);
+
+      expect(response.body.success).toBe(false);
+      expect(response.body.error.code).toBe('GATE_SPRINT_RETROSPECTIVE_REQUIRES_REVIEW');
     });
 
     it('should return 404 NOT_FOUND for non-existent retrospective', async () => {

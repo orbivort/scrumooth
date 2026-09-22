@@ -68,6 +68,7 @@
     "cannotAddAdjustmentTitle": "Cannot add adjustment to a completed review",
     "description": "Changes to the Product Backlog based on Sprint Review feedback.",
     "empty": "No backlog adjustments made during this review.",
+    "linkedItem": "Linked item:",
     "owner": "Owner:",
     "reason": "Reason:",
     "status": {

@@ -1,6 +1,6 @@
 import { type Request, type Response } from 'express';
 import { retrospectiveService } from '../services/retrospective.service';
-import { NotFoundError, ConflictError } from '../utils/errors';
+import { AppError, NotFoundError, ConflictError } from '../utils/errors';
 import { getParamValue } from '../utils/validation';
 import { logger } from '../utils/logger';
 
@@ -519,6 +519,19 @@ export const updateRetrospective = async (req: Request, res: Response) => {
         success: false,
         error: {
           code: 'NOT_FOUND',
+          message: error.message,
+        },
+      });
+      return;
+    }
+    // A Guide gate (completing the Retrospective before its Sprint Review, or before the Sprint
+    // has ended) must reach the client with its 400 status and stable gate code, not be flattened
+    // into a 500 that hides why the action was refused.
+    if (error instanceof AppError) {
+      res.status(error.statusCode).json({
+        success: false,
+        error: {
+          code: error.code,
           message: error.message,
         },
       });

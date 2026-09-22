@@ -46,6 +46,9 @@ vi.mock('./AttendeesSection.module.css', () => ({
     'attendee-details': 'attendee-details',
     'attendee-name': 'attendee-name',
     'attendee-role': 'attendee-role',
+    'linked-user-badge': 'linked-user-badge',
+    'linked-user-badge-icon': 'linked-user-badge-icon',
+    'field-hint': 'field-hint',
     'attendance-controls': 'attendance-controls',
     'status-btn': 'status-btn',
     selected: 'selected',
@@ -748,6 +751,76 @@ describe('AttendeesSection Component', () => {
       rerender(<AttendeesSection {...defaultProps} attendees={newAttendees} />);
 
       expect(screen.getByText('New Person')).toBeInTheDocument();
+    });
+  });
+
+  describe('Registered User Link Tests', () => {
+    it('marks an attendee linked to a registered user with a badge', () => {
+      renderWithProviders(<AttendeesSection {...defaultProps} attendees={[mockAttendees[0]!]} />);
+
+      expect(screen.getByText('Registered user')).toBeInTheDocument();
+    });
+
+    it('does not badge an external stakeholder', () => {
+      renderWithProviders(<AttendeesSection {...defaultProps} attendees={[mockAttendees[2]!]} />);
+
+      expect(screen.queryByText('Registered user')).not.toBeInTheDocument();
+    });
+
+    it('links an attendee to a registered user and sends the user id', async () => {
+      const user = userEvent.setup();
+      const addAttendee = vi.fn().mockResolvedValue({});
+      renderWithProviders(
+        <AttendeesSection
+          {...defaultProps}
+          apiConfig={{ ...defaultProps.apiConfig, addAttendee }}
+          teamMembers={mockTeamMembers}
+        />
+      );
+
+      await user.click(screen.getByRole('button', { name: /add attendees/i }));
+
+      await user.selectOptions(screen.getByLabelText(/registered user/i), 'user-2');
+
+      // The linked account supplies the display fields, so they are no longer free text.
+      expect(screen.getByLabelText(/name/i)).toHaveValue('Alice Johnson');
+      expect(screen.getByLabelText(/name/i)).toBeDisabled();
+
+      await user.click(screen.getByRole('button', { name: /^add attendee$/i }));
+
+      await waitFor(() => {
+        expect(addAttendee).toHaveBeenCalled();
+      });
+      // React Query passes the mutation context as a second argument, so assert the payload.
+      expect(addAttendee.mock.calls[0]![0]).toEqual(
+        expect.objectContaining({ userId: 'user-2', name: 'Alice Johnson' })
+      );
+    });
+
+    it('keeps the free-text path for an external stakeholder', async () => {
+      const user = userEvent.setup();
+      const addAttendee = vi.fn().mockResolvedValue({});
+      renderWithProviders(
+        <AttendeesSection
+          {...defaultProps}
+          apiConfig={{ ...defaultProps.apiConfig, addAttendee }}
+          teamMembers={mockTeamMembers}
+        />
+      );
+
+      await user.click(screen.getByRole('button', { name: /add attendees/i }));
+
+      const nameInput = screen.getByLabelText(/name/i);
+      expect(nameInput).not.toBeDisabled();
+      await user.type(nameInput, 'External Person');
+      await user.click(screen.getByRole('button', { name: /^add attendee$/i }));
+
+      await waitFor(() => {
+        expect(addAttendee).toHaveBeenCalled();
+      });
+      expect(addAttendee.mock.calls[0]![0]).toEqual(
+        expect.objectContaining({ userId: null, name: 'External Person' })
+      );
     });
   });
 });

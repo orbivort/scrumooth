@@ -27,7 +27,8 @@ const NS = 'common' as const;
 
 export interface Attendee {
   id: string;
-  userId?: string;
+  /** Set when the attendee is a registered user; `null`/absent for external stakeholders. */
+  userId?: string | null;
   name: string;
   email?: string;
   role: string;
@@ -50,6 +51,12 @@ export type AttendeeFilter = 'all' | 'team' | 'guests';
 export type AttendanceStatus = 'attended' | 'absent';
 
 export interface AttendeeFormData {
+  /**
+   * Optional link to a registered user. When set, the attendee is attributable to that account
+   * and `name`/`email` are derived from it; when null/absent the free-text values stand, which is
+   * how a genuinely external stakeholder is recorded.
+   */
+  userId?: string | null;
   name: string;
   email?: string;
   role: string;
@@ -266,6 +273,15 @@ const AttendeeCard: React.FC<AttendeeCardProps> = ({
         <span className={styles['attendee-avatar']}>{getInitials(attendee.name)}</span>
         <div className={styles['attendee-details']}>
           <span className={styles['attendee-name']}>{attendee.name}</span>
+          {attendee.userId && (
+            <span
+              className={styles['linked-user-badge']}
+              title={t('attendeesSection.linkedUserBadge')}
+            >
+              <UsersIcon className={styles['linked-user-badge-icon']} />
+              {t('attendeesSection.linkedUserBadge')}
+            </span>
+          )}
           <span className={styles['attendee-role']}>{formatRole(attendee.role)}</span>
         </div>
       </div>
@@ -349,6 +365,8 @@ interface AttendeeFormProps {
   apiConfig: ApiConfig;
   queryKey: string[];
   defaultRole: string;
+  /** Team members offered as linkable registered users. */
+  teamMembers: TeamMember[];
 }
 
 const AttendeeForm: React.FC<AttendeeFormProps> = ({
@@ -359,13 +377,20 @@ const AttendeeForm: React.FC<AttendeeFormProps> = ({
   apiConfig,
   queryKey,
   defaultRole,
+  teamMembers,
 }) => {
   const { t } = useTranslation(NS);
   const queryClient = useQueryClient();
   const firstInputRef = useRef<HTMLInputElement>(null);
   const isEditing = !!attendee;
 
+  const linkableUsers = useMemo(
+    () => teamMembers.filter((member) => !!member.userId),
+    [teamMembers]
+  );
+
   const [formData, setFormData] = useState<AttendeeFormData>({
+    userId: attendee?.userId ?? null,
     name: attendee?.name ?? '',
     email: attendee?.email ?? '',
     role: attendee?.role ?? defaultRole,
@@ -402,6 +427,7 @@ const AttendeeForm: React.FC<AttendeeFormProps> = ({
   useEffect(() => {
     if (isOpen) {
       setFormData({
+        userId: attendee?.userId ?? null,
         name: attendee?.name ?? '',
         email: attendee?.email ?? '',
         role: attendee?.role ?? defaultRole,
@@ -414,6 +440,29 @@ const AttendeeForm: React.FC<AttendeeFormProps> = ({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, attendee, defaultRole]);
+
+  const handleLinkUser = useCallback(
+    (userId: string) => {
+      if (!userId) {
+        setFormData((current) => ({ ...current, userId: null }));
+        return;
+      }
+
+      const member = linkableUsers.find((candidate) => candidate.userId === userId);
+      if (!member) {
+        return;
+      }
+
+      setFormData((current) => ({
+        ...current,
+        userId,
+        name: `${member.user?.firstName ?? ''} ${member.user?.lastName ?? ''}`.trim(),
+        email: member.user?.email ?? current.email,
+        role: member.role ? member.role.toLowerCase() : current.role,
+      }));
+    },
+    [linkableUsers]
+  );
 
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
@@ -507,6 +556,26 @@ const AttendeeForm: React.FC<AttendeeFormProps> = ({
         </div>
 
         <form onSubmit={handleSubmit} noValidate>
+          {linkableUsers.length > 0 && (
+            <div className={styles['form-group']}>
+              <label htmlFor="attendee-user">{t('attendeesSection.formLinkUserLabel')}</label>
+              <select
+                id="attendee-user"
+                value={formData.userId ?? ''}
+                onChange={(e) => handleLinkUser(e.target.value)}
+                disabled={isLoading}
+              >
+                <option value="">{t('attendeesSection.formLinkUserNone')}</option>
+                {linkableUsers.map((member) => (
+                  <option key={member.userId} value={member.userId}>
+                    {`${member.user?.firstName ?? ''} ${member.user?.lastName ?? ''}`.trim()}
+                  </option>
+                ))}
+              </select>
+              <span className={styles['field-hint']}>{t('attendeesSection.formLinkUserHint')}</span>
+            </div>
+          )}
+
           <div className={styles['form-group']}>
             <label htmlFor="attendee-name">
               {t('attendeesSection.formNameLabel')}{' '}
@@ -521,7 +590,7 @@ const AttendeeForm: React.FC<AttendeeFormProps> = ({
               placeholder={t('attendeesSection.formNamePlaceholder')}
               aria-invalid={!!formErrors.name}
               aria-describedby={formErrors.name ? 'name-error' : undefined}
-              disabled={isLoading}
+              disabled={isLoading || !!formData.userId}
             />
             {formErrors.name && (
               <span id="name-error" className={styles['error-message']} role="alert">
@@ -540,7 +609,7 @@ const AttendeeForm: React.FC<AttendeeFormProps> = ({
               placeholder={t('attendeesSection.formEmailPlaceholder')}
               aria-invalid={!!formErrors.email}
               aria-describedby={formErrors.email ? 'email-error' : undefined}
-              disabled={isLoading}
+              disabled={isLoading || !!formData.userId}
             />
             {formErrors.email && (
               <span id="email-error" className={styles['error-message']} role="alert">
@@ -862,6 +931,7 @@ export const AttendeesSection: React.FC<AttendeesSectionProps> = ({
         apiConfig={apiConfig}
         queryKey={queryKey}
         defaultRole={defaultRole}
+        teamMembers={teamMembers}
       />
 
       <ConfirmDialog

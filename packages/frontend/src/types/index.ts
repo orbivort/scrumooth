@@ -621,7 +621,8 @@ export interface SprintReview {
 
 export interface ReviewAttendee {
   id: string;
-  userId?: string;
+  /** Set when the attendee is a registered user; absent for external stakeholders. */
+  userId?: string | null;
   name: string;
   email?: string;
   role: string; // 'product_owner', 'scrum_master', 'developers', 'stakeholder'
@@ -643,10 +644,23 @@ export interface StakeholderFeedback {
   createdAt: string;
 }
 
+/** The Product Backlog item a Review adjustment produced, as returned by the API. */
+export interface LinkedAdjustmentPbi {
+  id: string;
+  title: string;
+  status?: string;
+  priority?: string;
+  storyPoints?: number | null;
+}
+
 export interface BacklogAdjustment {
   id: string;
   reviewId: string;
-  pbiId?: string;
+  /** The item the adjustment refers to (the subject of a modify/remove/reorder/split). */
+  pbiId?: string | null;
+  /** The item the adjustment produced. Present once the adjustment has been carried out. */
+  createdPbiId?: string | null;
+  createdPbi?: LinkedAdjustmentPbi | null;
   action: 'add' | 'modify' | 'remove' | 'reorder' | 'split';
   description: string;
   reason: string;

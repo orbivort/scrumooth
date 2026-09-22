@@ -305,6 +305,50 @@ describe('SprintReviewService', () => {
     });
   });
 
+  describe('materializeAdjustment', () => {
+    it('should create and link a backlog item from an adjustment', async () => {
+      const mockResponse = {
+        data: {
+          success: true,
+          data: {
+            adjustment: { id: 'adjustment-1', createdPbiId: 'pbi-1', implemented: true },
+            pbi: { id: 'pbi-1', title: 'Add SSO' },
+          },
+        },
+      };
+      vi.mocked(mockApi.post).mockResolvedValue(mockResponse);
+
+      const result = await sprintReviewService.materializeAdjustment('adjustment-1', {
+        title: 'Add SSO',
+      });
+
+      expect(mockApi.post).toHaveBeenCalledWith(
+        '/sprint-reviews/adjustments/adjustment-1/materialize',
+        { title: 'Add SSO' }
+      );
+      expect(result.data?.pbi.id).toBe('pbi-1');
+    });
+  });
+
+  describe('linkAdjustmentToPbi', () => {
+    it('should link an existing backlog item to an adjustment', async () => {
+      const mockResponse = {
+        data: {
+          success: true,
+          data: { id: 'adjustment-1', createdPbiId: 'pbi-1', implemented: true },
+        },
+      };
+      vi.mocked(mockApi.put).mockResolvedValue(mockResponse);
+
+      const result = await sprintReviewService.linkAdjustmentToPbi('adjustment-1', 'pbi-1');
+
+      expect(mockApi.put).toHaveBeenCalledWith('/sprint-reviews/adjustments/adjustment-1/link', {
+        pbiId: 'pbi-1',
+      });
+      expect(result.data?.createdPbiId).toBe('pbi-1');
+    });
+  });
+
   describe('addAttendee', () => {
     it('should add an attendee to a sprint review', async () => {
       const attendeeData = {

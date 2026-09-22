@@ -5,6 +5,7 @@ import type {
   BacklogAdjustment,
   ReviewAttendee,
   ProductGoalSnapshot,
+  ProductBacklogItem,
   ApiResponse,
 } from '../../types';
 import { coreApiService } from '../core/api.core';
@@ -76,6 +77,37 @@ class SprintReviewService {
     return data;
   }
 
+  /**
+   * Create a new Product Backlog item from a Review adjustment, link it, and mark the adjustment
+   * implemented. The link is what makes "the Product Backlog may also be adjusted" provable.
+   */
+  async materializeAdjustment(
+    adjustmentId: string,
+    overrides: {
+      title?: string;
+      description?: string;
+      storyPoints?: number;
+      acceptanceCriteria?: string;
+    } = {}
+  ): Promise<ApiResponse<{ adjustment: BacklogAdjustment; pbi: ProductBacklogItem }>> {
+    const { data } = await this.api.post(
+      `/sprint-reviews/adjustments/${adjustmentId}/materialize`,
+      overrides
+    );
+    return data;
+  }
+
+  /** Record an existing Product Backlog item as the outcome of a Review adjustment. */
+  async linkAdjustmentToPbi(
+    adjustmentId: string,
+    pbiId: string
+  ): Promise<ApiResponse<BacklogAdjustment>> {
+    const { data } = await this.api.put(`/sprint-reviews/adjustments/${adjustmentId}/link`, {
+      pbiId,
+    });
+    return data;
+  }
+
   async getPendingFeedback(teamId: string): Promise<ApiResponse<StakeholderFeedback[]>> {
     const { data } = await this.api.get('/sprint-reviews/feedback/pending', {
       params: { teamId },
@@ -90,7 +122,13 @@ class SprintReviewService {
 
   async addAttendee(
     reviewId: string,
-    attendeeData: { name: string; email?: string; role: string; attended: boolean }
+    attendeeData: {
+      userId?: string | null;
+      name: string;
+      email?: string;
+      role: string;
+      attended: boolean;
+    }
   ): Promise<ApiResponse<ReviewAttendee>> {
     const { data } = await this.api.post(`/sprint-reviews/${reviewId}/attendees`, attendeeData);
     return data;
@@ -98,7 +136,13 @@ class SprintReviewService {
 
   async updateAttendee(
     attendeeId: string,
-    attendeeData: { name?: string; email?: string; role?: string; attended?: boolean }
+    attendeeData: {
+      userId?: string | null;
+      name?: string;
+      email?: string;
+      role?: string;
+      attended?: boolean;
+    }
   ): Promise<ApiResponse<ReviewAttendee>> {
     const { data } = await this.api.put(`/sprint-reviews/attendees/${attendeeId}`, attendeeData);
     return data;

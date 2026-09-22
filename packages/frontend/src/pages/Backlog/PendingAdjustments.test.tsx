@@ -15,6 +15,9 @@ vi.mock('../../services', () => ({
   apiService: {
     getPendingAdjustments: vi.fn(),
     markAdjustmentImplemented: vi.fn(),
+    materializeAdjustment: vi.fn(),
+    linkAdjustmentToPbi: vi.fn(),
+    getProductBacklog: vi.fn(),
   },
 }));
 
@@ -110,6 +113,94 @@ describe('PendingAdjustments', () => {
 
       await waitFor(() => {
         expect(screen.queryByText('Test')).not.toBeInTheDocument();
+      });
+    });
+  });
+
+  describe('Closing the adjustment loop', () => {
+    beforeEach(() => {
+      (apiService.getPendingAdjustments as ReturnType<typeof vi.fn>).mockResolvedValue({
+        data: [
+          {
+            id: 'adj-1',
+            action: 'add',
+            description: 'Add new feature',
+            reason: 'Customer request',
+            createdAt: '2024-01-15T10:00:00Z',
+            teamId: 'team-1',
+          },
+          {
+            id: 'adj-2',
+            action: 'reorder',
+            description: 'Reorder checkout items',
+            reason: 'Priority changed',
+            createdAt: '2024-01-16T10:00:00Z',
+            teamId: 'team-1',
+          },
+        ],
+      });
+      (apiService.getProductBacklog as ReturnType<typeof vi.fn>).mockResolvedValue({
+        data: [{ id: 'pbi-1', title: 'Checkout - retry', status: 'READY' }],
+      });
+      (apiService.materializeAdjustment as ReturnType<typeof vi.fn>).mockResolvedValue({
+        success: true,
+        data: { adjustment: { id: 'adj-1' }, pbi: { id: 'pbi-1' } },
+      });
+      (apiService.linkAdjustmentToPbi as ReturnType<typeof vi.fn>).mockResolvedValue({
+        success: true,
+        data: { id: 'adj-2' },
+      });
+    });
+
+    it('should materialise an add adjustment into a linked backlog item', async () => {
+      renderWithProviders(<PendingAdjustments />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Add new feature')).toBeInTheDocument();
+      });
+
+      await userEvent.click(screen.getByText('Create Item'));
+
+      await waitFor(() => {
+        expect(apiService.materializeAdjustment).toHaveBeenCalledWith('adj-1');
+      });
+    });
+
+    it('should link an existing backlog item to an adjustment', async () => {
+      renderWithProviders(<PendingAdjustments />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Reorder checkout items')).toBeInTheDocument();
+      });
+
+      await userEvent.click(screen.getAllByText('Link Existing Item')[1]!);
+
+      await waitFor(() => {
+        expect(screen.getByLabelText('Select a Product Backlog item')).toBeInTheDocument();
+      });
+
+      await userEvent.selectOptions(
+        screen.getByLabelText('Select a Product Backlog item'),
+        'pbi-1'
+      );
+      await userEvent.click(screen.getByText('Link Item'));
+
+      await waitFor(() => {
+        expect(apiService.linkAdjustmentToPbi).toHaveBeenCalledWith('adj-2', 'pbi-1');
+      });
+    });
+
+    it('should keep the manual mark for adjustments with no produced item', async () => {
+      renderWithProviders(<PendingAdjustments />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Reorder checkout items')).toBeInTheDocument();
+      });
+
+      await userEvent.click(screen.getAllByText('Mark Done')[1]!);
+
+      await waitFor(() => {
+        expect(apiService.markAdjustmentImplemented).toHaveBeenCalledWith('adj-2');
       });
     });
   });

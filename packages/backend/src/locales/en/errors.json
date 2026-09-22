@@ -91,6 +91,12 @@
     "developersOnly": "Only Developers can save the Sprint Backlog, as the Developers who perform the work own the Sprint Backlog.",
     "pbiNotOfTeam": "Every item selected for a Sprint must belong to this team's Product Backlog."
   },
+  "sprintReview": {
+    "eventBeforeEndDate": "The Sprint Review inspects the outcome of the Sprint and the Sprint Retrospective concludes it, so neither can be completed before the Sprint's end date ({{endDate}}).",
+    "retrospectiveRequiresReview": "The Sprint Review is the second-to-last event of the Sprint and the Sprint Retrospective concludes the Sprint. Complete the Sprint Review before completing the Retrospective.",
+    "smNotesSmOnly": "The Scrum Master's notes are coaching observations about the Sprint Review, so only the team's Scrum Master can write them.",
+    "teamMembersOnly": "The Sprint Review is its Scrum Team's own event: only a member of that team can record attendance, leave feedback, adjust the Product Backlog, or complete it."
+  },
   "task": {
     "assigneeMustBeDeveloper": "Only Developers on the team can be assigned. Product Owners and Scrum Masters cannot assign tasks.",
     "creationRequiresDeveloper": "Only Developers can create and decompose tasks, as the Developers who perform the work own task decomposition."

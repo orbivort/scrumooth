@@ -261,6 +261,140 @@ curl -X PUT https://api.scrumooth.dev/api/v1/sprint-reviews/adjustments/550e8400
   -b cookies.txt
 ```
 
+The manual flag is for adjustments whose outcome is not a backlog item (a reorder, or a removal already performed). An adjustment that has produced an item is returned unchanged: its `createdPbiId` is the evidence, and the flag must not contradict it.
+
+---
+
+### Materialize Adjustment
+
+Create a new Product Backlog item from a Review adjustment, link it, and mark the adjustment implemented. This is what makes "the Product Backlog may also be adjusted" provable: the created item is recorded on the adjustment as `createdPbiId`.
+
+**Endpoint**
+
+```
+POST /api/v1/sprint-reviews/adjustments/:id/materialize
+```
+
+**Authentication**
+
+- Required — the caller must be a member of the team that owns the Review
+
+**Path Parameters**
+
+- `id` (string, required): Adjustment UUID
+
+**Request Body** (all fields optional; they override the derived defaults)
+
+| Field                | Type   | Description                                                  |
+| -------------------- | ------ | ------------------------------------------------------------ |
+| `title`              | string | Item title. Defaults to the adjustment description.          |
+| `description`        | string | Item description. Defaults to `Reason: <adjustment reason>`. |
+| `storyPoints`        | number | Estimate. Only Developers on the team may size an item.      |
+| `acceptanceCriteria` | string | Acceptance criteria for the new item.                        |
+
+**Success Response**
+
+```http
+HTTP/1.1 201 Created
+Content-Type: application/json
+
+{
+  "success": true,
+  "data": {
+    "adjustment": {
+      "id": "550e8400-e29b-41d4-a716-446655440010",
+      "createdPbiId": "550e8400-e29b-41d4-a716-446655440030",
+      "implemented": true
+    },
+    "pbi": {
+      "id": "550e8400-e29b-41d4-a716-446655440030",
+      "title": "Add new login feature to backlog",
+      "status": "NEW",
+      "priority": "COULD_HAVE"
+    }
+  }
+}
+```
+
+**Error Responses**
+
+**400 Bad Request - Already Materialized**
+
+```json
+{
+  "success": false,
+  "error": {
+    "code": "BAD_REQUEST",
+    "message": "This adjustment has already produced a backlog item"
+  }
+}
+```
+
+**Example Request**
+
+```bash
+curl -X POST https://api.scrumooth.dev/api/v1/sprint-reviews/adjustments/550e8400-e29b-41d4-a716-446655440010/materialize \
+  -H "Content-Type: application/json" \
+  -b cookies.txt \
+  -d '{ "title": "Add new login feature" }'
+```
+
+---
+
+### Link Adjustment to Backlog Item
+
+Record an existing Product Backlog item as the outcome of a Review adjustment (for a `modify`, `remove`, `reorder`, or `split` that was carried out against a real item). The item must belong to the same team as the Review.
+
+**Endpoint**
+
+```
+PUT /api/v1/sprint-reviews/adjustments/:id/link
+```
+
+**Authentication**
+
+- Required — the caller must be a member of the team that owns the Review
+
+**Path Parameters**
+
+- `id` (string, required): Adjustment UUID
+
+**Request Body**
+
+| Field   | Type   | Required | Description               |
+| ------- | ------ | -------- | ------------------------- |
+| `pbiId` | string | Yes      | Product Backlog item UUID |
+
+**Success Response**
+
+```http
+HTTP/1.1 200 OK
+Content-Type: application/json
+
+{
+  "success": true,
+  "data": {
+    "id": "550e8400-e29b-41d4-a716-446655440010",
+    "createdPbiId": "550e8400-e29b-41d4-a716-446655440020",
+    "implemented": true,
+    "createdPbi": {
+      "id": "550e8400-e29b-41d4-a716-446655440020",
+      "title": "Checkout - retry",
+      "status": "READY"
+    }
+  }
+}
+```
+
+**Example Request**
+
+```bash
+curl -X PUT https://api.scrumooth.dev/api/v1/sprint-reviews/adjustments/550e8400-e29b-41d4-a716-446655440010/link \
+  -H "Content-Type: application/json" \
+  -b cookies.txt \
+  -d '{ "pbiId": "550e8400-e29b-41d4-a716-446655440020" }'
+```
+
 ---
 
 ### Get Pending Feedback
@@ -1121,6 +1255,17 @@ curl -X DELETE https://api.scrumooth.dev/api/v1/sprint-reviews/550e8400-e29b-41d
 | `AUTHORIZATION_ERROR`  | 403         | Insufficient permissions                                   |
 | `NOT_FOUND`            | 404         | Sprint review, feedback, adjustment, or attendee not found |
 | `CONFLICT`             | 409         | Resource conflict (e.g., review already exists)            |
+
+### Gate Rejections
+
+A refusal that enforces a Scrum Guide rule carries a stable `GATE_*` code in `error.code`, so a client can branch on it without parsing the localized message. The full list lives in `docs/api/README.md`; the codes this module returns are:
+
+| Code                                        | HTTP | Rule enforced                                                                                                                      |
+| ------------------------------------------- | ---- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `GATE_SPRINT_REVIEW_TEAM_MEMBERS_ONLY`      | 403  | The Sprint Review is the Scrum Team's own event: recording attendance, feedback, adjustments, or completing it requires membership |
+| `GATE_SPRINT_REVIEW_SM_NOTES_SM_ONLY`       | 403  | The Scrum Master's notes are coaching observations: only the team's Scrum Master may write them                                    |
+| `GATE_SPRINT_RETROSPECTIVE_REQUIRES_REVIEW` | 400  | The Retrospective cannot complete before its Sprint Review is completed                                                            |
+| `GATE_SPRINT_EVENT_BEFORE_END_DATE`         | 400  | The Review and the Retrospective cannot be completed before the Sprint's end date has passed                                       |
 
 ## Best Practices
 

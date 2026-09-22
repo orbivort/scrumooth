@@ -50,6 +50,7 @@ model User {
   sprintCapacity         SprintCapacity[]           @relation("SprintCapacityMember")
   retrospectives         SprintRetrospective[]      @relation("RetroFacilitator")
   sprintReviews          SprintReview[]             @relation("ReviewCreator")
+  reviewAttendances      ReviewAttendee[]
   stakeholderFeedbacks   StakeholderFeedback[]
   statusChanges          StatusChangeHistory[]      @relation("StatusChanger")
   assignedTasks          Task[]                     @relation("TaskAssignee")
@@ -158,6 +159,7 @@ model ProductBacklogItem {
   updatedBy             String?                 @db.Uuid
   sprintId              String?                 @db.Uuid
   incrementPBIs         IncrementPBI[]
+  createdFromAdjustments BacklogAdjustment[]     @relation("AdjustmentCreatedPbi")
   creator               User?                   @relation("PBICreator", fields: [createdBy], references: [id], onDelete: SetNull)
   goal                  ProductGoal?            @relation(fields: [goalId], references: [id], onDelete: SetNull)
   team                  Team                    @relation(fields: [teamId], references: [id], onDelete: Cascade)
@@ -818,6 +820,9 @@ model SprintReview {
 model ReviewAttendee {
   id        String       @id @db.Uuid
   reviewId  String       @db.Uuid
+  /// Optional link to a registered user. Attendance is attributable to a person when set;
+  /// external stakeholders keep the free-text `name`/`email` fallback with no link.
+  userId    String?      @db.Uuid
   name      String
   email     String?
   role      String
@@ -827,8 +832,10 @@ model ReviewAttendee {
   updatedAt DateTime     @updatedAt @db.Timestamptz(3)
   updatedBy String?      @db.Uuid
   review    SprintReview @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  user      User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@index([reviewId])
+  @@index([userId])
   @@map("review_attendees")
 }
 
@@ -858,7 +865,11 @@ model StakeholderFeedback {
 model BacklogAdjustment {
   id          String       @id @db.Uuid
   reviewId    String       @db.Uuid
+  /// The item the adjustment refers to (the subject of a modify/remove/reorder/split).
   pbiId       String?      @db.Uuid
+  /// The item the adjustment actually produced. This is the traceable proof that the Review's
+  /// "the Product Backlog may also be adjusted" was carried out, not merely asserted.
+  createdPbiId String?     @db.Uuid
   action      String
   description String
   reason      String
@@ -870,9 +881,11 @@ model BacklogAdjustment {
   updatedBy   String?      @db.Uuid
   owner       User?        @relation(fields: [ownerId], references: [id], onDelete: SetNull)
   review      SprintReview @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  createdPbi  ProductBacklogItem? @relation("AdjustmentCreatedPbi", fields: [createdPbiId], references: [id], onDelete: SetNull)
 
   @@index([reviewId])
   @@index([pbiId])
+  @@index([createdPbiId])
   @@index([ownerId])
   @@map("backlog_adjustments")
 }

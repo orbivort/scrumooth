@@ -195,6 +195,8 @@ vi.mock('./domain/sprintReview.service', () => ({
     addStakeholderFeedback: vi.fn().mockResolvedValue({}),
     getPendingAdjustments: vi.fn().mockResolvedValue({ data: [] }),
     markAdjustmentImplemented: vi.fn().mockResolvedValue({}),
+    materializeAdjustment: vi.fn().mockResolvedValue({ data: {} }),
+    linkAdjustmentToPbi: vi.fn().mockResolvedValue({ data: {} }),
     getPendingFeedback: vi.fn().mockResolvedValue({ data: [] }),
     markFeedbackAddressed: vi.fn().mockResolvedValue({}),
     addAttendee: vi.fn().mockResolvedValue({}),

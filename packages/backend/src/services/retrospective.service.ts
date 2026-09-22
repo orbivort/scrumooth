@@ -1,6 +1,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import prisma from '../utils/prisma';
-import { NotFoundError, BadRequestError, ConflictError } from '../utils/errors';
+import { NotFoundError, BadRequestError, ConflictError, localizedError } from '../utils/errors';
+import { GATE_CODES } from '@scrumooth/shared';
 import {
   type RetrospectiveCategory,
   type RetrospectiveItem as PrismaRetrospectiveItem,
@@ -638,6 +639,44 @@ class RetrospectiveService {
 
     if (!retrospective) {
       throw new NotFoundError('Retrospective not found');
+    }
+
+    // "The Sprint Review is the second-to-last event of the Sprint and the Sprint Retrospective
+    // concludes the Sprint." Completing the Retrospective is therefore gated twice: the Sprint
+    // Review must already be completed (the ordering the Guide prescribes), and the Sprint must
+    // have reached its end date (the Retrospective concludes it, it does not pre-empt it).
+    if (data.status === 'COMPLETED' && retrospective.status !== 'COMPLETED') {
+      const sprint = await prisma.sprint.findUnique({
+        where: { id: retrospective.sprintId },
+        select: { endDate: true },
+      });
+
+      if (!sprint) {
+        throw new NotFoundError('Sprint');
+      }
+
+      if (new Date() < sprint.endDate) {
+        throw localizedError(
+          'errors:sprintReview.eventBeforeEndDate',
+          { endDate: sprint.endDate.toISOString().slice(0, 10) },
+          400,
+          GATE_CODES.SPRINT_EVENT_BEFORE_END_DATE
+        );
+      }
+
+      const sprintReview = await prisma.sprintReview.findUnique({
+        where: { sprintId: retrospective.sprintId },
+        select: { status: true },
+      });
+
+      if (sprintReview?.status !== 'completed') {
+        throw localizedError(
+          'errors:sprintReview.retrospectiveRequiresReview',
+          {},
+          400,
+          GATE_CODES.SPRINT_RETROSPECTIVE_REQUIRES_REVIEW
+        );
+      }
     }
 
     const updateData: {

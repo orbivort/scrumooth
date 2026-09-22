@@ -13,6 +13,8 @@ import {
   createTestSprintInDb,
   createTestIncrementInDb,
   createTestSprintReviewInDb,
+  createTestPBIInDb,
+  createTestProductGoalInDb,
   createTestStakeholderFeedbackInDb,
   createTestReviewAttendeeInDb,
   cleanupUsers,
@@ -398,10 +400,15 @@ describe('E2E: Sprint Review Management', () => {
       testEmails.push(email);
 
       const { user, team } = await setupTeamWithUser(email, ROLES.SCRUM_MASTER);
+      const now = Date.now();
+      const day = 24 * 60 * 60 * 1000;
+      // Completing the Review is gated on the Sprint having reached its end date.
       const sprint = await createTestSprintInDb(
         team.id,
         `Sprint ${uniqueTestId()}`,
-        SPRINT_STATUSES.COMPLETED
+        SPRINT_STATUSES.COMPLETED,
+        new Date(now - 28 * day),
+        new Date(now - 14 * day)
       );
       const increment = await createTestIncrementInDb(sprint.id, team.id);
 
@@ -1274,6 +1281,247 @@ describe('E2E: Sprint Review Management', () => {
         .expect(HTTP_STATUS.OK);
 
       expect(response.body.success).toBe(true);
+    });
+  });
+
+  describe('Review ownership (Scrum Guide gates)', () => {
+    it('should refuse a Review write from a user outside the owning team', async () => {
+      const ownerEmail = `review-owner-${uniqueTestId()}@example.com`;
+      const outsiderEmail = `review-outsider-${uniqueTestId()}@example.com`;
+      testEmails.push(ownerEmail, outsiderEmail);
+
+      const { user, team } = await setupTeamWithUser(ownerEmail, ROLES.SCRUM_MASTER);
+      await createTestUser(outsiderEmail);
+
+      const sprint = await createTestSprintInDb(
+        team.id,
+        `Sprint ${uniqueTestId()}`,
+        SPRINT_STATUSES.COMPLETED
+      );
+      const increment = await createTestIncrementInDb(sprint.id, team.id);
+      const review = await createTestSprintReviewInDb(sprint.id, team.id, increment.id, user.id);
+
+      const cookies = await loginAndGetCookies(outsiderEmail);
+      const { csrfToken } = extractCsrfFromCookies(cookies);
+
+      const response = await request(app)
+        .post(`/api/v1/sprint-reviews/${review.id}/attendees`)
+        .set('Cookie', cookies)
+        .set(CSRF_CONSTANTS.HEADER_NAME, csrfToken)
+        .send({ name: 'Outsider', role: 'stakeholder', attended: true })
+        .expect(HTTP_STATUS.FORBIDDEN);
+
+      expect(response.body.success).toBe(false);
+      expect(response.body.error.code).toBe('GATE_SPRINT_REVIEW_TEAM_MEMBERS_ONLY');
+    });
+
+    it('should refuse SM notes from a Developer', async () => {
+      const email = `review-dev-notes-${uniqueTestId()}@example.com`;
+      testEmails.push(email);
+
+      const { user, team } = await setupTeamWithUser(email, ROLES.DEVELOPERS);
+      const sprint = await createTestSprintInDb(
+        team.id,
+        `Sprint ${uniqueTestId()}`,
+        SPRINT_STATUSES.COMPLETED
+      );
+      const increment = await createTestIncrementInDb(sprint.id, team.id);
+      const review = await createTestSprintReviewInDb(sprint.id, team.id, increment.id, user.id);
+
+      const cookies = await loginAndGetCookies(email);
+      const { csrfToken } = extractCsrfFromCookies(cookies);
+
+      const response = await request(app)
+        .patch(`/api/v1/sprint-reviews/${review.id}/sm-notes`)
+        .set('Cookie', cookies)
+        .set(CSRF_CONSTANTS.HEADER_NAME, csrfToken)
+        .send({ smNotes: 'Coaching observation' })
+        .expect(HTTP_STATUS.FORBIDDEN);
+
+      expect(response.body.error.code).toBe('GATE_SPRINT_REVIEW_SM_NOTES_SM_ONLY');
+    });
+
+    it('should let the Scrum Master write notes', async () => {
+      const email = `review-sm-notes-${uniqueTestId()}@example.com`;
+      testEmails.push(email);
+
+      const { user, team } = await setupTeamWithUser(email, ROLES.SCRUM_MASTER);
+      const sprint = await createTestSprintInDb(
+        team.id,
+        `Sprint ${uniqueTestId()}`,
+        SPRINT_STATUSES.COMPLETED
+      );
+      const increment = await createTestIncrementInDb(sprint.id, team.id);
+      const review = await createTestSprintReviewInDb(sprint.id, team.id, increment.id, user.id);
+
+      const cookies = await loginAndGetCookies(email);
+      const { csrfToken } = extractCsrfFromCookies(cookies);
+
+      const response = await request(app)
+        .patch(`/api/v1/sprint-reviews/${review.id}/sm-notes`)
+        .set('Cookie', cookies)
+        .set(CSRF_CONSTANTS.HEADER_NAME, csrfToken)
+        .send({ smNotes: 'Coaching observation' })
+        .expect(HTTP_STATUS.OK);
+
+      expect(response.body.data.smNotes).toBe('Coaching observation');
+    });
+  });
+
+  describe('Backlog adjustment traceability', () => {
+    it('should materialise an adjustment into a linked backlog item', async () => {
+      const email = `review-materialize-${uniqueTestId()}@example.com`;
+      testEmails.push(email);
+
+      const { user, team } = await setupTeamWithUser(email, ROLES.SCRUM_MASTER);
+      // Materialising goes through the Product Backlog service, which anchors a new item to the
+      // team's ACTIVE Product Goal.
+      await createTestProductGoalInDb(team.id, `Goal ${uniqueTestId()}`, 'ACTIVE');
+
+      const now = Date.now();
+      const day = 24 * 60 * 60 * 1000;
+      const sprint = await createTestSprintInDb(
+        team.id,
+        `Sprint ${uniqueTestId()}`,
+        SPRINT_STATUSES.COMPLETED,
+        new Date(now - 28 * day),
+        new Date(now - 14 * day)
+      );
+      const increment = await createTestIncrementInDb(sprint.id, team.id, 'Delivered', 'DELIVERED');
+      // `pending` adjustments are read from completed Reviews, so complete it up-front.
+      const review = await createTestSprintReviewInDb(
+        sprint.id,
+        team.id,
+        increment.id,
+        user.id,
+        undefined,
+        'completed'
+      );
+
+      const cookies = await loginAndGetCookies(email);
+      const { csrfToken } = extractCsrfFromCookies(cookies);
+
+      const created = await request(app)
+        .put(`/api/v1/sprint-reviews/${review.id}`)
+        .set('Cookie', cookies)
+        .set(CSRF_CONSTANTS.HEADER_NAME, csrfToken)
+        .send({
+          backlogAdjustments: [
+            {
+              action: 'add',
+              description: 'Add SSO login to the backlog',
+              reason: 'Requested by stakeholders during the review',
+            },
+          ],
+        })
+        .expect(HTTP_STATUS.OK);
+
+      const adjustmentId = created.body.data.backlogAdjustments[0].id;
+
+      const materialized = await request(app)
+        .post(`/api/v1/sprint-reviews/adjustments/${adjustmentId}/materialize`)
+        .set('Cookie', cookies)
+        .set(CSRF_CONSTANTS.HEADER_NAME, csrfToken)
+        .send({ title: 'Add SSO login' })
+        .expect(HTTP_STATUS.CREATED);
+
+      expect(materialized.body.data.adjustment.createdPbiId).toBe(materialized.body.data.pbi.id);
+      expect(materialized.body.data.adjustment.implemented).toBe(true);
+
+      // The adjustment no longer appears as pending, because the link is the evidence.
+      const pending = await request(app)
+        .get('/api/v1/sprint-reviews/adjustments/pending')
+        .query({ teamId: team.id })
+        .set('Cookie', cookies)
+        .expect(HTTP_STATUS.OK);
+
+      expect(pending.body.data).toHaveLength(0);
+    });
+
+    it('should link an existing backlog item to an adjustment', async () => {
+      const email = `review-link-${uniqueTestId()}@example.com`;
+      testEmails.push(email);
+
+      const { user, team } = await setupTeamWithUser(email, ROLES.SCRUM_MASTER);
+      const pbi = await createTestPBIInDb(team.id, `Existing item ${uniqueTestId()}`, 'READY');
+
+      const sprint = await createTestSprintInDb(
+        team.id,
+        `Sprint ${uniqueTestId()}`,
+        SPRINT_STATUSES.COMPLETED
+      );
+      const increment = await createTestIncrementInDb(sprint.id, team.id);
+      const review = await createTestSprintReviewInDb(sprint.id, team.id, increment.id, user.id);
+
+      const cookies = await loginAndGetCookies(email);
+      const { csrfToken } = extractCsrfFromCookies(cookies);
+
+      const created = await request(app)
+        .put(`/api/v1/sprint-reviews/${review.id}`)
+        .set('Cookie', cookies)
+        .set(CSRF_CONSTANTS.HEADER_NAME, csrfToken)
+        .send({
+          backlogAdjustments: [
+            {
+              action: 'modify',
+              description: 'Refine the checkout item',
+              reason: 'Stakeholder feedback',
+            },
+          ],
+        })
+        .expect(HTTP_STATUS.OK);
+
+      const adjustmentId = created.body.data.backlogAdjustments[0].id;
+
+      const linked = await request(app)
+        .put(`/api/v1/sprint-reviews/adjustments/${adjustmentId}/link`)
+        .set('Cookie', cookies)
+        .set(CSRF_CONSTANTS.HEADER_NAME, csrfToken)
+        .send({ pbiId: pbi.id })
+        .expect(HTTP_STATUS.OK);
+
+      expect(linked.body.data.createdPbiId).toBe(pbi.id);
+      expect(linked.body.data.implemented).toBe(true);
+    });
+
+    it('should refuse to link a backlog item from another team', async () => {
+      const email = `review-link-foreign-${uniqueTestId()}@example.com`;
+      testEmails.push(email);
+
+      const { user, team } = await setupTeamWithUser(email, ROLES.SCRUM_MASTER);
+      const otherTeamName = `Other Team ${uniqueTestId()}`;
+      testTeamNames.push(otherTeamName);
+      const otherTeam = await createTestTeamInDb(otherTeamName);
+      const foreignPbi = await createTestPBIInDb(otherTeam.id, `Foreign item ${uniqueTestId()}`);
+
+      const sprint = await createTestSprintInDb(
+        team.id,
+        `Sprint ${uniqueTestId()}`,
+        SPRINT_STATUSES.COMPLETED
+      );
+      const increment = await createTestIncrementInDb(sprint.id, team.id);
+      const review = await createTestSprintReviewInDb(sprint.id, team.id, increment.id, user.id);
+
+      const cookies = await loginAndGetCookies(email);
+      const { csrfToken } = extractCsrfFromCookies(cookies);
+
+      const created = await request(app)
+        .put(`/api/v1/sprint-reviews/${review.id}`)
+        .set('Cookie', cookies)
+        .set(CSRF_CONSTANTS.HEADER_NAME, csrfToken)
+        .send({
+          backlogAdjustments: [{ action: 'modify', description: 'Refine', reason: 'Feedback' }],
+        })
+        .expect(HTTP_STATUS.OK);
+
+      const adjustmentId = created.body.data.backlogAdjustments[0].id;
+
+      await request(app)
+        .put(`/api/v1/sprint-reviews/adjustments/${adjustmentId}/link`)
+        .set('Cookie', cookies)
+        .set(CSRF_CONSTANTS.HEADER_NAME, csrfToken)
+        .send({ pbiId: foreignPbi.id })
+        .expect(HTTP_STATUS.BAD_REQUEST);
     });
   });
 });

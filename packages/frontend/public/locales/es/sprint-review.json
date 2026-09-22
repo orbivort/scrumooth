@@ -68,6 +68,7 @@
     "cannotAddAdjustmentTitle": "No se puede agregar ajuste a un Review completado",
     "description": "Cambios al Product Backlog basados en Feedback de la Sprint Review.",
     "empty": "Sin ajustes del backlog realizados durante este Review.",
+    "linkedItem": "Elemento vinculado:",
     "owner": "Propietario:",
     "reason": "Razón:",
     "status": {

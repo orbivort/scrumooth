@@ -74,7 +74,8 @@ export const deleteSprintReview = asyncHandler(async (req: Request, res: Respons
   if (!id) {
     throw new Error('Review ID is required');
   }
-  await sprintReviewService.deleteSprintReview(id);
+  const userId = req.user?.id;
+  await sprintReviewService.deleteSprintReview(id, userId);
   res.json(createSuccessResponse({ message: 'Sprint review deleted successfully' }));
 });
 
@@ -94,6 +95,31 @@ export const markAdjustmentImplemented = asyncHandler(async (req: Request, res: 
   }
   const userId = req.user?.id;
   const adjustment = await sprintReviewService.markAdjustmentImplemented(id, userId);
+  res.json(createSuccessResponse(adjustment));
+});
+
+export const materializeAdjustment = asyncHandler(async (req: Request, res: Response) => {
+  const id = getParamValue(req.params.id);
+  if (!id) {
+    throw new Error('Adjustment ID is required');
+  }
+  const userId = req.user?.id;
+  const result = await sprintReviewService.materializeAdjustment(
+    id,
+    userId,
+    req.validatedBody as Parameters<typeof sprintReviewService.materializeAdjustment>[2]
+  );
+  res.status(201).json(createSuccessResponse(result));
+});
+
+export const linkAdjustmentToPbi = asyncHandler(async (req: Request, res: Response) => {
+  const id = getParamValue(req.params.id);
+  if (!id) {
+    throw new Error('Adjustment ID is required');
+  }
+  const userId = req.user?.id;
+  const { pbiId } = req.validatedBody as { pbiId: string };
+  const adjustment = await sprintReviewService.linkAdjustmentToPbi(id, pbiId, userId);
   res.json(createSuccessResponse(adjustment));
 });
 
@@ -141,6 +167,7 @@ export const deleteAttendee = asyncHandler(async (req: Request, res: Response) =
   if (!id) {
     throw new Error('Attendee ID is required');
   }
-  await sprintReviewService.deleteAttendee(id);
+  const userId = req.user?.id;
+  await sprintReviewService.deleteAttendee(id, userId);
   res.json(createSuccessResponse({ message: 'Attendee deleted successfully' }));
 });

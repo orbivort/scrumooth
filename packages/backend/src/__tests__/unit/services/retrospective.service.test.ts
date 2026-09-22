@@ -33,6 +33,12 @@ vi.mock('../../../utils/prisma', () => ({
       update: vi.fn(),
       delete: vi.fn(),
     },
+    sprint: {
+      findUnique: vi.fn(),
+    },
+    sprintReview: {
+      findUnique: vi.fn(),
+    },
   },
 }));
 
@@ -44,6 +50,7 @@ vi.mock('uuid', () => ({
 import { retrospectiveService } from '../../../services/retrospective.service';
 import prisma from '../../../utils/prisma';
 import { NotFoundError } from '../../../utils/errors';
+import { GATE_CODES } from '@scrumooth/shared';
 
 describe('RetrospectiveService', () => {
   beforeEach(() => {
@@ -441,6 +448,77 @@ describe('RetrospectiveService', () => {
       });
 
       expect(result.summary).toBe('Sprint summary');
+      expect(result.status).toBe('COMPLETED');
+    });
+
+    it('should refuse completion before the sprint has ended', async () => {
+      const mockRetrospective = {
+        id: 'retro-1',
+        sprintId: 'sprint-1',
+        teamId: 'team-1',
+        status: 'IN_PROGRESS',
+      };
+
+      vi.mocked(prisma.sprintRetrospective.findUnique).mockResolvedValue(mockRetrospective as any);
+      vi.mocked(prisma.sprint.findUnique).mockResolvedValue({
+        endDate: new Date(Date.now() + 86_400_000),
+      } as any);
+
+      await expect(
+        retrospectiveService.updateRetrospective('retro-1', { status: 'COMPLETED' })
+      ).rejects.toMatchObject({ code: GATE_CODES.SPRINT_EVENT_BEFORE_END_DATE });
+      expect(prisma.sprintRetrospective.update).not.toHaveBeenCalled();
+    });
+
+    it('should refuse completion before the sprint review is completed', async () => {
+      const mockRetrospective = {
+        id: 'retro-1',
+        sprintId: 'sprint-1',
+        teamId: 'team-1',
+        status: 'IN_PROGRESS',
+      };
+
+      vi.mocked(prisma.sprintRetrospective.findUnique).mockResolvedValue(mockRetrospective as any);
+      vi.mocked(prisma.sprint.findUnique).mockResolvedValue({
+        endDate: new Date(Date.now() - 86_400_000),
+      } as any);
+      vi.mocked(prisma.sprintReview.findUnique).mockResolvedValue({
+        status: 'in_progress',
+      } as any);
+
+      await expect(
+        retrospectiveService.updateRetrospective('retro-1', { status: 'COMPLETED' })
+      ).rejects.toMatchObject({ code: GATE_CODES.SPRINT_RETROSPECTIVE_REQUIRES_REVIEW });
+      expect(prisma.sprintRetrospective.update).not.toHaveBeenCalled();
+    });
+
+    it('should complete once the review is completed and the sprint has ended', async () => {
+      const mockRetrospective = {
+        id: 'retro-1',
+        sprintId: 'sprint-1',
+        teamId: 'team-1',
+        status: 'IN_PROGRESS',
+        items: [],
+        actionItems: [],
+        attendees: [],
+      };
+
+      vi.mocked(prisma.sprintRetrospective.findUnique).mockResolvedValue(mockRetrospective as any);
+      vi.mocked(prisma.sprint.findUnique).mockResolvedValue({
+        endDate: new Date(Date.now() - 86_400_000),
+      } as any);
+      vi.mocked(prisma.sprintReview.findUnique).mockResolvedValue({
+        status: 'completed',
+      } as any);
+      vi.mocked(prisma.sprintRetrospective.update).mockResolvedValue({
+        ...mockRetrospective,
+        status: 'COMPLETED',
+      } as any);
+
+      const result = await retrospectiveService.updateRetrospective('retro-1', {
+        status: 'COMPLETED',
+      });
+
       expect(result.status).toBe('COMPLETED');
     });
   });

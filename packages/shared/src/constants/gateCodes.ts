@@ -151,6 +151,30 @@ export const GATE_CODES = {
   SPRINT_SCOPE_CHANGE_NEEDS_PO: 'GATE_SPRINT_SCOPE_CHANGE_NEEDS_PO',
   /** A goal-endangering change for the same item is already awaiting acknowledgement. */
   SPRINT_SCOPE_CHANGE_ALREADY_PENDING: 'GATE_SPRINT_SCOPE_CHANGE_ALREADY_PENDING',
+  /**
+   * The Sprint Review is the Scrum Team's own event. Recording attendance, leaving feedback,
+   * adjusting the Product Backlog, and completing the Review all require membership of the team
+   * that owns the Review, so no outsider can speak for a team at its Review.
+   */
+  SPRINT_REVIEW_TEAM_MEMBERS_ONLY: 'GATE_SPRINT_REVIEW_TEAM_MEMBERS_ONLY',
+  /**
+   * The Scrum Master's notes are coaching observations about the event, not a shared field, so
+   * they are writable only by the team's Scrum Master -- matching the interface, which already
+   * hides the editor from everyone else.
+   */
+  SPRINT_REVIEW_SM_NOTES_SM_ONLY: 'GATE_SPRINT_REVIEW_SM_NOTES_SM_ONLY',
+  /**
+   * "The Sprint Review is the second-to-last event of the Sprint and the Sprint Retrospective
+   * concludes the Sprint." A Retrospective cannot be completed before its Sprint Review is, or
+   * the ordering the Guide prescribes has been inverted without a trace.
+   */
+  SPRINT_RETROSPECTIVE_REQUIRES_REVIEW: 'GATE_SPRINT_RETROSPECTIVE_REQUIRES_REVIEW',
+  /**
+   * The Review inspects the outcome of the Sprint and the Retrospective concludes it, so neither
+   * event can be completed before the Sprint's end date has passed. Completing them early would
+   * close a Sprint that never ran its course.
+   */
+  SPRINT_EVENT_BEFORE_END_DATE: 'GATE_SPRINT_EVENT_BEFORE_END_DATE',
 } as const;
 
 export type GateCode = (typeof GATE_CODES)[keyof typeof GATE_CODES];
@@ -365,6 +389,26 @@ export const GATE_DEFINITIONS: Record<GateCode, GateDefinition> = {
     code: GATE_CODES.SPRINT_SCOPE_CHANGE_ALREADY_PENDING,
     httpStatus: 409,
     i18nKey: 'sprintScopeChangeAlreadyPending',
+  },
+  [GATE_CODES.SPRINT_REVIEW_TEAM_MEMBERS_ONLY]: {
+    code: GATE_CODES.SPRINT_REVIEW_TEAM_MEMBERS_ONLY,
+    httpStatus: 403,
+    i18nKey: 'sprintReviewTeamMembersOnly',
+  },
+  [GATE_CODES.SPRINT_REVIEW_SM_NOTES_SM_ONLY]: {
+    code: GATE_CODES.SPRINT_REVIEW_SM_NOTES_SM_ONLY,
+    httpStatus: 403,
+    i18nKey: 'sprintReviewSmNotesSmOnly',
+  },
+  [GATE_CODES.SPRINT_RETROSPECTIVE_REQUIRES_REVIEW]: {
+    code: GATE_CODES.SPRINT_RETROSPECTIVE_REQUIRES_REVIEW,
+    httpStatus: 400,
+    i18nKey: 'sprintRetrospectiveRequiresReview',
+  },
+  [GATE_CODES.SPRINT_EVENT_BEFORE_END_DATE]: {
+    code: GATE_CODES.SPRINT_EVENT_BEFORE_END_DATE,
+    httpStatus: 400,
+    i18nKey: 'sprintEventBeforeEndDate',
   },
 };
 

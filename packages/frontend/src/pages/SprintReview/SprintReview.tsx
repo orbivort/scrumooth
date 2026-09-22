@@ -515,8 +515,13 @@ export const SprintReview: React.FC = () => {
   });
 
   const addMutation = useMutation({
-    mutationFn: (data: { name: string; email?: string; role: string; attended: boolean }) =>
-      apiService.addAttendee(review?.id ?? '', data),
+    mutationFn: (data: {
+      userId?: string | null;
+      name: string;
+      email?: string;
+      role: string;
+      attended: boolean;
+    }) => apiService.addAttendee(review?.id ?? '', data),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.sprintReview.all });
     },
@@ -1149,6 +1154,7 @@ export const SprintReview: React.FC = () => {
               apiConfig={{
                 addAttendee: (data: AttendeeFormData) =>
                   apiService.addAttendee(review.id || '', {
+                    userId: data.userId ?? null,
                     name: data.name,
                     email: data.email,
                     role: data.role,
@@ -1156,6 +1162,7 @@ export const SprintReview: React.FC = () => {
                   }),
                 updateAttendee: (id: string, data: AttendeeFormData) =>
                   apiService.updateAttendee(id, {
+                    userId: data.userId ?? null,
                     name: data.name,
                     email: data.email,
                     role: data.role,
@@ -1170,6 +1177,9 @@ export const SprintReview: React.FC = () => {
               }}
               onAddTeamMember={(member, attended) => {
                 addMutation.mutate({
+                  // Recording the team member's user id makes the attendance record attributable
+                  // rather than a name typed into a text field.
+                  userId: member.user?.id ?? member.userId ?? null,
                   name: `${member.user?.firstName ?? ''} ${member.user?.lastName ?? ''}`.trim(),
                   email: member.user?.email,
                   role: mapTeamRoleToAttendeeRole(member.role),
@@ -1562,6 +1572,14 @@ export const SprintReview: React.FC = () => {
                     <div className={styles['adjustment-reason']}>
                       <strong>{t('adjustments.reason')}</strong> {adjustment.reason}
                     </div>
+                    {adjustment.createdPbi && (
+                      <div className={styles['adjustment-owner']}>
+                        <span className={styles['owner-label']}>
+                          <PackageIcon /> {t('adjustments.linkedItem')}
+                        </span>
+                        <span className={styles['owner-name']}>{adjustment.createdPbi.title}</span>
+                      </div>
+                    )}
                     {!adjustment.implemented && (
                       <BacklogHint message={t('adjustments.backlogHint')} />
                     )}
