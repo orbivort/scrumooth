@@ -25,6 +25,7 @@ import {
   extractCsrfFromCookies,
   CSRF_CONSTANTS,
 } from '@e2e-helpers';
+import { GATE_CODES } from '@scrumooth/shared';
 
 describe('E2E: Sprint Review Management', () => {
   const testEmails: string[] = [];
@@ -424,12 +425,47 @@ describe('E2E: Sprint Review Management', () => {
         .send({
           summary: 'Updated review summary',
           status: 'completed',
+          // Concluding the Review requires the team's own verdict on the Sprint Goal.
+          sprintGoalOutcome: 'ACHIEVED',
         })
         .expect(HTTP_STATUS.OK);
 
       expect(response.body.success).toBe(true);
       expect(response.body.data.summary).toBe('Updated review summary');
       expect(response.body.data.status).toBe('completed');
+      expect(response.body.data.sprintGoalOutcome).toBe('ACHIEVED');
+    });
+
+    it('should refuse to complete a Review without the Sprint Goal verdict', async () => {
+      const email = `review-no-verdict-${uniqueTestId()}@example.com`;
+      testEmails.push(email);
+
+      const { user, team } = await setupTeamWithUser(email, ROLES.SCRUM_MASTER);
+      const now = Date.now();
+      const day = 24 * 60 * 60 * 1000;
+      const sprint = await createTestSprintInDb(
+        team.id,
+        `Sprint ${uniqueTestId()}`,
+        SPRINT_STATUSES.COMPLETED,
+        new Date(now - 28 * day),
+        new Date(now - 14 * day)
+      );
+      const increment = await createTestIncrementInDb(sprint.id, team.id);
+      const review = await createTestSprintReviewInDb(sprint.id, team.id, increment.id, user.id);
+
+      const cookies = await loginAndGetCookies(email);
+      const { csrfToken } = extractCsrfFromCookies(cookies);
+
+      const response = await request(app)
+        .put(`/api/v1/sprint-reviews/${review.id}`)
+        .set('Cookie', cookies)
+        .set(CSRF_CONSTANTS.HEADER_NAME, csrfToken)
+        .send({ status: 'completed' })
+        .expect(HTTP_STATUS.BAD_REQUEST);
+
+      expect(response.body.success).toBe(false);
+      expect(response.body.error.code).toBe(GATE_CODES.SPRINT_REVIEW_GOAL_OUTCOME_REQUIRED);
+      expect(response.body.error.message).toBeDefined();
     });
 
     it('should update review with attendees', async () => {

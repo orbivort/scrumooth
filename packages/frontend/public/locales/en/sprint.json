@@ -620,7 +620,9 @@
     "upcomingSprints": "-- Upcoming Sprints --",
     "velocityDescriptiveEmpty": "No completed Sprint yet — velocity appears after the first Sprint closes.",
     "velocityDescriptiveHint": "Descriptive average of {{count}} completed Sprint(s) — an observation, not a target.",
+    "velocityNotRecorded": "Not recorded",
     "velocityRangeAria": "Velocity range from {{min}} to {{max}} story points",
+    "velocityUnrecordedHint": "{{count}} closed Sprint(s) have no recorded completion — left out of the range rather than counted as zero.",
     "withDraftTask_one": " with {{count}} draft task",
     "withDraftTask_other": " with {{count}} draft tasks"
   },

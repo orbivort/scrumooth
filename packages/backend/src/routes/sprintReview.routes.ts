@@ -19,17 +19,30 @@ const teamQuerySchema = z.object({
   sprintId: z.string().uuid('Invalid sprint ID').optional(),
 });
 
+/**
+ * The Scrum Team's own verdict on its Sprint Goal.
+ *
+ * A closed set of values rather than free text: the reports count these, and the interface renders
+ * them as text badges, so an unrecognised value would be uncountable and unrenderable. Attainment
+ * is a judgement the team records; it is never derived from item completion.
+ */
+const sprintGoalOutcomeSchema = z.enum(['ACHIEVED', 'PARTIALLY_ACHIEVED', 'NOT_ACHIEVED']);
+
 const createReviewSchema = z.object({
   sprintId: z.string().uuid('Invalid sprint ID'),
   teamId: z.string().uuid('Invalid team ID'),
   incrementId: z.string().uuid('Invalid increment ID').optional(),
   reviewDate: z.string().transform((val) => new Date(val)),
   summary: z.string().max(2000).optional(),
+  sprintGoalOutcome: sprintGoalOutcomeSchema.optional(),
+  sprintGoalNote: z.string().max(2000).optional(),
 });
 
 const updateReviewSchema = z.object({
   summary: z.string().max(2000).optional(),
   status: z.enum(['in_progress', 'completed']).optional(),
+  sprintGoalOutcome: sprintGoalOutcomeSchema.optional(),
+  sprintGoalNote: z.string().max(2000).optional(),
   reviewDate: z
     .string()
     .transform((val) => new Date(val))

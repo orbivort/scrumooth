@@ -89,6 +89,14 @@ vi.mock('../../../utils/uuid', () => ({
   generateUUIDv7: vi.fn().mockReturnValue('test-uuid'),
 }));
 
+// The audit trail has its own logger, which the partial `utils/logger` mock above does not carry.
+vi.mock('../../../utils/auditLogger', () => ({
+  auditResourceEvent: vi.fn(),
+  AuditActions: { VIEW: 'VIEW', UPDATE: 'UPDATE', CREATE: 'CREATE', ASSIGN: 'ASSIGN' },
+  AuditEventTypes: { SPRINT: 'SPRINT', REPORTS: 'REPORTS' },
+  AuditResults: { SUCCESS: 'SUCCESS' },
+}));
+
 const mockNotificationCreate = vi.hoisted(() =>
   vi.fn().mockResolvedValue({ id: 'notification-id' })
 );
@@ -798,6 +806,154 @@ describe('SprintReviewService', () => {
       await expect(
         sprintReviewService.updateSprintReview(reviewId, userId, { summary: 'New summary' })
       ).rejects.toThrow(NotFoundError);
+    });
+  });
+
+  describe('recorded Sprint Goal verdict', () => {
+    const pastEnd = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+    const existingReview = (overrides: Record<string, unknown> = {}) => ({
+      id: 'review-1',
+      sprintId: 'sprint-1',
+      teamId: 'team-id',
+      status: 'in_progress',
+      sprintGoal: 'Deliver feature X',
+      sprintGoalOutcome: null,
+      attendees: [],
+      feedback: [],
+      backlogAdjustments: [],
+      ...overrides,
+    });
+
+    it('records a verdict and snapshots the Goal it judged', async () => {
+      vi.mocked(prisma.sprintReview.findUnique).mockResolvedValue(existingReview() as any);
+      vi.mocked(prisma.sprintReview.update).mockResolvedValue({} as any);
+
+      const mockGetById = vi.spyOn(sprintReviewService, 'getSprintReviewById');
+      mockGetById.mockResolvedValue({ id: 'review-1' } as any);
+
+      await sprintReviewService.updateSprintReview('review-1', 'user-id', {
+        sprintGoalOutcome: 'PARTIALLY_ACHIEVED',
+        sprintGoalNote: 'Ran out of time',
+      });
+
+      expect(prisma.sprintReview.update).toHaveBeenCalledWith({
+        where: { id: 'review-1' },
+        data: {
+          sprintGoalOutcome: 'PARTIALLY_ACHIEVED',
+          sprintGoal: 'Deliver feature X',
+          sprintGoalNote: 'Ran out of time',
+          updatedBy: 'user-id',
+        },
+      });
+
+      mockGetById.mockRestore();
+    });
+
+    it('refuses a verdict when the Sprint has no Sprint Goal', async () => {
+      vi.mocked(prisma.sprintReview.findUnique).mockResolvedValue(
+        existingReview({ sprintGoal: null }) as any
+      );
+
+      await expect(
+        sprintReviewService.updateSprintReview('review-1', 'user-id', {
+          sprintGoalOutcome: 'ACHIEVED',
+        })
+      ).rejects.toMatchObject({
+        statusCode: 400,
+        code: GATE_CODES.SPRINT_REVIEW_GOAL_OUTCOME_NOT_APPLICABLE,
+      });
+
+      expect(prisma.sprintReview.update).not.toHaveBeenCalled();
+    });
+
+    it('refuses a new Review that arrives carrying a verdict for a Sprint with no Goal', async () => {
+      vi.mocked(prisma.sprint.findUnique).mockResolvedValue({
+        id: 'sprint-1',
+        teamId: 'team-id',
+        name: 'Sprint 1',
+        status: 'COMPLETED',
+        sprintGoal: null,
+      } as any);
+
+      await expect(
+        sprintReviewService.createSprintReview('user-id', {
+          sprintId: 'sprint-1',
+          teamId: 'team-id',
+          reviewDate: new Date(),
+          sprintGoalOutcome: 'ACHIEVED',
+        })
+      ).rejects.toMatchObject({
+        statusCode: 400,
+        code: GATE_CODES.SPRINT_REVIEW_GOAL_OUTCOME_NOT_APPLICABLE,
+      });
+
+      expect(prisma.sprintReview.create).not.toHaveBeenCalled();
+    });
+
+    it('requires the verdict when a Review of a Sprint with a Goal is completed', async () => {
+      vi.mocked(prisma.sprintReview.findUnique).mockResolvedValue(existingReview() as any);
+      vi.mocked(prisma.sprint.findUnique).mockResolvedValue({ endDate: pastEnd } as any);
+
+      await expect(
+        sprintReviewService.updateSprintReview('review-1', 'user-id', { status: 'completed' })
+      ).rejects.toMatchObject({
+        statusCode: 400,
+        code: GATE_CODES.SPRINT_REVIEW_GOAL_OUTCOME_REQUIRED,
+      });
+
+      expect(prisma.sprintReview.update).not.toHaveBeenCalled();
+    });
+
+    it('accepts a verdict supplied with the conclusion', async () => {
+      vi.mocked(prisma.sprintReview.findUnique).mockResolvedValue(existingReview() as any);
+      vi.mocked(prisma.sprint.findUnique).mockResolvedValue({ endDate: pastEnd } as any);
+      vi.mocked(prisma.sprintReview.update).mockResolvedValue({} as any);
+
+      const mockGetById = vi.spyOn(sprintReviewService, 'getSprintReviewById');
+      mockGetById.mockResolvedValue({ id: 'review-1' } as any);
+
+      await sprintReviewService.updateSprintReview('review-1', 'user-id', {
+        status: 'completed',
+        sprintGoalOutcome: 'ACHIEVED',
+      });
+
+      expect(prisma.sprintReview.update).toHaveBeenCalledWith({
+        where: { id: 'review-1' },
+        data: {
+          status: 'completed',
+          sprintGoalOutcome: 'ACHIEVED',
+          sprintGoal: 'Deliver feature X',
+          updatedBy: 'user-id',
+        },
+      });
+
+      mockGetById.mockRestore();
+    });
+
+    it('completes a Review of a Sprint without a Goal without asking for a verdict', async () => {
+      vi.mocked(prisma.sprintReview.findUnique).mockResolvedValue(
+        existingReview({ sprintGoal: null }) as any
+      );
+      vi.mocked(prisma.sprint.findUnique).mockResolvedValue({
+        endDate: pastEnd,
+        sprintGoal: null,
+      } as any);
+      vi.mocked(prisma.sprintReview.update).mockResolvedValue({} as any);
+
+      const mockGetById = vi.spyOn(sprintReviewService, 'getSprintReviewById');
+      mockGetById.mockResolvedValue({ id: 'review-1' } as any);
+
+      await sprintReviewService.updateSprintReview('review-1', 'user-id', {
+        status: 'completed',
+      });
+
+      expect(prisma.sprintReview.update).toHaveBeenCalledWith({
+        where: { id: 'review-1' },
+        data: { status: 'completed', updatedBy: 'user-id' },
+      });
+
+      mockGetById.mockRestore();
     });
   });
 

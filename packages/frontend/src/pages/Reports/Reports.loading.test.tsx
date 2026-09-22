@@ -87,15 +87,47 @@ const mockTeam = {
 };
 
 const mockVelocityData = {
-  sprints: ['Sprint 1', 'Sprint 2', 'Sprint 3'],
-  planned: [20, 25, 30],
-  completed: [18, 22, 28],
+  points: [
+    {
+      sprintId: 'sprint-1',
+      sprintName: 'Sprint 1',
+      status: 'COMPLETED',
+      plannedPoints: 20,
+      completedPoints: 18,
+      provenance: 'recorded',
+    },
+    {
+      sprintId: 'sprint-2',
+      sprintName: 'Sprint 2',
+      status: 'COMPLETED',
+      plannedPoints: 25,
+      completedPoints: 22,
+      provenance: 'recorded',
+    },
+    {
+      sprintId: 'sprint-3',
+      sprintName: 'Sprint 3',
+      status: 'ACTIVE',
+      plannedPoints: 30,
+      completedPoints: 28,
+      provenance: 'in_progress',
+    },
+  ],
+  averageCompletedPoints: 22.5,
+  observedSprints: 3,
+  unavailableSprints: 0,
 };
 
 const mockMetricsData = {
-  averageVelocity: 22.5,
-  velocityTrend: 5,
+  averageCompletedPoints: 22.5,
+  observedSprints: 3,
+  totalSprints: 3,
+  minCompletedPoints: 18,
+  maxCompletedPoints: 28,
   completionRate: 85,
+  sprintGoalAssessed: 2,
+  sprintGoalVerdicts: { achieved: 1, partiallyAchieved: 1, notAchieved: 0 },
+  itemCompletion: { totalItems: 12, completedItems: 10, rate: 83 },
   impediments: {
     total: 5,
     resolved: 4,
@@ -112,6 +144,11 @@ const mockSprintHistory = [
     sprintGoal: 'Deliver the reporting module',
     plannedPoints: 20,
     completedPoints: 18,
+    provenance: 'recorded',
+    itemCount: 6,
+    completedItemCount: 5,
+    sprintGoalOutcome: 'ACHIEVED',
+    sprintGoalNote: null,
     teamMembers: 5,
     impediments: 2,
   },
@@ -119,10 +156,12 @@ const mockSprintHistory = [
 
 const mockInsights = [
   {
-    id: 'insight-1',
-    title: 'Velocity Improving',
-    description: 'Team velocity has increased by 15%',
-    type: 'positive',
+    id: 'completed-points-history',
+    kind: 'observation',
+    icon: 'history',
+    title: 'Completed points history',
+    description: 'The observed Sprints averaged 22.5 points.',
+    evidence: 'Read from each Sprint closing record',
   },
 ];
 
@@ -623,7 +662,7 @@ describe('Reports - Loading State Tests', () => {
       });
     });
 
-    it('should show empty insights state when no insights exist', async () => {
+    it('should show empty observations state when there is nothing to inspect', async () => {
       mockApiService.getVelocityData.mockResolvedValue({ data: mockVelocityData });
       mockApiService.getTeamMetrics.mockResolvedValue({ data: mockMetricsData });
       mockApiService.getSprintHistory.mockResolvedValue({ data: mockSprintHistory });
@@ -636,7 +675,7 @@ describe('Reports - Loading State Tests', () => {
       });
 
       await waitFor(() => {
-        expect(screen.getByText(/No insights available yet/i)).toBeInTheDocument();
+        expect(screen.getByText(/Nothing to inspect yet/i)).toBeInTheDocument();
       });
     });
 
@@ -664,6 +703,48 @@ describe('Reports - Loading State Tests', () => {
       await waitFor(() => {
         expect(screen.getByText('No sprint history available.')).toBeInTheDocument();
       });
+    });
+  });
+
+  describe('Sprint Status Labels', () => {
+    /**
+     * Every status a report can carry has to read as a label. A status the resources do not cover
+     * used to reach the reader as the raw key (`sprintStatusLabels.DRAFT`), because the label was
+     * assembled from the status at render time instead of being resolved against the resources.
+     */
+    it('should label a DRAFT and a CANCELLED Sprint instead of leaking the translation key', async () => {
+      const historyItem = (id: string, name: string, status: string) => ({
+        ...mockSprintHistory[0]!,
+        id,
+        name,
+        status,
+        sprintGoal: null,
+        sprintGoalOutcome: null,
+        provenance: 'not_available',
+      });
+
+      mockApiService.getVelocityData.mockResolvedValue({ data: mockVelocityData });
+      mockApiService.getTeamMetrics.mockResolvedValue({ data: mockMetricsData });
+      mockApiService.getSprintHistory.mockResolvedValue({
+        data: [
+          historyItem('sprint-2', 'Sprint 2', 'DRAFT'),
+          historyItem('sprint-3', 'Sprint 3', 'CANCELLED'),
+        ],
+      });
+      mockApiService.getInsights.mockResolvedValue({ data: mockInsights });
+
+      renderWithProviders(<Reports />);
+
+      await act(async () => {
+        vi.runAllTimersAsync();
+      });
+
+      await waitFor(() => {
+        expect(screen.getByText('Draft')).toBeInTheDocument();
+      });
+      expect(screen.getByText('Cancelled')).toBeInTheDocument();
+      expect(screen.queryByText('sprintStatusLabels.DRAFT')).not.toBeInTheDocument();
+      expect(screen.queryByText('sprintStatusLabels.CANCELLED')).not.toBeInTheDocument();
     });
   });
 });

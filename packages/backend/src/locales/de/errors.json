@@ -56,6 +56,9 @@
     "successMetricsRequired": "Ein Produktziel muss mindestens einen Erfolgsmesswert angeben: Beschreibe, woran das Team erkennt, dass der zukünftige Zustand erreicht ist."
   },
   "recordNotFound": "Datensatz nicht gefunden",
+  "reports": {
+    "teamMembersOnly": "Ein Bericht liest die eigene beobachtete Historie eines Teams -- was es zugesagt, geliefert und untersucht hat. Transparenz bedeutet in Scrum Sichtbarkeit für diejenigen, die die Arbeit tun und empfangen, nicht für die gesamte Installation. Daher kann nur ein Mitglied dieses Teams seine Berichte lesen."
+  },
   "retrospective": {
     "actionItemLinked": "Diese Verbesserung wird bereits durch den Product-Backlog-Eintrag \"{{title}}\" getragen und gilt damit als adressiert. Entferne die Verknüpfung, bevor du sie als nicht adressiert markierst.",
     "dodChangesMissing": "Die Retrospektive hat keine Reflexion zur Definition of Done festgehalten, es gibt also nichts zu übernehmen. Inspiziere zuerst mindestens ein Kriterium.",
@@ -99,6 +102,8 @@
   },
   "sprintReview": {
     "eventBeforeEndDate": "Die Sprint Review untersucht das Ergebnis des Sprints und die Sprint-Retrospektive schließt ihn ab. Daher kann keine von beiden vor dem Enddatum des Sprints ({{endDate}}) abgeschlossen werden.",
+    "goalOutcomeNotApplicable": "Dieser Sprint hat kein Sprint-Ziel, es gibt also nichts zu bewerten. Die Zielerreichung ist ein Urteil über ein Ziel, zu dem sich das Team verpflichtet hat.",
+    "goalOutcomeRequired": "Die Sprint Review ist der Ort, an dem das Team den Fortschritt in Richtung Sprint-Ziel bespricht. Um diese Review abzuschließen, ist daher das eigene Urteil des Teams erforderlich: erreicht, teilweise erreicht oder nicht erreicht. Der Abschluss von Einträgen ist kein Ersatz -- ein Sprint kann sein Ziel erreichen, ohne jeden Eintrag abzuschließen, und jeden Eintrag abschließen, ohne sein Ziel zu erreichen.",
     "retrospectiveRequiresReview": "Die Sprint Review ist das vorletzte Ereignis des Sprints und die Sprint-Retrospektive schließt den Sprint ab. Schließe zuerst die Sprint Review ab, bevor du die Retrospektive abschließt.",
     "smNotesSmOnly": "Die Notizen des Scrum Masters sind Coaching-Beobachtungen zur Sprint Review. Nur der Scrum Master des Teams kann sie schreiben.",
     "teamMembersOnly": "Die Sprint Review ist die eigene Veranstaltung ihres Scrum Teams: Nur ein Mitglied dieses Teams kann Anwesenheit erfassen, Feedback hinterlassen, das Product Backlog anpassen oder sie abschließen."

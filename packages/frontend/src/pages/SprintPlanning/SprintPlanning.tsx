@@ -576,27 +576,42 @@ export const SprintPlanning: React.FC = () => {
 
   const velocityData = useMemo(() => {
     const report = velocityReport?.data;
-    const completedPoints = (report?.sprints ?? [])
-      .map((_name, index) => ({
-        points: report?.completed[index] ?? 0,
-        status: report?.statuses?.[index],
-      }))
-      // `statuses` is optional for older payloads; when absent we cannot distinguish the
-      // in-flight Sprint, so every returned entry is treated as completed.
-      .filter((entry) => entry.status === undefined || entry.status === 'COMPLETED')
-      .map((entry) => entry.points);
+    const closed = (report?.points ?? []).filter((point) => point.status === 'COMPLETED');
+    // Only the points whose evidence survives take part in the range. A Sprint whose completion
+    // could not be established is a gap, and counting it as zero would put a figure in front of
+    // the team at the moment it decides what it can take on.
+    const observedPoints = closed
+      .map((point) => point.completedPoints)
+      .filter((points): points is number => points !== null);
+    const unrecordedSprints = closed.length - observedPoints.length;
 
-    if (completedPoints.length === 0) {
-      return { average: 0, min: 0, max: 0, range: '0 - 0', sampleSize: 0 };
+    if (observedPoints.length === 0) {
+      return {
+        hasObservedPoints: false as const,
+        average: null,
+        min: null,
+        max: null,
+        range: null,
+        sampleSize: 0,
+        unrecordedSprints,
+      };
     }
 
     const average = Math.round(
-      completedPoints.reduce((sum, points) => sum + points, 0) / completedPoints.length
+      observedPoints.reduce((sum, points) => sum + points, 0) / observedPoints.length
     );
-    const min = Math.min(...completedPoints);
-    const max = Math.max(...completedPoints);
+    const min = Math.min(...observedPoints);
+    const max = Math.max(...observedPoints);
 
-    return { average, min, max, range: `${min} - ${max}`, sampleSize: completedPoints.length };
+    return {
+      hasObservedPoints: true as const,
+      average,
+      min,
+      max,
+      range: `${min} - ${max}`,
+      sampleSize: observedPoints.length,
+      unrecordedSprints,
+    };
   }, [velocityReport]);
 
   // Recorded planning participation. The 2020 Scrum Guide says the Sprint Backlog is "created by
@@ -1571,39 +1586,56 @@ export const SprintPlanning: React.FC = () => {
             <div className={styles['sprint-planning-metric-label']} id="velocity-label">
               {t('sprintPlanning.avgVelocity')}
             </div>
-            <div className={styles['sprint-planning-metric-value']}>
-              {velocityData.average} {t('sprintPlanning.pts')}
-            </div>
-            <div className={styles['sprint-planning-metric-hint']}>
-              {t('sprintPlanning.range')} {velocityData.range}
-            </div>
+            {velocityData.hasObservedPoints ? (
+              <>
+                <div className={styles['sprint-planning-metric-value']}>
+                  {velocityData.average} {t('sprintPlanning.pts')}
+                </div>
+                <div className={styles['sprint-planning-metric-hint']}>
+                  {t('sprintPlanning.range')} {velocityData.range}
+                </div>
+                <div
+                  className={styles['velocity-indicator']}
+                  aria-label={t('sprintPlanning.velocityRangeAria', {
+                    min: velocityData.min,
+                    max: velocityData.max,
+                  })}
+                >
+                  <div className={styles['velocity-bar']}>
+                    <div
+                      className={styles['velocity-range']}
+                      style={{
+                        left: `${(velocityData.min / (velocityData.max || 1)) * 100}%`,
+                        width: `${((velocityData.max - velocityData.min) / (velocityData.max || 1)) * 100}%`,
+                      }}
+                    />
+                    <div
+                      className={styles['velocity-average']}
+                      style={{
+                        left: `${(velocityData.average / (velocityData.max || 1)) * 100}%`,
+                      }}
+                      title={t('sprintPlanning.averageTitle', { avg: velocityData.average })}
+                    />
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className={styles['sprint-planning-metric-value']}>
+                {t('sprintPlanning.velocityNotRecorded')}
+              </div>
+            )}
             <div className={styles['sprint-planning-metric-hint']}>
               {velocityData.sampleSize > 0
                 ? t('sprintPlanning.velocityDescriptiveHint', { count: velocityData.sampleSize })
                 : t('sprintPlanning.velocityDescriptiveEmpty')}
             </div>
-            <div
-              className={styles['velocity-indicator']}
-              aria-label={t('sprintPlanning.velocityRangeAria', {
-                min: velocityData.min,
-                max: velocityData.max,
-              })}
-            >
-              <div className={styles['velocity-bar']}>
-                <div
-                  className={styles['velocity-range']}
-                  style={{
-                    left: `${(velocityData.min / (velocityData.max || 1)) * 100}%`,
-                    width: `${((velocityData.max - velocityData.min) / (velocityData.max || 1)) * 100}%`,
-                  }}
-                />
-                <div
-                  className={styles['velocity-average']}
-                  style={{ left: `${(velocityData.average / (velocityData.max || 1)) * 100}%` }}
-                  title={t('sprintPlanning.averageTitle', { avg: velocityData.average })}
-                />
+            {velocityData.unrecordedSprints > 0 ? (
+              <div className={styles['sprint-planning-metric-hint']}>
+                {t('sprintPlanning.velocityUnrecordedHint', {
+                  count: velocityData.unrecordedSprints,
+                })}
               </div>
-            </div>
+            ) : null}
           </div>
           <div
             className={`${styles['sprint-planning-metric-card']} ${canModifyBacklog ? styles.clickable : ''}`}

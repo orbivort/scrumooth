@@ -614,10 +614,12 @@ export const TeamManagement: React.FC = () => {
   const completedSprintsCount = (sprintHistory ?? []).filter(
     (s) => s.status === 'COMPLETED'
   ).length;
+  // Only the Sprints whose completion was observed contribute: an unrecorded point is excluded
+  // rather than counted as zero, exactly as the Reports page presents it.
   const totalStoryPointsCompleted = (sprintHistory ?? [])
-    .filter((s) => s.status === 'COMPLETED')
-    .reduce((sum, s) => sum + s.completedPoints, 0);
-  const avgVelocity = teamMetrics?.averageVelocity ?? 0;
+    .filter((s) => s.status === 'COMPLETED' && s.completedPoints !== null)
+    .reduce((sum, s) => sum + (s.completedPoints ?? 0), 0);
+  const avgVelocity = teamMetrics?.averageCompletedPoints ?? 0;
   const sprintCompletionRate = teamMetrics?.completionRate ?? 0;
 
   const isLoading = teamLoading;

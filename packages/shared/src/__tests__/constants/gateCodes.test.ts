@@ -10,8 +10,8 @@ import {
 } from '../../constants/gateCodes.js';
 
 describe('gateCodes', () => {
-  it('should define forty-four gates', () => {
-    expect(GATE_CODE_LIST).toHaveLength(44);
+  it('should define forty-seven gates', () => {
+    expect(GATE_CODE_LIST).toHaveLength(47);
   });
 
   it('should prefix every gate code with GATE_', () => {

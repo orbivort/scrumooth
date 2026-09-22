@@ -654,7 +654,9 @@ POST /api/v1/sprint-reviews
   "teamId": "string (required, UUID)",
   "incrementId": "string (optional, UUID)",
   "reviewDate": "string (required, valid ISO 8601 date)",
-  "summary": "string (optional, max 2000 chars)"
+  "summary": "string (optional, max 2000 chars)",
+  "sprintGoalOutcome": "string (optional, one of: ACHIEVED, PARTIALLY_ACHIEVED, NOT_ACHIEVED)",
+  "sprintGoalNote": "string (optional, max 2000 chars)"
 }
 ```
 
@@ -754,6 +756,8 @@ PUT /api/v1/sprint-reviews/:id
 {
   "summary": "string (optional, max 2000 chars)",
   "status": "string (optional, one of: in_progress, completed)",
+  "sprintGoalOutcome": "string (optional, one of: ACHIEVED, PARTIALLY_ACHIEVED, NOT_ACHIEVED)",
+  "sprintGoalNote": "string (optional, max 2000 chars)",
   "reviewDate": "string (optional, valid ISO 8601 date)",
   "attendees": [
     {
@@ -806,11 +810,31 @@ Content-Type: application/json
       "reviewDate": "2026-04-29T12:00:00.000Z",
       "summary": "Updated sprint review summary",
       "status": "completed",
+      "sprintGoal": "Ship the review workflow",
+      "sprintGoalOutcome": "PARTIALLY_ACHIEVED",
+      "sprintGoalNote": "The backlog adjustments slipped into the next Sprint.",
       "updatedAt": "2026-04-29T13:00:00.000Z"
     }
   }
 }
 ```
+
+**The Sprint Goal verdict**
+
+`SprintReview.sprintGoalOutcome` is the Scrum Team's own judgement on whether the Sprint Goal was
+met, recorded at the event:
+
+- it is **required** when a Review is completed for a Sprint that has a Sprint Goal, because "the
+  Scrum Team discusses ... progress toward the Sprint Goal" -- concluding the event without the
+  team's verdict would leave the tool to infer attainment from item completion. Refused with
+  `GATE_SPRINT_REVIEW_GOAL_OUTCOME_REQUIRED` (400).
+- it is **refused** for a Sprint with no Sprint Goal, since a verdict about nothing would let an
+  unassessed Sprint read as assessed -- `GATE_SPRINT_REVIEW_GOAL_OUTCOME_NOT_APPLICABLE` (400).
+- the Goal the verdict judged is copied into `SprintReview.sprintGoal` so a later renegotiation
+  cannot make the record appear to have assessed a goal it never saw.
+
+A Review completed before the verdict existed simply has none, and is reported as unassessed rather
+than as unmet.
 
 **Error Responses**
 
@@ -832,6 +856,20 @@ Content-Type: application/json
 }
 ```
 
+**400 Bad Request - Sprint Goal verdict required**
+
+```json
+{
+  "success": false,
+  "error": {
+    "code": "GATE_SPRINT_REVIEW_GOAL_OUTCOME_REQUIRED",
+    "message": "The Sprint Review is where the team discusses progress toward the Sprint Goal, so completing this Review requires the team's own verdict on it: achieved, partially achieved, or not achieved."
+  }
+}
+```
+
+````
+
 **404 Not Found**
 
 ```json
@@ -842,7 +880,7 @@ Content-Type: application/json
     "message": "Sprint review not found"
   }
 }
-```
+````
 
 **Example Request**
 

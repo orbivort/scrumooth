@@ -10,6 +10,7 @@ import {
   type DoDComplianceTrend,
   type ActionItemCompletion,
   type ScrumValue,
+  type SprintGoalAchievement,
 } from '../types';
 
 import type { SmDashboardData, EventSchedule } from './domain/smDashboard.service';
@@ -192,42 +193,49 @@ export const mockDoDComplianceTrend: DoDComplianceTrend[] = [
   },
 ];
 
-// ==================== Sprint Goal Achievement ====================
-export const mockSprintGoalAchievement = {
-  sprintId: 'sprint-3',
-  sprintName: 'Sprint-3',
-  sprintGoal: 'Complete daily Scrum and impediment tracking features',
-  achievement: 'partial' as const,
-  achievementRate: 67,
+// ==================== Sprint Goal Attainment (recorded verdicts only) ====================
+export const mockSprintGoalAchievement: SprintGoalAchievement = {
+  assessed: 4,
+  total: 4,
   achieved: 2,
-  partial: 1,
+  partiallyAchieved: 1,
   notAchieved: 1,
-  list: [
+  coveragePercentage: 100,
+  records: [
     {
       sprintId: 'sprint-1',
       sprintName: 'Sprint-1',
       sprintGoal: 'Set up project infrastructure and core UI components',
-      achievement: 'achieved' as const,
+      outcome: 'ACHIEVED',
+      note: null,
+      reviewDate: '2026-01-16T00:00:00Z',
     },
     {
       sprintId: 'sprint-2',
       sprintName: 'Sprint-2',
       sprintGoal: 'Deliver sprint board and dashboard functionality',
-      achievement: 'achieved' as const,
+      outcome: 'ACHIEVED',
+      note: null,
+      reviewDate: '2026-01-30T00:00:00Z',
     },
     {
       sprintId: 'sprint-3',
       sprintName: 'Sprint-3',
       sprintGoal: 'Complete daily Scrum and impediment tracking features',
-      achievement: 'partial' as const,
+      outcome: 'PARTIALLY_ACHIEVED',
+      note: 'Impediment tracking slipped into the next Sprint.',
+      reviewDate: '2026-02-13T00:00:00Z',
     },
     {
       sprintId: 'sprint-4',
       sprintName: 'Sprint-4',
       sprintGoal: 'Ship real-time notifications and collaboration',
-      achievement: 'not_achieved' as const,
+      outcome: 'NOT_ACHIEVED',
+      note: 'The Goal proved larger than the Sprint.',
+      reviewDate: '2026-02-27T00:00:00Z',
     },
   ],
+  itemCompletion: { totalItems: 24, completedItems: 20, rate: 83 },
 };
 
 // ==================== Action Item Completion ====================
@@ -321,17 +329,7 @@ export const mockSmDashboardData: SmDashboardData = {
   eventCompliance: mockEventCompliance,
   impedimentMetrics: mockImpedimentMetrics,
   dodComplianceTrend: mockDoDComplianceTrend,
-  sprintGoalAchievement: {
-    sprintId: mockSprintGoalAchievement.sprintId,
-    sprintName: mockSprintGoalAchievement.sprintName,
-    sprintGoal: mockSprintGoalAchievement.sprintGoal,
-    achievement: mockSprintGoalAchievement.achievement,
-    achievementRate: mockSprintGoalAchievement.achievementRate,
-    achieved: mockSprintGoalAchievement.achieved,
-    partial: mockSprintGoalAchievement.partial,
-    notAchieved: mockSprintGoalAchievement.notAchieved,
-    list: mockSprintGoalAchievement.list,
-  },
+  sprintGoalAchievement: mockSprintGoalAchievement,
   actionItemCompletion: mockActionItemCompletion,
   healthCheck: {
     healthCheckId: 'hc-003',

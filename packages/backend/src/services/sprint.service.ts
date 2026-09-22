@@ -42,6 +42,8 @@ import {
 import { logger } from '../utils/logger';
 import { processBatch } from '../utils/batch';
 import { notificationService } from './notification.service';
+import { reportsService } from './reports.service';
+import { captureSprintCompletion } from './sprintCompletion';
 import { config } from '../config';
 import { PRODUCT_BACKLOG_ORDER } from '../config/backlogOrder';
 import { t as requestT } from '../i18n/requestT.js';
@@ -1862,10 +1864,19 @@ class SprintService {
           data: { status: 'COMPLETED' },
         });
 
+        // Freeze what this Sprint committed to and delivered, on the same client, so a Sprint
+        // cannot reach COMPLETED without the observation its status implies. Velocity and Sprint
+        // history are then read from this record instead of from the live item statuses, which a
+        // later edit could otherwise move and so rewrite what a closed Sprint delivered.
+        await captureSprintCompletion(tx, { sprintId, teamId: sprint.teamId, userId });
+
         return sprint;
       },
       { ...TRANSACTION_CONFIG.DEFAULT, operationName: 'completeSprint' }
     );
+
+    // The reports are cached per team, and closing a Sprint changes every one of them.
+    reportsService.invalidateCache(updatedSprint.teamId);
 
     return updatedSprint;
   }

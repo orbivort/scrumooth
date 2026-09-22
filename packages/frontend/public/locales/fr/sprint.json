@@ -620,7 +620,9 @@
     "upcomingSprints": "-- Sprints à Venir --",
     "velocityDescriptiveEmpty": "Aucun sprint terminé pour l'instant — la vélocité apparaît dès la fin du premier sprint.",
     "velocityDescriptiveHint": "Moyenne descriptive de {{count}} sprint(s) terminé(s) — une observation, pas un objectif.",
+    "velocityNotRecorded": "Non consigné",
     "velocityRangeAria": "Plage de vélocité de {{min}} à {{max}} story points",
+    "velocityUnrecordedHint": "{{count}} sprint(s) clôturé(s) sans clôture consignée — exclus de l'amplitude plutôt que comptés comme zéro.",
     "withDraftTask_one": " avec {{count}} tâche brouillon",
     "withDraftTask_other": " avec {{count}} tâches brouillon"
   },

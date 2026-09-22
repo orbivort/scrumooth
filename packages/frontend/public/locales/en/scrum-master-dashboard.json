@@ -49,7 +49,6 @@
     "todayFocus": "Scrum Value of the day"
   },
   "smDashboard": {
-    "achievementRate": "Achievement rate",
     "actionItemCompletion": "Retrospective Action Items",
     "adaptation": "Adaptation",
     "adaptationNone": "nothing declared",
@@ -65,8 +64,14 @@
     "dailyScrumCount": "Daily Scrums",
     "dodCompliance": "Definition of Done Compliance",
     "eventCompliance": "Event Compliance",
+    "goalAchieved": "Achieved",
+    "goalAssessedCoverage": "Sprints assessed by the team",
+    "goalNoneAssessed": "No Sprint Goal verdict has been recorded yet. The Sprint Review is where the team records one.",
+    "goalNotAchieved": "Not achieved",
+    "goalPartiallyAchieved": "Partially achieved",
     "healthCheck": "Scrum Values Health Check",
     "impedimentMetrics": "Impediment Metrics",
+    "itemCompletionNote": "Item completion over the same Sprints: {{completed}} of {{total}} Sprint Backlog items Done. A separate fact from goal attainment.",
     "loadError": "Failed to load dashboard data",
     "missedDays_one": "{{count}} missed",
     "missedDays_other": "{{count}} missed",

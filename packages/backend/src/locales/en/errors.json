@@ -56,6 +56,9 @@
     "successMetricsRequired": "A Product Goal must declare at least one success metric: state how the team will know the future state has been reached."
   },
   "recordNotFound": "Record not found",
+  "reports": {
+    "teamMembersOnly": "A report reads a team's own observed history -- what it committed to, delivered, and inspected. Transparency in Scrum is visibility to those doing and receiving the work, not to the whole installation, so only a member of that team can read its reports."
+  },
   "retrospective": {
     "actionItemLinked": "This improvement is already carried by the Product Backlog item \"{{title}}\", so it counts as addressed. Remove the link before marking it unaddressed.",
     "dodChangesMissing": "The Retrospective recorded no Definition of Done reflection, so there is nothing to apply. Inspect at least one criterion first.",
@@ -99,6 +102,8 @@
   },
   "sprintReview": {
     "eventBeforeEndDate": "The Sprint Review inspects the outcome of the Sprint and the Sprint Retrospective concludes it, so neither can be completed before the Sprint's end date ({{endDate}}).",
+    "goalOutcomeNotApplicable": "This Sprint has no Sprint Goal, so there is nothing to assess. Attainment is a verdict about a Goal the team committed to.",
+    "goalOutcomeRequired": "The Sprint Review is where the team discusses progress toward the Sprint Goal, so completing this Review requires the team's own verdict on it: achieved, partially achieved, or not achieved. Item completion is not a substitute -- a Sprint can meet its Goal without completing every item, and complete every item without meeting its Goal.",
     "retrospectiveRequiresReview": "The Sprint Review is the second-to-last event of the Sprint and the Sprint Retrospective concludes the Sprint. Complete the Sprint Review before completing the Retrospective.",
     "smNotesSmOnly": "The Scrum Master's notes are coaching observations about the Sprint Review, so only the team's Scrum Master can write them.",
     "teamMembersOnly": "The Sprint Review is its Scrum Team's own event: only a member of that team can record attendance, leave feedback, adjust the Product Backlog, or complete it."

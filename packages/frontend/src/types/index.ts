@@ -29,6 +29,9 @@ import {
   type AdaptationReflection,
   type AdaptationReflectionBasis,
   type WorkingDayCalendar,
+  type CompletionProvenance,
+  type SprintGoalOutcome,
+  type SprintItemCompletion,
 } from '@scrumooth/shared';
 
 export type {
@@ -55,6 +58,9 @@ export type {
   AdaptationReflection,
   AdaptationReflectionBasis,
   WorkingDayCalendar,
+  CompletionProvenance,
+  SprintGoalOutcome,
+  SprintItemCompletion,
 };
 
 // Enums are runtime values; re-export as values.
@@ -613,6 +619,19 @@ export interface SprintReview {
   summary?: string;
   smNotes?: string | null;
   status?: string;
+  /**
+   * The Sprint Goal the Review assessed, frozen when the verdict was recorded.
+   *
+   * Its presence is what makes the verdict re-readable after a later renegotiation of the Goal.
+   */
+  sprintGoal?: string | null;
+  /**
+   * The Scrum Team's own recorded verdict on the Sprint Goal, or null when it was never assessed.
+   * Never derived from item completion.
+   */
+  sprintGoalOutcome?: SprintGoalOutcome | null;
+  /** The team's own words for the verdict. */
+  sprintGoalNote?: string | null;
   createdAt: string;
   updatedAt: string;
   increment?: Increment;
@@ -814,7 +833,13 @@ export interface BurndownData {
   actual: number;
 }
 
-export interface VelocityData {
+/**
+ * One entry of the demo velocity series.
+ *
+ * Distinct from `VelocityData`, which is what the API returns: this is the shape the in-browser
+ * mock data is authored in, before it is turned into a report payload.
+ */
+export interface VelocitySeriesEntry {
   sprintNumber: number;
   sprintName: string;
   planned: number;
@@ -843,11 +868,48 @@ export interface SprintPlanningParticipation {
   isReadyToStart: boolean;
 }
 
+/** One Sprint in the velocity series, with the evidence its points rest on. */
+export interface VelocityPoint {
+  sprintId: string;
+  sprintName: string;
+  status: string;
+  plannedPoints: number | null;
+  completedPoints: number | null;
+  /** How the points were obtained; `not_available` is a gap, never a zero. */
+  provenance: CompletionProvenance;
+}
+
+export interface VelocityData {
+  /** The Sprints the team ran, oldest first, so a chart reads left to right. */
+  points: VelocityPoint[];
+  /**
+   * Average completed points over the observed Sprints, or null when none could be observed.
+   * An average of the evidence, not a figure to plan to.
+   */
+  averageCompletedPoints: number | null;
+  /** Sprints that contributed to the average. */
+  observedSprints: number;
+  /** Sprints whose completion the evidence does not establish. */
+  unavailableSprints: number;
+}
+
 export interface TeamMetrics {
-  averageVelocity: number;
-  velocityTrend: number;
-  /** Share of completed sprints whose planned points were fully delivered (completed >= planned). */
-  completionRate: number;
+  /** Average completed points over the observed closed Sprints; null when none were observed. */
+  averageCompletedPoints: number | null;
+  /** Closed Sprints the average rests on. */
+  observedSprints: number;
+  /** Closed Sprints the reports look back over. */
+  totalSprints: number;
+  /** The observed range, so the record is read as history rather than as a single figure. */
+  minCompletedPoints: number | null;
+  maxCompletedPoints: number | null;
+  /** Share of observed closed Sprints whose planned points were fully delivered. */
+  completionRate: number | null;
+  /** Sprints carrying the team's own recorded Sprint Goal verdict. */
+  sprintGoalAssessed: number;
+  sprintGoalVerdicts: { achieved: number; partiallyAchieved: number; notAchieved: number };
+  /** Item completion over the observed Sprints: a separate fact from goal attainment. */
+  itemCompletion: SprintItemCompletion;
   impediments: {
     resolved: number;
     total: number;
@@ -861,18 +923,36 @@ export interface SprintHistoryItem {
   endDate: string;
   status: string;
   sprintGoal?: string | null;
-  plannedPoints: number;
-  completedPoints: number;
+  plannedPoints: number | null;
+  completedPoints: number | null;
+  /** How the points were obtained; `not_available` is a gap, never a zero. */
+  provenance: CompletionProvenance;
+  itemCount: number | null;
+  completedItemCount: number | null;
+  /** The Scrum Team's recorded verdict, or null when the Sprint Goal was never assessed. */
+  sprintGoalOutcome: SprintGoalOutcome | null;
+  /** The team's own words for the verdict. */
+  sprintGoalNote?: string | null;
   teamMembers: number;
   impediments: number;
 }
 
+/**
+ * A signal worth inspecting, never a scorecard entry.
+ *
+ * `observation` states a fact about the team's own record; `attention` points at work the team may
+ * want to inspect. There is deliberately no "good" or "bad" kind: labelling an observed number
+ * would turn it into a target.
+ */
 export interface Insight {
   id: string;
-  type: 'positive' | 'warning' | 'negative';
+  kind: 'observation' | 'attention';
+  /** Stable token mapped to an icon by the interface. */
   icon: string;
   title: string;
   description: string;
+  /** The record the signal was read from, so the claim can be checked. */
+  evidence: string;
 }
 
 // Auth types

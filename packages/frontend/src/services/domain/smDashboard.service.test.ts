@@ -39,19 +39,23 @@ describe('SmDashboardService', () => {
             { sprintId: 'sprint-1', complianceRate: 0.9, date: '2024-01-15T00:00:00Z' },
           ],
           sprintGoalAchievement: {
-            totalSprints: 5,
+            assessed: 5,
+            total: 5,
             achieved: 3,
-            partial: 1,
+            partiallyAchieved: 1,
             notAchieved: 1,
-            achievementRate: 0.6,
-            list: [
+            coveragePercentage: 100,
+            records: [
               {
                 sprintId: 'sprint-1',
                 sprintName: 'Sprint 1',
                 sprintGoal: 'Goal 1',
-                achievement: 'achieved',
+                outcome: 'ACHIEVED',
+                note: null,
+                reviewDate: '2024-01-16T00:00:00Z',
               },
             ],
+            itemCompletion: { totalItems: 10, completedItems: 8, rate: 80 },
           },
           actionItemCompletion: {
             total: 20,

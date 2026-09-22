@@ -164,6 +164,18 @@ export const GATE_CODES = {
    */
   SPRINT_REVIEW_SM_NOTES_SM_ONLY: 'GATE_SPRINT_REVIEW_SM_NOTES_SM_ONLY',
   /**
+   * "A Sprint Goal... gives the Scrum Team guidance on why it is building the Increment." The
+   * Review is where the team discusses progress toward it, so a Review of a Sprint that has a
+   * Goal cannot be completed without the team's own verdict -- otherwise the tool would have to
+   * invent one, and goal attainment would be inferred from item completion instead of judged.
+   */
+  SPRINT_REVIEW_GOAL_OUTCOME_REQUIRED: 'GATE_SPRINT_REVIEW_GOAL_OUTCOME_REQUIRED',
+  /**
+   * A verdict on a Sprint Goal that does not exist would be a judgement about nothing, and would
+   * let an unassessed Sprint be presented as assessed.
+   */
+  SPRINT_REVIEW_GOAL_OUTCOME_NOT_APPLICABLE: 'GATE_SPRINT_REVIEW_GOAL_OUTCOME_NOT_APPLICABLE',
+  /**
    * "The Sprint Review is the second-to-last event of the Sprint and the Sprint Retrospective
    * concludes the Sprint." A Retrospective cannot be completed before its Sprint Review is, or
    * the ordering the Guide prescribes has been inverted without a trace.
@@ -202,6 +214,13 @@ export const GATE_CODES = {
    * present a version bump as evidence of adaptation that did not happen.
    */
   RETROSPECTIVE_DOD_CHANGES_MISSING: 'GATE_RETROSPECTIVE_DOD_CHANGES_MISSING',
+  /**
+   * Transparency in the Guide is visibility to those doing and receiving the work, not to the
+   * whole installation. A report reads a team's own observed history -- and the documentation
+   * already promises "All report endpoints require team membership verification" -- so reading one
+   * requires membership of the team whose history it is.
+   */
+  REPORTS_TEAM_MEMBERS_ONLY: 'GATE_REPORTS_TEAM_MEMBERS_ONLY',
 } as const;
 
 export type GateCode = (typeof GATE_CODES)[keyof typeof GATE_CODES];
@@ -427,6 +446,16 @@ export const GATE_DEFINITIONS: Record<GateCode, GateDefinition> = {
     httpStatus: 403,
     i18nKey: 'sprintReviewSmNotesSmOnly',
   },
+  [GATE_CODES.SPRINT_REVIEW_GOAL_OUTCOME_REQUIRED]: {
+    code: GATE_CODES.SPRINT_REVIEW_GOAL_OUTCOME_REQUIRED,
+    httpStatus: 400,
+    i18nKey: 'sprintReviewGoalOutcomeRequired',
+  },
+  [GATE_CODES.SPRINT_REVIEW_GOAL_OUTCOME_NOT_APPLICABLE]: {
+    code: GATE_CODES.SPRINT_REVIEW_GOAL_OUTCOME_NOT_APPLICABLE,
+    httpStatus: 400,
+    i18nKey: 'sprintReviewGoalOutcomeNotApplicable',
+  },
   [GATE_CODES.SPRINT_RETROSPECTIVE_REQUIRES_REVIEW]: {
     code: GATE_CODES.SPRINT_RETROSPECTIVE_REQUIRES_REVIEW,
     httpStatus: 400,
@@ -456,6 +485,11 @@ export const GATE_DEFINITIONS: Record<GateCode, GateDefinition> = {
     code: GATE_CODES.RETROSPECTIVE_DOD_CHANGES_MISSING,
     httpStatus: 400,
     i18nKey: 'retrospectiveDodChangesMissing',
+  },
+  [GATE_CODES.REPORTS_TEAM_MEMBERS_ONLY]: {
+    code: GATE_CODES.REPORTS_TEAM_MEMBERS_ONLY,
+    httpStatus: 403,
+    i18nKey: 'reportsTeamMembersOnly',
   },
 };
 

@@ -24,6 +24,15 @@ vi.mock('../../../utils/prisma', () => ({
     retroActionItem: {
       findMany: vi.fn(),
     },
+    sprintCompletionSnapshot: {
+      findMany: vi.fn(),
+    },
+    statusChangeHistory: {
+      findMany: vi.fn(),
+    },
+    workflow: {
+      findUnique: vi.fn(),
+    },
     dailyScrumSchedule: {
       findUnique: vi.fn(),
     },
@@ -73,6 +82,11 @@ describe('SMDashboardService', () => {
     // falls back to the Monday-to-Friday week.
     vi.mocked(prisma.dailyScrumSchedule.findUnique).mockResolvedValue(null as never);
     vi.mocked(prisma.teamNonWorkingDay.findMany).mockResolvedValue([] as never);
+    // No frozen delivery records and no status history unless a test says otherwise, so a Sprint
+    // is only ever as observed as the test makes it.
+    vi.mocked(prisma.sprintCompletionSnapshot.findMany).mockResolvedValue([] as never);
+    vi.mocked(prisma.statusChangeHistory.findMany).mockResolvedValue([] as never);
+    vi.mocked(prisma.workflow.findUnique).mockResolvedValue(null as never);
   });
 
   describe('getImpedimentMetrics', () => {
@@ -685,71 +699,122 @@ describe('SMDashboardService', () => {
     const completedSprint = (overrides: Record<string, unknown> = {}) => ({
       id: 'sprint-1',
       name: 'Sprint 1',
+      status: 'COMPLETED',
       sprintGoal: 'Deliver feature X',
+      endDate: new Date('2026-09-18T00:00:00.000Z'),
+      sprintBacklogItems: [],
+      sprintReview: null,
       ...overrides,
     });
 
-    it('should mark achievement as achieved when all PBIs are DONE', async () => {
-      vi.mocked(prisma.sprint.findMany).mockResolvedValue([completedSprint()] as any);
-      vi.mocked(prisma.sprintBacklogItem.findMany).mockResolvedValue([
-        { pbiId: 'pbi-1' },
-        { pbiId: 'pbi-2' },
+    const reviewed = (
+      outcome: string,
+      overrides: Record<string, unknown> = {}
+    ): Record<string, unknown> => ({
+      sprintReview: {
+        sprintGoal: 'Deliver feature X',
+        sprintGoalOutcome: outcome,
+        sprintGoalNote: null,
+        reviewDate: new Date('2026-09-19T00:00:00.000Z'),
+      },
+      ...overrides,
+    });
+
+    it('reports the verdict the Scrum Team recorded', async () => {
+      vi.mocked(prisma.sprint.findMany).mockResolvedValue([
+        completedSprint(reviewed('ACHIEVED')),
       ] as any);
-      vi.mocked(prisma.productBacklogItem.count).mockResolvedValue(2);
 
       const result = await smDashboardService.getSprintGoalAchievement('team-1');
 
-      expect(result.list[0]!.achievement).toBe('achieved');
+      expect(result.assessed).toBe(1);
+      expect(result.total).toBe(1);
       expect(result.achieved).toBe(1);
-      expect(result.achievementRate).toBe(100);
+      expect(result.coveragePercentage).toBe(100);
+      expect(result.records[0]).toMatchObject({
+        sprintId: 'sprint-1',
+        sprintGoal: 'Deliver feature X',
+        outcome: 'ACHIEVED',
+      });
     });
 
-    it('should mark achievement as partial when some PBIs are DONE', async () => {
-      vi.mocked(prisma.sprint.findMany).mockResolvedValue([completedSprint()] as any);
-      vi.mocked(prisma.sprintBacklogItem.findMany).mockResolvedValue([
-        { pbiId: 'pbi-1' },
-        { pbiId: 'pbi-2' },
+    it('never infers a verdict from item completion', async () => {
+      // The Sprint delivered everything it planned, but the team never assessed its Goal: the
+      // dashboard must say so rather than present completion as attainment.
+      vi.mocked(prisma.sprint.findMany).mockResolvedValue([
+        completedSprint({
+          sprintBacklogItems: [
+            { pbiId: 'pbi-1', pbi: { storyPoints: 13, status: 'DONE' } },
+            { pbiId: 'pbi-2', pbi: { storyPoints: 8, status: 'DONE' } },
+          ],
+        }),
       ] as any);
-      vi.mocked(prisma.productBacklogItem.count).mockResolvedValue(1);
+      vi.mocked(prisma.sprintCompletionSnapshot.findMany).mockResolvedValue([
+        {
+          sprintId: 'sprint-1',
+          plannedPoints: 21,
+          completedPoints: 21,
+          itemCount: 2,
+          completedItemCount: 2,
+        },
+      ] as any);
 
       const result = await smDashboardService.getSprintGoalAchievement('team-1');
 
-      expect(result.list[0]!.achievement).toBe('partial');
-      expect(result.partial).toBe(1);
-      expect(result.achievementRate).toBe(0);
+      expect(result.assessed).toBe(0);
+      expect(result.achieved).toBe(0);
+      expect(result.notAchieved).toBe(0);
+      expect(result.coveragePercentage).toBe(0);
+      expect(result.records).toEqual([]);
+      // Item completion is still published -- beside the verdicts, under its own label.
+      expect(result.itemCompletion).toEqual({ totalItems: 2, completedItems: 2, rate: 100 });
     });
 
-    it('should mark achievement as not_achieved when no PBIs are DONE', async () => {
-      vi.mocked(prisma.sprint.findMany).mockResolvedValue([completedSprint()] as any);
-      vi.mocked(prisma.sprintBacklogItem.findMany).mockResolvedValue([{ pbiId: 'pbi-1' }] as any);
-      vi.mocked(prisma.productBacklogItem.count).mockResolvedValue(0);
+    it('counts coverage across every Sprint in scope', async () => {
+      vi.mocked(prisma.sprint.findMany).mockResolvedValue([
+        completedSprint({ id: 'sprint-2', name: 'Sprint 2', ...reviewed('NOT_ACHIEVED') }),
+        completedSprint({ id: 'sprint-1', name: 'Sprint 1' }),
+      ] as any);
 
       const result = await smDashboardService.getSprintGoalAchievement('team-1');
 
-      expect(result.list[0]!.achievement).toBe('not_achieved');
+      expect(result.assessed).toBe(1);
+      expect(result.total).toBe(2);
+      expect(result.coveragePercentage).toBe(50);
       expect(result.notAchieved).toBe(1);
     });
 
-    it('should mark not_achieved when sprint goal is absent', async () => {
+    it('prefers the Goal the Review actually judged over the Goal in force now', async () => {
       vi.mocked(prisma.sprint.findMany).mockResolvedValue([
-        completedSprint({ sprintGoal: null }),
+        completedSprint({
+          sprintGoal: 'A later renegotiation',
+          sprintReview: {
+            sprintGoal: 'Deliver feature X',
+            sprintGoalOutcome: 'PARTIALLY_ACHIEVED',
+            sprintGoalNote: 'Ran out of time',
+            reviewDate: new Date('2026-09-19T00:00:00.000Z'),
+          },
+        }),
       ] as any);
-      vi.mocked(prisma.sprintBacklogItem.findMany).mockResolvedValue([{ pbiId: 'pbi-1' }] as any);
-      vi.mocked(prisma.productBacklogItem.count).mockResolvedValue(1);
 
       const result = await smDashboardService.getSprintGoalAchievement('team-1');
 
-      expect(result.list[0]!.achievement).toBe('not_achieved');
-      expect(result.list[0]!.sprintGoal).toBe('');
+      expect(result.records[0]).toMatchObject({
+        sprintGoal: 'Deliver feature X',
+        outcome: 'PARTIALLY_ACHIEVED',
+        note: 'Ran out of time',
+      });
+      expect(result.partiallyAchieved).toBe(1);
     });
 
-    it('should return achievementRate 0 when no completed sprints', async () => {
+    it('returns an empty record when no Sprint has concluded', async () => {
       vi.mocked(prisma.sprint.findMany).mockResolvedValue([] as any);
 
       const result = await smDashboardService.getSprintGoalAchievement('team-1');
 
-      expect(result.list).toHaveLength(0);
-      expect(result.achievementRate).toBe(0);
+      expect(result.records).toHaveLength(0);
+      expect(result.coveragePercentage).toBe(0);
+      expect(result.itemCompletion).toEqual({ totalItems: 0, completedItems: 0, rate: null });
     });
   });
 
@@ -795,7 +860,7 @@ describe('SMDashboardService', () => {
       expect(result.eventCompliance).toEqual([]);
       expect(result.impedimentMetrics.total).toBe(0);
       expect(result.dodComplianceTrend).toEqual([]);
-      expect(result.sprintGoalAchievement.list).toEqual([]);
+      expect(result.sprintGoalAchievement.records).toEqual([]);
       expect(result.actionItemCompletion.total).toBe(0);
       expect(result.healthCheck).toEqual({ id: 'hc-1' });
     });

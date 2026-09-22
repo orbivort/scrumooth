@@ -194,8 +194,10 @@ describe('SmDashboard', () => {
         ).toBeInTheDocument();
       });
 
-      // Achievement rate should be visible
-      expect(screen.getByText('67%')).toBeInTheDocument();
+      // The recorded verdicts are shown with how many Sprints were actually assessed, rather than
+      // as a single rate that would read as a score.
+      expect(screen.getByTestId('goal-assessed-coverage')).toHaveTextContent('4 / 4');
+      expect(screen.getByTestId('goal-item-completion')).toBeInTheDocument();
     });
   });
 

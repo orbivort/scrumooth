@@ -13,13 +13,8 @@ export interface SmDashboardData {
   eventCompliance: EventComplianceSummary[];
   impedimentMetrics: ImpedimentMetrics;
   dodComplianceTrend: DoDComplianceTrend[];
-  sprintGoalAchievement: SprintGoalAchievement & {
-    achievementRate: number;
-    achieved: number;
-    partial: number;
-    notAchieved: number;
-    list: Array<{ sprintId: string; sprintName: string; sprintGoal: string; achievement: string }>;
-  };
+  /** The Scrum Team's recorded verdicts, with how many Sprints were actually assessed. */
+  sprintGoalAchievement: SprintGoalAchievement;
   actionItemCompletion: ActionItemCompletion;
   healthCheck: {
     healthCheckId: string;

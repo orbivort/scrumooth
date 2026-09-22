@@ -1331,6 +1331,111 @@
   margin: 0;
 }
 
+/* ============================================
+   SPRINT GOAL VERDICT
+   The Scrum Team's own judgement on its Sprint Goal, recorded as it concludes the Review.
+   ============================================ */
+
+.goal-verdict {
+  margin: var(--space-5) 0 0;
+  padding: var(--space-4);
+  border: var(--border-width-1) solid var(--color-border-default);
+  border-radius: var(--radius-lg);
+  background: var(--color-background-page);
+  text-align: start;
+}
+
+.goal-verdict-legend {
+  padding: 0 var(--space-2);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+}
+
+.goal-verdict-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.goal-verdict-option {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: var(--border-width-1) solid var(--color-border-default);
+  border-radius: var(--radius-full);
+  background: var(--color-background-card);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-primary);
+  cursor: pointer;
+  transition:
+    border-color var(--transition-fast),
+    background-color var(--transition-fast);
+}
+
+.goal-verdict-option:hover {
+  border-color: var(--color-primary-300);
+}
+
+.goal-verdict-option:focus-within {
+  outline: var(--border-width-2) solid var(--color-primary-500);
+  outline-offset: var(--border-width-2);
+}
+
+.goal-verdict-option input {
+  accent-color: var(--color-primary-600);
+  cursor: pointer;
+}
+
+.goal-verdict-note-label {
+  display: block;
+  margin-top: var(--space-4);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-secondary);
+}
+
+.goal-verdict-note {
+  display: block;
+  width: 100%;
+  margin-top: var(--space-2);
+  padding: var(--space-3);
+  border: var(--border-width-1) solid var(--color-border-default);
+  border-radius: var(--radius-md);
+  background: var(--color-background-card);
+  color: var(--color-text-primary);
+  font-family: inherit;
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-relaxed);
+  resize: vertical;
+}
+
+.goal-verdict-note:focus {
+  outline: var(--border-width-2) solid var(--color-primary-100);
+  outline-offset: var(--border-width-1);
+  border-color: var(--color-primary-500);
+}
+
+.goal-verdict-hint {
+  margin: var(--space-3) 0 0;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-tertiary);
+  line-height: var(--line-height-relaxed);
+}
+
+/* The recorded verdict, read back once the Review is concluded. */
+.goal-verdict-recorded {
+  margin: var(--space-3) 0 0;
+  padding: var(--space-2) var(--space-3);
+  border: var(--border-width-1) solid var(--color-primary-200);
+  border-radius: var(--radius-md);
+  background: var(--color-primary-50);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-primary-700);
+}
+
 .increment-notice {
   display: flex;
   gap: var(--space-3);

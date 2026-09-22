@@ -4,21 +4,18 @@ import type {
   TeamMetrics,
   Insight,
   StatusChangeHistoryItem,
+  VelocityData,
   ApiResponse,
 } from '../../types';
 import { coreApiService } from '../core/api.core';
 
-/** Velocity report payload: one entry per Sprint, arrays aligned by index. */
-export interface VelocityApiData {
-  sprints: string[];
-  planned: number[];
-  completed: number[];
-  /**
-   * Lifecycle status of each Sprint, aligned with `sprints`. Optional for older payloads;
-   * consumers that need completed-only velocity (Sprint Planning) should filter on it.
-   */
-  statuses?: string[];
-}
+/**
+ * Velocity report payload.
+ *
+ * Each Sprint carries its own evidence, so a consumer can tell a genuinely closed Sprint from the
+ * in-flight one, and a point whose evidence does not survive from a Sprint that delivered nothing.
+ */
+export type VelocityApiData = VelocityData;
 
 class ReportsService {
   private get api() {

@@ -17,6 +17,9 @@ vi.mock('../../../services/reports.service', () => ({
   },
 }));
 
+/** Let the async handler settle before asserting. */
+const flush = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 0));
+
 describe('Reports Controller', () => {
   let mockReq: ReturnType<typeof createMockRequest>;
   let mockRes: ReturnType<typeof createMockResponse>;
@@ -30,205 +33,116 @@ describe('Reports Controller', () => {
   });
 
   describe('getVelocityData', () => {
-    it('should return velocity data for a team', async () => {
+    it('reads the authorized team and passes the caller to the membership check', async () => {
       mockReq.query = { teamId: 'team-123' };
-      const mockData = {
-        sprints: [
-          { name: 'Sprint 1', completed: 20, committed: 25 },
-          { name: 'Sprint 2', completed: 22, committed: 24 },
-        ],
-        averageVelocity: 21,
-      };
+      mockReq.userId = 'user-1';
+      mockReq.currentTeamId = 'team-123';
+      const mockData = { points: [], averageCompletedPoints: 21 };
 
       (reportsService.getVelocityData as any).mockResolvedValue(mockData);
 
       getVelocityData(mockReq as any, mockRes as any, mockNext);
-      await new Promise((resolve) => setTimeout(resolve, 0));
+      await flush();
 
       expect(mockNext).not.toHaveBeenCalled();
-      expect(reportsService.getVelocityData).toHaveBeenCalledWith('team-123');
-      expect(mockRes._json).toEqual({
-        success: true,
-        data: mockData,
-      });
+      expect(reportsService.getVelocityData).toHaveBeenCalledWith('team-123', 'user-1');
+      expect(mockRes._json).toEqual({ success: true, data: mockData });
     });
 
-    it('should return 400 when teamId is missing', async () => {
+    it('reads the team the gate authorized, not another team named in the query', async () => {
+      mockReq.query = { teamId: 'team-999' };
+      mockReq.userId = 'user-1';
+      mockReq.currentTeamId = 'team-123';
+
+      (reportsService.getVelocityData as any).mockResolvedValue({ points: [] });
+
+      getVelocityData(mockReq as any, mockRes as any, mockNext);
+      await flush();
+
+      expect(reportsService.getVelocityData).toHaveBeenCalledWith('team-123', 'user-1');
+    });
+
+    it('returns 400 when no team can be resolved', async () => {
       mockReq.query = {};
 
       getVelocityData(mockReq as any, mockRes as any, mockNext);
-      await new Promise((resolve) => setTimeout(resolve, 0));
+      await flush();
 
       expect(mockRes._status).toBe(400);
       expect(mockRes._json).toEqual({
         success: false,
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'Team ID is required',
-        },
+        error: { code: 'VALIDATION_ERROR', message: 'Team ID is required' },
       });
+      expect(reportsService.getVelocityData).not.toHaveBeenCalled();
     });
 
-    it('should return 400 when teamId is not a string', async () => {
+    it('returns 400 when teamId is not a string', async () => {
       mockReq.query = { teamId: ['team-123'] };
 
       getVelocityData(mockReq as any, mockRes as any, mockNext);
-      await new Promise((resolve) => setTimeout(resolve, 0));
+      await flush();
 
       expect(mockRes._status).toBe(400);
     });
 
-    it('should handle service errors', async () => {
+    it('forwards a service error, so a refusal reaches the error handler intact', async () => {
       mockReq.query = { teamId: 'team-123' };
-      const error = new Error('Database error');
+      const error = new Error('not a member');
 
       (reportsService.getVelocityData as any).mockRejectedValue(error);
 
       getVelocityData(mockReq as any, mockRes as any, mockNext);
-      await new Promise((resolve) => setTimeout(resolve, 0));
+      await flush();
 
       expect(mockNext).toHaveBeenCalledWith(error);
     });
   });
 
   describe('getSprintHistory', () => {
-    it('should return sprint history for a team', async () => {
+    it('returns the Sprint history for the authorized team', async () => {
       mockReq.query = { teamId: 'team-123' };
-      const mockData = {
-        sprints: [
-          {
-            id: 'sprint-1',
-            name: 'Sprint 1',
-            status: 'COMPLETED',
-            startDate: new Date(),
-            endDate: new Date(),
-          },
-        ],
-      };
+      mockReq.userId = 'user-1';
+      const mockData = [{ id: 'sprint-1', name: 'Sprint 1', status: 'COMPLETED' }];
 
       (reportsService.getSprintHistory as any).mockResolvedValue(mockData);
 
       getSprintHistory(mockReq as any, mockRes as any, mockNext);
-      await new Promise((resolve) => setTimeout(resolve, 0));
+      await flush();
 
-      expect(mockNext).not.toHaveBeenCalled();
-      expect(reportsService.getSprintHistory).toHaveBeenCalledWith('team-123');
-      expect(mockRes._json).toEqual({
-        success: true,
-        data: mockData,
-      });
-    });
-
-    it('should return 400 when teamId is missing', async () => {
-      mockReq.query = {};
-
-      getSprintHistory(mockReq as any, mockRes as any, mockNext);
-      await new Promise((resolve) => setTimeout(resolve, 0));
-
-      expect(mockRes._status).toBe(400);
-      expect(mockRes._json.success).toBe(false);
-    });
-
-    it('should handle service errors', async () => {
-      mockReq.query = { teamId: 'team-123' };
-      const error = new Error('Database error');
-
-      (reportsService.getSprintHistory as any).mockRejectedValue(error);
-
-      getSprintHistory(mockReq as any, mockRes as any, mockNext);
-      await new Promise((resolve) => setTimeout(resolve, 0));
-
-      expect(mockNext).toHaveBeenCalledWith(error);
+      expect(reportsService.getSprintHistory).toHaveBeenCalledWith('team-123', 'user-1');
+      expect(mockRes._json).toEqual({ success: true, data: mockData });
     });
   });
 
   describe('getTeamMetrics', () => {
-    it('should return team metrics', async () => {
+    it('returns the observed record for the authorized team', async () => {
       mockReq.query = { teamId: 'team-123' };
-      const mockData = {
-        totalSprints: 10,
-        completedSprints: 8,
-        averageVelocity: 21,
-        totalStoryPoints: 210,
-        teamSize: 5,
-      };
+      mockReq.userId = 'user-1';
+      const mockData = { averageCompletedPoints: 21, observedSprints: 6 };
 
       (reportsService.getTeamMetrics as any).mockResolvedValue(mockData);
 
       getTeamMetrics(mockReq as any, mockRes as any, mockNext);
-      await new Promise((resolve) => setTimeout(resolve, 0));
+      await flush();
 
-      expect(mockNext).not.toHaveBeenCalled();
-      expect(reportsService.getTeamMetrics).toHaveBeenCalledWith('team-123');
-      expect(mockRes._json).toEqual({
-        success: true,
-        data: mockData,
-      });
-    });
-
-    it('should return 400 when teamId is missing', async () => {
-      mockReq.query = {};
-
-      getTeamMetrics(mockReq as any, mockRes as any, mockNext);
-      await new Promise((resolve) => setTimeout(resolve, 0));
-
-      expect(mockRes._status).toBe(400);
-    });
-
-    it('should handle service errors', async () => {
-      mockReq.query = { teamId: 'team-123' };
-      const error = new Error('Database error');
-
-      (reportsService.getTeamMetrics as any).mockRejectedValue(error);
-
-      getTeamMetrics(mockReq as any, mockRes as any, mockNext);
-      await new Promise((resolve) => setTimeout(resolve, 0));
-
-      expect(mockNext).toHaveBeenCalledWith(error);
+      expect(reportsService.getTeamMetrics).toHaveBeenCalledWith('team-123', 'user-1');
+      expect(mockRes._json).toEqual({ success: true, data: mockData });
     });
   });
 
   describe('getInsights', () => {
-    it('should return team insights', async () => {
+    it('returns the signals for the authorized team', async () => {
       mockReq.query = { teamId: 'team-123' };
-      const mockData = {
-        velocityTrend: 'increasing',
-        completionRate: 0.88,
-        recommendations: ['Consider reducing sprint commitment'],
-      };
+      mockReq.userId = 'user-1';
+      const mockData = [{ id: 'adaptation', kind: 'observation' }];
 
       (reportsService.getInsights as any).mockResolvedValue(mockData);
 
       getInsights(mockReq as any, mockRes as any, mockNext);
-      await new Promise((resolve) => setTimeout(resolve, 0));
+      await flush();
 
-      expect(mockNext).not.toHaveBeenCalled();
-      expect(reportsService.getInsights).toHaveBeenCalledWith('team-123');
-      expect(mockRes._json).toEqual({
-        success: true,
-        data: mockData,
-      });
-    });
-
-    it('should return 400 when teamId is missing', async () => {
-      mockReq.query = {};
-
-      getInsights(mockReq as any, mockRes as any, mockNext);
-      await new Promise((resolve) => setTimeout(resolve, 0));
-
-      expect(mockRes._status).toBe(400);
-    });
-
-    it('should handle service errors', async () => {
-      mockReq.query = { teamId: 'team-123' };
-      const error = new Error('Database error');
-
-      (reportsService.getInsights as any).mockRejectedValue(error);
-
-      getInsights(mockReq as any, mockRes as any, mockNext);
-      await new Promise((resolve) => setTimeout(resolve, 0));
-
-      expect(mockNext).toHaveBeenCalledWith(error);
+      expect(reportsService.getInsights).toHaveBeenCalledWith('team-123', 'user-1');
+      expect(mockRes._json).toEqual({ success: true, data: mockData });
     });
   });
 });

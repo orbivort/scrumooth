@@ -12,12 +12,16 @@ import {
   toIsoDate,
   type AdaptationReflection,
   type ScrumEvent,
+  type SprintGoalAchievement,
+  type SprintGoalAttainmentRecord,
+  type SprintGoalOutcome,
 } from '@scrumooth/shared';
 import {
   dailyScrumScheduleService,
   resolveCadenceWindow,
   toLocalIsoDate,
 } from './dailyScrumSchedule.service';
+import { resolveSprintCompletions, summariseItemCompletion } from './sprintCompletion';
 
 /**
  * Sort key for an impediment's declared impact. The enum's declaration order is meaningful
@@ -317,55 +321,81 @@ export const smDashboardService = {
   },
 
   /**
-   * Sprint Goal achievement rate across completed Sprints.
+   * Sprint Goal attainment across the Sprints in scope, as the Scrum Team recorded it.
+   *
+   * Attainment is the team's own judgement, recorded at its Sprint Review, so this reads recorded
+   * verdicts and nothing else. A Sprint whose Goal was never assessed is reported as unassessed --
+   * never as unmet, and never inferred from the completion of its items. The two are genuinely
+   * different things: a Sprint can meet its Goal without completing every item, and complete every
+   * item without meeting its Goal.
+   *
+   * Item completion is published beside the verdicts, under its own label, because it is useful and
+   * it is not the same fact.
    */
-  async getSprintGoalAchievement(teamId: string) {
-    const completedSprints = await prisma.sprint.findMany({
+  async getSprintGoalAchievement(teamId: string, sprintCount = 5): Promise<SprintGoalAchievement> {
+    const sprints = await prisma.sprint.findMany({
       where: { teamId, status: 'COMPLETED' },
-      select: { id: true, name: true, sprintGoal: true },
+      select: {
+        id: true,
+        name: true,
+        status: true,
+        sprintGoal: true,
+        endDate: true,
+        sprintBacklogItems: {
+          select: { pbiId: true, pbi: { select: { storyPoints: true, status: true } } },
+        },
+        sprintReview: {
+          select: {
+            sprintGoal: true,
+            sprintGoalOutcome: true,
+            sprintGoalNote: true,
+            reviewDate: true,
+          },
+        },
+      },
       orderBy: { endDate: 'desc' },
+      take: sprintCount,
     });
 
-    // The sprint goal achievement is derived from completed PBIs in the sprint
-    // that reference the sprint goal. For simplicity, we infer achievement based
-    // on the presence of a sprint goal and the completion of its PBIs.
-    const list = await Promise.all(
-      completedSprints.map(async (sprint) => {
-        const backlogItems = await prisma.sprintBacklogItem.findMany({
-          where: { sprintId: sprint.id },
-          select: { pbiId: true },
-        });
-        const pbiIds = backlogItems.map((b) => b.pbiId);
-        const donePbis = pbiIds.length
-          ? await prisma.productBacklogItem.count({
-              where: { id: { in: pbiIds }, status: 'DONE' },
-            })
-          : 0;
+    // Completion is read from the same evidence the Reports module uses, so the two surfaces can
+    // never disagree about what a Sprint delivered.
+    const completions = await resolveSprintCompletions(sprints);
 
-        let achievement: 'achieved' | 'partial' | 'not_achieved' = 'not_achieved';
-        if (!sprint.sprintGoal) {
-          achievement = 'not_achieved';
-        } else if (pbiIds.length > 0 && donePbis === pbiIds.length) {
-          achievement = 'achieved';
-        } else if (donePbis > 0) {
-          achievement = 'partial';
-        }
+    const records: SprintGoalAttainmentRecord[] = sprints.flatMap((sprint) => {
+      const review = sprint.sprintReview;
+      // The Review's own copy of the Goal is preferred: it is the text the team actually judged.
+      const sprintGoal = review?.sprintGoal ?? sprint.sprintGoal;
 
-        return {
+      if (!review?.sprintGoalOutcome || !sprintGoal) {
+        return [];
+      }
+
+      return [
+        {
           sprintId: sprint.id,
           sprintName: sprint.name,
-          sprintGoal: sprint.sprintGoal ?? '',
-          achievement,
-        };
-      })
-    );
+          sprintGoal,
+          outcome: review.sprintGoalOutcome as SprintGoalOutcome,
+          note: review.sprintGoalNote,
+          reviewDate: review.reviewDate.toISOString(),
+        },
+      ];
+    });
 
-    const achieved = list.filter((s) => s.achievement === 'achieved').length;
-    const partial = list.filter((s) => s.achievement === 'partial').length;
-    const notAchieved = list.filter((s) => s.achievement === 'not_achieved').length;
-    const achievementRate = list.length > 0 ? Math.round((achieved / list.length) * 100) : 0;
+    const assessed = records.length;
+    const countOf = (outcome: SprintGoalOutcome): number =>
+      records.filter((record) => record.outcome === outcome).length;
 
-    return { achievementRate, achieved, partial, notAchieved, list };
+    return {
+      assessed,
+      total: sprints.length,
+      achieved: countOf('ACHIEVED'),
+      partiallyAchieved: countOf('PARTIALLY_ACHIEVED'),
+      notAchieved: countOf('NOT_ACHIEVED'),
+      coveragePercentage: sprints.length > 0 ? Math.round((assessed / sprints.length) * 100) : 0,
+      records,
+      itemCompletion: summariseItemCompletion(completions.values()),
+    };
   },
 
   /**
@@ -434,7 +464,7 @@ export const smDashboardService = {
       this.getEventCompliance(teamId, sprintCount),
       this.getImpedimentMetrics(teamId, sprintDurationDays),
       this.getDoDComplianceTrend(teamId, sprintCount),
-      this.getSprintGoalAchievement(teamId),
+      this.getSprintGoalAchievement(teamId, sprintCount),
       this.getActionItemCompletion(teamId),
       teamHealthCheckService.getLatestForTeam(teamId),
     ]);

@@ -1,0 +1,46 @@
+{
+  "evidence": {
+    "completionSnapshot": "Read from each Sprint's closing record ({{recorded}} recorded, {{reconstructed}} reconstructed from status history)",
+    "dodVerifications": "Read from {{verified}} recorded Definition of Done verifications",
+    "impedimentRegister": "Read from the team's impediment register ({{total}} recorded in total)",
+    "sprintBacklogChanges": "Read from {{changes}} recorded Sprint Backlog changes",
+    "sprintGoalVerdict": "The Scrum Team's own verdict, recorded at the Sprint Review ({{assessed}} of {{sprintCount}} Sprints assessed)",
+    "sprintHistory": "Read from the record of {{sprintCount}} closed Sprints",
+    "sprintRecord": "Recorded on {{sprintName}}"
+  },
+  "insights": {
+    "activeSprintGoal": {
+      "description": "{{sprintName}} is working toward: {{sprintGoal}}",
+      "title": "Active Sprint Goal"
+    },
+    "adaptation": {
+      "description": "Bring these signals to the Sprint Retrospective and turn the ones that matter into improvements for the next Sprint.",
+      "title": "Inspect and adapt"
+    },
+    "completedPointsHistory": {
+      "description": "Across the last {{sprintCount}} observed Sprints the team completed {{average}} points on average, ranging from {{min}} to {{max}}. This is what happened, not a target, and it is not comparable with another team.",
+      "title": "Completed points history"
+    },
+    "definitionOfDone": {
+      "description": "{{compliancePercentage}}% of the Definition of Done criteria verified on the items of the observed Sprints were met ({{verified}} verifications).",
+      "title": "Definition of Done"
+    },
+    "openImpediments": {
+      "description": "{{openCount}} impediments are open; {{atRiskCount}} have been unresolved for longer than a Sprint, and the oldest has been open {{oldestAgeDays}} days.",
+      "title": "Open impediments"
+    },
+    "sprintBacklogChurn": {
+      "description": "The Sprint Backlog changed {{changes}} times during the observed Sprints; {{endangeringGoal}} of those changes were declared as endangering the Sprint Goal, and {{awaitingAcknowledgement}} are still awaiting the Product Owner's acknowledgement.",
+      "title": "Sprint Backlog changes"
+    },
+    "sprintBacklogCompletion": {
+      "description": "{{delivered}} of {{sprintCount}} observed Sprints delivered all of the points they planned. A Sprint can deliver every planned point without meeting its Sprint Goal, and meet its Sprint Goal without delivering every point.",
+      "title": "Sprint Backlog completion"
+    },
+    "sprintGoalVerdicts": {
+      "description": "The team recorded a Sprint Goal verdict on {{assessed}} of {{sprintCount}} Sprints: {{achieved}} achieved, {{partiallyAchieved}} partially achieved, {{notAchieved}} not achieved.",
+      "noneRecorded": "No Sprint Goal verdict has been recorded yet. The Sprint Review is where the team assesses how far the Sprint Goal was met.",
+      "title": "Sprint Goal assessment"
+    }
+  }
+}

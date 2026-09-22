@@ -620,7 +620,9 @@
     "upcomingSprints": "[-- Úpcómíng Spríntssssssss --]",
     "velocityDescriptiveEmpty": "[Nó cómplétéd Sprínt yét — vélócíty àppéàrs àftér thé fírst Sprínt clósésssssssssssssssssssssss.]",
     "velocityDescriptiveHint": "[Déscríptívé àvéràgé óffffffff {{count}} cómplétéd Sprínt(s) — àn óbsérvàtíón, nót à tàrgéttttttttttttttttt.]",
+    "velocityNotRecorded": "[Nót récórdéddddd]",
     "velocityRangeAria": "[Vélócíty ràngé frómmmmmmm {{min}} ttóó {{max}} stóry póíntsssss]",
+    "velocityUnrecordedHint": "[{{count}} clóséd Sprínt(s) hàvé nó récórdéd cómplétíón — léft óút óf thé ràngé ràthér thàn cóúntéd às zéróóóóóóóóóóóóóóóóóóóóóóóóóóóóóóó.]",
     "withDraftTask_one": "[ wwíítth {{count}} dràft tàskkkkk]",
     "withDraftTask_other": "[ wwíítth {{count}} dràft tàsksssss]"
   },

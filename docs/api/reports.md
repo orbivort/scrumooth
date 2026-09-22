@@ -47,14 +47,188 @@ Authorization: Bearer eyJhbGc...
 
 ## Available Reports
 
-| Report                | Endpoint                                                       | Route Group    | Description                                     |
-| --------------------- | -------------------------------------------------------------- | -------------- | ----------------------------------------------- |
-| Burndown Chart        | `GET /api/v1/sprints/:sprintId/burndown`                       | Sprints        | Sprint progress with ideal vs actual task lines |
-| DoD Compliance        | `GET /api/v1/sprints/:sprintId/dod-compliance`                 | Sprints        | Definition of Done compliance percentage        |
-| Increment Metrics     | `GET /api/v1/increments/metrics?teamId=uuid`                   | Increments     | Delivery rate and story point metrics           |
-| Impediment Statistics | `GET /api/v1/impediments/stats?teamId=uuid`                    | Impediments    | Impediment counts and resolution time           |
-| Sprint Velocity       | `GET /api/v1/sprints?teamId=uuid`                              | Sprints        | Sprint history with story points for velocity   |
-| Action Item Tracking  | `GET /api/v1/retrospectives/team/:teamId/pending-action-items` | Retrospectives | Pending vs completed retrospective action items |
+| Report                | Endpoint                                                       | Route Group    | Description                                                    |
+| --------------------- | -------------------------------------------------------------- | -------------- | -------------------------------------------------------------- |
+| Burndown Chart        | `GET /api/v1/sprints/:sprintId/burndown`                       | Sprints        | Sprint progress with ideal vs actual task lines                |
+| DoD Compliance        | `GET /api/v1/sprints/:sprintId/dod-compliance`                 | Sprints        | Definition of Done compliance percentage                       |
+| Increment Metrics     | `GET /api/v1/increments/metrics?teamId=uuid`                   | Increments     | Delivery rate and story point metrics                          |
+| Impediment Statistics | `GET /api/v1/impediments/stats?teamId=uuid`                    | Impediments    | Impediment counts and resolution time                          |
+| Sprint Velocity       | `GET /api/v1/sprints?teamId=uuid`                              | Sprints        | Sprint history with story points for velocity                  |
+| Action Item Tracking  | `GET /api/v1/retrospectives/team/:teamId/pending-action-items` | Retrospectives | Pending vs completed retrospective action items                |
+| Team Reports          | `GET /api/v1/reports/velocity?teamId=uuid`                     | Reports        | Planned vs completed points per Sprint, with provenance        |
+| Sprint History        | `GET /api/v1/reports/sprint-history?teamId=uuid`               | Reports        | Per-Sprint record: Sprint Goal verdict, points, items, members |
+| Team Metrics          | `GET /api/v1/reports/metrics?teamId=uuid`                      | Reports        | The observed record: average, range, coverage, verdicts        |
+| Observations          | `GET /api/v1/reports/insights?teamId=uuid`                     | Reports        | Signals to inspect, each naming the evidence behind it         |
+
+## Reports Module (`/api/v1/reports`)
+
+Four read-only endpoints, each scoped to one team and answered in the request's locale. They are the
+team's own observed history read back for inspection, so nothing here is a target and no figure is
+turned into an alert.
+
+### Access control
+
+The team is resolved from `teamId`, and the caller's membership of it is verified twice: by the
+team-context middleware on the route, and again in the service layer before the report cache is
+consulted. The second check matters because the cache is keyed by team alone and shared across
+callers -- answering from it first would hand a non-member another caller's payload.
+
+| Code                             | HTTP | Meaning                                                   |
+| -------------------------------- | ---- | --------------------------------------------------------- |
+| `GATE_REPORTS_TEAM_MEMBERS_ONLY` | 403  | A report belongs to the Scrum Team whose history it reads |
+
+Every read is recorded in the audit log as `REPORTS.VIEW` with the team and the report name, never
+with the payload. A request with no usable `teamId` is answered `400 BAD_REQUEST` by the
+team-context gate, which runs before any handler.
+
+### Where the numbers come from
+
+A closed Sprint's points are read from the immutable record written at the moment it closed, never
+from the live Product Backlog item statuses: a status change made later must not rewrite what a
+Sprint delivered. Where that record does not exist -- Sprints closed before it was introduced --
+completion is rebuilt from the recorded status history of the Sprint's own items, taking the latest
+transition at or before the Sprint's end date, so an item reopened afterwards still counts as done
+at the time.
+
+Every point therefore carries a `provenance`:
+
+| `provenance`    | Meaning                                                                      |
+| --------------- | ---------------------------------------------------------------------------- |
+| `recorded`      | Frozen when the Sprint closed                                                |
+| `reconstructed` | Derived from the Sprint's recorded status history                            |
+| `in_progress`   | The Sprint is still running; the reading is live and will be frozen at close |
+| `not_available` | The evidence does not survive                                                |
+
+A `not_available` point is returned as `null` and left out of every average. It is never reported as
+`0`: a missing observation and an observation of nothing are different facts. For the same reason an
+average over no observable Sprints is `null`, not `0`.
+
+### `GET /api/v1/reports/velocity`
+
+```json
+{
+  "success": true,
+  "data": {
+    "points": [
+      {
+        "sprintId": "019...",
+        "sprintName": "Sprint-2w-2601",
+        "status": "COMPLETED",
+        "plannedPoints": 21,
+        "completedPoints": 18,
+        "provenance": "recorded"
+      },
+      {
+        "sprintId": "019...",
+        "sprintName": "Sprint-2w-2602",
+        "status": "COMPLETED",
+        "plannedPoints": null,
+        "completedPoints": null,
+        "provenance": "not_available"
+      }
+    ],
+    "averageCompletedPoints": 18,
+    "observedSprints": 1,
+    "unavailableSprints": 1
+  }
+}
+```
+
+`averageCompletedPoints` is an average of the evidence, not a figure to plan to: the Guide names no
+metric as a target, and a Sprint's capacity is a judgement the Developers make about the work in
+front of them.
+
+### `GET /api/v1/reports/sprint-history`
+
+One entry per Sprint, newest first, over the last ten Sprints the team has:
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": "019...",
+      "name": "Sprint-2w-2601",
+      "startDate": "2026-01-05T00:00:00.000Z",
+      "endDate": "2026-01-16T00:00:00.000Z",
+      "status": "COMPLETED",
+      "sprintGoal": "Ship the reports view",
+      "plannedPoints": 21,
+      "completedPoints": 18,
+      "provenance": "recorded",
+      "itemCount": 5,
+      "completedItemCount": 4,
+      "sprintGoalOutcome": "PARTIALLY_ACHIEVED",
+      "sprintGoalNote": "Impediment tracking slipped into the next Sprint.",
+      "teamMembers": 5,
+      "impediments": 1
+    }
+  ]
+}
+```
+
+`sprintGoalOutcome` is the Scrum Team's own recorded verdict -- `ACHIEVED`, `PARTIALLY_ACHIEVED`, or
+`NOT_ACHIEVED` -- and is `null` when the Sprint Goal was never assessed. It is **never** derived from
+`completedItemCount`: a Sprint can meet its Goal without completing every item, and complete every
+item without meeting its Goal. Sprints whose completion could not be established carry `null` points
+and `provenance: "not_available"`.
+
+### `GET /api/v1/reports/metrics`
+
+The observed record over the last ten closed Sprints.
+
+```json
+{
+  "success": true,
+  "data": {
+    "averageCompletedPoints": 19.5,
+    "observedSprints": 6,
+    "totalSprints": 10,
+    "minCompletedPoints": 12,
+    "maxCompletedPoints": 26,
+    "completionRate": 67,
+    "sprintGoalAssessed": 4,
+    "sprintGoalVerdicts": { "achieved": 2, "partiallyAchieved": 1, "notAchieved": 1 },
+    "itemCompletion": { "totalItems": 42, "completedItems": 35, "rate": 83 },
+    "impediments": { "resolved": 7, "total": 9 }
+  }
+}
+```
+
+- `completionRate` is a points-completion signal only -- the share of _observed_ Sprints whose
+  planned points were fully delivered. It is not an assertion that the Sprint Goal was met; only
+  the team's recorded verdict says that.
+- `sprintGoalAssessed` counts Sprints carrying a recorded verdict, so coverage is visible next to
+  the distribution rather than implied by it.
+- `itemCompletion` is published beside the verdicts, under its own label, because it is useful and
+  it is a different fact.
+
+### `GET /api/v1/reports/insights`
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": "completed-points-history",
+      "kind": "observation",
+      "icon": "history",
+      "title": "Completed points history",
+      "description": "Across the last 6 observed Sprints the team completed 19.5 points on average...",
+      "evidence": "Read from each Sprint's closing record (6 recorded, 0 reconstructed from status history)"
+    }
+  ]
+}
+```
+
+`kind` is descriptive: `observation` states a fact about the team's own record, `attention` points at
+work the team may want to inspect (aging impediments, Definition of Done gaps, churn that endangers
+the Sprint Goal). There is deliberately no positive/negative kind and no velocity alert: a signal
+about the team's history is not a grade, and labelling one would turn the number behind it into a
+target. Every signal carries the `evidence` it was read from, so the claim can be checked rather
+than trusted.
+
+Insight copy is translated server-side from the request's locale.
 
 ## Endpoints
 
@@ -529,33 +703,43 @@ The burndown endpoint returns two data series:
 
 ## Velocity Tracking
 
-Velocity measures the amount of work a team completes per sprint, calculated from sprint history.
+Velocity is a description of what a team has delivered, calculated from its own closed Sprints. It
+is history, not a target: the 2020 Scrum Guide names no metric as a target, and a number that is
+policed stops being an observation.
 
 ### How to Calculate from Sprint History
 
-1. Fetch sprints for a team using `GET /api/v1/sprints?teamId=uuid`
-2. For each completed sprint, record `storyPointsCompleted`
-3. Calculate the average over the desired number of sprints:
+1. Read `GET /api/v1/reports/velocity?teamId=uuid`, which returns one point per Sprint together with
+   the evidence each point rests on.
+2. Average `completedPoints` over the points whose `provenance` is not `not_available`.
 
 ```
-Velocity = Sum(storyPointsCompleted for last N sprints) / N
+averageCompletedPoints = Sum(completedPoints for observed Sprints) / observed Sprints
 ```
 
-### Example Calculation
+The endpoint performs exactly that calculation and returns it as `averageCompletedPoints`, together
+with `observedSprints` and `unavailableSprints`, so a consumer does not have to re-derive it.
 
-| Sprint   | Story Points Committed | Story Points Completed |
-| -------- | ---------------------- | ---------------------- |
-| Sprint 3 | 22                     | 18                     |
-| Sprint 4 | 20                     | 20                     |
-| Sprint 5 | 25                     | 23                     |
+### Example
 
-**3-Sprint Velocity** = (18 + 20 + 23) / 3 = **20.3 story points**
+| Sprint   | Story Points Planned | Story Points Completed | Provenance      |
+| -------- | -------------------- | ---------------------- | --------------- |
+| Sprint 3 | 22                   | 18                     | `recorded`      |
+| Sprint 4 | 20                   | 20                     | `recorded`      |
+| Sprint 5 | 25                   | 23                     | `recorded`      |
+| Sprint 6 | 21                   | —                      | `not_available` |
+
+**Average completed points** = (18 + 20 + 23) / 3 = **20.3 story points**, over three observed
+Sprints. Sprint 6 is excluded rather than counted as zero.
 
 ### Recommendations
 
-- Use at least 3 sprints for a meaningful average
-- Exclude sprints with abnormal events (holidays, team changes) if needed
-- Track both committed vs completed points to identify over/under-commitment patterns
+- Read the average with its coverage: an average over three of ten Sprints answers a different
+  question from an average over all ten.
+- Never compare the figure across teams. Story points are estimates made by the people doing the
+  work, and a cross-team comparison turns them into a currency.
+- Never use the figure as a target or a capacity guarantee for the next Sprint. Capacity is a
+  judgement the Developers make about the work in front of them.
 
 ## DoD Compliance
 
@@ -659,12 +843,14 @@ The `summary` object in the pending action items response provides:
 
 ## Error Codes
 
-| Code                   | HTTP Status | Description                                      |
-| ---------------------- | ----------- | ------------------------------------------------ |
-| `VALIDATION_ERROR`     | 400         | Request validation failed (e.g., missing teamId) |
-| `AUTHENTICATION_ERROR` | 401         | Authentication required                          |
-| `AUTHORIZATION_ERROR`  | 403         | Insufficient permissions or not a team member    |
-| `NOT_FOUND`            | 404         | Sprint, team, or resource not found              |
+| Code                             | HTTP Status | Description                                               |
+| -------------------------------- | ----------- | --------------------------------------------------------- |
+| `VALIDATION_ERROR`               | 400         | Request validation failed                                 |
+| `BAD_REQUEST`                    | 400         | No usable team context on a `/reports/*` request          |
+| `AUTHENTICATION_ERROR`           | 401         | Authentication required                                   |
+| `AUTHORIZATION_ERROR`            | 403         | Insufficient permissions or not a team member             |
+| `GATE_REPORTS_TEAM_MEMBERS_ONLY` | 403         | A report belongs to the Scrum Team whose history it reads |
+| `NOT_FOUND`                      | 404         | Sprint, team, or resource not found                       |
 
 ## Best Practices
 
@@ -673,24 +859,31 @@ The `summary` object in the pending action items response provides:
 1. **Caching**: Cache report data on the client side with appropriate stale times (e.g., 5 minutes for burndown, 15 minutes for metrics)
 2. **Selective Fetching**: Only fetch reports that are currently displayed to the user
 3. **Date Ranges**: Use team-specific queries to limit data scope and improve performance
-4. **Error Handling**: Gracefully handle report endpoints that may return empty data for new teams
+4. **Error Handling**: Gracefully handle report endpoints that may return empty data for new teams, and render a `null` point as an explicit gap rather than as zero
 
 ### Data Interpretation
 
-1. **Context Matters**: Always interpret metrics in the context of team size, sprint length, and project complexity
-2. **Trend Analysis**: Focus on trends over time rather than single data points
-3. **Combined Metrics**: Use multiple reports together for a complete picture (e.g., velocity + impediment stats)
-4. **Avoid Vanity Metrics**: Prioritize actionable insights over impressive numbers
+1. **Context Matters**: Always interpret figures in the context of team size, Sprint length, work
+   type, and the coverage the response reports
+2. **Descriptive, Not Directive**: The Guide uses no metric as a target. Read delivered points as a
+   record of what happened, and inspect the work behind a change rather than the number itself
+3. **Combined Signals**: Read several observations together (e.g. delivered points, impediment age,
+   Definition of Done compliance) instead of optimising any one of them
+4. **Goal Attainment Is Recorded, Never Inferred**: take Sprint Goal attainment from the team's own
+   verdict in `sprintGoalOutcome`, not from item completion
 
 ### Security
 
-1. **Access Control**: All report endpoints require team membership verification
-2. **Data Isolation**: Reports are scoped to the user's team(s) only
-3. **Audit Trail**: Report access is logged for compliance purposes
+1. **Access Control**: every `/reports/*` endpoint requires membership of the team being read, and
+   answers a non-member with `GATE_REPORTS_TEAM_MEMBERS_ONLY` (403). The check runs on the route and
+   again in the service layer, before the report cache is consulted
+2. **Data Isolation**: reports are scoped to the single team named in `teamId`; there is no
+   cross-team or installation-wide report
+3. **Audit Trail**: every report read is logged as `REPORTS.VIEW` with the team and the report name
 
 ---
 
-**Last Updated**: 2026-05-10
+**Last Updated**: 2026-09-22
 
 **Related Documentation**
 

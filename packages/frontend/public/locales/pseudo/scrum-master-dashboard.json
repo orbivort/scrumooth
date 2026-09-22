@@ -49,7 +49,6 @@
     "todayFocus": "[Scrúm Vàlúé óf thé dàyyyyyyyy]"
   },
   "smDashboard": {
-    "achievementRate": "[Àchíévémént ràtéééééé]",
     "actionItemCompletion": "[Rétróspéctívé Àctíón Ítémsssssssss]",
     "adaptation": "[Àdàptàtíónnnn]",
     "adaptationNone": "[nóthíng déclàrédddddd]",
@@ -65,8 +64,14 @@
     "dailyScrumCount": "[Dàíly Scrúmsssss]",
     "dodCompliance": "[Défínítíón óf Dóné Cómplíàncéééééééééé]",
     "eventCompliance": "[Évént Cómplíàncéééééé]",
+    "goalAchieved": "[Àchíévédddd]",
+    "goalAssessedCoverage": "[Sprínts àssésséd by thé téàmmmmmmmmmm]",
+    "goalNoneAssessed": "[Nó Sprínt Góàl vérdíct hàs béén récórdéd yét. Thé Sprínt Révíéw ís whéré thé téàm récórds ónéééééééééééééééééééééééééééééé.]",
+    "goalNotAchieved": "[Nót àchíévéddddd]",
+    "goalPartiallyAchieved": "[Pàrtíàlly àchíévéddddddd]",
     "healthCheck": "[Scrúm Vàlúés Héàlth Chéckkkkkkkkk]",
     "impedimentMetrics": "[Ímpédímént Métrícsssssss]",
+    "itemCompletionNote": "[Ítém cómplétíón óvér thé sàmé Spríntsssssssssssss: {{completed}} óóff {{total}} Sprínt Bàcklóg ítéms Dóné. À sépàràté fàct fróm góàl àttàínménttttttttttttttttttttt.]",
     "loadError": "[Fàíléd tó lóàd dàshbóàrd dàtàààààààààà]",
     "missedDays_one": "[{{count}} mmííssssééd]",
     "missedDays_other": "[{{count}} mmííssssééd]",

@@ -49,7 +49,6 @@
     "todayFocus": "Valore Scrum del giorno"
   },
   "smDashboard": {
-    "achievementRate": "Tasso di raggiungimento",
     "actionItemCompletion": "Azioni della retrospettiva",
     "adaptation": "Adattamento",
     "adaptationNone": "nulla dichiarato",
@@ -65,8 +64,14 @@
     "dailyScrumCount": "Daily Scrum",
     "dodCompliance": "Conformità alla Definizione di Fatto",
     "eventCompliance": "Conformità degli eventi",
+    "goalAchieved": "Raggiunto",
+    "goalAssessedCoverage": "Sprint valutati dal team",
+    "goalNoneAssessed": "Non è ancora stato registrato alcun giudizio sull'obiettivo dello sprint. È nella Sprint Review che il team lo registra.",
+    "goalNotAchieved": "Non raggiunto",
+    "goalPartiallyAchieved": "Parzialmente raggiunto",
     "healthCheck": "Health check dei valori Scrum",
     "impedimentMetrics": "Metriche degli impedimenti",
+    "itemCompletionNote": "Completamento degli elementi sugli stessi sprint: {{completed}} dei {{total}} elementi dello Sprint Backlog completati. Un fatto distinto dal raggiungimento dell'obiettivo.",
     "loadError": "Impossibile caricare i dati della dashboard",
     "missedDays_one": "{{count}} mancato",
     "missedDays_other": "{{count}} mancati",

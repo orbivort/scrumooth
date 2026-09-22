@@ -2036,25 +2036,47 @@ class MockApiService {
   // ==================== Reports ====================
   async getVelocityData(_teamId: string): Promise<
     ApiResponse<{
-      sprints: string[];
-      planned: number[];
-      completed: number[];
-      statuses: string[];
+      points: Array<{
+        sprintId: string;
+        sprintName: string;
+        status: string;
+        plannedPoints: number | null;
+        completedPoints: number | null;
+        provenance: 'recorded' | 'reconstructed' | 'in_progress' | 'not_available';
+      }>;
+      averageCompletedPoints: number | null;
+      observedSprints: number;
+      unavailableSprints: number;
     }>
   > {
     await delay(300);
 
-    const sprints = mockVelocityData.map((v) => v.sprintName);
-    const planned = mockVelocityData.map((v) => v.planned);
-    const completed = mockVelocityData.map((v) => v.completed);
-    // The most recent entry is the in-flight Sprint: planning averages completed velocity only.
-    const statuses = mockVelocityData.map((_v, index) =>
-      index === mockVelocityData.length - 1 ? 'ACTIVE' : 'COMPLETED'
-    );
-
+    // The most recent entry is the in-flight Sprint: it is read live and labelled as such, while
+    // the closed ones stand on the record written when they closed.
+    const points = mockVelocityData.map((entry, index) => ({
+      sprintId: `mock-sprint-${entry.sprintNumber}`,
+      sprintName: entry.sprintName,
+      status: index === mockVelocityData.length - 1 ? 'ACTIVE' : 'COMPLETED',
+      plannedPoints: entry.planned,
+      completedPoints: entry.completed,
+      provenance: (index === mockVelocityData.length - 1 ? 'in_progress' : 'recorded') as
+        'recorded' | 'reconstructed' | 'in_progress' | 'not_available',
+    }));
     return {
       success: true,
-      data: { sprints, planned, completed, statuses },
+      data: {
+        points,
+        averageCompletedPoints:
+          mockVelocityData.length === 0
+            ? null
+            : Math.round(
+                (mockVelocityData.reduce((sum, entry) => sum + entry.completed, 0) /
+                  mockVelocityData.length) *
+                  10
+              ) / 10,
+        observedSprints: mockVelocityData.length,
+        unavailableSprints: 0,
+      },
     };
   }
 
@@ -2069,9 +2091,12 @@ class MockApiService {
       .map((sprint) => {
         const items = sprint.items ?? [];
         const plannedPoints = items.reduce((sum, item) => sum + (item.storyPoints ?? 0), 0);
-        const completedPoints = items
-          .filter((item) => item.status === ItemStatus.DONE)
-          .reduce((sum, item) => sum + (item.storyPoints ?? 0), 0);
+        const completedItems = items.filter((item) => item.status === ItemStatus.DONE);
+        const completedPoints = completedItems.reduce(
+          (sum, item) => sum + (item.storyPoints ?? 0),
+          0
+        );
+        const isClosed = sprint.status === SprintStatus.COMPLETED;
 
         return {
           id: sprint.id,
@@ -2080,11 +2105,14 @@ class MockApiService {
           endDate: sprint.endDate,
           status: sprint.status,
           sprintGoal: sprint.sprintGoal,
-          plannedPoints,
-          completedPoints:
-            sprint.status === SprintStatus.COMPLETED
-              ? completedPoints || plannedPoints
-              : completedPoints,
+          // Only a closed Sprint has an observation; every other state is reported as a gap.
+          plannedPoints: isClosed ? plannedPoints : null,
+          completedPoints: isClosed ? completedPoints || plannedPoints : null,
+          provenance: isClosed ? ('recorded' as const) : ('not_available' as const),
+          itemCount: isClosed ? items.length : null,
+          completedItemCount: isClosed ? completedItems.length : null,
+          sprintGoalOutcome: isClosed ? ('ACHIEVED' as const) : null,
+          sprintGoalNote: null,
           teamMembers: memberCount,
           impediments: mockImpediments.filter((i) => i.sprintId === sprint.id).length,
         };
@@ -2111,34 +2139,51 @@ class MockApiService {
       };
     });
 
-    const averageVelocity =
-      completedPointsList.length === 0
-        ? 0
-        : completedPointsList.reduce((sum, entry) => sum + entry.completedPoints, 0) /
-          completedPointsList.length;
-
-    const velocityTrend = (() => {
-      if (completedPointsList.length < 2) return 0;
-      const previous = completedPointsList[completedPointsList.length - 2]?.completedPoints ?? 0;
-      const latest = completedPointsList[completedPointsList.length - 1]?.completedPoints ?? 0;
-      if (previous === 0) return 0;
-      return Math.round(((latest - previous) / previous) * 100);
-    })();
+    const completedCounts = completedPointsList.map((entry) => entry.completedPoints);
+    const averageCompletedPoints =
+      completedCounts.length === 0
+        ? null
+        : Math.round(
+            (completedCounts.reduce((sum, points) => sum + points, 0) / completedCounts.length) * 10
+          ) / 10;
 
     const fullyDelivered = completedPointsList.filter(
       (entry) => entry.completedPoints >= entry.plannedPoints
     ).length;
     const completionRate =
       completedPointsList.length === 0
-        ? 0
+        ? null
         : Math.round((fullyDelivered / completedPointsList.length) * 100);
+
+    const itemTotals = completedSprints.reduce(
+      (acc, sprint) => {
+        const items = sprint.items ?? [];
+        acc.totalItems += items.length;
+        acc.completedItems += items.filter((item) => item.status === ItemStatus.DONE).length;
+        return acc;
+      },
+      { totalItems: 0, completedItems: 0 }
+    );
 
     const teamImpediments = mockImpediments.filter((i) => i.teamId === teamId);
 
     const metrics: TeamMetrics = {
-      averageVelocity: Math.round(averageVelocity * 10) / 10,
-      velocityTrend,
+      averageCompletedPoints,
+      observedSprints: completedCounts.length,
+      totalSprints: completedSprints.length,
+      minCompletedPoints: completedCounts.length > 0 ? Math.min(...completedCounts) : null,
+      maxCompletedPoints: completedCounts.length > 0 ? Math.max(...completedCounts) : null,
       completionRate,
+      // The demo data records no Sprint Goal verdicts, and none may be inferred.
+      sprintGoalAssessed: 0,
+      sprintGoalVerdicts: { achieved: 0, partiallyAchieved: 0, notAchieved: 0 },
+      itemCompletion: {
+        ...itemTotals,
+        rate:
+          itemTotals.totalItems > 0
+            ? Math.round((itemTotals.completedItems / itemTotals.totalItems) * 100)
+            : null,
+      },
       impediments: {
         resolved: teamImpediments.filter((i) => i.status === ImpedimentStatus.RESOLVED).length,
         total: teamImpediments.length,
@@ -2170,40 +2215,42 @@ class MockApiService {
 
     const insights: Insight[] = [
       {
-        id: 'consistent-delivery',
-        type: 'positive',
-        icon: 'positive',
-        title: 'Consistent Backlog Completion',
+        id: 'sprint-backlog-completion',
+        kind: 'observation',
+        icon: 'completion',
+        title: 'Sprint Backlog completion',
         description: allDelivered
-          ? 'All planned points were delivered in the completed sprints.'
-          : 'Some planned points remain undelivered in recent completed sprints.',
+          ? 'Every observed Sprint delivered all of the points it planned.'
+          : 'Some observed Sprints delivered fewer points than they planned.',
+        evidence: 'Read from each Sprint closing record',
       },
       {
-        id: 'impediment-trend',
-        type: openImpediments > 0 ? 'warning' : 'positive',
-        icon: openImpediments > 0 ? 'warning' : 'positive',
-        title: openImpediments > 0 ? 'Open Impediments' : 'No Open Impediments',
+        id: 'open-impediments',
+        kind: openImpediments > 0 ? 'attention' : 'observation',
+        icon: 'impediment',
+        title: openImpediments > 0 ? 'Open impediments' : 'No open impediments',
         description:
           openImpediments > 0
-            ? `${openImpediments} impediment(s) currently open. Consider addressing proactively.`
+            ? `${openImpediments} impediment(s) currently open. The Scrum Master causes their removal.`
             : 'No impediments are currently open.',
+        evidence: 'Read from the team impediment register',
       },
       {
-        id: 'velocity-improvement',
-        type: 'positive',
-        icon: 'positive',
-        title: 'Sprint Velocity',
-        description: `Completed sprints show a stable delivery cadence of ${
-          completedSprints.length || 0
-        } sprint(s).`,
+        id: 'completed-points-history',
+        kind: 'observation',
+        icon: 'history',
+        title: 'Completed points history',
+        description: `The last ${completedSprints.length} closed Sprint(s) are recorded as history. This is what happened, not a target.`,
+        evidence: 'Read from each Sprint closing record',
       },
       {
         id: 'adaptation',
-        type: 'positive',
-        icon: 'positive',
-        title: 'Inspect & Adapt',
+        kind: 'observation',
+        icon: 'adaptation',
+        title: 'Inspect and adapt',
         description:
           'Use the Sprint Retrospective to turn these signals into improvements for the next Sprint.',
+        evidence: 'Read from the observed Sprint history',
       },
     ];
 

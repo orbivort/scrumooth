@@ -13,7 +13,7 @@ import {
   type Task,
   type Impediment,
   type BurndownData,
-  type VelocityData,
+  type VelocitySeriesEntry,
   type ProductGoal,
   type ProductBacklogItem,
   type DefinitionOfDone,
@@ -1354,7 +1354,7 @@ export const mockBurndownData: BurndownData[] = [
 ];
 
 // ==================== Velocity Data ====================
-export const mockVelocityData: VelocityData[] = [
+export const mockVelocityData: VelocitySeriesEntry[] = [
   {
     sprintNumber: 1,
     sprintName: 'Sprint-2w-2601 (2026-01-05 – 2026-01-16)',

@@ -481,6 +481,8 @@ describe('SprintReview - Complete Review Validation Tests', () => {
       });
 
       const completeButton = screen.getByRole('button', { name: /Complete Sprint Review/i });
+      // A Review of a Sprint that has a Goal cannot conclude without the team's own verdict.
+      fireEvent.click(screen.getByRole('radio', { name: 'Achieved' }));
       fireEvent.click(completeButton);
 
       await waitFor(() => {
@@ -506,6 +508,8 @@ describe('SprintReview - Complete Review Validation Tests', () => {
       });
 
       const completeButton = screen.getByRole('button', { name: /Complete Sprint Review/i });
+      // A Review of a Sprint that has a Goal cannot conclude without the team's own verdict.
+      fireEvent.click(screen.getByRole('radio', { name: 'Achieved' }));
       fireEvent.click(completeButton);
 
       await waitFor(() => {
@@ -537,6 +541,8 @@ describe('SprintReview - Complete Review Validation Tests', () => {
       });
 
       const completeButton = screen.getByRole('button', { name: /Complete Sprint Review/i });
+      // A Review of a Sprint that has a Goal cannot conclude without the team's own verdict.
+      fireEvent.click(screen.getByRole('radio', { name: 'Achieved' }));
       fireEvent.click(completeButton);
 
       await waitFor(() => {
@@ -556,6 +562,8 @@ describe('SprintReview - Complete Review Validation Tests', () => {
       });
 
       const completeButton = screen.getByRole('button', { name: /Complete Sprint Review/i });
+      // A Review of a Sprint that has a Goal cannot conclude without the team's own verdict.
+      fireEvent.click(screen.getByRole('radio', { name: 'Achieved' }));
       fireEvent.click(completeButton);
 
       await waitFor(() => {
@@ -575,11 +583,33 @@ describe('SprintReview - Complete Review Validation Tests', () => {
       });
 
       const completeButton = screen.getByRole('button', { name: /Complete Sprint Review/i });
+      // A Review of a Sprint that has a Goal cannot conclude without the team's own verdict.
+      fireEvent.click(screen.getByRole('radio', { name: 'Achieved' }));
       fireEvent.click(completeButton);
 
       await waitFor(() => {
         expect(
           screen.getByText(/Are you sure you want to mark this sprint review as completed/i)
+        ).toBeInTheDocument();
+      });
+    });
+
+    it('should refuse to complete a Review until the Sprint Goal verdict is recorded', async () => {
+      setupBasicMocks();
+
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: /Complete Sprint Review/i })).toBeInTheDocument();
+      });
+
+      // No verdict selected: the Review cannot conclude, and the modal says why rather than
+      // letting the tool infer attainment from item completion.
+      fireEvent.click(screen.getByRole('button', { name: /Complete Sprint Review/i }));
+
+      await waitFor(() => {
+        expect(
+          screen.getByText(/Record the team.s verdict on the Sprint Goal/i)
         ).toBeInTheDocument();
       });
     });
@@ -594,6 +624,8 @@ describe('SprintReview - Complete Review Validation Tests', () => {
       });
 
       const completeButton = screen.getByRole('button', { name: /Complete Sprint Review/i });
+      // A Review of a Sprint that has a Goal cannot conclude without the team's own verdict.
+      fireEvent.click(screen.getByRole('radio', { name: 'Achieved' }));
       fireEvent.click(completeButton);
 
       await waitFor(() => {
@@ -625,6 +657,8 @@ describe('SprintReview - Complete Review Validation Tests', () => {
       });
 
       const completeButton = screen.getByRole('button', { name: /Complete Sprint Review/i });
+      // A Review of a Sprint that has a Goal cannot conclude without the team's own verdict.
+      fireEvent.click(screen.getByRole('radio', { name: 'Achieved' }));
       fireEvent.click(completeButton);
 
       await waitFor(() => {
@@ -654,6 +688,8 @@ describe('SprintReview - Complete Review Validation Tests', () => {
       });
 
       const completeButton = screen.getByRole('button', { name: /Complete Sprint Review/i });
+      // A Review of a Sprint that has a Goal cannot conclude without the team's own verdict.
+      fireEvent.click(screen.getByRole('radio', { name: 'Achieved' }));
       fireEvent.click(completeButton);
 
       await waitFor(() => {
@@ -673,6 +709,8 @@ describe('SprintReview - Complete Review Validation Tests', () => {
       });
 
       const completeButton = screen.getByRole('button', { name: /Complete Sprint Review/i });
+      // A Review of a Sprint that has a Goal cannot conclude without the team's own verdict.
+      fireEvent.click(screen.getByRole('radio', { name: 'Achieved' }));
       fireEvent.click(completeButton);
 
       await waitFor(() => {
@@ -704,6 +742,8 @@ describe('SprintReview - Complete Review Validation Tests', () => {
       });
 
       const completeButton = screen.getByRole('button', { name: /Complete Sprint Review/i });
+      // A Review of a Sprint that has a Goal cannot conclude without the team's own verdict.
+      fireEvent.click(screen.getByRole('radio', { name: 'Achieved' }));
       fireEvent.click(completeButton);
 
       await waitFor(() => {
@@ -733,6 +773,8 @@ describe('SprintReview - Complete Review Validation Tests', () => {
       });
 
       const completeButton = screen.getByRole('button', { name: /Complete Sprint Review/i });
+      // A Review of a Sprint that has a Goal cannot conclude without the team's own verdict.
+      fireEvent.click(screen.getByRole('radio', { name: 'Achieved' }));
       fireEvent.click(completeButton);
 
       await waitFor(() => {

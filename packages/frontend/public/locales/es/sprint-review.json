@@ -95,6 +95,13 @@
       "completeSubtitle": "Revise todos los elementos y confirme para marcar esta Sprint Review como completada",
       "completeTitle": "Completar Sprint Review",
       "confirmation": "¿Está seguro de que desea marcar esta Sprint Review como completada? Esta acción no puede ser revertida.",
+      "goalAchieved": "Logrado",
+      "goalNotAchieved": "No logrado",
+      "goalPartiallyAchieved": "Parcialmente logrado",
+      "goalVerdictHint": "Se registra al completar la revisión.",
+      "goalVerdictLegend": "¿En qué medida se alcanzó el objetivo del sprint?",
+      "goalVerdictNote": "Las propias palabras del equipo (opcional)",
+      "goalVerdictRequired": "Registra el veredicto del equipo sobre el objetivo del sprint: logrado, parcialmente logrado o no logrado. La finalización de elementos no lo sustituye.",
       "gotIt": "Entendido",
       "validationAttended": "Al menos un asistente debe estar marcado como atendido antes de completar la Sprint Review.",
       "validationAttendees": "Por favor agregue al menos un asistente antes de completar la Sprint Review.",
@@ -123,6 +130,7 @@
   "detailLabels": {
     "endDate": "Fecha de fin:",
     "sprintGoal": "Sprint Goal:",
+    "sprintGoalOutcome": "Veredicto sobre el objetivo del sprint",
     "startDate": "Fecha de inicio:",
     "status": "Estado:"
   },

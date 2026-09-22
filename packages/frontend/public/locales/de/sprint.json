@@ -620,7 +620,9 @@
     "upcomingSprints": "-- Kommende Sprints --",
     "velocityDescriptiveEmpty": "Noch kein abgeschlossener Sprint — die Velocity erscheint, sobald der erste Sprint endet.",
     "velocityDescriptiveHint": "Beschreibender Durchschnitt aus {{count}} abgeschlossenen Sprints — eine Beobachtung, kein Ziel.",
+    "velocityNotRecorded": "Nicht erfasst",
     "velocityRangeAria": "Velocity-Bereich von {{min}} bis {{max}} Story Points",
+    "velocityUnrecordedHint": "{{count}} abgeschlossene(r) Sprint(s) ohne erfassten Abschluss – nicht in die Spanne aufgenommen, statt als Null gezählt.",
     "withDraftTask_one": " mit {{count}} Entwurfsaufgabe",
     "withDraftTask_other": " mit {{count}} Entwurfsaufgaben"
   },

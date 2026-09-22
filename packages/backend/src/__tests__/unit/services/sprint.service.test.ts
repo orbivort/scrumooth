@@ -48,6 +48,10 @@ vi.mock('../../../utils/prisma', () => ({
       create: vi.fn(),
       update: vi.fn(),
     },
+    sprintCompletionSnapshot: {
+      findUnique: vi.fn(),
+      create: vi.fn(),
+    },
     sprintPlanningAttendee: {
       findMany: vi.fn(),
       findFirst: vi.fn(),
@@ -885,6 +889,13 @@ describe('SprintService', () => {
           },
           workflowState: {
             findMany: vi.fn(),
+          },
+          sprintBacklogItem: {
+            findMany: vi.fn().mockResolvedValue([]),
+          },
+          sprintCompletionSnapshot: {
+            findUnique: vi.fn().mockResolvedValue(null),
+            create: vi.fn(),
           },
         });
       });
@@ -2327,6 +2338,7 @@ describe('SprintService - Additional Coverage', () => {
       const mockCompletedSprint = { ...mockSprint, status: 'COMPLETED' };
 
       const updateManyMock = vi.fn().mockResolvedValue({ count: 0 });
+      const captureMock = vi.fn().mockResolvedValue(undefined);
       (withTransaction as any).mockImplementation(async (callback: any) => {
         return callback({
           sprint: {
@@ -2341,6 +2353,19 @@ describe('SprintService - Additional Coverage', () => {
           statusChangeHistory: {
             create: vi.fn(),
           },
+          // Closing the Sprint also freezes what it delivered, on the same client, so a Sprint
+          // cannot reach COMPLETED without the observation its status implies.
+          sprintBacklogItem: {
+            findMany: vi
+              .fn()
+              .mockResolvedValue([
+                { pbiId: 'pbi-1', pbi: { storyPoints: 8, status: 'IN_PROGRESS' } },
+              ]),
+          },
+          sprintCompletionSnapshot: {
+            findUnique: vi.fn().mockResolvedValue(null),
+            create: captureMock,
+          },
         });
       });
 
@@ -2352,6 +2377,18 @@ describe('SprintService - Additional Coverage', () => {
       // No status-change history is written for PBIs.
       expect(prisma.sprintBacklogItem.findMany).not.toHaveBeenCalled();
       expect(prisma.task.findMany).not.toHaveBeenCalled();
+      // What the Sprint delivered is recorded at close rather than re-derived from live statuses.
+      expect(captureMock).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          sprintId: 'sprint-1',
+          teamId: 'team-1',
+          plannedPoints: 8,
+          completedPoints: 0,
+          itemCount: 1,
+          completedItemCount: 0,
+          capturedBy: 'user-1',
+        }),
+      });
     });
 
     it('should close the Sprint container without running any DoD verification', async () => {
@@ -2390,6 +2427,13 @@ describe('SprintService - Additional Coverage', () => {
           },
           doDChecklistVerification: {
             findMany: dodVerificationMock,
+          },
+          sprintBacklogItem: {
+            findMany: vi.fn().mockResolvedValue([]),
+          },
+          sprintCompletionSnapshot: {
+            findUnique: vi.fn().mockResolvedValue(null),
+            create: vi.fn(),
           },
         });
       });

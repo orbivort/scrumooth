@@ -95,6 +95,13 @@
       "completeSubtitle": "[Révíéw àll ítéms ànd cónfírm tó màrk thís sprínt révíéw às cómplétédddddddddddddddddddddd]",
       "completeTitle": "[Cómplété Sprínt Révíéwwwwwwww]",
       "confirmation": "[Àré yóú súré yóú wànt tó màrk thís sprínt révíéw às cómplétéd? Thís àctíón cànnót bé úndónééééééééééééééééééééééééééééé.]",
+      "goalAchieved": "[Àchíévédddd]",
+      "goalNotAchieved": "[Nót àchíévéddddd]",
+      "goalPartiallyAchieved": "[Pàrtíàlly àchíévéddddddd]",
+      "goalVerdictHint": "[Récórdéd whén yóú cómplété thé Révíéwwwwwwwwwwwww.]",
+      "goalVerdictLegend": "[Hów fàr wàs thé Sprínt Góàl méttttttttttt?]",
+      "goalVerdictNote": "[Thé téàm's ówn wórds (óptíónàlllllllllll)]",
+      "goalVerdictRequired": "[Récórd thé téàm's vérdíct ón thé Sprínt Góàl: àchíévéd, pàrtíàlly àchíévéd, ór nót àchíévéd. Ítém cómplétíón ís nót à súbstítútéééééééééééééééééééééééééééééééééééééééé.]",
       "gotIt": "[Gót íttt]",
       "validationAttended": "[Àt léàst óné àtténdéé múst bé màrkéd às àtténdéd béfóré cómplétíng thé sprínt révíéwwwwwwwwwwwwwwwwwwwwwwwwwww.]",
       "validationAttendees": "[Pléàsé àdd àt léàst óné àtténdéé béfóré cómplétíng thé sprínt révíéwwwwwwwwwwwwwwwwwwwwww.]",
@@ -123,6 +130,7 @@
   "detailLabels": {
     "endDate": "[Énd Dàtéééé:]",
     "sprintGoal": "[Sprínt Góàlllll:]",
+    "sprintGoalOutcome": "[Sprínt Góàl vérdícttttttt]",
     "startDate": "[Stàrt Dàtééééé:]",
     "status": "[SSttààttúús:]"
   },

@@ -95,6 +95,13 @@
       "completeSubtitle": "Rivedi tutti gli elementi e conferma per contrassegnare questo Sprint Review come completato",
       "completeTitle": "Completa Sprint Review",
       "confirmation": "Sei sicuro di voler contrassegnare questo Sprint Review come completato? Questa azione non può essere annullata.",
+      "goalAchieved": "Raggiunto",
+      "goalNotAchieved": "Non raggiunto",
+      "goalPartiallyAchieved": "Parzialmente raggiunto",
+      "goalVerdictHint": "Registrato quando completi la review.",
+      "goalVerdictLegend": "Quanto è stato raggiunto l'obiettivo dello sprint?",
+      "goalVerdictNote": "Le parole del team (facoltativo)",
+      "goalVerdictRequired": "Registra il giudizio del team sull'obiettivo dello sprint: raggiunto, parzialmente raggiunto o non raggiunto. Il completamento degli elementi non lo sostituisce.",
       "gotIt": "Capisco",
       "validationAttended": "Almeno un partecipante deve essere contrassegnato come presente prima di completare il Sprint Review.",
       "validationAttendees": "Per favore aggiungi almeno un partecipante prima di completare il Sprint Review.",
@@ -123,6 +130,7 @@
   "detailLabels": {
     "endDate": "Data di fine:",
     "sprintGoal": "Sprint Goal:",
+    "sprintGoalOutcome": "Giudizio sull'obiettivo dello sprint",
     "startDate": "Data di inizio:",
     "status": "Stato:"
   },

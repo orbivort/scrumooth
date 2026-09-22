@@ -57,6 +57,7 @@ model User {
   teamMemberships        TeamMember[]
   createdTeams           Team[]                     @relation("TeamCreator")
   createdWorkflows       Workflow[]                 @relation("WorkflowCreator")
+  sprintCompletionSnapshots SprintCompletionSnapshot[] @relation("SprintCompletionCapturer")
 
   @@map("users")
 }
@@ -86,6 +87,7 @@ model Team {
   members             TeamMember[]
   timeboxes           Timebox[]
   dodVersionSnapshots DoDVersionSnapshot[]
+  sprintCompletionSnapshots SprintCompletionSnapshot[]
   creator             User?                 @relation("TeamCreator", fields: [createdBy], references: [id], onDelete: SetNull)
 
   @@index([createdBy])
@@ -207,6 +209,7 @@ model Sprint {
   capacity           SprintCapacity[]
   retrospective      SprintRetrospective?
   sprintReview       SprintReview?
+  completionSnapshot SprintCompletionSnapshot?
   healthChecks       TeamHealthCheck[]
   timeboxes          Timebox[]
   goal               ProductGoal?             @relation(fields: [goalId], references: [id], onDelete: SetNull)
@@ -798,6 +801,18 @@ model SprintReview {
   incrementId          String                @unique @db.Uuid
   reviewDate           DateTime              @db.Timestamptz(3)
   summary              String?
+  /// The Sprint Goal text the Review assessed, frozen so a later renegotiation cannot make the
+  /// record appear to have judged a goal it never saw.
+  sprintGoal           String?
+  /// The Scrum Team's own recorded verdict: `ACHIEVED` | `PARTIALLY_ACHIEVED` | `NOT_ACHIEVED`.
+  ///
+  /// Attainment is a human judgement and is never inferred from item completion -- a Sprint can
+  /// meet its Goal without completing every item, and complete every item without meeting its
+  /// Goal. NULL means the Goal was never assessed, and is reported as unassessed rather than as
+  /// unmet.
+  sprintGoalOutcome    SprintGoalOutcome?
+  /// The team's own words for why it reached that verdict.
+  sprintGoalNote       String?
   status               String                @default("in_progress")
   smNotes              String?
   createdAt            DateTime              @default(now()) @db.Timestamptz(3)
@@ -816,6 +831,50 @@ model SprintReview {
   @@index([teamId])
   @@index([reviewDate])
   @@map("sprint_reviews")
+}
+
+/// The Scrum Team's own recorded verdict on its Sprint Goal.
+///
+/// The Guide makes the Sprint Goal the single objective of the Sprint and gives the Sprint Review
+/// the job of discussing progress toward it. Attainment is therefore a judgement the team records,
+/// not a figure the tool derives: item completion and goal attainment are genuinely different
+/// things, and a metric that conflates them claims to know something it cannot know.
+enum SprintGoalOutcome {
+  ACHIEVED
+  PARTIALLY_ACHIEVED
+  NOT_ACHIEVED
+}
+
+/// The observed completion of one Sprint, frozen at the moment the Sprint closed.
+///
+/// Velocity is an observation, so it may only be read from a record that cannot change. Deriving
+/// "completed points" from the live Product Backlog items instead lets a status change made months
+/// later rewrite what a closed Sprint delivered -- which is the difference between an observation
+/// and a fabrication. The per-item set is stored as JSON because, as with `DoDVersionSnapshot`, a
+/// snapshot must never change when the live rows do; it is kept whole so the aggregate can be
+/// re-audited if it is ever doubted.
+model SprintCompletionSnapshot {
+  id                 String   @id @db.Uuid
+  sprintId           String   @unique @db.Uuid
+  teamId             String   @db.Uuid
+  /// Sum of the story points the Sprint Backlog carried at close.
+  plannedPoints      Int      @default(0)
+  /// Sum of the story points whose item was DONE at close, and only those.
+  completedPoints    Int      @default(0)
+  itemCount          Int      @default(0)
+  completedItemCount Int      @default(0)
+  /// `{ pbiId, storyPoints, completed }[]` as it stood at close.
+  items              Json
+  capturedAt         DateTime @default(now()) @db.Timestamptz(3)
+  capturedBy         String?  @db.Uuid
+  capturer           User?    @relation("SprintCompletionCapturer", fields: [capturedBy], references: [id], onDelete: SetNull)
+  sprint             Sprint   @relation(fields: [sprintId], references: [id], onDelete: Cascade)
+  team               Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@index([teamId])
+  @@index([capturedBy])
+  @@index([teamId, capturedAt])
+  @@map("sprint_completion_snapshots")
 }
 
 model ReviewAttendee {

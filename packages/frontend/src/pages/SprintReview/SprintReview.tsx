@@ -13,6 +13,7 @@ import {
   type ReviewAttendee,
   type ProductBacklogItem,
   type BacklogAdjustment,
+  type SprintGoalOutcome,
 } from '../../types';
 import { useModalFocus } from '../../hooks/useModalFocus';
 import { useMutationErrorHandler } from '../../hooks/useMutationErrorHandler';
@@ -108,6 +109,32 @@ const initialAdjustmentForm: AdjustmentFormData = {
 // Tab IDs for section navigation
 const SECTION_TAB_IDS: SectionType[] = ['overview', 'increment', 'feedback', 'adjustments'];
 
+/** The verdicts on Sprint Goal attainment the Scrum Team can record, in reading order. */
+const GOAL_OUTCOME_OPTIONS: ReadonlyArray<{
+  value: SprintGoalOutcome;
+  labelKey:
+    | 'completeReview.confirmationModal.goalAchieved'
+    | 'completeReview.confirmationModal.goalPartiallyAchieved'
+    | 'completeReview.confirmationModal.goalNotAchieved';
+}> = [
+  { value: 'ACHIEVED', labelKey: 'completeReview.confirmationModal.goalAchieved' },
+  {
+    value: 'PARTIALLY_ACHIEVED',
+    labelKey: 'completeReview.confirmationModal.goalPartiallyAchieved',
+  },
+  { value: 'NOT_ACHIEVED', labelKey: 'completeReview.confirmationModal.goalNotAchieved' },
+];
+
+/** The same copy, indexed by a recorded verdict, so the selector and the record read alike. */
+const GOAL_VERDICT_LABEL_KEYS: Record<
+  SprintGoalOutcome,
+  (typeof GOAL_OUTCOME_OPTIONS)[number]['labelKey']
+> = {
+  ACHIEVED: 'completeReview.confirmationModal.goalAchieved',
+  PARTIALLY_ACHIEVED: 'completeReview.confirmationModal.goalPartiallyAchieved',
+  NOT_ACHIEVED: 'completeReview.confirmationModal.goalNotAchieved',
+};
+
 // Pure helper functions moved outside component
 const getCategoryColor = (category: string): { bg: string; text: string } => {
   switch (category) {
@@ -201,6 +228,10 @@ export const SprintReview: React.FC = () => {
     summary: '',
   });
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  // The Scrum Team's own verdict on its Sprint Goal. Held here until the team records it: it is a
+  // judgement, so it is never derived from how many items were finished.
+  const [sprintGoalOutcome, setSprintGoalOutcome] = useState<SprintGoalOutcome | ''>('');
+  const [sprintGoalNote, setSprintGoalNote] = useState('');
 
   const teamId = currentTeam?.id;
 
@@ -276,6 +307,16 @@ export const SprintReview: React.FC = () => {
     return reviews.find((r) => r.sprintId === sprintId);
   }, [reviewsData, sprintId]);
 
+  /**
+   * The Sprint Goal this Review judges, and whether there is one to judge.
+   *
+   * The Review's own frozen copy is preferred; the Sprint's Goal is the fallback for a Review
+   * created before the verdict existed. A Sprint without a Goal is never asked for a verdict.
+   */
+  const sprintGoalForReview =
+    review?.sprintGoal ?? sprint?.sprintGoal ?? review?.sprint?.sprintGoal ?? '';
+  const hasSprintGoal = sprintGoalForReview.trim().length > 0;
+
   const { data: productGoalData } = useQuery({
     queryKey: ['sprint-review-product-goal', review?.id],
     queryFn: () => {
@@ -292,6 +333,13 @@ export const SprintReview: React.FC = () => {
       setIsReviewCompleted(true);
     }
   }, [review?.status]);
+
+  // Seed the verdict controls from whatever the Review already recorded, so a team correcting its
+  // own verdict edits the recorded one rather than starting from nothing.
+  useEffect(() => {
+    setSprintGoalOutcome(review?.sprintGoalOutcome ?? '');
+    setSprintGoalNote(review?.sprintGoalNote ?? '');
+  }, [review?.id, review?.sprintGoalOutcome, review?.sprintGoalNote]);
 
   // A Sprint may produce several Increments (e.g. via early releases and the Sprint Review
   // delivery). The Sprint Review presents all of them, so we render every Increment of the
@@ -710,6 +758,13 @@ export const SprintReview: React.FC = () => {
       );
     }
 
+    // "The Scrum Team discusses ... progress toward the Sprint Goal." A Review of a Sprint that
+    // has a Goal cannot conclude without the team's own verdict -- the alternative is the tool
+    // inferring one from item completion, which measures something else entirely.
+    if (hasSprintGoal && !review.sprintGoalOutcome && sprintGoalOutcome === '') {
+      errors.push(t('completeReview.confirmationModal.goalVerdictRequired'));
+    }
+
     if (errors.length > 0) {
       setValidationErrors(errors);
       setShowCompleteConfirmation(true);
@@ -718,7 +773,7 @@ export const SprintReview: React.FC = () => {
 
     setValidationErrors([]);
     setShowCompleteConfirmation(true);
-  }, [review, teamMembers, updateReviewMutation.isPending, t]);
+  }, [review, teamMembers, updateReviewMutation.isPending, hasSprintGoal, sprintGoalOutcome, t]);
 
   const confirmCompleteReview = useCallback(() => {
     if (validationErrors.length > 0) {
@@ -728,10 +783,19 @@ export const SprintReview: React.FC = () => {
     const updateData = {
       summary: review?.summary ?? t('completeReview.defaultSummary'),
       status: 'completed',
+      ...(sprintGoalOutcome !== '' ? { sprintGoalOutcome } : {}),
+      ...(sprintGoalNote.trim().length > 0 ? { sprintGoalNote: sprintGoalNote.trim() } : {}),
     };
     updateReviewMutation.mutate(updateData);
     setShowCompleteConfirmation(false);
-  }, [updateReviewMutation, validationErrors, review?.summary, t]);
+  }, [
+    updateReviewMutation,
+    validationErrors,
+    review?.summary,
+    sprintGoalOutcome,
+    sprintGoalNote,
+    t,
+  ]);
 
   const cancelCompleteReview = useCallback(() => {
     setShowCompleteConfirmation(false);
@@ -1104,6 +1168,49 @@ export const SprintReview: React.FC = () => {
                 <p className={styles['sprint-goal-text']}>
                   {sprint?.sprintGoal ?? t('overview.noSprintGoal')}
                 </p>
+                {/* "The Scrum Team discusses ... progress toward the Sprint Goal." The verdict is
+                    the team's own judgement, recorded as part of the event rather than derived from
+                    item completion -- and only asked for when the Sprint has a Goal to assess. */}
+                {hasSprintGoal && !isReviewCompleted && review.status !== 'completed' ? (
+                  <fieldset className={styles['goal-verdict']} data-testid="goal-verdict-fieldset">
+                    <legend className={styles['goal-verdict-legend']}>
+                      {t('completeReview.confirmationModal.goalVerdictLegend')}
+                    </legend>
+                    <div className={styles['goal-verdict-options']}>
+                      {GOAL_OUTCOME_OPTIONS.map((option) => (
+                        <label key={option.value} className={styles['goal-verdict-option']}>
+                          <input
+                            type="radio"
+                            name="sprintGoalOutcome"
+                            value={option.value}
+                            checked={sprintGoalOutcome === option.value}
+                            onChange={() => setSprintGoalOutcome(option.value)}
+                          />
+                          <span>{t(option.labelKey)}</span>
+                        </label>
+                      ))}
+                    </div>
+                    <label className={styles['goal-verdict-note-label']}>
+                      {t('completeReview.confirmationModal.goalVerdictNote')}
+                      <textarea
+                        className={styles['goal-verdict-note']}
+                        value={sprintGoalNote}
+                        maxLength={2000}
+                        rows={2}
+                        onChange={(event) => setSprintGoalNote(event.target.value)}
+                      />
+                    </label>
+                    <p className={styles['goal-verdict-hint']}>
+                      {t('completeReview.confirmationModal.goalVerdictHint')}
+                    </p>
+                  </fieldset>
+                ) : null}
+                {review.sprintGoalOutcome ? (
+                  <p className={styles['goal-verdict-recorded']}>
+                    {t('detailLabels.sprintGoalOutcome')}:{' '}
+                    {t(GOAL_VERDICT_LABEL_KEYS[review.sprintGoalOutcome])}
+                  </p>
+                ) : null}
               </div>
 
               <div className={styles['overview-card']}>

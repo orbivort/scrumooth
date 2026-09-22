@@ -2780,10 +2780,35 @@ describe('SprintPlanning Integration Tests', () => {
         apiService.getVelocityData,
         createMockApiResponse({
           data: {
-            sprints: ['Sprint A', 'Sprint B', 'Sprint C'],
-            planned: [20, 20, 20],
-            completed: [10, 20, 5],
-            statuses: ['COMPLETED', 'COMPLETED', 'ACTIVE'],
+            points: [
+              {
+                sprintId: 'sprint-a',
+                sprintName: 'Sprint A',
+                status: 'COMPLETED',
+                plannedPoints: 20,
+                completedPoints: 10,
+                provenance: 'recorded',
+              },
+              {
+                sprintId: 'sprint-b',
+                sprintName: 'Sprint B',
+                status: 'COMPLETED',
+                plannedPoints: 20,
+                completedPoints: 20,
+                provenance: 'recorded',
+              },
+              {
+                sprintId: 'sprint-c',
+                sprintName: 'Sprint C',
+                status: 'ACTIVE',
+                plannedPoints: 20,
+                completedPoints: 5,
+                provenance: 'in_progress',
+              },
+            ],
+            averageCompletedPoints: 15,
+            observedSprints: 2,
+            unavailableSprints: 0,
           },
         })
       );
@@ -2793,6 +2818,41 @@ describe('SprintPlanning Integration Tests', () => {
       // (10 + 20) / 2 = 15: the ACTIVE Sprint's 5 points must not be counted.
       await waitFor(() => {
         expect(screen.getByText('15 pts')).toBeInTheDocument();
+      });
+    });
+
+    it('reports a Sprint whose completion is not recorded as a gap, never as zero', async () => {
+      const mockSprint = createMockGeneratedSprint();
+
+      mockApiMethod(apiService.getGeneratedSprints, createMockApiResponse({ data: [mockSprint] }));
+      mockApiMethod(apiService.getProductBacklog, createMockApiResponse({ data: [] }));
+      mockApiMethod(apiService.getTeam, createMockApiResponse({ data: createMockTeam() }));
+      mockApiMethod(apiService.getSprintTasks, createMockApiResponse({ data: [] }));
+      mockApiMethod(
+        apiService.getVelocityData,
+        createMockApiResponse({
+          data: {
+            points: [
+              {
+                sprintId: 'sprint-a',
+                sprintName: 'Sprint A',
+                status: 'COMPLETED',
+                plannedPoints: null,
+                completedPoints: null,
+                provenance: 'not_available',
+              },
+            ],
+            averageCompletedPoints: null,
+            observedSprints: 0,
+            unavailableSprints: 1,
+          },
+        })
+      );
+
+      renderWithProviders(<SprintPlanning />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Not recorded')).toBeInTheDocument();
       });
     });
   });

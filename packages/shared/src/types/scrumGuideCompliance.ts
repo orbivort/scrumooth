@@ -138,11 +138,69 @@ export interface DoDComplianceTrend {
   metItems: number;
 }
 
-export interface SprintGoalAchievement {
+// --- Observed Sprint completion (shared by the Reports module and the SM dashboard) ---
+
+/**
+ * How a Sprint's observed points were obtained.
+ *
+ * `recorded` comes from the immutable snapshot written when the Sprint closed. `reconstructed` is
+ * derived from recorded status history for Sprints that closed before that snapshot existed.
+ * `in_progress` is the Sprint still running, whose reading is live and will be frozen at close.
+ * `not_available` means the evidence does not survive, and MUST NOT be rendered as zero: a missing
+ * observation and an observation of nothing are different facts.
+ */
+export type CompletionProvenance = 'recorded' | 'reconstructed' | 'in_progress' | 'not_available';
+
+/** The Scrum Team's own recorded judgement on its Sprint Goal. Never inferred from item status. */
+export type SprintGoalOutcome = 'ACHIEVED' | 'PARTIALLY_ACHIEVED' | 'NOT_ACHIEVED';
+
+/**
+ * Sprint Backlog item completion over a set of Sprints.
+ *
+ * A separate fact from goal attainment, never a stand-in for it: a Sprint can meet its Goal
+ * without completing every item, and complete every item without meeting its Goal.
+ */
+export interface SprintItemCompletion {
+  totalItems: number;
+  completedItems: number;
+  /** Null when no Sprint in scope held a Sprint Backlog item. */
+  rate: number | null;
+}
+
+/** One Sprint whose Goal the Scrum Team assessed at its Sprint Review. */
+export interface SprintGoalAttainmentRecord {
   sprintId: string;
   sprintName: string;
+  /** The Sprint Goal as it stood when the Review assessed it. */
   sprintGoal: string;
-  achievement: 'achieved' | 'partial' | 'not_achieved';
+  outcome: SprintGoalOutcome;
+  /** The team's own words for the verdict, when it gave any. */
+  note?: string | null;
+  /** When the Review recorded the verdict. */
+  reviewDate: string;
+}
+
+/**
+ * Sprint Goal attainment over the Sprints in scope, as the Scrum Team recorded it.
+ *
+ * Only recorded verdicts are counted. Sprints whose Goal was never assessed are reported as
+ * unassessed -- never as unmet, and never inferred from the completion of their items.
+ */
+export interface SprintGoalAchievement {
+  /** Sprints in scope that carry a recorded verdict. */
+  assessed: number;
+  /** Sprints in scope inspected for a verdict. */
+  total: number;
+  /** Verdict distribution, over assessed Sprints only. */
+  achieved: number;
+  partiallyAchieved: number;
+  notAchieved: number;
+  /** Share of the Sprints in scope that were assessed, 0-100. */
+  coveragePercentage: number;
+  /** Each assessed Sprint, newest first. */
+  records: SprintGoalAttainmentRecord[];
+  /** Item completion over the same scope, kept beside the verdicts rather than merged into them. */
+  itemCompletion: SprintItemCompletion;
 }
 
 export interface ActionItemCompletion {

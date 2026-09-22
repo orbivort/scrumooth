@@ -23,3 +23,57 @@
   white-space: nowrap;
   border-width: 0;
 }
+
+/* ========================================
+   PROVENANCE LEGEND
+   States where each point came from, in words first: the swatch is a secondary cue.
+   ======================================== */
+
+.chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-5);
+  margin: var(--space-4) 0 0;
+  padding: var(--space-3) 0 0;
+  list-style: none;
+  border-top: var(--border-width-1) solid var(--color-border-default);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+}
+
+.chart-legend li {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  line-height: var(--line-height-normal);
+}
+
+.legend-swatch {
+  width: var(--space-3);
+  height: var(--space-3);
+  border-radius: var(--radius-full);
+  border: var(--border-width-1) solid;
+  flex-shrink: 0;
+}
+
+.legend-recorded .legend-swatch {
+  background: var(--color-primary-500);
+  border-color: var(--color-primary-600);
+}
+
+.legend-reconstructed .legend-swatch {
+  background: var(--color-gray-300);
+  border-color: var(--color-gray-400);
+}
+
+.legend-in-progress .legend-swatch {
+  background: var(--color-primary-100);
+  border-color: var(--color-primary-400);
+}
+
+/* A gap is drawn as a dashed outline over a muted fill, so it never reads as a zero-height bar. */
+.legend-not-available .legend-swatch {
+  background: var(--color-gray-100);
+  border-color: var(--color-gray-400);
+  border-style: dashed;
+}

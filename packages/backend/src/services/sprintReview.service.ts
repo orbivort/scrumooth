@@ -2,11 +2,18 @@ import prisma from '../utils/prisma';
 import { NotFoundError, BadRequestError, ForbiddenError, localizedError } from '../utils/errors';
 import { generateUUIDv7 } from '../utils/uuid';
 import { logger } from '../utils/logger';
-import { GATE_CODES, type GateCode } from '@scrumooth/shared';
+import { GATE_CODES, type GateCode, type SprintGoalOutcome } from '@scrumooth/shared';
 import { NotificationService } from './notification.service';
 import { productBacklogService } from './backlog.service';
+import { reportsService } from './reports.service';
 import { NotificationType, type FeedbackCategory } from '../generated/prisma/client';
 import { t as requestT } from '../i18n/requestT.js';
+import {
+  auditResourceEvent,
+  AuditActions,
+  AuditEventTypes,
+  AuditResults,
+} from '../utils/auditLogger';
 
 interface ReviewAttendeeInput {
   id?: string;
@@ -46,12 +53,18 @@ interface CreateReviewData {
   incrementId?: string;
   reviewDate: Date;
   summary?: string;
+  /** The Scrum Team's own verdict on the Sprint Goal, when the Sprint has one. */
+  sprintGoalOutcome?: SprintGoalOutcome;
+  /** The team's own words for that verdict. */
+  sprintGoalNote?: string;
 }
 
 interface UpdateReviewData {
   summary?: string;
   reviewDate?: Date;
   status?: string;
+  sprintGoalOutcome?: SprintGoalOutcome;
+  sprintGoalNote?: string;
   attendees?: ReviewAttendeeInput[];
   feedback?: ReviewFeedbackInput[];
   backlogAdjustments?: ReviewAdjustmentInput[];
@@ -163,6 +176,74 @@ export const sprintReviewService = {
         GATE_CODES.SPRINT_EVENT_BEFORE_END_DATE
       );
     }
+  },
+
+  /**
+   * The Sprint Goal in force for a Sprint, or null when the Sprint never had one.
+   *
+   * Read only when a Review has to judge a Goal it did not snapshot, which is the case for a Review
+   * created before the verdict existed. A Sprint still running has a locked Sprint Goal, so this is
+   * the same text the Review would have recorded at creation.
+   */
+  async sprintGoalOf(sprintId: string): Promise<string | null> {
+    const sprint = await prisma.sprint.findUnique({
+      where: { id: sprintId },
+      select: { sprintGoal: true },
+    });
+
+    if (!sprint) {
+      throw new NotFoundError('Sprint');
+    }
+
+    return sprint.sprintGoal;
+  },
+
+  /**
+   * Refuse a verdict that judges nothing.
+   *
+   * A Sprint Goal verdict is a judgement about an objective the team committed to, so one recorded
+   * against a Sprint that has no Goal would let an unassessed Sprint be presented as assessed.
+   */
+  assertGoalOutcomeApplicable(
+    sprintGoal: string | null | undefined,
+    outcome: SprintGoalOutcome | undefined
+  ): void {
+    if (outcome !== undefined && !sprintGoal?.trim()) {
+      throw localizedError(
+        'errors:sprintReview.goalOutcomeNotApplicable',
+        {},
+        400,
+        GATE_CODES.SPRINT_REVIEW_GOAL_OUTCOME_NOT_APPLICABLE
+      );
+    }
+  },
+
+  /**
+   * Record that a Sprint Goal verdict was written.
+   *
+   * Identifiers, the verdict and the note's length -- never the note body. The trail only has to
+   * say that the team's own words were recorded, and where; quoting them would duplicate the
+   * team's reflection into a second store.
+   */
+  auditGoalOutcome(input: {
+    reviewId: string;
+    teamId: string;
+    sprintId: string;
+    outcome: SprintGoalOutcome;
+    noteLength: number;
+  }): void {
+    auditResourceEvent(
+      AuditEventTypes.SPRINT,
+      AuditActions.UPDATE,
+      AuditResults.SUCCESS,
+      { type: 'SPRINT_REVIEW_GOAL_OUTCOME', id: input.reviewId },
+      {
+        teamId: input.teamId,
+        sprintId: input.sprintId,
+        outcome: input.outcome,
+        noteLength: input.noteLength,
+      }
+    );
   },
 
   /**
@@ -399,6 +480,9 @@ export const sprintReviewService = {
 
     await this.assertTeamMember(data.teamId, userId);
 
+    // A verdict must judge a Goal that exists: a Sprint with no Sprint Goal has nothing to assess.
+    this.assertGoalOutcomeApplicable(sprint.sprintGoal, data.sprintGoalOutcome);
+
     const existingReview = await prisma.sprintReview.findUnique({
       where: { sprintId: data.sprintId },
     });
@@ -434,6 +518,11 @@ export const sprintReviewService = {
         incrementId,
         reviewDate: data.reviewDate,
         summary: data.summary,
+        // The Goal this Review judged, frozen beside the verdict: a later renegotiation must not
+        // make the record appear to have assessed a goal it never saw.
+        sprintGoal: sprint.sprintGoal,
+        sprintGoalOutcome: data.sprintGoalOutcome,
+        sprintGoalNote: data.sprintGoalNote,
         createdBy: userId,
       },
       include: {
@@ -449,6 +538,17 @@ export const sprintReviewService = {
         backlogAdjustments: true,
       },
     });
+
+    if (data.sprintGoalOutcome !== undefined) {
+      reportsService.invalidateCache(data.teamId);
+      this.auditGoalOutcome({
+        reviewId,
+        teamId: data.teamId,
+        sprintId: data.sprintId,
+        outcome: data.sprintGoalOutcome,
+        noteLength: data.sprintGoalNote?.length ?? 0,
+      });
+    }
 
     return {
       ...review,
@@ -560,8 +660,36 @@ export const sprintReviewService = {
     // reached its end date first: the Guide places the Review at the end of the Sprint, so
     // completing it early would close a Sprint that never ran its course.
     const isCompleting = data.status === 'completed' && existing.status !== 'completed';
+
+    // The Goal this Review judges: the one it already snapshotted, or the Sprint's own Goal for a
+    // Review created before the verdict was recorded. Resolved only when a verdict or a conclusion
+    // is actually being recorded, so an ordinary save does not pay for a lookup it has no use for.
+    const goal =
+      data.sprintGoalOutcome !== undefined || isCompleting
+        ? (existing.sprintGoal ?? (await this.sprintGoalOf(existing.sprintId)))
+        : null;
+
+    if (data.sprintGoalOutcome !== undefined) {
+      this.assertGoalOutcomeApplicable(goal, data.sprintGoalOutcome);
+    }
+
     if (isCompleting) {
       await this.assertSprintEnded(existing.sprintId);
+
+      // "The Scrum Team discusses ... progress toward the Sprint Goal." Concluding the event
+      // without the team's own verdict would leave the tool to infer attainment from item
+      // completion, so the verdict is what concluding a Review requires. Only at conclusion: a
+      // Review is assembled over its session, and the judgement is what the session produces. A
+      // Sprint with no Sprint Goal is never asked for one.
+      const outcome = data.sprintGoalOutcome ?? existing.sprintGoalOutcome;
+      if (goal?.trim() && outcome == null) {
+        throw localizedError(
+          'errors:sprintReview.goalOutcomeRequired',
+          {},
+          400,
+          GATE_CODES.SPRINT_REVIEW_GOAL_OUTCOME_REQUIRED
+        );
+      }
     }
 
     // Child rows are synced by id, not deleted and recreated: the frontend resends the whole
@@ -608,12 +736,21 @@ export const sprintReviewService = {
         summary?: string;
         reviewDate?: Date;
         status?: string;
+        sprintGoal?: string | null;
+        sprintGoalOutcome?: SprintGoalOutcome;
+        sprintGoalNote?: string;
         updatedBy?: string;
       } = {};
 
       if (data.summary !== undefined) updateData.summary = data.summary;
       if (data.reviewDate !== undefined) updateData.reviewDate = data.reviewDate;
       if (data.status !== undefined) updateData.status = data.status;
+      if (data.sprintGoalOutcome !== undefined) {
+        updateData.sprintGoalOutcome = data.sprintGoalOutcome;
+        // Snapshot the Goal the verdict judges, for a Review created before that was recorded.
+        updateData.sprintGoal = goal;
+      }
+      if (data.sprintGoalNote !== undefined) updateData.sprintGoalNote = data.sprintGoalNote;
       if (userId) updateData.updatedBy = userId;
 
       if (Object.keys(updateData).length > 0) {
@@ -802,6 +939,22 @@ export const sprintReviewService = {
             ownerId: notification.ownerId,
           });
         }
+      }
+    }
+
+    // The reports read Sprint Goal attainment out of the recorded verdicts, so a review that
+    // recorded or changed one makes the cached coverage stale.
+    if (data.sprintGoalOutcome !== undefined || isCompleting) {
+      reportsService.invalidateCache(existing.teamId);
+
+      if (data.sprintGoalOutcome !== undefined) {
+        this.auditGoalOutcome({
+          reviewId: id,
+          teamId: existing.teamId,
+          sprintId: existing.sprintId,
+          outcome: data.sprintGoalOutcome,
+          noteLength: data.sprintGoalNote?.length ?? 0,
+        });
       }
     }
 

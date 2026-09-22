@@ -208,12 +208,46 @@ const SmDashboardContent: React.FC = () => {
       <div className={styles.grid}>
         <div className={styles.section} data-testid="sprint-goal">
           <h2 className={styles['section-title']}>{t('smDashboard.sprintGoalAchievement')}</h2>
+          {/* The Scrum Team's own recorded verdicts. Sprints it never assessed are reported as
+              unassessed -- never as unmet, and never inferred from item completion. */}
           <div className={styles.stat}>
-            <span className={styles['stat-value']}>
-              {dashboard.sprintGoalAchievement.achievementRate}%
+            <span className={styles['stat-value']} data-testid="goal-assessed-coverage">
+              {dashboard.sprintGoalAchievement.assessed} / {dashboard.sprintGoalAchievement.total}
             </span>
-            <span className={styles['stat-label']}>{t('smDashboard.achievementRate')}</span>
+            <span className={styles['stat-label']}>{t('smDashboard.goalAssessedCoverage')}</span>
           </div>
+          <ul className={styles['verdict-list']}>
+            <li>
+              <span className={styles['verdict-label']}>{t('smDashboard.goalAchieved')}</span>
+              <span className={styles['verdict-value']}>
+                {dashboard.sprintGoalAchievement.achieved}
+              </span>
+            </li>
+            <li>
+              <span className={styles['verdict-label']}>
+                {t('smDashboard.goalPartiallyAchieved')}
+              </span>
+              <span className={styles['verdict-value']}>
+                {dashboard.sprintGoalAchievement.partiallyAchieved}
+              </span>
+            </li>
+            <li>
+              <span className={styles['verdict-label']}>{t('smDashboard.goalNotAchieved')}</span>
+              <span className={styles['verdict-value']}>
+                {dashboard.sprintGoalAchievement.notAchieved}
+              </span>
+            </li>
+          </ul>
+          {dashboard.sprintGoalAchievement.assessed === 0 ? (
+            <p className={styles.note}>{t('smDashboard.goalNoneAssessed')}</p>
+          ) : null}
+          {/* Item completion is a different fact from goal attainment, so it is stated as one. */}
+          <p className={styles.note} data-testid="goal-item-completion">
+            {t('smDashboard.itemCompletionNote', {
+              completed: dashboard.sprintGoalAchievement.itemCompletion.completedItems,
+              total: dashboard.sprintGoalAchievement.itemCompletion.totalItems,
+            })}
+          </p>
         </div>
 
         <div className={styles.section} data-testid="action-items">

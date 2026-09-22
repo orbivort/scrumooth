@@ -95,6 +95,13 @@
       "completeSubtitle": "Review all items and confirm to mark this sprint review as completed",
       "completeTitle": "Complete Sprint Review",
       "confirmation": "Are you sure you want to mark this sprint review as completed? This action cannot be undone.",
+      "goalAchieved": "Achieved",
+      "goalNotAchieved": "Not achieved",
+      "goalPartiallyAchieved": "Partially achieved",
+      "goalVerdictHint": "Recorded when you complete the Review.",
+      "goalVerdictLegend": "How far was the Sprint Goal met?",
+      "goalVerdictNote": "The team's own words (optional)",
+      "goalVerdictRequired": "Record the team's verdict on the Sprint Goal: achieved, partially achieved, or not achieved. Item completion is not a substitute.",
       "gotIt": "Got it",
       "validationAttended": "At least one attendee must be marked as attended before completing the sprint review.",
       "validationAttendees": "Please add at least one attendee before completing the sprint review.",
@@ -123,6 +130,7 @@
   "detailLabels": {
     "endDate": "End Date:",
     "sprintGoal": "Sprint Goal:",
+    "sprintGoalOutcome": "Sprint Goal verdict",
     "startDate": "Start Date:",
     "status": "Status:"
   },

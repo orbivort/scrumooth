@@ -228,6 +228,11 @@ vi.mock('./domain/retrospective.service', () => ({
     addRetroAttendee: vi.fn().mockResolvedValue({}),
     updateRetroAttendee: vi.fn().mockResolvedValue({}),
     deleteRetroAttendee: vi.fn().mockResolvedValue({}),
+    // The DoD inspection and the action-item follow-through the API facade also binds. A partial
+    // mock leaves those undefined and the facade fails to construct.
+    applyDodChanges: vi.fn().mockResolvedValue({ data: {} }),
+    materializeActionItem: vi.fn().mockResolvedValue({ data: {} }),
+    linkActionItemToPbi: vi.fn().mockResolvedValue({ data: {} }),
   },
 }));
 

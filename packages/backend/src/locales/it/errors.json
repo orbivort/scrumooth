@@ -56,6 +56,9 @@
     "successMetricsRequired": "Un obiettivo di prodotto deve dichiarare almeno una metrica di successo: indica come il team saprà che lo stato futuro è stato raggiunto."
   },
   "recordNotFound": "Record non trovato",
+  "reports": {
+    "teamMembersOnly": "Un report legge la storia osservata di un team: ciò a cui si è impegnato, ciò che ha consegnato e ciò che ha ispezionato. In Scrum la trasparenza è visibilità per chi svolge e riceve il lavoro, non per l'intera installazione, quindi solo un membro di quel team può leggere i suoi report."
+  },
   "retrospective": {
     "actionItemLinked": "Questo miglioramento è già portato dall'elemento di Product Backlog \"{{title}}\", quindi conta come affrontato. Rimuovi il collegamento prima di segnarlo come non affrontato.",
     "dodChangesMissing": "La retrospettiva non ha registrato alcuna riflessione sulla Definition of Done, quindi non c'è nulla da applicare. Esamina prima almeno un criterio.",
@@ -99,6 +102,8 @@
   },
   "sprintReview": {
     "eventBeforeEndDate": "La Sprint Review esamina il risultato dello sprint e la retrospettiva dello sprint lo conclude, quindi nessuna delle due può essere completata prima della data di fine dello sprint ({{endDate}}).",
+    "goalOutcomeNotApplicable": "Questo sprint non ha un obiettivo dello sprint, quindi non c'è nulla da valutare. Il raggiungimento dell'obiettivo è un giudizio su un obiettivo a cui il team si è impegnato.",
+    "goalOutcomeRequired": "La Sprint Review è il momento in cui il team discute i progressi verso l'obiettivo dello sprint, quindi per completare questa review serve il giudizio del team stesso: raggiunto, parzialmente raggiunto o non raggiunto. Il completamento degli elementi non lo sostituisce: uno sprint può raggiungere il proprio obiettivo senza completare ogni elemento, e completare ogni elemento senza raggiungere il proprio obiettivo.",
     "retrospectiveRequiresReview": "La Sprint Review è il penultimo evento dello sprint e la retrospettiva dello sprint conclude lo sprint. Completa la Sprint Review prima di completare la retrospettiva.",
     "smNotesSmOnly": "Le note dello Scrum Master sono osservazioni di coaching sulla Sprint Review: solo lo Scrum Master del team può scriverle.",
     "teamMembersOnly": "La Sprint Review è l'evento proprio del suo Scrum Team: solo un membro di quel team può registrare le presenze, lasciare feedback, adattare il Product Backlog o completarla."

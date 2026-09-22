@@ -620,7 +620,9 @@
     "upcomingSprints": "-- Sprint Futuri --",
     "velocityDescriptiveEmpty": "Nessuno sprint completato finora: la velocità compare quando il primo sprint si chiude.",
     "velocityDescriptiveHint": "Media descrittiva di {{count}} sprint completati — un'osservazione, non un obiettivo.",
+    "velocityNotRecorded": "Non registrato",
     "velocityRangeAria": "Range velocità da {{min}} a {{max}} story points",
+    "velocityUnrecordedHint": "{{count}} sprint conclusi senza chiusura registrata: esclusi dall'intervallo invece di contare come zero.",
     "withDraftTask_one": " con {{count}} task bozza",
     "withDraftTask_other": " con {{count}} task bozza"
   },
