@@ -14,6 +14,8 @@
   "databaseError": "A database error occurred",
   "developerOnlySizing": "Only Developers can set story points, as the Developers who perform the work are responsible for sizing.",
   "dodNotVerified": "This item cannot be marked Done until every active Definition of Done item is verified. {{count}} active item(s) still need verification.",
+  "dodRequired": "Nothing is Done until the team has defined what Done means, so a Definition of Done must keep at least one active item. An empty checklist would let every item be marked Done unchecked.",
+  "dodTeamMembersOnly": "The Definition of Done is the Scrum Team's own agreement about what \"Done\" means: only a member of that team can read or change it.",
   "emailAlreadyExists": "An account with email {{email}} already exists",
   "entityNotFound": "{{entity}} not found",
   "fieldAlreadyExists": "{{field}} already exists",
@@ -29,7 +31,13 @@
   },
   "increment": {
     "alreadyDelivered": "This Increment has already been delivered and cannot be delivered again.",
-    "deliveredLocked": "This Increment has been delivered and can no longer be changed."
+    "deliveredLocked": "This Increment has been delivered or archived and can no longer be changed.",
+    "deliveryRequiresMethod": "An Increment is recorded as delivered through the deliver action, which captures how it reached users. Record the delivery method instead of writing the status directly.",
+    "integrationRequired": "This Increment cannot be verified or delivered until its integration with every prior Increment has passed. Record the required integration tests first.",
+    "pbisNotOfTeam": "Every item an Increment contains must belong to this team's Product Backlog.",
+    "sprintNotOfTeam": "An Increment can only be composed from a Sprint of the team that owns it.",
+    "teamMembersOnly": "The Increment belongs to its Scrum Team: only a member of that team can read, verify, or deliver it.",
+    "usabilityRequired": "This Increment cannot be verified or delivered before its usable condition is attested in writing. Record the usability evidence first."
   },
   "invalidCredentials": "Invalid email or password",
   "invalidReference": "Invalid reference",

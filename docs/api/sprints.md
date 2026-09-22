@@ -44,6 +44,8 @@ The Sprints API provides comprehensive sprint lifecycle management capabilities 
 - Definition of Done compliance reporting
 - Backlog change history tracking
 
+> **Increments and Sprints.** A Sprint's Increment is composed automatically as its items reach `DONE`, and the outcome of that composition is reported back on the item update. If a composition was skipped or failed, `POST /api/v1/increments/reconcile` recomposes the Sprint's open Increment from its Done items — see the [Increments API](./increments.md#reconcile-sprint-increment).
+
 ## Authentication
 
 All sprint endpoints require authentication. Include the access token in your request:
@@ -2054,6 +2056,7 @@ GET /api/v1/sprints/:sprintId/dod-compliance
 **Authentication**
 
 - Required
+- The caller must be a member of the team that owns the Sprint: the report describes the team's own commitment, and the verifications it lists are the team's (`403 GATE_DOD_TEAM_MEMBERS_ONLY`).
 
 **Path Parameters**
 

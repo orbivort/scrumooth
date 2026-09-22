@@ -53,8 +53,10 @@ export const getDoDHistory = asyncHandler(async (req: Request, res: Response) =>
     return res.status(400).json({ success: false, error: { message: 'Team ID is required' } });
   }
 
-  const dod = await definitionOfDoneService.getDefinitionOfDone(teamId);
-  return res.json(createSuccessResponse(dod ? [dod] : []));
+  // The Definition of Done is append-only: every superseded version is preserved as a snapshot,
+  // and the live row is reported as the current version of the same list.
+  const versions = await definitionOfDoneService.getDoDVersionSnapshots(teamId);
+  return res.json(createSuccessResponse(versions));
 });
 
 export const verifyDoDForPBI = asyncHandler(async (req: Request, res: Response) => {
@@ -94,11 +96,16 @@ export const verifyDoDForPBI = asyncHandler(async (req: Request, res: Response) 
 
 export const getDoDVerificationsForPBI = asyncHandler(async (req: Request, res: Response) => {
   const id = getParamValue(req.params.id);
+  const userId = req.userId;
 
   if (!id) {
     return res.status(400).json({ success: false, error: { message: 'PBI ID is required' } });
   }
 
-  const verifications = await definitionOfDoneService.getDoDVerificationsForPBI(id);
+  if (!userId) {
+    return res.status(401).json({ success: false, error: { message: 'User not authenticated' } });
+  }
+
+  const verifications = await definitionOfDoneService.getDoDVerificationsForPBI(id, userId);
   return res.json(createSuccessResponse(verifications));
 });

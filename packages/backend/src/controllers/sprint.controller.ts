@@ -438,6 +438,12 @@ export const getDoDComplianceReport = asyncHandler(async (req: Request, res: Res
   if (!sprintId) {
     throw new BadRequestError('Sprint ID is required');
   }
-  const report = await definitionOfDoneService.getDoDComplianceReport(sprintId);
+  const userId = req.userId ?? req.user?.id;
+  if (!userId) {
+    throw new BadRequestError('User not authenticated');
+  }
+  // The Definition of Done belongs to the Scrum Team that owns the Sprint, so the report is
+  // readable only by its members.
+  const report = await definitionOfDoneService.getDoDComplianceReport(sprintId, userId);
   res.json(createSuccessResponse(report));
 });

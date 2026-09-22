@@ -5,14 +5,23 @@ import * as dodController from '../controllers/dod.controller';
 import * as dorController from '../controllers/dor.controller';
 import * as healthCheckController from '../controllers/teamHealthCheck.controller';
 import { authenticate, requireRoles } from '../middleware/auth.middleware';
+import { createRequireTeamContext } from '../middleware/teamContext.middleware';
 import { validateBody, validateParams } from '../middleware/validation.middleware';
-import { UserRole } from '@scrumooth/shared';
+import { GATE_CODES, UserRole } from '@scrumooth/shared';
 import { z } from 'zod';
 
 const router: RouterType = Router();
 
 // All routes require authentication
 router.use(authenticate);
+
+// The Definition of Done is "created by the Scrum Team" for its own product, so it belongs to the
+// team that owns it: reading or changing one requires membership. The refusal carries the module's
+// own gate code so an integrator can branch on it without parsing the message.
+const requireDoDTeamContext = createRequireTeamContext({
+  messageKey: 'errors:dodTeamMembersOnly',
+  gateCode: GATE_CODES.DOD_TEAM_MEMBERS_ONLY,
+});
 
 // Validation schemas
 const createTeamSchema = z.object({
@@ -161,34 +170,39 @@ router.post('/select-team', teamController.selectTeam);
 /**
  * @route   GET /api/v1/teams/:teamId/definition-of-done
  * @desc    Get Definition of Done for a team
- * @access  Private
+ * @access  Private (team members)
  */
 router.get(
   '/:teamId/definition-of-done',
   validateParams(teamIdSchema),
+  requireDoDTeamContext,
   dodController.getDefinitionOfDone
 );
 
 /**
  * @route   PUT /api/v1/teams/:teamId/definition-of-done
- * @desc    Update Definition of Done for a team
- * @access  Private (Scrum Master)
+ * @desc    Replace the Definition of Done with a new version. Refused when the new version would
+ *          hold no active item, and every superseded version is preserved in the history.
+ * @access  Private (team members) — the Definition of Done is the Scrum Team's own agreement
+ *          about what "Done" means, not a role's private setting.
  */
 router.put(
   '/:teamId/definition-of-done',
   validateParams(teamIdSchema),
+  requireDoDTeamContext,
   validateBody(updateDoDSchema),
   dodController.updateDefinitionOfDone
 );
 
 /**
  * @route   GET /api/v1/teams/:teamId/definition-of-done/history
- * @desc    Get Definition of Done history for a team
- * @access  Private
+ * @desc    Get the append-only Definition of Done version history for a team, newest first
+ * @access  Private (team members)
  */
 router.get(
   '/:teamId/definition-of-done/history',
   validateParams(teamIdSchema),
+  requireDoDTeamContext,
   dodController.getDoDHistory
 );
 

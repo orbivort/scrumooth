@@ -90,6 +90,38 @@ class IncrementService {
     const { data } = await this.api.get(`/increments/${incrementId}/chain`);
     return data;
   }
+
+  // --- Increment usability attestation and composition repair ---
+
+  /**
+   * Record the written evidence that the Increment is "in usable condition". Required before the
+   * Increment can be verified or delivered.
+   */
+  async verifyUsability(incrementId: string, evidence: string): Promise<ApiResponse<Increment>> {
+    const { data } = await this.api.post(`/increments/${incrementId}/verify-usability`, {
+      evidence,
+    });
+    return data;
+  }
+
+  /**
+   * Recompose a Sprint's open Increment from its Done items, repairing a composition that was
+   * skipped or failed when an item was marked Done.
+   */
+  async reconcileIncrement(
+    teamId: string,
+    sprintId: string
+  ): Promise<
+    ApiResponse<{
+      incrementId: string;
+      addedPbiIds: string[];
+      skippedPbiIds: string[];
+      totalStoryPoints: number;
+    }>
+  > {
+    const { data } = await this.api.post('/increments/reconcile', { teamId, sprintId });
+    return data;
+  }
 }
 
 export const incrementService = new IncrementService();

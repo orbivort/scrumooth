@@ -41,6 +41,15 @@ The **Definition of Done (DoD)** is a shared agreement within a Scrum team on wh
 - **Evolving**: The DoD should be regularly reviewed and improved during retrospectives to raise the quality bar over time
 - **Per-Team**: Each team defines its own DoD, which may differ from other teams based on context and maturity
 
+### What the API enforces
+
+The DoD is the Increment's commitment, so the API holds four rules around it rather than treating it as a setting:
+
+- **It cannot be emptied.** A DoD must keep at least one active item (`400 GATE_DOD_REQUIRED`). An empty checklist would silently satisfy the Done gate — the one call that could defeat the rule the DoD exists to enforce.
+- **Work cannot be marked Done without it.** A Product Backlog item cannot transition to `DONE` while the team has no active DoD item, and every active item must be verified for it (`400 GATE_DOD_REQUIRED`, `400 GATE_DOD_NOT_VERIFIED`).
+- **It belongs to its team.** Reading or changing a team's DoD, recording a verification against one of its items, and reading its Sprint compliance report all require membership of that team (`403 GATE_DOD_TEAM_MEMBERS_ONLY`).
+- **It is append-only.** `GET /history` lists every version the DoD has had, newest first, with the current version marked. A change preserves the version it supersedes instead of erasing it.
+
 ### Common DoD Criteria Examples
 
 - Code has been peer-reviewed
@@ -176,7 +185,7 @@ curl -X GET https://api.scrumooth.dev/api/v1/teams/550e8400-e29b-41d4-a716-44665
 
 ### Update Team DoD
 
-Update the Definition of Done for a team. Replaces all existing items. Requires Scrum Master role.
+Replace the Definition of Done for a team with a new version.
 
 **Endpoint**
 
@@ -187,7 +196,13 @@ PUT /api/v1/teams/:teamId/definition-of-done
 **Authentication**
 
 - Required
-- Scrum Master role required
+- The caller must be a member of the team. The DoD is "created by the Scrum Team" for its own product, so it is the team's agreement rather than a single role's setting.
+
+**Behaviour**
+
+- All existing items are replaced by the supplied list, and the version is incremented.
+- **The version being superseded is preserved**: the update writes an append-only snapshot of it inside the same transaction, so `GET /history` can show what the team previously worked to and who changed it.
+- **A DoD with no active item is refused** with `400 GATE_DOD_REQUIRED`.
 
 **Path Parameters**
 
@@ -302,7 +317,7 @@ curl -X PUT https://api.scrumooth.dev/api/v1/teams/550e8400-e29b-41d4-a716-44665
 
 ### Get DoD Version History
 
-Get the version history of the team's Definition of Done, showing how it has evolved over time.
+Get the append-only version history of the team's Definition of Done, newest first, so it is auditable over time: what the team previously worked to, when it changed, and who changed it.
 
 **Endpoint**
 
@@ -313,18 +328,15 @@ GET /api/v1/teams/:teamId/definition-of-done/history
 **Authentication**
 
 - Required
-- User must be a team member
+- The caller must be a member of the team
 
 **Path Parameters**
 
 - `teamId` (string, required): Team UUID
 
-**Query Parameters**
-
-- `page` (integer, optional): Page number (default: 1)
-- `limit` (integer, optional): Items per page (default: 20, max: 100)
-
 **Success Response**
+
+The response is an array of versions, newest first. `isCurrent` marks the version the team works to now; every other entry is a preserved snapshot of a superseded version. A team that has never changed its DoD sees exactly one entry.
 
 ```http
 HTTP/1.1 200 OK
@@ -332,77 +344,42 @@ Content-Type: application/json
 
 {
   "success": true,
-  "data": {
-    "history": [
-      {
-        "id": "550e8400-e29b-41d4-a716-446655440030",
-        "version": 2,
-        "items": [
-          {
-            "id": "550e8400-e29b-41d4-a716-446655440021",
-            "description": "Code has been peer-reviewed by at least one team member",
-            "order": 1
-          },
-          {
-            "id": "550e8400-e29b-41d4-a716-446655440022",
-            "description": "Unit tests pass with at least 80% coverage",
-            "order": 2
-          },
-          {
-            "id": "550e8400-e29b-41d4-a716-446655440023",
-            "description": "Integration tests pass in staging environment",
-            "order": 3
-          },
-          {
-            "id": "550e8400-e29b-41d4-a716-446655440024",
-            "description": "Documentation has been updated",
-            "order": 4
-          }
-        ],
-        "updatedBy": {
-          "id": "550e8400-e29b-41d4-a716-446655440001",
-          "firstName": "John",
-          "lastName": "Doe"
-        },
-        "createdAt": "2026-04-29T13:00:00.000Z"
-      },
-      {
-        "id": "550e8400-e29b-41d4-a716-446655440031",
-        "version": 1,
-        "items": [
-          {
-            "id": "550e8400-e29b-41d4-a716-446655440011",
-            "description": "Code has been peer-reviewed",
-            "order": 1
-          },
-          {
-            "id": "550e8400-e29b-41d4-a716-446655440012",
-            "description": "Unit tests pass with adequate coverage",
-            "order": 2
-          },
-          {
-            "id": "550e8400-e29b-41d4-a716-446655440013",
-            "description": "No critical or high-severity defects remain",
-            "order": 3
-          }
-        ],
-        "updatedBy": {
-          "id": "550e8400-e29b-41d4-a716-446655440001",
-          "firstName": "John",
-          "lastName": "Doe"
-        },
-        "createdAt": "2026-04-29T12:00:00.000Z"
-      }
-    ],
-    "pagination": {
-      "page": 1,
-      "limit": 20,
-      "total": 2,
-      "totalPages": 1,
-      "hasNext": false,
-      "hasPrev": false
+  "data": [
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440030",
+      "teamId": "550e8400-e29b-41d4-a716-446655440000",
+      "version": 3,
+      "items": [
+        {
+          "description": "Code has been peer-reviewed by at least one team member",
+          "category": "review",
+          "isActive": true,
+          "order": 0
+        }
+      ],
+      "createdAt": "2026-09-22T09:00:00.000Z",
+      "createdBy": "550e8400-e29b-41d4-a716-446655440005",
+      "createdByName": "Ada Lovelace",
+      "isCurrent": true
+    },
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440029",
+      "teamId": "550e8400-e29b-41d4-a716-446655440000",
+      "version": 2,
+      "items": [
+        {
+          "description": "Unit tests pass with at least 80% coverage",
+          "category": "testing",
+          "isActive": true,
+          "order": 0
+        }
+      ],
+      "createdAt": "2026-08-01T09:00:00.000Z",
+      "createdBy": "550e8400-e29b-41d4-a716-446655440006",
+      "createdByName": "Grace Hopper",
+      "isCurrent": false
     }
-  }
+  ]
 }
 ```
 
@@ -739,6 +716,14 @@ curl -X GET https://api.scrumooth.dev/api/v1/sprints/550e8400-e29b-41d4-a716-446
 | `AUTHORIZATION_ERROR`  | 403         | Insufficient permissions or not a team member |
 | `NOT_FOUND`            | 404         | Team, PBI, or sprint not found                |
 | `CONFLICT`             | 409         | Resource conflict                             |
+
+### Gate Rejections
+
+| Code                         | HTTP | Rule enforced                                                                                     |
+| ---------------------------- | ---- | ------------------------------------------------------------------------------------------------- |
+| `GATE_DOD_REQUIRED`          | 400  | A DoD must keep at least one active item, and work cannot be marked Done while a team has none    |
+| `GATE_DOD_NOT_VERIFIED`      | 400  | A Product Backlog item cannot be marked Done until every active DoD item is verified for it       |
+| `GATE_DOD_TEAM_MEMBERS_ONLY` | 403  | The DoD belongs to its Scrum Team: reading, changing, or verifying against it requires membership |
 
 ## Best Practices
 

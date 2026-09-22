@@ -14,6 +14,7 @@ vi.mock('../../../services/dod.service', () => ({
     getDefinitionOfDone: vi.fn(),
     createDefaultDefinitionOfDone: vi.fn(),
     updateDefinitionOfDone: vi.fn(),
+    getDoDVersionSnapshots: vi.fn(),
     verifyDoDForPBI: vi.fn(),
     getDoDVerificationsForPBI: vi.fn(),
   },
@@ -27,6 +28,9 @@ describe('DoD Controller', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockReq = createMockRequest();
+    // The authenticated caller: reading or changing a Definition of Done is authorized against the
+    // team that owns it.
+    (mockReq as { userId?: string }).userId = 'user-123';
     mockRes = createMockResponse();
     mockNext = createMockNext();
   });
@@ -191,31 +195,48 @@ describe('DoD Controller', () => {
   });
 
   describe('getDoDHistory', () => {
-    it('should return DoD history', async () => {
+    it('should return the append-only version history', async () => {
       mockReq.params = { teamId: 'team-123' };
-      const mockDoD = {
-        id: 'dod-123',
-        teamId: 'team-123',
-        items: [{ id: 'item-1', description: 'Code reviewed' }],
-      };
+      const versions = [
+        {
+          id: 'dod-123',
+          teamId: 'team-123',
+          version: 2,
+          items: [{ description: 'Code reviewed', category: 'review', isActive: true, order: 0 }],
+          createdAt: '2026-09-20T10:00:00.000Z',
+          createdBy: 'user-1',
+          createdByName: 'Ada Lovelace',
+          isCurrent: true,
+        },
+        {
+          id: 'snapshot-1',
+          teamId: 'team-123',
+          version: 1,
+          items: [{ description: 'Code written', category: 'review', isActive: true, order: 0 }],
+          createdAt: '2026-09-18T10:00:00.000Z',
+          createdBy: null,
+          createdByName: null,
+          isCurrent: false,
+        },
+      ];
 
-      (definitionOfDoneService.getDefinitionOfDone as any).mockResolvedValue(mockDoD);
+      (definitionOfDoneService.getDoDVersionSnapshots as any).mockResolvedValue(versions);
 
       getDoDHistory(mockReq as any, mockRes as any, mockNext);
       await new Promise((resolve) => setTimeout(resolve, 0));
 
       expect(mockNext).not.toHaveBeenCalled();
-      expect(definitionOfDoneService.getDefinitionOfDone).toHaveBeenCalledWith('team-123');
+      expect(definitionOfDoneService.getDoDVersionSnapshots).toHaveBeenCalledWith('team-123');
       expect(mockRes._json).toEqual({
         success: true,
-        data: [mockDoD],
+        data: versions,
       });
     });
 
     it('should return empty array when no DoD exists', async () => {
       mockReq.params = { teamId: 'team-123' };
 
-      (definitionOfDoneService.getDefinitionOfDone as any).mockResolvedValue(null);
+      (definitionOfDoneService.getDoDVersionSnapshots as any).mockResolvedValue([]);
 
       getDoDHistory(mockReq as any, mockRes as any, mockNext);
       await new Promise((resolve) => setTimeout(resolve, 0));
@@ -239,7 +260,7 @@ describe('DoD Controller', () => {
       mockReq.params = { teamId: 'team-123' };
       const error = new Error('Database error');
 
-      (definitionOfDoneService.getDefinitionOfDone as any).mockRejectedValue(error);
+      (definitionOfDoneService.getDoDVersionSnapshots as any).mockRejectedValue(error);
 
       getDoDHistory(mockReq as any, mockRes as any, mockNext);
       await new Promise((resolve) => setTimeout(resolve, 0));
@@ -372,11 +393,25 @@ describe('DoD Controller', () => {
       await new Promise((resolve) => setTimeout(resolve, 0));
 
       expect(mockNext).not.toHaveBeenCalled();
-      expect(definitionOfDoneService.getDoDVerificationsForPBI).toHaveBeenCalledWith('pbi-123');
+      expect(definitionOfDoneService.getDoDVerificationsForPBI).toHaveBeenCalledWith(
+        'pbi-123',
+        'user-123'
+      );
       expect(mockRes._json).toEqual({
         success: true,
         data: mockVerifications,
       });
+    });
+
+    it('should return 401 when the caller is not authenticated', async () => {
+      mockReq.params = { id: 'pbi-123' };
+      (mockReq as { userId?: string }).userId = undefined;
+
+      getDoDVerificationsForPBI(mockReq as any, mockRes as any, mockNext);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(mockRes._status).toBe(401);
+      expect(definitionOfDoneService.getDoDVerificationsForPBI).not.toHaveBeenCalled();
     });
 
     it('should return 400 when PBI ID is missing', async () => {

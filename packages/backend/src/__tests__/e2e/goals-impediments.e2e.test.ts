@@ -414,9 +414,10 @@ describe('E2E: Goals and Impediments', () => {
             teamId: team.id,
             title: '',
           })
-          .expect(HTTP_STATUS.BAD_REQUEST);
+          .expect(HTTP_STATUS.UNPROCESSABLE_ENTITY);
 
         expect(response.body.success).toBe(false);
+        expect(response.body.error.code).toBe(ERROR_CODES.VALIDATION_ERROR);
       });
     });
 

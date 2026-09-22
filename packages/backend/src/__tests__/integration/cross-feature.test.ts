@@ -455,6 +455,12 @@ describe('Cross-Feature Integration Tests', () => {
           name: 'Deliverable Increment',
           status: 'VERIFIED',
           totalStoryPoints: 20,
+          // Delivery requires both the integration verification and the written attestation that
+          // the Increment is in usable condition.
+          integrationVerified: true,
+          usabilityVerified: true,
+          usabilityEvidence: 'Exercised in the staging environment',
+          usabilityVerifiedAt: new Date(),
         },
       });
 

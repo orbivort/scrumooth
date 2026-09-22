@@ -56,6 +56,7 @@ import {
   type DoDItem,
   type DoDChecklistVerification,
   type DoDComplianceReport,
+  type DoDVersionSnapshot,
   type DefinitionOfReady,
   type DoRItem,
   type DoRChecklistVerification,
@@ -2596,7 +2597,11 @@ class MockApiService {
     return { success: true, data: updatedDoD };
   }
 
-  async getDoDHistory(_teamId: string): Promise<ApiResponse<DefinitionOfDone[]>> {
+  /**
+   * The append-only Definition of Done version history, newest first. The mock reports no history
+   * because a demo team's Definition of Done has not been superseded.
+   */
+  async getDoDHistory(_teamId: string): Promise<ApiResponse<DoDVersionSnapshot[]>> {
     await delay(300);
     return { success: true, data: [] };
   }
@@ -3184,6 +3189,61 @@ class MockApiService {
         integrationVerified: true,
         priorCount: 0,
         allPassed: true,
+      },
+    };
+  }
+
+  /**
+   * Record the written attestation that the Increment is "in usable condition" — the evidence a
+   * "usable" label cannot carry by itself.
+   */
+  async verifyUsability(incrementId: string, evidence: string): Promise<ApiResponse<Increment>> {
+    await delay(300);
+    const index = this.incrementsStore.findIndex((i) => i.id === incrementId);
+    if (index === -1) {
+      return { success: false, error: { code: 'NOT_FOUND', message: 'Increment not found' } };
+    }
+
+    this.incrementsStore[index] = {
+      ...(this.incrementsStore[index] as Increment),
+      usabilityVerified: true,
+      usabilityEvidence: evidence,
+      usabilityVerifiedAt: new Date().toISOString(),
+    };
+
+    return { success: true, data: this.incrementsStore[index] as Increment };
+  }
+
+  /**
+   * Recompose a Sprint's open Increment from its Done items. The mock reports that nothing was
+   * missing, which is the steady state the repair path exists for.
+   */
+  async reconcileIncrement(
+    teamId: string,
+    sprintId: string
+  ): Promise<
+    ApiResponse<{
+      incrementId: string;
+      addedPbiIds: string[];
+      skippedPbiIds: string[];
+      totalStoryPoints: number;
+    }>
+  > {
+    await delay(300);
+    const increment = this.incrementsStore.find(
+      (i) => i.teamId === teamId && i.sprintId === sprintId
+    );
+    if (!increment) {
+      return { success: false, error: { code: 'NOT_FOUND', message: 'Increment not found' } };
+    }
+
+    return {
+      success: true,
+      data: {
+        incrementId: increment.id,
+        addedPbiIds: [],
+        skippedPbiIds: [],
+        totalStoryPoints: increment.totalStoryPoints,
       },
     };
   }

@@ -14,6 +14,8 @@
   "databaseError": "Une erreur de base de données s'est produite",
   "developerOnlySizing": "Seuls les développeurs peuvent définir des points d'histoire, car les développeurs qui effectuent le travail sont responsables de l'estimation.",
   "dodNotVerified": "Cet élément ne peut pas être marqué Terminé tant que chaque critère actif de la Definition of Done n'est pas vérifié. {{count}} critère(s) actif(s) restent à vérifier.",
+  "dodRequired": "Rien n'est Terminé tant que l'équipe n'a pas défini ce que signifie Terminé : une Definition of Done doit conserver au moins un critère actif. Une liste vide laisserait tout élément être marqué Terminé sans vérification.",
+  "dodTeamMembersOnly": "La Definition of Done est l'accord du Scrum Team lui-même sur ce que signifie « Terminé » : seul un membre de cette équipe peut la lire ou la modifier.",
   "emailAlreadyExists": "Un compte avec l'e-mail {{email}} existe déjà",
   "entityNotFound": "{{entity}} introuvable",
   "fieldAlreadyExists": "{{field}} existe déjà",
@@ -29,7 +31,13 @@
   },
   "increment": {
     "alreadyDelivered": "Cet incrément a déjà été livré et ne peut pas être livré à nouveau.",
-    "deliveredLocked": "Cet incrément a été livré et ne peut plus être modifié."
+    "deliveredLocked": "Cet incrément a été livré ou archivé et ne peut plus être modifié.",
+    "deliveryRequiresMethod": "Un incrément est enregistré comme livré via l'action de livraison, qui consigne comment il a atteint les utilisateurs. Renseignez le mode de livraison au lieu d'écrire le statut directement.",
+    "integrationRequired": "Cet incrément ne peut pas être vérifié ni livré avant que son intégration avec tous les incréments précédents n'ait réussi. Enregistrez d'abord les tests d'intégration requis.",
+    "pbisNotOfTeam": "Chaque élément contenu dans un incrément doit appartenir au Product Backlog de cette équipe.",
+    "sprintNotOfTeam": "Un incrément ne peut être composé qu'à partir d'un Sprint de l'équipe à laquelle il appartient.",
+    "teamMembersOnly": "L'incrément appartient à son Scrum Team : seul un membre de cette équipe peut le lire, le vérifier ou le livrer.",
+    "usabilityRequired": "Cet incrément ne peut pas être vérifié ni livré avant que son état utilisable ne soit attesté par écrit. Enregistrez d'abord la preuve d'utilisabilité."
   },
   "invalidCredentials": "E-mail ou mot de passe invalides",
   "invalidReference": "Référence invalide",

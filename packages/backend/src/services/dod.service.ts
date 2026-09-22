@@ -1,7 +1,48 @@
 import prisma from '../utils/prisma';
-import { NotFoundError, BadRequestError, InternalServerError } from '../utils/errors';
+import {
+  NotFoundError,
+  BadRequestError,
+  InternalServerError,
+  localizedError,
+} from '../utils/errors';
 import { generateUUIDv7 } from '../utils/uuid';
-import type { DoDItem, DoDChecklistVerification } from '../generated/prisma/client';
+import { assertDoDTeamMember } from './incrementAccess';
+import { GATE_CODES } from '@scrumooth/shared';
+import type { DoDVersionItem, DoDVersionSnapshot } from '@scrumooth/shared';
+import type { DoDItem, DoDChecklistVerification, Prisma } from '../generated/prisma/client';
+
+/**
+ * Read a persisted snapshot's `items` JSON back into typed items.
+ *
+ * A snapshot is written by this service and never updated, but it is still external data by the
+ * time it is read: a malformed or legacy entry is dropped rather than allowed to poison the whole
+ * history response.
+ */
+function parseSnapshotItems(value: Prisma.JsonValue): DoDVersionItem[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value.flatMap((entry): DoDVersionItem[] => {
+    if (typeof entry !== 'object' || entry === null || Array.isArray(entry)) {
+      return [];
+    }
+
+    const record = entry as Record<string, unknown>;
+    if (typeof record.description !== 'string') {
+      return [];
+    }
+
+    return [
+      {
+        description: record.description,
+        category: typeof record.category === 'string' ? record.category : null,
+        isActive: record.isActive === true,
+        order: typeof record.order === 'number' ? record.order : 0,
+      },
+    ];
+  });
+}
 
 type DefinitionOfDoneWithItems = Awaited<ReturnType<typeof prisma.definitionOfDone.findUnique>> & {
   items: DoDItem[];
@@ -139,41 +180,116 @@ class DefinitionOfDoneService {
     return dod as DefinitionOfDoneWithItems;
   }
 
+  /**
+   * Replace the team's Definition of Done with a new version.
+   *
+   * Two rules make this safe, and both exist because the Definition of Done is the Increment's
+   * commitment:
+   *
+   *  * It cannot be emptied. A Definition of Done with no active item silently satisfies the Done
+   *    gate, so clearing it would be a one-call way to defeat the rule it exists to enforce.
+   *  * It cannot be rewritten silently. The version being superseded is copied into an append-only
+   *    snapshot inside the same transaction, so the change history survives the delete-and-recreate
+   *    that keeps `DoDItem @@unique([dodId, order])` satisfiable.
+   *
+   * @throws AppError (400, `GATE_DOD_REQUIRED`) when the resulting Definition of Done would hold
+   * no active item.
+   */
   async updateDefinitionOfDone(
     teamId: string,
     items: DoDItemInput[],
     userId?: string
   ): Promise<DefinitionOfDoneWithItems> {
+    if (!items.some((item) => item.isActive)) {
+      throw localizedError('errors:dodRequired', {}, 400, GATE_CODES.DOD_REQUIRED);
+    }
+
     const existingDod = await prisma.definitionOfDone.findUnique({
       where: { teamId },
     });
 
     if (!existingDod) {
-      return this.createDefaultDefinitionOfDone(teamId, userId).then(() =>
-        this.updateDefinitionOfDone(teamId, items, userId)
-      );
+      await this.createDefaultDefinitionOfDone(teamId, userId);
+      return this.updateDefinitionOfDone(teamId, items, userId);
     }
 
-    await prisma.doDItem.deleteMany({
-      where: { dodId: existingDod.id },
+    const dod = await prisma.$transaction(async (tx) => {
+      // The version being superseded and its items must be read and replaced atomically. Read
+      // outside the transaction, two concurrent updates can both snapshot the same version, and
+      // the version in between is then never recorded — an append-only history with a hole. The row
+      // lock serialises them so the second update snapshots the version the first one wrote.
+      await tx.$queryRaw`SELECT "id" FROM "definition_of_done" WHERE "id" = ${existingDod.id} FOR UPDATE`;
+
+      const currentVersion = await tx.definitionOfDone.findUniqueOrThrow({
+        where: { id: existingDod.id },
+        select: { version: true },
+      });
+
+      const supersededItems = await tx.doDItem.findMany({
+        where: { dodId: existingDod.id },
+        orderBy: { order: 'asc' },
+        select: { description: true, category: true, isActive: true, order: true },
+      });
+
+      // Append-only: preserve the version being replaced before it is replaced. `upsert` with an
+      // empty update keeps the first snapshot if two writers still race for the same version, so
+      // the record of a version is never rewritten.
+      await tx.doDVersionSnapshot.upsert({
+        where: {
+          dodId_version: { dodId: existingDod.id, version: currentVersion.version },
+        },
+        create: {
+          id: generateUUIDv7(),
+          dodId: existingDod.id,
+          teamId,
+          version: currentVersion.version,
+          items: supersededItems as unknown as Prisma.InputJsonValue,
+          createdBy: userId,
+        },
+        update: {},
+      });
+
+      await tx.doDItem.deleteMany({
+        where: { dodId: existingDod.id },
+      });
+
+      return tx.definitionOfDone.update({
+        where: { id: existingDod.id },
+        data: {
+          version: { increment: 1 },
+          updatedBy: userId,
+          items: {
+            create: items.map((item, index) => ({
+              id: generateUUIDv7(),
+              description: item.description,
+              category: item.category ?? 'quality',
+              isActive: item.isActive,
+              order: index,
+              createdBy: userId,
+            })),
+          },
+        },
+        include: {
+          items: {
+            orderBy: { order: 'asc' },
+          },
+        },
+      });
     });
 
-    const dod = await prisma.definitionOfDone.update({
-      where: { id: existingDod.id },
-      data: {
-        version: { increment: 1 },
-        updatedBy: userId,
-        items: {
-          create: items.map((item, index) => ({
-            id: generateUUIDv7(),
-            description: item.description,
-            category: item.category ?? 'quality',
-            isActive: item.isActive,
-            order: index,
-            createdBy: userId,
-          })),
-        },
-      },
+    return dod as DefinitionOfDoneWithItems;
+  }
+
+  /**
+   * The full, append-only version history of a team's Definition of Done, newest first.
+   *
+   * The current version is the Definition of Done row itself; every superseded version comes from
+   * its snapshot. A team that has never changed its Definition of Done therefore sees exactly one
+   * entry, marked current.
+   */
+  async getDoDVersionSnapshots(teamId: string): Promise<DoDVersionSnapshot[]> {
+    const dod = await prisma.definitionOfDone.findUnique({
+      where: { teamId },
       include: {
         items: {
           orderBy: { order: 'asc' },
@@ -181,7 +297,60 @@ class DefinitionOfDoneService {
       },
     });
 
-    return dod as DefinitionOfDoneWithItems;
+    if (!dod) {
+      return [];
+    }
+
+    const snapshots = await prisma.doDVersionSnapshot.findMany({
+      where: { dodId: dod.id },
+      orderBy: { version: 'desc' },
+    });
+
+    // Resolve every author name in one lookup rather than one query per version.
+    const authorIds = [...new Set([...snapshots.map((s) => s.createdBy), dod.updatedBy])].filter(
+      (id): id is string => typeof id === 'string'
+    );
+
+    const authors =
+      authorIds.length > 0
+        ? await prisma.user.findMany({
+            where: { id: { in: authorIds } },
+            select: { id: true, firstName: true, lastName: true },
+          })
+        : [];
+    const authorNames = new Map(
+      authors.map((author) => [author.id, `${author.firstName} ${author.lastName}`])
+    );
+
+    const current: DoDVersionSnapshot = {
+      id: dod.id,
+      teamId: dod.teamId,
+      version: dod.version,
+      items: dod.items.map((item) => ({
+        description: item.description,
+        category: item.category,
+        isActive: item.isActive,
+        order: item.order,
+      })),
+      createdAt: dod.updatedAt.toISOString(),
+      createdBy: dod.updatedBy,
+      createdByName: dod.updatedBy ? (authorNames.get(dod.updatedBy) ?? null) : null,
+      isCurrent: true,
+    };
+
+    return [
+      current,
+      ...snapshots.map((snapshot) => ({
+        id: snapshot.id,
+        teamId: snapshot.teamId,
+        version: snapshot.version,
+        items: parseSnapshotItems(snapshot.items),
+        createdAt: snapshot.createdAt.toISOString(),
+        createdBy: snapshot.createdBy,
+        createdByName: snapshot.createdBy ? (authorNames.get(snapshot.createdBy) ?? null) : null,
+        isCurrent: false,
+      })),
+    ];
   }
 
   async getDoDItems(teamId: string): Promise<DoDItem[]> {
@@ -192,6 +361,16 @@ class DefinitionOfDoneService {
     return dod.items;
   }
 
+  /**
+   * Record Definition of Done verifications for a Product Backlog item.
+   *
+   * A verification is a statement about the team's own commitment, so only a member of the team
+   * that owns the item may make one: a non-member who could write it could decide that another
+   * team's work is Done, which is the gate this checklist exists to hold.
+   *
+   * @throws AppError (403, `GATE_DOD_TEAM_MEMBERS_ONLY`) when the caller is not a member of the
+   * team that owns the item.
+   */
   async verifyDoDForPBI(
     pbiId: string,
     userId: string,
@@ -205,6 +384,8 @@ class DefinitionOfDoneService {
     if (!pbi) {
       throw new NotFoundError('Product Backlog Item');
     }
+
+    await assertDoDTeamMember(userId, pbi.teamId);
 
     const dod = await prisma.definitionOfDone.findUnique({
       where: { teamId: pbi.teamId },
@@ -266,7 +447,27 @@ class DefinitionOfDoneService {
     return results;
   }
 
-  async getDoDVerificationsForPBI(pbiId: string): Promise<DoDChecklistVerification[]> {
+  /**
+   * Read the Definition of Done verifications recorded for a Product Backlog item.
+   *
+   * @throws AppError (403, `GATE_DOD_TEAM_MEMBERS_ONLY`) when the caller is not a member of the
+   * team that owns the item.
+   */
+  async getDoDVerificationsForPBI(
+    pbiId: string,
+    userId: string
+  ): Promise<DoDChecklistVerification[]> {
+    const pbi = await prisma.productBacklogItem.findUnique({
+      where: { id: pbiId },
+      select: { teamId: true },
+    });
+
+    if (!pbi) {
+      throw new NotFoundError('Product Backlog Item');
+    }
+
+    await assertDoDTeamMember(userId, pbi.teamId);
+
     return await prisma.doDChecklistVerification.findMany({
       where: { pbiId },
       include: {
@@ -281,7 +482,13 @@ class DefinitionOfDoneService {
     });
   }
 
-  async getDoDComplianceReport(sprintId: string): Promise<DoDComplianceReport> {
+  /**
+   * The Definition of Done compliance of every item in a Sprint.
+   *
+   * @throws AppError (403, `GATE_DOD_TEAM_MEMBERS_ONLY`) when the caller is not a member of the
+   * team that owns the Sprint.
+   */
+  async getDoDComplianceReport(sprintId: string, userId: string): Promise<DoDComplianceReport> {
     try {
       // Get sprint with its PBIs
       const sprint = await prisma.sprint.findUnique({
@@ -298,6 +505,10 @@ class DefinitionOfDoneService {
       if (!sprint) {
         throw new NotFoundError('Sprint');
       }
+
+      // Membership is asserted once for the whole report, so the per-item reads below can use the
+      // client directly instead of re-checking the same team for every PBI.
+      await assertDoDTeamMember(userId, sprint.teamId);
 
       // Get team's DoD items
       const dod = await prisma.definitionOfDone.findUnique({
@@ -320,7 +531,18 @@ class DefinitionOfDoneService {
 
       const pbiDetails = await Promise.all(
         pbis.map(async (pbi) => {
-          const verifications = await this.getDoDVerificationsForPBI(pbi.id);
+          const verifications = await prisma.doDChecklistVerification.findMany({
+            where: { pbiId: pbi.id },
+            include: {
+              dodItem: {
+                select: {
+                  id: true,
+                  description: true,
+                  category: true,
+                },
+              },
+            },
+          });
 
           // Map verifications to include full dodItem info
           const verificationsWithItems = verifications.map((v) => {

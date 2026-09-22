@@ -199,6 +199,8 @@ class ApiService {
   updateIncrement = incrementService.updateIncrement.bind(incrementService);
   deliverIncrement = incrementService.deliverIncrement.bind(incrementService);
   verifyIntegration = incrementService.verifyIntegration.bind(incrementService);
+  verifyUsability = incrementService.verifyUsability.bind(incrementService);
+  reconcileIncrement = incrementService.reconcileIncrement.bind(incrementService);
   getIncrementMetrics = incrementService.getIncrementMetrics.bind(incrementService);
 
   // Sprint Review endpoints

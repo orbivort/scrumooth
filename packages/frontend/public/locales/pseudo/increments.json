@@ -1,7 +1,8 @@
 {
   "backToIncrements": "[Bàck tó Íncréméntsssssss]",
   "card": {
-    "integrationVerified": "[Íntégràtíón vérífíéddddddd]"
+    "integrationVerified": "[Íntégràtíón vérífíéddddddd]",
+    "usable": "[Úsàblééé]"
   },
   "create": {
     "actions": {
@@ -115,6 +116,7 @@
       "title": "[Délívér Íncréménttttttt]"
     },
     "deliverRequiresIntegration": "[Íntégràtíón múst bé vérífíéd béfóré thís Íncrémént càn bé délívérédddddddddddddddddddddd.]",
+    "deliverRequiresUsability": "[Thé úsàblé cóndítíón múst bé àttéstéd béfóré thís Íncrémént càn bé délívéréddddddddddddddddddddddddd.]",
     "dodVerification": {
       "byCategory": "[Vérífícàtíón by Càtégóryyyyyyyyy]",
       "byPbi": "[Vérífícàtíón by PBÍÍÍÍÍÍÍ]",
@@ -152,6 +154,7 @@
     },
     "sprintCompletionWorkflow": "[Sprínt Cómplétíón Wórkflówwwwwwwww]",
     "timeline": {
+      "deliveredBy": "[Délívéréd byyyyy {{name}}]",
       "deliveredViaEarlyRelease": "[Délívéréd víà Éàrly Réléàséééééééééé]",
       "deliveredViaSprintReview": "[Délívéréd víà Sprínt Révíéwwwwwwwwww]",
       "incrementCreated": "[Íncrémént Créàtéddddddd]",
@@ -176,6 +179,7 @@
     "dependenciesMissing": "[Sómé príór Íncréménts hàvé nót pàsséd íntégràtíón téstssssssssssssssssss]",
     "fail": "[Fàíléddd]",
     "firstIncrement": "[Fírst Íncrémént — nó príór Íncrémént tó tést àgàínsttttttttttttttttt]",
+    "firstIncrementExempt": "[Éxémpt — fírst Íncréménttttttttt]",
     "integrationTests": "[Íntégràtíón Téstsssssss]",
     "integrationVerified": "[Íntégràtíón vérífíéddddddd]",
     "lockedHint": "[Thís Íncrémént hàs béén délívéréd ànd ís lóckéd. Íntégràtíón tésts cànnót bé chàngéddddddddddddddddddddddddddd.]",
@@ -189,8 +193,26 @@
     "unverified": "[Nót vérífíéddddd]",
     "verificationRequired": "[Íntégràtíón vérífícàtíón ís réqúíréd béfóré màrkíng às vérífíédddddddddddddddddddd]",
     "verified": "[Vérífíédddd]",
+    "verifiedAgainst": "[Vérífíéd àgàínsttttttt {{count}} príór Íncréméntsssssss]",
     "verifyHint": "[Vérífy thàt thís Íncrémént íntégràtés wíth àll príór Íncréméntssssssssssssssssssss]",
     "verifyNow": "[Vérífy Íntégràtíónnnnnnn]"
+  },
+  "incrementUsability": {
+    "attest": "[Récórd Àttéstàtíónnnnnnn]",
+    "attestFailed": "[Fàíléd tó récórd thé àttéstàtíón. Pléàsé try àgàínnnnnnnnnnnnnnnnn.]",
+    "attested": "[Úsàblé cóndítíón àttéstéddddddddd]",
+    "attestedBy": "[Àttéstéd byyyyy {{name}} óónn {{date}}]",
+    "evidence": "[Évídéncéééé]",
+    "evidencePlaceholder": "[é.g. Déplóyéd tó stàgíng ànd éxércíséd énd tó énd by thé Pródúct Ównérrrrrrrrrrrrrrrrrrrrrr]",
+    "formLabel": "[Whàt díd yóú chéck, ànd whéréééééééééé?]",
+    "lockedHint": "[Thís Íncrémént hàs béén délívéréd ór àrchívéd ànd ís lóckéd. Íts àttéstàtíón càn nó lóngér bé chàngédddddddddddddddddddddddddddddddd.]",
+    "noEvidenceText": "[Nó évídéncé téxt wàs récórdédddddddddd.]",
+    "notAttested": "[Úsàblé cóndítíón nót àttéstédddddddddd]",
+    "notRecorded": "[Nót récórdéddddd]",
+    "notRecordedHint": "[Nó úsàbílíty àttéstàtíón wàs récórdéd fór thís Íncrémént. Ít wàs délívéréd béfóré thé àttéstàtíón wàs réqúíréddddddddddddddddddddddddddddddddddd.]",
+    "rule": "[Àn Íncrémént múst bé ín úsàblé cóndítíón. Récórd whàt wàs chéckéd ànd whéré, só thé Sprínt Révíéw ínspécts évídéncé ràthér thàn à làbéllllllllllllllllllllllllllllllllllllllllll.]",
+    "title": "[Úsàblé Cóndítíónnnnnn]",
+    "unknownMember": "[à téàm mémbérrrrr]"
   },
   "list": {
     "ariaLabelFilter": "[Fíltér íncréménts by stàtússssssssss]",

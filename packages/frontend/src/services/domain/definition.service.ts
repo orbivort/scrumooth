@@ -3,6 +3,7 @@ import type {
   DoDItem,
   DoDChecklistVerification,
   DoDComplianceReport,
+  DoDVersionSnapshot,
   DefinitionOfReady,
   DoRItem,
   DoRChecklistVerification,
@@ -29,8 +30,12 @@ class DefinitionService {
     return response.data;
   }
 
-  async getDoDHistory(teamId: string): Promise<ApiResponse<DefinitionOfDone[]>> {
-    const response = await apiService.get<ApiResponse<DefinitionOfDone[]>>(
+  /**
+   * The append-only Definition of Done version history, newest first, with the current version
+   * marked.
+   */
+  async getDoDHistory(teamId: string): Promise<ApiResponse<DoDVersionSnapshot[]>> {
+    const response = await apiService.get<ApiResponse<DoDVersionSnapshot[]>>(
       `/teams/${teamId}/definition-of-done/history`
     );
     return response.data;

@@ -7,7 +7,7 @@ import {
   type IncrementChainNode,
 } from '@scrumooth/shared';
 
-import { IncrementStatus } from '../../types';
+import { IntegrationVerificationBasis, IncrementStatus } from '../../types';
 import { incrementService } from '@/services';
 import { IncrementIntegrityPanel } from './IncrementIntegrityPanel';
 
@@ -99,14 +99,36 @@ describe('IncrementIntegrityPanel', () => {
     });
   });
 
-  it('shows the verified badge when integrationVerified prop is true', async () => {
-    renderPanel({ integrationVerified: true });
+  it('states how many prior Increments a real verification covered', async () => {
+    renderPanel({
+      integrationVerified: true,
+      integrationVerificationBasis: IntegrationVerificationBasis.PRIOR_INCREMENTS,
+      integrationVerifiedPriorCount: 3,
+    });
 
     await waitFor(() => {
       expect(
-        screen.getByText(i18nT('increments:incrementIntegrity.integrationVerified'))
+        screen.getByText(i18nT('increments:incrementIntegrity.verifiedAgainst', { count: 3 }))
       ).toBeInTheDocument();
     });
+  });
+
+  it('names the first-Increment exemption instead of claiming a verification', async () => {
+    renderPanel({
+      integrationVerified: true,
+      integrationVerificationBasis: IntegrationVerificationBasis.FIRST_INCREMENT_EXEMPT,
+      integrationVerifiedPriorCount: 0,
+    });
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(i18nT('increments:incrementIntegrity.firstIncrementExempt'))
+      ).toBeInTheDocument();
+    });
+    // The generic "verified" label would hide that nothing was tested against.
+    expect(
+      screen.queryByText(i18nT('increments:incrementIntegrity.verifiedAgainst', { count: 0 }))
+    ).not.toBeInTheDocument();
   });
 
   it('shows "no data" placeholders for empty test/chain sections', async () => {
@@ -184,10 +206,15 @@ describe('IncrementIntegrityPanel', () => {
     });
   });
 
-  it('renders the increment chain with verified/unverified status', async () => {
+  it('renders the increment chain with what each node’s verification rests on', async () => {
     mockedIncrementService.getIncrementChain.mockResolvedValue({
       data: [
-        makeChainNode({ name: 'Inc A', integrationVerified: true }),
+        makeChainNode({
+          name: 'Inc A',
+          integrationVerified: true,
+          integrationVerificationBasis: IntegrationVerificationBasis.FIRST_INCREMENT_EXEMPT,
+          integrationVerifiedPriorCount: 0,
+        }),
         makeChainNode({ id: 'inc-2', name: 'Inc B', integrationVerified: false }),
       ],
     });
@@ -195,9 +222,12 @@ describe('IncrementIntegrityPanel', () => {
     renderPanel();
 
     await waitFor(() => {
-      expect(screen.getByText(i18nT('increments:incrementIntegrity.verified'))).toBeInTheDocument();
+      expect(
+        screen.getByText(i18nT('increments:incrementIntegrity.firstIncrementExempt'))
+      ).toBeInTheDocument();
     });
-    expect(screen.getByText(i18nT('increments:incrementIntegrity.unverified'))).toBeInTheDocument();
+    // The panel badge (this Increment is not verified) and the chain node share the same wording.
+    expect(screen.getAllByText(i18nT('increments:incrementIntegrity.notVerified'))).toHaveLength(2);
   });
 
   it('calls verifyIntegration with the increment id when verify button is clicked', async () => {

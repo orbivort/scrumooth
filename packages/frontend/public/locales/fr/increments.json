@@ -1,7 +1,8 @@
 {
   "backToIncrements": "Retour aux Increments",
   "card": {
-    "integrationVerified": "Intégration vérifiée"
+    "integrationVerified": "Intégration vérifiée",
+    "usable": "Utilisable"
   },
   "create": {
     "actions": {
@@ -115,6 +116,7 @@
       "title": "Livrer l'Increment"
     },
     "deliverRequiresIntegration": "L'intégration doit être vérifiée avant que cet incrément puisse être livré.",
+    "deliverRequiresUsability": "L'état utilisable doit être attesté avant que cet incrément puisse être livré.",
     "dodVerification": {
       "byCategory": "Vérification par catégorie",
       "byPbi": "Vérification par PBI",
@@ -152,6 +154,7 @@
     },
     "sprintCompletionWorkflow": "Workflow de complétion du sprint",
     "timeline": {
+      "deliveredBy": "Livré par {{name}}",
       "deliveredViaEarlyRelease": "Livré via version anticipée",
       "deliveredViaSprintReview": "Livré via Sprint Review",
       "incrementCreated": "Increment créé",
@@ -176,6 +179,7 @@
     "dependenciesMissing": "Certains incréments précédents n'ont pas réussi les tests d'intégration",
     "fail": "Échoué",
     "firstIncrement": "Premier incrément — aucun incrément précédent à tester",
+    "firstIncrementExempt": "Exempté — premier incrément",
     "integrationTests": "Tests d'intégration",
     "integrationVerified": "Intégration vérifiée",
     "lockedHint": "Cet incrément a été livré et est verrouillé. Les tests d'intégration ne peuvent pas être modifiés.",
@@ -189,8 +193,26 @@
     "unverified": "Non vérifié",
     "verificationRequired": "La vérification d'intégration est requise avant de marquer comme vérifié",
     "verified": "Vérifié",
+    "verifiedAgainst": "Vérifié contre {{count}} incréments précédents",
     "verifyHint": "Vérifiez que cet incrément s'intègre avec tous les incréments précédents",
     "verifyNow": "Vérifier l'intégration"
+  },
+  "incrementUsability": {
+    "attest": "Enregistrer l'attestation",
+    "attestFailed": "L'attestation n'a pas pu être enregistrée. Veuillez réessayer.",
+    "attested": "État utilisable attesté",
+    "attestedBy": "Attesté par {{name}} le {{date}}",
+    "evidence": "Preuve",
+    "evidencePlaceholder": "p. ex. Déployé en staging et testé de bout en bout par le Product Owner",
+    "formLabel": "Qu'avez-vous vérifié, et où ?",
+    "lockedHint": "Cet incrément a été livré ou archivé et est verrouillé. Son attestation ne peut plus être modifiée.",
+    "noEvidenceText": "Aucun texte de preuve n'a été enregistré.",
+    "notAttested": "État utilisable non attesté",
+    "notRecorded": "Non enregistré",
+    "notRecordedHint": "Aucune attestation d'utilisabilité n'a été enregistrée pour cet incrément. Il a été livré avant que l'attestation ne soit exigée.",
+    "rule": "Un incrément doit être en état utilisable. Consignez ce qui a été vérifié et où, afin que la Sprint Review inspecte une preuve plutôt qu'une étiquette.",
+    "title": "État utilisable",
+    "unknownMember": "un membre de l'équipe"
   },
   "list": {
     "ariaLabelFilter": "Filtrer les Increments par statut",

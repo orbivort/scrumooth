@@ -29,6 +29,18 @@ export const GATE_CODES = {
   IMPEDIMENT_TERMINAL_RESOLUTION_REQUIRED: 'GATE_IMPEDIMENT_TERMINAL_RESOLUTION_REQUIRED',
   /** Nothing is Done until every active Definition of Done item is verified. */
   DOD_NOT_VERIFIED: 'GATE_DOD_NOT_VERIFIED',
+  /**
+   * A Definition of Done with no active item is not a commitment — it is an empty gate, and the
+   * Done rule it exists to enforce would pass vacuously. A team must keep at least one active
+   * item, and work cannot be marked Done while it has none.
+   */
+  DOD_REQUIRED: 'GATE_DOD_REQUIRED',
+  /**
+   * The Definition of Done is the whole Scrum Team's agreement about what "Done" means for the
+   * product, so it belongs to the team that owns it: reading or changing one requires membership
+   * of that team.
+   */
+  DOD_TEAM_MEMBERS_ONLY: 'GATE_DOD_TEAM_MEMBERS_ONLY',
   /** A team can hold exactly one Product Owner and one Scrum Master. */
   LEADERSHIP_ROLE_TAKEN: 'GATE_LEADERSHIP_ROLE_TAKEN',
   /** A Scrum Team cannot grow past `TEAM_MAX_SIZE`. */
@@ -51,8 +63,31 @@ export const GATE_CODES = {
    * position in the backlog is their accountability, and no one else's.
    */
   PRODUCT_OWNER_ONLY_BACKLOG_ORDER: 'GATE_PRODUCT_OWNER_ONLY_BACKLOG_ORDER',
-  /** A delivered Increment cannot be rewritten. */
+  /** A delivered or archived Increment is terminal and cannot be rewritten or revived. */
   INCREMENT_LOCKED: 'GATE_INCREMENT_LOCKED',
+  /**
+   * The Increment is the Scrum Team's own artifact: reading or writing one requires membership
+   * of the team it belongs to, so no outsider can deliver, archive, or inspect another team's
+   * increment.
+   */
+  INCREMENT_TEAM_MEMBERS_ONLY: 'GATE_INCREMENT_TEAM_MEMBERS_ONLY',
+  /**
+   * "Additive to all prior Increments and thoroughly verified": an Increment cannot be marked
+   * `VERIFIED` before its integration with every prior Increment has actually passed.
+   */
+  INCREMENT_INTEGRATION_VERIFICATION_REQUIRED: 'GATE_INCREMENT_INTEGRATION_VERIFICATION_REQUIRED',
+  /**
+   * An Increment "must be in usable condition". A label is not evidence, so an Increment cannot
+   * be `VERIFIED` or `DELIVERED` until someone attests, in writing, that it is usable — and the
+   * attestation records who made it and when.
+   */
+  INCREMENT_USABILITY_ATTESTATION_REQUIRED: 'GATE_INCREMENT_USABILITY_ATTESTATION_REQUIRED',
+  /**
+   * `DELIVERED` records how value reached users. It is reachable only through the deliver
+   * action, which requires a `deliveryMethod`, so the lifecycle cannot be advanced by a status
+   * write that records nothing.
+   */
+  INCREMENT_DELIVERY_METHOD_REQUIRED: 'GATE_INCREMENT_DELIVERY_METHOD_REQUIRED',
   /** Only Developers save the Sprint Backlog. */
   DEVELOPER_ONLY_SPRINT_BACKLOG: 'GATE_DEVELOPER_ONLY_SPRINT_BACKLOG',
   /**
@@ -176,6 +211,16 @@ export const GATE_DEFINITIONS: Record<GateCode, GateDefinition> = {
     httpStatus: 400,
     i18nKey: 'dodNotVerified',
   },
+  [GATE_CODES.DOD_REQUIRED]: {
+    code: GATE_CODES.DOD_REQUIRED,
+    httpStatus: 400,
+    i18nKey: 'dodRequired',
+  },
+  [GATE_CODES.DOD_TEAM_MEMBERS_ONLY]: {
+    code: GATE_CODES.DOD_TEAM_MEMBERS_ONLY,
+    httpStatus: 403,
+    i18nKey: 'dodTeamMembersOnly',
+  },
   [GATE_CODES.LEADERSHIP_ROLE_TAKEN]: {
     code: GATE_CODES.LEADERSHIP_ROLE_TAKEN,
     httpStatus: 409,
@@ -215,6 +260,26 @@ export const GATE_DEFINITIONS: Record<GateCode, GateDefinition> = {
     code: GATE_CODES.INCREMENT_LOCKED,
     httpStatus: 400,
     i18nKey: 'incrementLocked',
+  },
+  [GATE_CODES.INCREMENT_TEAM_MEMBERS_ONLY]: {
+    code: GATE_CODES.INCREMENT_TEAM_MEMBERS_ONLY,
+    httpStatus: 403,
+    i18nKey: 'incrementTeamMembersOnly',
+  },
+  [GATE_CODES.INCREMENT_INTEGRATION_VERIFICATION_REQUIRED]: {
+    code: GATE_CODES.INCREMENT_INTEGRATION_VERIFICATION_REQUIRED,
+    httpStatus: 400,
+    i18nKey: 'incrementIntegrationVerificationRequired',
+  },
+  [GATE_CODES.INCREMENT_USABILITY_ATTESTATION_REQUIRED]: {
+    code: GATE_CODES.INCREMENT_USABILITY_ATTESTATION_REQUIRED,
+    httpStatus: 400,
+    i18nKey: 'incrementUsabilityAttestationRequired',
+  },
+  [GATE_CODES.INCREMENT_DELIVERY_METHOD_REQUIRED]: {
+    code: GATE_CODES.INCREMENT_DELIVERY_METHOD_REQUIRED,
+    httpStatus: 400,
+    i18nKey: 'incrementDeliveryMethodRequired',
   },
   [GATE_CODES.DEVELOPER_ONLY_SPRINT_BACKLOG]: {
     code: GATE_CODES.DEVELOPER_ONLY_SPRINT_BACKLOG,

@@ -1,7 +1,8 @@
 {
   "backToIncrements": "Volver a Increments",
   "card": {
-    "integrationVerified": "Integración verificada"
+    "integrationVerified": "Integración verificada",
+    "usable": "Utilizable"
   },
   "create": {
     "actions": {
@@ -115,6 +116,7 @@
       "title": "Entregar Increment"
     },
     "deliverRequiresIntegration": "La integración debe verificarse antes de poder entregar este incremento.",
+    "deliverRequiresUsability": "La condición de utilizable debe acreditarse antes de poder entregar este incremento.",
     "dodVerification": {
       "byCategory": "Verificación por Categoría",
       "byPbi": "Verificación por PBI",
@@ -152,6 +154,7 @@
     },
     "sprintCompletionWorkflow": "Flujo de trabajo de completación de Sprint",
     "timeline": {
+      "deliveredBy": "Entregado por {{name}}",
       "deliveredViaEarlyRelease": "Entregado vía Liberación temprana",
       "deliveredViaSprintReview": "Entregado vía Sprint Review",
       "incrementCreated": "Increment Creado",
@@ -176,6 +179,7 @@
     "dependenciesMissing": "Algunos incrementos anteriores no han superado las pruebas de integración",
     "fail": "Fallida",
     "firstIncrement": "Primer incremento — no hay un incremento anterior para probar",
+    "firstIncrementExempt": "Exento — primer incremento",
     "integrationTests": "Pruebas de integración",
     "integrationVerified": "Integración verificada",
     "lockedHint": "Este incremento ha sido entregado y está bloqueado. Las pruebas de integración no se pueden cambiar.",
@@ -189,8 +193,26 @@
     "unverified": "No verificado",
     "verificationRequired": "Se requiere la verificación de integración antes de marcar como verificado",
     "verified": "Verificado",
+    "verifiedAgainst": "Verificado contra {{count}} incrementos anteriores",
     "verifyHint": "Verifique que este incremento se integra con todos los incrementos anteriores",
     "verifyNow": "Verificar integración"
+  },
+  "incrementUsability": {
+    "attest": "Registrar acreditación",
+    "attestFailed": "No se pudo registrar la acreditación. Inténtelo de nuevo.",
+    "attested": "Condición de utilizable acreditada",
+    "attestedBy": "Acreditado por {{name}} el {{date}}",
+    "evidence": "Evidencia",
+    "evidencePlaceholder": "p. ej. Desplegado en staging y probado de extremo a extremo por el Product Owner",
+    "formLabel": "¿Qué comprobó y dónde?",
+    "lockedHint": "Este incremento ha sido entregado o archivado y está bloqueado. Su acreditación ya no puede modificarse.",
+    "noEvidenceText": "No se registró texto de evidencia.",
+    "notAttested": "Condición de utilizable no acreditada",
+    "notRecorded": "No registrado",
+    "notRecordedHint": "No se registró ninguna acreditación de usabilidad para este incremento. Se entregó antes de que la acreditación fuera obligatoria.",
+    "rule": "Un incremento debe estar en condición utilizable. Registre qué se comprobó y dónde, para que el Sprint Review inspeccione evidencia y no una etiqueta.",
+    "title": "Condición de utilizable",
+    "unknownMember": "un miembro del equipo"
   },
   "list": {
     "ariaLabelFilter": "Filtrar increments por estado",

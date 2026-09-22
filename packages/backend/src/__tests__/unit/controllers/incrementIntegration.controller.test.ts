@@ -25,6 +25,9 @@ describe('Increment Integration Controller', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockReq = createMockRequest();
+    // The authenticated caller: integration verification is authorized against the team that owns
+    // the Increment, so the service always receives the actor.
+    (mockReq as { userId?: string }).userId = 'user-123';
     mockRes = createMockResponse();
     mockNext = createMockNext();
   });
@@ -76,6 +79,7 @@ describe('Increment Integration Controller', () => {
     });
 
     it('should throw when user is not authenticated', async () => {
+      (mockReq as { userId?: string }).userId = undefined;
       mockReq.user = undefined;
       mockReq.params = { id: 'inc-123' };
       mockReq.body = { priorIncrementId: 'inc-456', testResult: 'PASSED' };
@@ -124,7 +128,10 @@ describe('Increment Integration Controller', () => {
       await new Promise((resolve) => setTimeout(resolve, 0));
 
       expect(mockNext).not.toHaveBeenCalled();
-      expect(incrementIntegrationService.getTestsForIncrement).toHaveBeenCalledWith('inc-123');
+      expect(incrementIntegrationService.getTestsForIncrement).toHaveBeenCalledWith(
+        'inc-123',
+        'user-123'
+      );
       expect(mockRes._json).toEqual({ success: true, data: mockTests });
     });
 
@@ -171,6 +178,7 @@ describe('Increment Integration Controller', () => {
     });
 
     it('should throw when user is not authenticated', async () => {
+      (mockReq as { userId?: string }).userId = undefined;
       mockReq.user = undefined;
       mockReq.params = { id: 'inc-123' };
 
@@ -217,7 +225,10 @@ describe('Increment Integration Controller', () => {
       await new Promise((resolve) => setTimeout(resolve, 0));
 
       expect(mockNext).not.toHaveBeenCalled();
-      expect(incrementIntegrationService.getIncrementChain).toHaveBeenCalledWith('inc-123');
+      expect(incrementIntegrationService.getIncrementChain).toHaveBeenCalledWith(
+        'inc-123',
+        'user-123'
+      );
       expect(mockRes._json).toEqual({ success: true, data: mockChain });
     });
 

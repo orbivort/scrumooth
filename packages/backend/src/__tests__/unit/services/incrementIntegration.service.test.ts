@@ -14,6 +14,9 @@ vi.mock('../../../utils/prisma', () => ({
       update: vi.fn(),
       groupBy: vi.fn(),
     },
+    teamMember: {
+      findUnique: vi.fn(),
+    },
   },
 }));
 
@@ -25,6 +28,7 @@ import { incrementIntegrationService } from '../../../services/incrementIntegrat
 import prisma from '../../../utils/prisma';
 import { generateUUIDv7 } from '../../../utils/uuid';
 import { NotFoundError, BadRequestError } from '../../../utils/errors';
+import { GATE_CODES } from '@scrumooth/shared';
 
 const mockIncrement = (overrides: Record<string, unknown> = {}) => ({
   id: 'inc-current',
@@ -52,6 +56,8 @@ describe('IncrementIntegrationService', () => {
   beforeEach(() => {
     vi.resetAllMocks();
     vi.mocked(generateUUIDv7).mockReturnValue('test-uuid');
+    // The caller belongs to the Increment's team unless a test says otherwise.
+    vi.mocked(prisma.teamMember.findUnique).mockResolvedValue({ id: 'membership-1' } as never);
   });
 
   describe('createTest', () => {
@@ -308,7 +314,10 @@ describe('IncrementIntegrationService', () => {
         }),
       ] as never);
 
-      const result = await incrementIntegrationService.getTestsForIncrement('inc-current');
+      const result = await incrementIntegrationService.getTestsForIncrement(
+        'inc-current',
+        'user-1'
+      );
 
       expect(result).toHaveLength(2);
       expect(result[0]!.testResult).toBe('PASSED');
@@ -327,7 +336,10 @@ describe('IncrementIntegrationService', () => {
       vi.mocked(prisma.increment.findUnique).mockResolvedValueOnce(mockIncrement() as never);
       vi.mocked(prisma.incrementIntegrationTest.findMany).mockResolvedValueOnce([] as never);
 
-      const result = await incrementIntegrationService.getTestsForIncrement('inc-current');
+      const result = await incrementIntegrationService.getTestsForIncrement(
+        'inc-current',
+        'user-1'
+      );
 
       expect(result).toEqual([]);
     });
@@ -335,9 +347,22 @@ describe('IncrementIntegrationService', () => {
     it('should throw NotFoundError when increment is missing', async () => {
       vi.mocked(prisma.increment.findUnique).mockResolvedValueOnce(null as never);
 
-      await expect(incrementIntegrationService.getTestsForIncrement('missing')).rejects.toThrow(
-        NotFoundError
-      );
+      await expect(
+        incrementIntegrationService.getTestsForIncrement('missing', 'user-1')
+      ).rejects.toThrow(NotFoundError);
+      expect(prisma.incrementIntegrationTest.findMany).not.toHaveBeenCalled();
+    });
+
+    it('should refuse an outsider', async () => {
+      vi.mocked(prisma.increment.findUnique).mockResolvedValueOnce(mockIncrement() as never);
+      vi.mocked(prisma.teamMember.findUnique).mockResolvedValue(null);
+
+      await expect(
+        incrementIntegrationService.getTestsForIncrement('inc-current', 'outsider')
+      ).rejects.toMatchObject({
+        statusCode: 403,
+        code: GATE_CODES.INCREMENT_TEAM_MEMBERS_ONLY,
+      });
       expect(prisma.incrementIntegrationTest.findMany).not.toHaveBeenCalled();
     });
 
@@ -351,7 +376,10 @@ describe('IncrementIntegrationService', () => {
         },
       ] as never);
 
-      const result = await incrementIntegrationService.getTestsForIncrement('inc-current');
+      const result = await incrementIntegrationService.getTestsForIncrement(
+        'inc-current',
+        'user-1'
+      );
 
       expect(result[0]!.priorIncrementName).toBeNull();
       expect(result[0]!.testerName).toBeNull();
@@ -371,7 +399,13 @@ describe('IncrementIntegrationService', () => {
       expect(result.allPassed).toBe(true);
       expect(prisma.increment.update).toHaveBeenCalledWith({
         where: { id: 'inc-current' },
-        data: expect.objectContaining({ integrationVerified: true, updatedBy: 'user-1' }),
+        data: expect.objectContaining({
+          integrationVerified: true,
+          // The exemption is recorded as an exemption: no prior Increment was tested.
+          integrationVerificationBasis: 'FIRST_INCREMENT_EXEMPT',
+          integrationVerifiedPriorCount: 0,
+          updatedBy: 'user-1',
+        }),
       });
     });
 
@@ -392,6 +426,13 @@ describe('IncrementIntegrationService', () => {
       expect(result.priorCount).toBe(1);
       expect(result.missingTests).toEqual([]);
       expect(result.failedTests).toEqual([]);
+      expect(prisma.increment.update).toHaveBeenCalledWith({
+        where: { id: 'inc-current' },
+        data: expect.objectContaining({
+          integrationVerificationBasis: 'PRIOR_INCREMENTS',
+          integrationVerifiedPriorCount: 1,
+        }),
+      });
     });
 
     it('should set verified=false when a prior increment has a FAILED test', async () => {
@@ -489,7 +530,7 @@ describe('IncrementIntegrationService', () => {
         { currentIncrementId: 'inc-2', _count: { _all: 0 } },
       ] as never);
 
-      const result = await incrementIntegrationService.getIncrementChain('inc-3');
+      const result = await incrementIntegrationService.getIncrementChain('inc-3', 'user-1');
 
       expect(result).toHaveLength(3);
       // Newest first
@@ -516,17 +557,68 @@ describe('IncrementIntegrationService', () => {
       ] as never);
       vi.mocked(prisma.incrementIntegrationTest.groupBy).mockResolvedValueOnce([] as never);
 
-      const result = await incrementIntegrationService.getIncrementChain('inc-current');
+      const result = await incrementIntegrationService.getIncrementChain('inc-current', 'user-1');
 
       expect(result[0]!.hasTests).toBe(false);
+    });
+
+    it('should expose what each node’s verification rests on', async () => {
+      vi.mocked(prisma.increment.findUnique).mockResolvedValueOnce(
+        mockIncrement({ id: 'inc-2' }) as never
+      );
+      vi.mocked(prisma.increment.findMany).mockResolvedValueOnce([
+        {
+          id: 'inc-1',
+          name: 'Inc 1',
+          status: 'DELIVERED',
+          integrationVerified: true,
+          integrationVerificationBasis: 'FIRST_INCREMENT_EXEMPT',
+          integrationVerifiedPriorCount: 0,
+          deliveredAt: new Date(),
+          sprint: { id: 's1', name: 'Sprint 1' },
+        },
+        {
+          id: 'inc-2',
+          name: 'Inc 2',
+          status: 'VERIFIED',
+          integrationVerified: true,
+          integrationVerificationBasis: 'PRIOR_INCREMENTS',
+          integrationVerifiedPriorCount: 1,
+          deliveredAt: null,
+          sprint: { id: 's2', name: 'Sprint 2' },
+        },
+      ] as never);
+      vi.mocked(prisma.incrementIntegrationTest.groupBy).mockResolvedValueOnce([] as never);
+
+      const result = await incrementIntegrationService.getIncrementChain('inc-2', 'user-1');
+
+      // Newest first: the current Increment was verified against one prior...
+      expect(result[0]!.integrationVerificationBasis).toBe('PRIOR_INCREMENTS');
+      expect(result[0]!.integrationVerifiedPriorCount).toBe(1);
+      // ...while the team's first Increment carries the exemption, not a bare green flag.
+      expect(result[1]!.integrationVerificationBasis).toBe('FIRST_INCREMENT_EXEMPT');
+      expect(result[1]!.integrationVerifiedPriorCount).toBe(0);
     });
 
     it('should throw NotFoundError when increment is missing', async () => {
       vi.mocked(prisma.increment.findUnique).mockResolvedValueOnce(null as never);
 
-      await expect(incrementIntegrationService.getIncrementChain('missing')).rejects.toThrow(
-        NotFoundError
-      );
+      await expect(
+        incrementIntegrationService.getIncrementChain('missing', 'user-1')
+      ).rejects.toThrow(NotFoundError);
+      expect(prisma.increment.findMany).not.toHaveBeenCalled();
+    });
+
+    it('should refuse an outsider', async () => {
+      vi.mocked(prisma.increment.findUnique).mockResolvedValueOnce(mockIncrement() as never);
+      vi.mocked(prisma.teamMember.findUnique).mockResolvedValue(null);
+
+      await expect(
+        incrementIntegrationService.getIncrementChain('inc-current', 'outsider')
+      ).rejects.toMatchObject({
+        statusCode: 403,
+        code: GATE_CODES.INCREMENT_TEAM_MEMBERS_ONLY,
+      });
       expect(prisma.increment.findMany).not.toHaveBeenCalled();
     });
   });
@@ -616,11 +708,16 @@ describe('IncrementIntegrationService', () => {
     it('should update integrationVerified with userId when provided', async () => {
       vi.mocked(prisma.increment.update).mockResolvedValue({} as never);
 
-      await incrementIntegrationService.setVerified('inc-1', true, 'user-1');
+      await incrementIntegrationService.setVerified('inc-1', true, 'user-1', 'PRIOR_INCREMENTS', 3);
 
       expect(prisma.increment.update).toHaveBeenCalledWith({
         where: { id: 'inc-1' },
-        data: expect.objectContaining({ integrationVerified: true, updatedBy: 'user-1' }),
+        data: expect.objectContaining({
+          integrationVerified: true,
+          integrationVerificationBasis: 'PRIOR_INCREMENTS',
+          integrationVerifiedPriorCount: 3,
+          updatedBy: 'user-1',
+        }),
       });
     });
 
@@ -632,7 +729,35 @@ describe('IncrementIntegrationService', () => {
       const updateCall = vi.mocked(prisma.increment.update).mock.calls[0]?.[0] as {
         data: Record<string, unknown>;
       };
-      expect(updateCall.data).toEqual({ integrationVerified: false, updatedAt: expect.any(Date) });
+      expect(updateCall.data).toEqual({
+        integrationVerified: false,
+        integrationVerificationBasis: null,
+        integrationVerifiedPriorCount: 0,
+        updatedAt: expect.any(Date),
+      });
+    });
+
+    it('should drop the basis and the covered count when a verification is cleared', async () => {
+      vi.mocked(prisma.increment.update).mockResolvedValue({} as never);
+
+      await incrementIntegrationService.setVerified(
+        'inc-1',
+        false,
+        undefined,
+        'PRIOR_INCREMENTS',
+        3
+      );
+
+      const updateCall = vi.mocked(prisma.increment.update).mock.calls[0]?.[0] as {
+        data: Record<string, unknown>;
+      };
+      // Nothing may claim an Increment was verified against work it is no longer verified with.
+      expect(updateCall.data).toEqual({
+        integrationVerified: false,
+        integrationVerificationBasis: null,
+        integrationVerifiedPriorCount: 0,
+        updatedAt: expect.any(Date),
+      });
     });
   });
 

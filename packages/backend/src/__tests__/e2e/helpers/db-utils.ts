@@ -506,7 +506,12 @@ export const createTestIncrementInDb = async (
   sprintId: string,
   teamId: string,
   name?: string,
-  status: 'DRAFT' | 'VERIFIED' | 'DELIVERED' | 'ARCHIVED' = 'DRAFT'
+  status: 'DRAFT' | 'VERIFIED' | 'DELIVERED' | 'ARCHIVED' = 'DRAFT',
+  /**
+   * The two verifications an Increment must carry before it can be marked VERIFIED or delivered:
+   * its integration with prior Increments, and the written attestation that it is usable.
+   */
+  verification: { integrationVerified?: boolean; usabilityVerified?: boolean } = {}
 ): Promise<{
   id: string;
   sprintId: string;
@@ -526,6 +531,14 @@ export const createTestIncrementInDb = async (
       description: `Test increment description for ${incrementName}`,
       totalStoryPoints: 0,
       status,
+      integrationVerified: verification.integrationVerified ?? false,
+      usabilityVerified: verification.usabilityVerified ?? false,
+      ...(verification.usabilityVerified
+        ? {
+            usabilityEvidence: 'Deployed and exercised by the team',
+            usabilityVerifiedAt: new Date(),
+          }
+        : {}),
     },
   });
 

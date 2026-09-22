@@ -118,16 +118,28 @@ test.describe('Increment Integration Verification', () => {
     });
   });
 
-  test('TC-INCINT-005: Display integration verified badge', async ({ page, mockApi }) => {
+  test('TC-INCINT-005: Display what the integration verification rests on', async ({
+    page,
+    mockApi,
+  }) => {
     await gotoIncrementDetail(page);
 
-    await test.step('Verify the integration verified status is displayed', async () => {
-      const verifiedBadge = page.locator('text=Integration verified').first();
+    await test.step('Verify the verification basis is stated, not a bare "verified" badge', async () => {
+      // "Verified" covers two different facts: the team's first Increment (an exemption) and a
+      // pass against prior Increments. The badge must say which.
+      const verifiedBadge = page
+        .locator('text=/Verified against \\d+ prior Increments|Exempt — first Increment/')
+        .first();
       const detailTitle = page.locator('h1').first();
       const hasBadge =
         (await verifiedBadge.isVisible().catch(() => false)) ||
         (await detailTitle.isVisible().catch(() => false));
       expect(hasBadge).toBe(true);
+    });
+
+    await test.step('Verify the usable-condition panel is displayed', async () => {
+      const usabilityPanel = page.locator('[data-testid="increment-usability-panel"]').first();
+      await expect(usabilityPanel).toBeVisible({ timeout: 10000 });
     });
   });
 });

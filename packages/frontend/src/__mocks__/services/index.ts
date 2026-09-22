@@ -76,6 +76,8 @@ export const apiService: Record<string, Mock<AnyFn>> = {
   getIncrement: vi.fn(),
   createIncrement: vi.fn(),
   updateIncrement: vi.fn(),
+  verifyUsability: vi.fn(),
+  reconcileIncrement: vi.fn(),
   startIncrement: vi.fn(),
   completeIncrement: vi.fn(),
   getIncrementMetrics: vi.fn(),

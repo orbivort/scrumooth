@@ -2,12 +2,15 @@
 
 import {
   IntegrationTestResult,
+  IntegrationVerificationBasis,
   ScrumValue,
   HealthCheckStatus,
   type ImpedimentPriority,
   type Locale,
   type IntegrationTestRecord,
   type IncrementChainNode,
+  type IncrementCompositionResult,
+  type DoDVersionSnapshot,
   type EventComplianceSummary,
   type ImpedimentMetrics,
   type DoDComplianceTrend,
@@ -32,6 +35,8 @@ export type {
   ImpedimentPriority,
   IntegrationTestRecord,
   IncrementChainNode,
+  IncrementCompositionResult,
+  DoDVersionSnapshot,
   EventComplianceSummary,
   ImpedimentMetrics,
   DoDComplianceTrend,
@@ -53,7 +58,7 @@ export type {
 };
 
 // Enums are runtime values; re-export as values.
-export { IntegrationTestResult, ScrumValue, HealthCheckStatus };
+export { IntegrationTestResult, IntegrationVerificationBasis, ScrumValue, HealthCheckStatus };
 
 export enum UserRole {
   ADMINISTRATOR = 'administrator',
@@ -573,11 +578,24 @@ export interface Increment {
   totalStoryPoints: number;
   status: IncrementStatus;
   integrationVerified?: boolean;
+  /** What the integration verification rests on: an exemption, or a pass against prior Increments. */
+  integrationVerificationBasis?: IntegrationVerificationBasis | null;
+  /** How many prior Increments the verification covered (0 for the first-Increment exemption). */
+  integrationVerifiedPriorCount?: number;
+  /** "the Increment must be in usable condition" — attested explicitly, with written evidence. */
+  usabilityVerified?: boolean;
+  usabilityEvidence?: string | null;
+  usabilityVerifiedAt?: string | null;
+  usabilityVerifiedBy?: string | null;
   createdAt: string;
   deliveredAt?: string;
   deliveryMethod?: DeliveryMethod;
+  /** Who delivered the Increment, alongside when and how. */
+  deliveredBy?: string | null;
   notes?: string;
   createdBy: string;
+  deliverer?: { id: string; firstName: string; lastName: string } | null;
+  usabilityVerifier?: { id: string; firstName: string; lastName: string } | null;
   sprint?: Sprint;
   pbis?: ProductBacklogItem[];
 }

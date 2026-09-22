@@ -10,8 +10,8 @@ import {
 } from '../../constants/gateCodes.js';
 
 describe('gateCodes', () => {
-  it('should define thirty gates', () => {
-    expect(GATE_CODE_LIST).toHaveLength(30);
+  it('should define thirty-six gates', () => {
+    expect(GATE_CODE_LIST).toHaveLength(36);
   });
 
   it('should prefix every gate code with GATE_', () => {
@@ -90,6 +90,45 @@ describe('gateCodes', () => {
     expect(GATE_DEFINITIONS[GATE_CODES.SPRINT_SCOPE_CHANGE_ALREADY_PENDING].httpStatus).toBe(409);
     expect(GATE_DEFINITIONS[GATE_CODES.SPRINT_SCOPE_CHANGE_ALREADY_PENDING].i18nKey).toBe(
       'sprintScopeChangeAlreadyPending'
+    );
+  });
+
+  it('should identify the Definition of Done commitment gates', () => {
+    expect(isGateCode(GATE_CODES.DOD_REQUIRED)).toBe(true);
+    expect(isGateCode(GATE_CODES.DOD_TEAM_MEMBERS_ONLY)).toBe(true);
+    expect(GATE_DEFINITIONS[GATE_CODES.DOD_REQUIRED].httpStatus).toBe(400);
+    expect(GATE_DEFINITIONS[GATE_CODES.DOD_REQUIRED].i18nKey).toBe('dodRequired');
+    expect(GATE_DEFINITIONS[GATE_CODES.DOD_TEAM_MEMBERS_ONLY].httpStatus).toBe(403);
+    expect(GATE_DEFINITIONS[GATE_CODES.DOD_TEAM_MEMBERS_ONLY].i18nKey).toBe('dodTeamMembersOnly');
+  });
+
+  it('should identify the Increment ownership, usability and lifecycle gates', () => {
+    expect(isGateCode(GATE_CODES.INCREMENT_TEAM_MEMBERS_ONLY)).toBe(true);
+    expect(isGateCode(GATE_CODES.INCREMENT_INTEGRATION_VERIFICATION_REQUIRED)).toBe(true);
+    expect(isGateCode(GATE_CODES.INCREMENT_USABILITY_ATTESTATION_REQUIRED)).toBe(true);
+    expect(isGateCode(GATE_CODES.INCREMENT_DELIVERY_METHOD_REQUIRED)).toBe(true);
+  });
+
+  it('should refuse Increment membership with 403 and the evidence gates with 400', () => {
+    expect(GATE_DEFINITIONS[GATE_CODES.INCREMENT_TEAM_MEMBERS_ONLY].httpStatus).toBe(403);
+    expect(GATE_DEFINITIONS[GATE_CODES.INCREMENT_TEAM_MEMBERS_ONLY].i18nKey).toBe(
+      'incrementTeamMembersOnly'
+    );
+    expect(
+      GATE_DEFINITIONS[GATE_CODES.INCREMENT_INTEGRATION_VERIFICATION_REQUIRED].httpStatus
+    ).toBe(400);
+    expect(GATE_DEFINITIONS[GATE_CODES.INCREMENT_INTEGRATION_VERIFICATION_REQUIRED].i18nKey).toBe(
+      'incrementIntegrationVerificationRequired'
+    );
+    expect(GATE_DEFINITIONS[GATE_CODES.INCREMENT_USABILITY_ATTESTATION_REQUIRED].httpStatus).toBe(
+      400
+    );
+    expect(GATE_DEFINITIONS[GATE_CODES.INCREMENT_USABILITY_ATTESTATION_REQUIRED].i18nKey).toBe(
+      'incrementUsabilityAttestationRequired'
+    );
+    expect(GATE_DEFINITIONS[GATE_CODES.INCREMENT_DELIVERY_METHOD_REQUIRED].httpStatus).toBe(400);
+    expect(GATE_DEFINITIONS[GATE_CODES.INCREMENT_DELIVERY_METHOD_REQUIRED].i18nKey).toBe(
+      'incrementDeliveryMethodRequired'
     );
   });
 

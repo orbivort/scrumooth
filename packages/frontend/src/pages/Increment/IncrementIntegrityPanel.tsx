@@ -6,7 +6,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 
 import { incrementService } from '../../services';
-import { IntegrationTestResult, IncrementStatus } from '../../types';
+import { IntegrationTestResult, IntegrationVerificationBasis, IncrementStatus } from '../../types';
 
 type TestResultInput = IntegrationTestResult.PASSED | IntegrationTestResult.FAILED;
 import styles from './IncrementIntegrityPanel.module.css';
@@ -14,6 +14,10 @@ import styles from './IncrementIntegrityPanel.module.css';
 interface IncrementIntegrityPanelProps {
   incrementId: string;
   integrationVerified?: boolean;
+  /** What the verification rests on: the first-Increment exemption, or a pass against priors. */
+  integrationVerificationBasis?: IntegrationVerificationBasis | null;
+  /** How many prior Increments the verification covered. */
+  integrationVerifiedPriorCount?: number;
   /** The Increment status, used to lock editing once delivered/archived. */
   status?: IncrementStatus;
 }
@@ -21,6 +25,8 @@ interface IncrementIntegrityPanelProps {
 export const IncrementIntegrityPanel: React.FC<IncrementIntegrityPanelProps> = ({
   incrementId,
   integrationVerified = false,
+  integrationVerificationBasis,
+  integrationVerifiedPriorCount,
   status,
 }) => {
   // Delivered/archived Increments are immutable: integration tests and
@@ -28,6 +34,28 @@ export const IncrementIntegrityPanel: React.FC<IncrementIntegrityPanelProps> = (
   const locked = status === IncrementStatus.DELIVERED || status === IncrementStatus.ARCHIVED;
   const { t } = useTranslation(['increments', 'common']);
   const queryClient = useQueryClient();
+
+  /**
+   * Name what a verification actually rests on. "Verified" covers two different facts — the team's
+   * first Increment had nothing to test against, and a later one passed against every prior
+   * Increment. One identical green badge for both hides that, so the exemption says so and a real
+   * verification states how many prior Increments it covered.
+   */
+  const describeVerification = (
+    verified: boolean,
+    basis: IntegrationVerificationBasis | null | undefined,
+    priorCount: number | undefined
+  ): string => {
+    if (!verified) {
+      return t('incrementIntegrity.notVerified');
+    }
+
+    if (basis === IntegrationVerificationBasis.FIRST_INCREMENT_EXEMPT) {
+      return t('incrementIntegrity.firstIncrementExempt');
+    }
+
+    return t('incrementIntegrity.verifiedAgainst', { count: priorCount ?? 0 });
+  };
 
   const [priorIncrementId, setPriorIncrementId] = useState('');
   const [testResult, setTestResult] = useState<TestResultInput>(IntegrationTestResult.PASSED);
@@ -86,9 +114,11 @@ export const IncrementIntegrityPanel: React.FC<IncrementIntegrityPanelProps> = (
         <span
           className={`${styles.badge} ${integrationVerified ? styles.verified : styles.unverified}`}
         >
-          {integrationVerified
-            ? t('incrementIntegrity.integrationVerified')
-            : t('incrementIntegrity.notVerified')}
+          {describeVerification(
+            integrationVerified,
+            integrationVerificationBasis,
+            integrationVerifiedPriorCount
+          )}
         </span>
       </header>
 
@@ -208,9 +238,11 @@ export const IncrementIntegrityPanel: React.FC<IncrementIntegrityPanelProps> = (
                     node.integrationVerified ? styles.pass : styles.fail
                   }`}
                 >
-                  {node.integrationVerified
-                    ? t('incrementIntegrity.verified')
-                    : t('incrementIntegrity.unverified')}
+                  {describeVerification(
+                    node.integrationVerified,
+                    node.integrationVerificationBasis,
+                    node.integrationVerifiedPriorCount
+                  )}
                 </span>
               </li>
             ))}

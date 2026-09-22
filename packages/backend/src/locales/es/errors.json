@@ -14,6 +14,8 @@
   "databaseError": "Ocurrió un error de base de datos",
   "developerOnlySizing": "Solo los desarrolladores pueden establecer puntos de historia, ya que los desarrolladores que realizan el trabajo son responsables de la estimación.",
   "dodNotVerified": "Este elemento no puede marcarse como Terminado hasta que se verifique cada criterio activo de la Definición de Terminado. Aún deben verificarse {{count}} criterio(s) activo(s).",
+  "dodRequired": "Nada está Terminado hasta que el equipo ha definido qué significa Terminado, por lo que una Definición de Terminado debe conservar al menos un criterio activo. Una lista vacía permitiría marcar cualquier elemento como Terminado sin revisión.",
+  "dodTeamMembersOnly": "La Definición de Terminado es el acuerdo del propio Scrum Team sobre qué significa «Terminado»: solo un miembro de ese equipo puede leerla o modificarla.",
   "emailAlreadyExists": "Ya existe una cuenta con el correo electrónico {{email}}",
   "entityNotFound": "{{entity}} no encontrado",
   "fieldAlreadyExists": "{{field}} ya existe",
@@ -29,7 +31,13 @@
   },
   "increment": {
     "alreadyDelivered": "Este incremento ya ha sido entregado y no puede entregarse de nuevo.",
-    "deliveredLocked": "Este incremento ha sido entregado y ya no puede modificarse."
+    "deliveredLocked": "Este incremento ha sido entregado o archivado y ya no puede modificarse.",
+    "deliveryRequiresMethod": "Un incremento se registra como entregado mediante la acción de entrega, que recoge cómo llegó a los usuarios. Registre el método de entrega en lugar de escribir el estado directamente.",
+    "integrationRequired": "Este incremento no puede verificarse ni entregarse hasta que su integración con todos los incrementos anteriores haya pasado. Registre primero las pruebas de integración requeridas.",
+    "pbisNotOfTeam": "Cada elemento que contiene un incremento debe pertenecer al Product Backlog de este equipo.",
+    "sprintNotOfTeam": "Un incremento solo puede componerse a partir de un Sprint del equipo al que pertenece.",
+    "teamMembersOnly": "El incremento pertenece a su Scrum Team: solo un miembro de ese equipo puede leerlo, verificarlo o entregarlo.",
+    "usabilityRequired": "Este incremento no puede verificarse ni entregarse antes de que se acredite por escrito su condición de usable. Registre primero la evidencia de usabilidad."
   },
   "invalidCredentials": "Correo electrónico o contraseña inválidos",
   "invalidReference": "Referencia inválida",

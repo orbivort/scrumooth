@@ -516,6 +516,37 @@ PUT /api/v1/product-backlog/:id
 - `acceptanceCriteria`: Optional, maximum 5000 characters
 - `status`: Optional, must be a valid status value
 
+**Transition to `DONE`**
+
+`DONE` is gated on the team's Definition of Done, and the gate is enforced here rather than only in the interface:
+
+- The team must have at least one active DoD item, otherwise the transition is refused with `400 GATE_DOD_REQUIRED`. An emptied DoD must not become a way through the gate.
+- Every active DoD item must be verified for this item, otherwise the transition is refused with `400 GATE_DOD_NOT_VERIFIED`.
+
+**Composition of the Sprint Increment**
+
+When the update transitions the item to `DONE`, the Increment of its active Sprint absorbs it. That composition is deliberately non-fatal — a composition failure never rolls back the Done write — but it is never silent: the response carries a sibling `composition` field reporting the outcome.
+
+```json
+{
+  "success": true,
+  "data": {
+    "item": { "…": "the Product Backlog item, unchanged" },
+    "composition": {
+      "status": "COMPOSED",
+      "incrementId": "550e8400-e29b-41d4-a716-446655440000"
+    }
+  }
+}
+```
+
+| `composition.status`        | Meaning                                                                                   |
+| --------------------------- | ----------------------------------------------------------------------------------------- |
+| `COMPOSED`                  | The item joined the Sprint's open Increment                                               |
+| `SKIPPED_NO_ACTIVE_SPRINT`  | The item is not part of an active Sprint, so it has no Sprint Increment to join           |
+| `SKIPPED_ITEM_NOT_ELIGIBLE` | The item no longer satisfies every active Definition of Done item                         |
+| `FAILED`                    | Composition failed; `reason` explains, and `POST /api/v1/increments/reconcile` repairs it |
+
 **Success Response**
 
 ```http
@@ -1038,7 +1069,7 @@ curl -X POST https://api.scrumooth.dev/api/v1/product-backlog/reorder \
 
 ### Verify Definition of Done
 
-Verify Definition of Done checklist items for a product backlog item. Requires Scrum Master role.
+Record Definition of Done checklist items as verified (or not) for a product backlog item. This is what lets the item reach `DONE`: the Done gate refuses the transition until every active DoD item is verified for it.
 
 **Endpoint**
 
@@ -1049,7 +1080,7 @@ POST /api/v1/product-backlog/:id/verify-dod
 **Authentication**
 
 - Required
-- Scrum Master role required
+- The caller must be a member of the team that owns the item. A verification is a statement about the team's own commitment, so a non-member who could write one could decide that another team's work is Done (`403 GATE_DOD_TEAM_MEMBERS_ONLY`).
 
 **Rate Limit**
 
@@ -1504,17 +1535,20 @@ curl -X GET https://api.scrumooth.dev/api/v1/product-backlog/880e8400-e29b-41d4-
 
 ## Error Codes
 
-| Code                                    | HTTP Status | Description                                                          |
-| --------------------------------------- | ----------- | -------------------------------------------------------------------- |
-| `VALIDATION_ERROR`                      | 400         | Request validation failed                                            |
-| `BAD_REQUEST`                           | 400         | The request is well-formed but refused (e.g. an incomplete reorder)  |
-| `AUTHENTICATION_ERROR`                  | 401         | Authentication required                                              |
-| `AUTHORIZATION_ERROR`                   | 403         | Insufficient permissions                                             |
-| `NOT_FOUND`                             | 404         | Product backlog item not found                                       |
-| `CONFLICT`                              | 409         | Resource conflict                                                    |
-| `GATE_PRODUCT_OWNER_ONLY_BACKLOG_ORDER` | 403         | Only the Product Owner orders the backlog (position and MoSCoW band) |
-| `GATE_PBI_NOT_READY`                    | 400         | A Product Backlog item must be `READY` before it can enter a Sprint  |
-| `GATE_DEVELOPER_ONLY_SIZING`            | 403         | Only Developers set story points                                     |
+| Code                                    | HTTP Status | Description                                                                    |
+| --------------------------------------- | ----------- | ------------------------------------------------------------------------------ |
+| `VALIDATION_ERROR`                      | 400         | Request validation failed                                                      |
+| `BAD_REQUEST`                           | 400         | The request is well-formed but refused (e.g. an incomplete reorder)            |
+| `AUTHENTICATION_ERROR`                  | 401         | Authentication required                                                        |
+| `AUTHORIZATION_ERROR`                   | 403         | Insufficient permissions                                                       |
+| `NOT_FOUND`                             | 404         | Product backlog item not found                                                 |
+| `CONFLICT`                              | 409         | Resource conflict                                                              |
+| `GATE_PRODUCT_OWNER_ONLY_BACKLOG_ORDER` | 403         | Only the Product Owner orders the backlog (position and MoSCoW band)           |
+| `GATE_PBI_NOT_READY`                    | 400         | A Product Backlog item must be `READY` before it can enter a Sprint            |
+| `GATE_DEVELOPER_ONLY_SIZING`            | 403         | Only Developers set story points                                               |
+| `GATE_DOD_REQUIRED`                     | 400         | The team must keep at least one active DoD item before work can be marked Done |
+| `GATE_DOD_NOT_VERIFIED`                 | 400         | An item cannot be marked Done until every active DoD item is verified for it   |
+| `GATE_DOD_TEAM_MEMBERS_ONLY`            | 403         | Reading or changing a team's DoD, or verifying against it, requires membership |
 
 The `GATE_*` codes are the Scrum Guide gates described in [Authorization Model](#authorization-model); the complete, canonical list lives in [Gate Rejections](./README.md#gate-rejections).
 

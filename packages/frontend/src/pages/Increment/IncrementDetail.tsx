@@ -13,6 +13,7 @@ import { LoadingState } from '../../components/common/Loading';
 import { ToastContainer } from '../../components/common/ToastContainer';
 
 import { IncrementIntegrityPanel } from './IncrementIntegrityPanel';
+import { IncrementUsabilityPanel } from './IncrementUsabilityPanel';
 import styles from './IncrementDetail.module.css';
 
 import { useI18nStore } from '@/i18n/useI18nStore';
@@ -168,16 +169,16 @@ export const IncrementDetail: React.FC = () => {
   }
 
   const statusColor = getStatusColor(increment.status);
-  // Delivery is offered for DRAFT and VERIFIED increments. A DRAFT increment can
-  // only actually be delivered once its integration with all prior Increments is
-  // verified, so the button is shown disabled with an explanatory reason until
-  // then. VERIFIED increments are guaranteed to be verified (the backend blocks
-  // DRAFT -> VERIFIED without integration verification).
+  // Delivery is offered for DRAFT and VERIFIED increments, and requires two things the backend
+  // enforces: integration with every prior Increment must have passed, and the Increment's usable
+  // condition must be attested in writing. The button is shown disabled with the specific reason
+  // until both hold, so the deliver action states why it is unavailable instead of failing.
   const canDeliver =
     increment.status === IncrementStatus.VERIFIED || increment.status === IncrementStatus.DRAFT;
-  const deliverBlockedReason =
-    increment.status === IncrementStatus.DRAFT && !increment.integrationVerified
-      ? 'detail.deliverRequiresIntegration'
+  const deliverBlockedReason = !increment.integrationVerified
+    ? 'detail.deliverRequiresIntegration'
+    : !increment.usabilityVerified
+      ? 'detail.deliverRequiresUsability'
       : undefined;
 
   return (
@@ -434,15 +435,37 @@ export const IncrementDetail: React.FC = () => {
                     <span className={styles['timeline-date']}>
                       {formatLocaleDate(increment.deliveredAt, locale, 'PPPP')}
                     </span>
+                    {increment.deliverer && (
+                      <span className={styles['timeline-date']}>
+                        {t('detail.timeline.deliveredBy', {
+                          name: `${increment.deliverer.firstName} ${increment.deliverer.lastName}`,
+                        })}
+                      </span>
+                    )}
                   </div>
                 </div>
               )}
             </div>
           </div>
 
+          <IncrementUsabilityPanel
+            incrementId={increment.id}
+            usabilityVerified={increment.usabilityVerified}
+            usabilityEvidence={increment.usabilityEvidence}
+            usabilityVerifiedAt={increment.usabilityVerifiedAt}
+            usabilityVerifierName={
+              increment.usabilityVerifier
+                ? `${increment.usabilityVerifier.firstName} ${increment.usabilityVerifier.lastName}`
+                : null
+            }
+            status={increment.status}
+          />
+
           <IncrementIntegrityPanel
             incrementId={increment.id}
             integrationVerified={increment.integrationVerified}
+            integrationVerificationBasis={increment.integrationVerificationBasis}
+            integrationVerifiedPriorCount={increment.integrationVerifiedPriorCount}
             status={increment.status}
           />
         </div>

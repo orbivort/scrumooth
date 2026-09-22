@@ -26,11 +26,14 @@ model User {
   consentRecords         ConsentRecord[]
   dailyScrumParticipants DailyScrumParticipant[]
   dodVerifications       DoDChecklistVerification[]
+  dodVersionSnapshots    DoDVersionSnapshot[]       @relation("DoDVersionSnapshotCreator")
   dorVerifications       DoRChecklistVerification[]
   emailLogs              EmailLog[]
   ownedImpediments       Impediment[]               @relation("ImpedimentOwner")
   reportedImpediments    Impediment[]               @relation("ImpedimentReporter")
   increments             Increment[]                @relation("IncrementCreator")
+  deliveredIncrements    Increment[]                @relation("IncrementDeliverer")
+  usabilityVerifiedIncrements Increment[]           @relation("IncrementUsabilityVerifier")
   notifications          Notification[]
   createdPBIs            ProductBacklogItem[]       @relation("PBICreator")
   createdGoals           ProductGoal[]              @relation("GoalCreator")
@@ -81,6 +84,7 @@ model Team {
   sprints             Sprint[]
   members             TeamMember[]
   timeboxes           Timebox[]
+  dodVersionSnapshots DoDVersionSnapshot[]
   creator             User?                 @relation("TeamCreator", fields: [createdBy], references: [id], onDelete: SetNull)
 
   @@index([createdBy])
@@ -504,6 +508,7 @@ model DefinitionOfDone {
   updatedBy String?   @db.Uuid
   team      Team      @relation(fields: [teamId], references: [id], onDelete: Cascade)
   items     DoDItem[]
+  snapshots DoDVersionSnapshot[]
 
   @@map("definition_of_done")
 }
@@ -547,6 +552,33 @@ model DoDChecklistVerification {
   @@index([dodItemId])
   @@index([verifiedBy])
   @@map("dod_checklist_verifications")
+}
+
+/// An immutable, append-only copy of one Definition of Done version.
+///
+/// The Definition of Done is the Increment's commitment: it only becomes auditable if the
+/// versions it superseded survive. `updateDefinitionOfDone` therefore writes a snapshot of the
+/// version it is about to replace before replacing it, instead of erasing the change history.
+/// Items are stored as JSON because a snapshot must never change when the live item rows do.
+model DoDVersionSnapshot {
+  id        String   @id @db.Uuid
+  dodId     String   @db.Uuid
+  teamId    String   @db.Uuid
+  /// The superseded version this snapshot preserves; unique per Definition of Done.
+  version   Int
+  items     Json
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  createdBy String?  @db.Uuid
+  creator           User?              @relation("DoDVersionSnapshotCreator", fields: [createdBy], references: [id], onDelete: SetNull)
+  definitionOfDone  DefinitionOfDone   @relation(fields: [dodId], references: [id], onDelete: Cascade)
+  team              Team               @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  // The unique index is the read path too: history is always "for this Definition of Done, in
+  // version order", so a separate index on ("dodId", "version") would duplicate it.
+  @@unique([dodId, version])
+  @@index([teamId])
+  @@index([createdBy])
+  @@map("dod_version_snapshots")
 }
 
 model DefinitionOfReady {
@@ -613,8 +645,20 @@ model Increment {
   totalStoryPoints          Int                        @default(0)
   status                    IncrementStatus            @default(DRAFT)
   integrationVerified       Boolean                    @default(false)
+  /// What `integrationVerified` rests on: the first-Increment exemption, or a real pass against
+  /// prior Increments. NULL while the Increment is not verified.
+  integrationVerificationBasis IntegrationVerificationBasis?
+  /// How many prior Increments the verification actually covered (0 for the exemption).
+  integrationVerifiedPriorCount Int                   @default(0)
+  /// "the Increment must be in usable condition": attested explicitly, with written evidence.
+  usabilityVerified         Boolean                    @default(false)
+  usabilityEvidence         String?
+  usabilityVerifiedAt       DateTime?                  @db.Timestamptz(3)
+  usabilityVerifiedBy       String?                    @db.Uuid
   deliveredAt               DateTime?                  @db.Timestamptz(3)
   deliveryMethod            DeliveryMethod?
+  /// Who delivered the Increment, alongside when and how.
+  deliveredBy               String?                    @db.Uuid
   notes                     String?
   createdAt                 DateTime                   @default(now()) @db.Timestamptz(3)
   createdBy                 String?                    @db.Uuid
@@ -622,6 +666,8 @@ model Increment {
   updatedBy                 String?                    @db.Uuid
   pbis                      IncrementPBI[]
   creator                   User?                      @relation("IncrementCreator", fields: [createdBy], references: [id], onDelete: SetNull)
+  deliverer                 User?                      @relation("IncrementDeliverer", fields: [deliveredBy], references: [id], onDelete: SetNull)
+  usabilityVerifier         User?                      @relation("IncrementUsabilityVerifier", fields: [usabilityVerifiedBy], references: [id], onDelete: SetNull)
   sprint                    Sprint                     @relation(fields: [sprintId], references: [id], onDelete: Cascade)
   team                      Team                       @relation(fields: [teamId], references: [id], onDelete: Cascade)
   sprintReview              SprintReview?
@@ -634,6 +680,8 @@ model Increment {
   @@index([deliveredAt])
   @@index([sprintId, status])
   @@index([teamId, status, createdAt])
+  @@index([deliveredBy])
+  @@index([usabilityVerifiedBy])
   @@map("increments")
 }
 
@@ -1392,6 +1440,14 @@ enum IntegrationTestResult {
   PENDING
   PASSED
   FAILED
+}
+
+/// What an Increment's `integrationVerified` flag rests on. The team's first Increment has no
+/// prior Increment to test against, so it is exempt rather than verified; recording which of the
+/// two applies keeps "verified" from meaning two different things under one badge.
+enum IntegrationVerificationBasis {
+  FIRST_INCREMENT_EXEMPT
+  PRIOR_INCREMENTS
 }
 
 enum ScrumValue {

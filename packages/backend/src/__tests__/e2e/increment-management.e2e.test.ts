@@ -309,7 +309,7 @@ describe('E2E: Increment Management', () => {
       expect(response.body.data.totalStoryPoints).toBe(10);
     });
 
-    it('should create increment with VERIFIED status', async () => {
+    it('should refuse creating an increment that declares a non-DRAFT status', async () => {
       const email = `verified-status-${uniqueTestId()}@example.com`;
       testEmails.push(email);
 
@@ -323,6 +323,8 @@ describe('E2E: Increment Management', () => {
       const cookies = await loginAndGetCookies(email);
       const { csrfToken } = extractCsrfFromCookies(cookies);
 
+      // An Increment is always created as a draft: the gates on the way to VERIFIED and DELIVERED
+      // are walked, not declared.
       const response = await request(app)
         .post('/api/v1/increments')
         .set('Cookie', cookies)
@@ -333,10 +335,9 @@ describe('E2E: Increment Management', () => {
           teamId: team.id,
           status: 'VERIFIED',
         })
-        .expect(HTTP_STATUS.CREATED);
+        .expect(HTTP_STATUS.UNPROCESSABLE_ENTITY);
 
-      expect(response.body.success).toBe(true);
-      expect(response.body.data.status).toBe('VERIFIED');
+      expect(response.body.success).toBe(false);
     });
 
     it('should return 422 UNPROCESSABLE_ENTITY with missing required fields', async () => {
@@ -536,10 +537,20 @@ describe('E2E: Increment Management', () => {
         SPRINT_STATUSES.ACTIVE
       );
 
-      const increment = await createTestIncrementInDb(sprint.id, team.id, 'Test', 'DRAFT');
+      const increment = await createTestIncrementInDb(sprint.id, team.id, 'Test', 'DRAFT', {
+        integrationVerified: true,
+      });
 
       const cookies = await loginAndGetCookies(email);
       const { csrfToken } = extractCsrfFromCookies(cookies);
+
+      // The usable condition is attested before VERIFIED becomes reachable.
+      await request(app)
+        .post(`/api/v1/increments/${increment.id}/verify-usability`)
+        .set('Cookie', cookies)
+        .set(CSRF_CONSTANTS.HEADER_NAME, csrfToken)
+        .send({ evidence: 'Exercised by the Product Owner in the staging environment' })
+        .expect(HTTP_STATUS.OK);
 
       const response = await request(app)
         .put(`/api/v1/increments/${increment.id}`)
@@ -634,7 +645,10 @@ describe('E2E: Increment Management', () => {
         SPRINT_STATUSES.ACTIVE
       );
 
-      const increment = await createTestIncrementInDb(sprint.id, team.id, 'Test', 'VERIFIED');
+      const increment = await createTestIncrementInDb(sprint.id, team.id, 'Test', 'VERIFIED', {
+        integrationVerified: true,
+        usabilityVerified: true,
+      });
 
       const cookies = await loginAndGetCookies(email);
       const { csrfToken } = extractCsrfFromCookies(cookies);
@@ -665,7 +679,10 @@ describe('E2E: Increment Management', () => {
         SPRINT_STATUSES.ACTIVE
       );
 
-      const increment = await createTestIncrementInDb(sprint.id, team.id, 'Test', 'VERIFIED');
+      const increment = await createTestIncrementInDb(sprint.id, team.id, 'Test', 'VERIFIED', {
+        integrationVerified: true,
+        usabilityVerified: true,
+      });
 
       const cookies = await loginAndGetCookies(email);
       const { csrfToken } = extractCsrfFromCookies(cookies);

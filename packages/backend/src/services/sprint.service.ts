@@ -1669,14 +1669,6 @@ class SprintService {
   }
 
   /**
-   * Determine which PBIs (among the given candidate PBIs) do NOT satisfy the team's
-   * Definition of Done. A PBI is compliant only when every active DoD item is verified.
-   * A team with no active DoD items has no gate to satisfy (vacuously compliant), so all
-   * candidate PBIs are considered compliant.
-   *
-   * Runs against the transaction client so the gate is atomic with the status write.
-   */
-  /**
    * Reinitialize burndown data within a transaction
    * This ensures burndown data is created atomically with sprint start
    */

@@ -257,6 +257,8 @@ Backlog items progress through these states:
 
 > **Ready is a gate, not a label**: an item must be refined to **Ready** before it can enter a Sprint. Adding a New or Refined item to a Sprint is refused — at Sprint Planning, when the Sprint starts, and when the item is added to an active Sprint — with a message naming the items that are not ready yet.
 
+> **Done is a gate, not a label**: an item can only reach **Done** once every active item of the team's Definition of Done is verified for it. Refining the definition is the Scrum Team's own call, but it cannot be emptied: a Definition of Done must keep at least one active item, and while it has none, nothing can be marked Done. When an item does reach Done, it joins its Sprint's Increment, and the app reports whether the Increment absorbed it — if a composition was skipped or failed, the Sprint Increment can be reconciled from its Done items.
+
 ### Refining Items
 
 Backlog refinement (formerly "grooming") is an ongoing activity:

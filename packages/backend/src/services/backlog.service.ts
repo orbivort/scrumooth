@@ -9,8 +9,10 @@ import {
 } from '../utils/errors';
 import { generateUUIDv7 } from '../utils/uuid';
 import { GATE_CODES } from '@scrumooth/shared';
+import type { IncrementCompositionResult } from '@scrumooth/shared';
 import { workflowService } from './workflow.service';
 import { incrementService } from './increment.service';
+import { checkDoDEligibility } from './incrementAccess';
 import { logger } from '../utils/logger';
 import { BACKLOG_CONFIG, isBacklogLimitEnabled } from '../config/backlog.config';
 import { PRODUCT_BACKLOG_ORDER } from '../config/backlogOrder';
@@ -277,8 +279,17 @@ class ProductBacklogService {
 
   /**
    * Update a PBI
+   *
+   * When the update transitions the item to DONE, the result also carries the outcome of composing
+   * the Sprint's Increment: the item is reported as having joined an Increment, as having been
+   * skipped (with the reason), or as having failed. Composition failing never rolls back the Done
+   * write, but the caller must be able to tell that the Increment did not absorb the item.
    */
-  async updatePBI(pbiId: string, userId: string, data: UpdatePBIData): Promise<ProductBacklogItem> {
+  async updatePBI(
+    pbiId: string,
+    userId: string,
+    data: UpdatePBIData
+  ): Promise<ProductBacklogItem & { composition?: IncrementCompositionResult }> {
     // Check if PBI exists
     const existing = await prisma.productBacklogItem.findUnique({
       where: { id: pbiId },
@@ -399,9 +410,12 @@ class ProductBacklogService {
     // Continuously compose the Sprint's Increment from this Done PBI (find-or-create the
     // Sprint Increment then upsert the incrementPBI row) whenever an item transitions to
     // DONE via the existing status-update path. The composition is best-effort and
-    // non-fatal: it never rolls back the successful DONE write.
+    // non-fatal: it never rolls back the successful DONE write. Its outcome is returned
+    // rather than swallowed, so an Increment that under-reports its contents is visible at
+    // the moment it happens and not at the Sprint Review.
     if (data.status === 'DONE') {
-      await incrementService.composeDonePBI(pbiId, userId);
+      const composition = await incrementService.composeDonePBI(pbiId, userId);
+      return { ...pbi, composition };
     }
 
     return pbi;
@@ -976,47 +990,32 @@ class ProductBacklogService {
 
   /**
    * Definition of Done is the gate to "Done". Before an item may transition to DONE, every
-   * active DoD item must be verified for it. A team with no active DoD items has no gate to
-   * satisfy (vacuously compliant), so the transition is allowed.
-   * @throws AppError (400, `GATE_DOD_NOT_VERIFIED`) when the active DoD checklist is not
-   * fully verified.
+   * active DoD item must be verified for it.
+   *
+   * A team with no active DoD item is refused rather than allowed: "nothing is Done until the
+   * checklist passes" cannot be satisfied by deleting the checklist, and the previous
+   * vacuous pass made the Definition of Done defeatable with a single API call.
+   *
+   * @throws AppError (400, `GATE_DOD_REQUIRED`) when the team's Definition of Done has no active
+   * item, and (400, `GATE_DOD_NOT_VERIFIED`) when the active checklist is not fully verified.
    */
   private async assertFullDoDVerified(pbi: ProductBacklogItem): Promise<void> {
-    const dod = await prisma.definitionOfDone.findUnique({
-      where: { teamId: pbi.teamId },
-      select: {
-        items: {
-          where: { isActive: true },
-          select: { id: true },
-        },
-      },
-    });
+    const eligibility = await checkDoDEligibility(pbi.id, pbi.teamId);
 
-    const activeDodItemIds = (dod?.items ?? []).map((item) => item.id);
-    if (activeDodItemIds.length === 0) {
+    if (eligibility.eligible) {
       return;
     }
 
-    const verifiedRows = await prisma.doDChecklistVerification.findMany({
-      where: {
-        pbiId: pbi.id,
-        dodItemId: { in: activeDodItemIds },
-        isVerified: true,
-      },
-      select: { dodItemId: true },
-    });
-
-    const verifiedDodItemIds = new Set(verifiedRows.map((row) => row.dodItemId));
-    const unverified = activeDodItemIds.filter((id) => !verifiedDodItemIds.has(id));
-
-    if (unverified.length > 0) {
-      throw localizedError(
-        'errors:dodNotVerified',
-        { count: unverified.length },
-        400,
-        GATE_CODES.DOD_NOT_VERIFIED
-      );
+    if (eligibility.reason === 'NO_DOD') {
+      throw localizedError('errors:dodRequired', {}, 400, GATE_CODES.DOD_REQUIRED);
     }
+
+    throw localizedError(
+      'errors:dodNotVerified',
+      { count: eligibility.unverifiedCount },
+      400,
+      GATE_CODES.DOD_NOT_VERIFIED
+    );
   }
 
   /**

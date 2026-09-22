@@ -24,15 +24,51 @@ export interface IntegrationTestRecord {
   testerName?: string;
 }
 
+/**
+ * What an Increment's `integrationVerified` flag actually rests on.
+ *
+ * The team's first Increment has no prior Increment to test against, so it is exempt rather than
+ * verified. Recording the basis keeps "verified" from meaning two different things under one
+ * green badge.
+ */
+export enum IntegrationVerificationBasis {
+  /** The team's first Increment: nothing existed to test against, so the flag is an exemption. */
+  FIRST_INCREMENT_EXEMPT = 'FIRST_INCREMENT_EXEMPT',
+  /** Verified against every prior Increment of the team, all of which passed. */
+  PRIOR_INCREMENTS = 'PRIOR_INCREMENTS',
+}
+
 export interface IncrementChainNode {
   id: string;
   name: string;
   status: string;
   integrationVerified: boolean;
+  /** What the verification rests on, or `null` when the Increment is not verified. */
+  integrationVerificationBasis?: IntegrationVerificationBasis | null;
+  /** How many prior Increments the verification covered; `0` for the first-Increment exemption. */
+  integrationVerifiedPriorCount?: number;
   deliveredAt?: string | null;
   hasTests: boolean;
   isCurrent?: boolean;
   sprintName?: string | null;
+}
+
+/**
+ * The outcome of absorbing a `DONE` Product Backlog item into its Sprint's Increment.
+ *
+ * Composition is deliberately non-fatal — a failed composition must never roll back the write
+ * that marked the item Done — but it is never silent: the outcome travels back to the caller so
+ * an under-reported Increment cannot reach the Sprint Review unnoticed.
+ */
+export type IncrementCompositionStatus =
+  'COMPOSED' | 'SKIPPED_NO_ACTIVE_SPRINT' | 'SKIPPED_ITEM_NOT_ELIGIBLE' | 'FAILED';
+
+export interface IncrementCompositionResult {
+  status: IncrementCompositionStatus;
+  /** The Increment the item joined, when one could be resolved. */
+  incrementId?: string;
+  /** Human-readable explanation for a `SKIPPED_*` or `FAILED` outcome. */
+  reason?: string;
 }
 
 // --- SM facilitation dashboard ---
@@ -123,6 +159,35 @@ export interface ActionItemCompletion {
     overdue: boolean;
     ownerName?: string;
   }>;
+}
+
+// --- Definition of Done versions ---
+
+/** One item as it stood in a superseded Definition of Done version. */
+export interface DoDVersionItem {
+  description: string;
+  category: string | null;
+  isActive: boolean;
+  order: number;
+}
+
+/**
+ * An immutable snapshot of a team's Definition of Done at one version.
+ *
+ * The commitment is only auditable if the versions it superseded survive, so a change appends a
+ * snapshot of the version it replaces instead of erasing it.
+ */
+export interface DoDVersionSnapshot {
+  id: string;
+  teamId: string;
+  version: number;
+  items: DoDVersionItem[];
+  createdAt: string;
+  createdBy: string | null;
+  /** Name of the member who made the change, when the account still exists. */
+  createdByName?: string | null;
+  /** Whether this snapshot is the version the team currently works to. */
+  isCurrent: boolean;
 }
 
 // --- Product Goal snapshots ---

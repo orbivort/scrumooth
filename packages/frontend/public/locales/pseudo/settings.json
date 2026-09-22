@@ -82,7 +82,7 @@
     "workingWeek": {
       "legend": "[Wórkíng dàys óf thé wéékkkkkkkkk]",
       "noneSelected": "[Nó wórkíng dàys séléctéd. Thé càléndàr hàs nóthíng tó cóúnttttttttttttttttttt.]",
-      "summary_one": "[Thé téàm wórkssssss {{count}} dày à wéékkkkk.]",
+      "summary_one": "[Thé téàm wórkssssss {{count}} ddààyy àà wwéééék.]",
       "summary_other": "[Thé téàm wórkssssss {{count}} dàys à wéékkkkk.]",
       "title": "[Wórkíng wéékkkkk]"
     }
