@@ -18,6 +18,7 @@ import {
   createTestRetrospectiveItemInDb,
   addPBIToSprintBacklog,
   seedPlanningParticipation,
+  seedTeamDefinitions,
   cleanupUsers,
   cleanupTeams,
   ROLES,
@@ -558,7 +559,7 @@ describe('E2E: Workflow Operations', () => {
         const email = `start-sprint-${uniqueTestId()}@example.com`;
         testEmails.push(email);
 
-        const { team } = await setupTeamWithUser(email, ROLES.SCRUM_MASTER);
+        const { team, user } = await setupTeamWithUser(email, ROLES.SCRUM_MASTER);
 
         // A Sprint cannot start until it is linked to a Product Goal.
         await createTestProductGoalInDb(team.id, `Goal ${uniqueTestId()}`, 'ACTIVE');
@@ -578,6 +579,8 @@ describe('E2E: Workflow Operations', () => {
         await addPBIToSprintBacklog(sprint.id, pbi.id);
         // Planning participation is a start gate: the PO and a Developer must be recorded present.
         await seedPlanningParticipation(sprint.id);
+        // So are the team's two agreements.
+        await seedTeamDefinitions(team.id, [pbi.id], user.id);
 
         const cookies = await loginAndGetCookies(email);
         const { csrfToken } = extractCsrfFromCookies(cookies);
@@ -737,7 +740,7 @@ describe('E2E: Workflow Operations', () => {
       const email = `concurrent-${uniqueTestId()}@example.com`;
       testEmails.push(email);
 
-      const { team } = await setupTeamWithUser(email, ROLES.SCRUM_MASTER);
+      const { team, user } = await setupTeamWithUser(email, ROLES.SCRUM_MASTER);
 
       // A Sprint cannot start until it is linked to a Product Goal.
       await createTestProductGoalInDb(team.id, `Goal ${uniqueTestId()}`, 'ACTIVE');
@@ -756,6 +759,7 @@ describe('E2E: Workflow Operations', () => {
       );
       await addPBIToSprintBacklog(sprint.id, pbi.id);
       await seedPlanningParticipation(sprint.id);
+      await seedTeamDefinitions(team.id, [pbi.id], user.id);
 
       const cookies = await loginAndGetCookies(email);
       const { csrfToken } = extractCsrfFromCookies(cookies);

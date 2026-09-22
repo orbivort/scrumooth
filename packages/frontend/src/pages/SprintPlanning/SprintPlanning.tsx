@@ -50,6 +50,7 @@ import { AddTaskModal } from './components/AddTaskModal';
 import { EditSprintGoalModal } from './components/EditSprintGoalModal';
 import { StartSprintModal } from './components/StartSprintModal';
 import { TeamCapacityModal } from './components/TeamCapacityModal';
+import { useSprintCommitmentReadiness } from './hooks/useSprintCommitmentReadiness';
 import styles from './SprintPlanning.module.css';
 
 import { AttendeesSection, type AttendeeFormData } from '@/components/AttendeesSection';
@@ -285,6 +286,17 @@ export const SprintPlanning: React.FC = () => {
 
   const [selectedSprintId, setSelectedSprintId] = useState<string | null>(null);
   const [sprintBacklogItems, setSprintBacklogItems] = useState<SprintBacklogItem[]>([]);
+
+  // The commitments the Sprint boundary is gated on: a Definition of Done the team actually has, and
+  // a Definition of Ready every selected item has met. Read here so the Start dialog can explain the
+  // refusal before submit; the service remains the gate.
+  const selectedPbiIds = useMemo(
+    () => sprintBacklogItems.map((item) => item.id),
+    [sprintBacklogItems]
+  );
+  const { hasDefinitionOfDone, unreadyPbiIds: unreadyReadinessPbiIds } =
+    useSprintCommitmentReadiness(teamId, selectedPbiIds);
+
   const [showTaskModal, setShowTaskModal] = useState(false);
   const [selectedItemForTask, setSelectedItemForTask] = useState<string | null>(null);
   const [teamAvailability, setTeamAvailability] = useState<TeamAvailability[]>([]);
@@ -1410,6 +1422,18 @@ export const SprintPlanning: React.FC = () => {
     startSprintMutation.reset();
   };
 
+  /**
+   * Leave planning for the definitions the refusal points at.
+   *
+   * A refused Start is actionable: the team either has no Definition of Done or has not verified its
+   * readiness agreement, and both live in Team Definitions. The dialog closes first so returning to
+   * planning does not land behind a stale modal.
+   */
+  const handleOpenDefinitions = () => {
+    handleCancelStartSprint();
+    void navigate('/settings/team-definitions');
+  };
+
   const handleSaveSprintGoal = useCallback(
     (goal: string) => {
       if (!selectedSprintId) {
@@ -2386,6 +2410,9 @@ export const SprintPlanning: React.FC = () => {
           isLoading={startSprintMutation.isPending}
           hasSprintGoal={!!selectedSprint?.sprintGoal?.trim()}
           hasSavedBacklog={backlogSaved}
+          hasDefinitionOfDone={hasDefinitionOfDone}
+          unreadyReadinessItemCount={unreadyReadinessPbiIds.length}
+          onOpenDefinitions={handleOpenDefinitions}
         />
       </div>
     </>

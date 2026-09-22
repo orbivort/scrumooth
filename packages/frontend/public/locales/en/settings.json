@@ -275,6 +275,11 @@
     "lastUpdated": "Last updated:",
     "loading": "Loading Definition of Ready...",
     "noTeam": "Please select a team to view Definition of Ready.",
+    "practice": {
+      "message": "It is not one of the three artifacts of the 2020 Scrum Guide — the Product Backlog, the Sprint Backlog and the Increment — so Scrumooth labels it a complementary practice. It is still enforced as the team's own agreement: a Sprint Backlog cannot be committed, and a Sprint cannot start, while a selected item has an unverified criterion. Team members record the verifications; the Scrum Master maintains the agreement.",
+      "scrumMasterOnly": "The team's Scrum Master maintains this agreement.",
+      "title": "Complementary practice, not a Guide artifact."
+    },
     "retry": "Retry",
     "shortLabel": "DoR",
     "title": "Definition of Ready",

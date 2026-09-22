@@ -275,6 +275,11 @@
     "lastUpdated": "Última actualización:",
     "loading": "Cargando Definition of Ready...",
     "noTeam": "Por favor seleccione un equipo para ver la Definition of Ready.",
+    "practice": {
+      "message": "No es uno de los tres artefactos de la Guía de Scrum 2020 —el Product Backlog, el Sprint Backlog y el Incremento—, por lo que Scrumooth la identifica como práctica complementaria. Aun así se aplica como acuerdo propio del equipo: no se puede comprometer un Sprint Backlog ni iniciar un Sprint mientras un elemento seleccionado tenga un criterio sin verificar. El equipo registra las verificaciones y el Scrum Master mantiene el acuerdo.",
+      "scrumMasterOnly": "El Scrum Master del equipo mantiene este acuerdo.",
+      "title": "Práctica complementaria, no un artefacto de la Guía."
+    },
     "retry": "Reintentar",
     "shortLabel": "DoR",
     "title": "Definition of Ready",

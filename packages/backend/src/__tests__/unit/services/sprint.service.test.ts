@@ -116,6 +116,17 @@ vi.mock('../../../utils/prisma', () => ({
       // the team's own row by default.
       findUnique: vi.fn().mockResolvedValue({ groupId: null }),
     },
+    // The two agreements the Sprint boundary gates on are read at the top level (before the write
+    // transaction), so they need their own mocks outside `withTransaction`.
+    definitionOfDone: {
+      findUnique: vi.fn(),
+    },
+    definitionOfReady: {
+      findUnique: vi.fn(),
+    },
+    doRChecklistVerification: {
+      findMany: vi.fn(),
+    },
     notification: {
       create: vi.fn(),
     },
@@ -270,6 +281,28 @@ const mockSprintContainerCalendarAsEmpty = () => {
   (prisma.sprintBacklogChange.findFirst as any).mockResolvedValue(null);
 };
 
+/**
+ * The Sprint boundary also gates on the team's two agreements: it must hold a Definition of Done, and
+ * every selected item must satisfy the team's Definition of Ready. Default to a team that holds both
+ * and whose selected items are fully verified -- the verifications are answered from the requested
+ * ids, so happy-path planning tests are not blocked. Gate-specific tests override these themselves.
+ */
+const mockSprintCommitmentsAsInForce = () => {
+  (prisma.definitionOfDone.findUnique as any).mockResolvedValue({
+    items: [{ id: 'dod-item-1' }],
+  });
+  (prisma.definitionOfReady.findUnique as any).mockResolvedValue({
+    items: [{ id: 'dor-item-1' }],
+  });
+  (prisma.doRChecklistVerification.findMany as any).mockImplementation(async (args: any) => {
+    const requestedPbiIds: string[] = args?.where?.pbiId?.in ?? [];
+    const requestedItemIds: string[] = args?.where?.dorItemId?.in ?? [];
+    return requestedPbiIds.flatMap((pbiId) =>
+      requestedItemIds.map((dorItemId) => ({ pbiId, dorItemId }))
+    );
+  });
+};
+
 describe('SprintService', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -279,6 +312,7 @@ describe('SprintService', () => {
     mockPlanningPbiLookupAsReady();
     mockPlanningRecordsAsSatisfied();
     mockSprintContainerCalendarAsEmpty();
+    mockSprintCommitmentsAsInForce();
   });
 
   describe('getSprints', () => {
@@ -2071,6 +2105,7 @@ describe('SprintService - Additional Coverage', () => {
     mockPlanningPbiLookupAsReady();
     mockPlanningRecordsAsSatisfied();
     mockSprintContainerCalendarAsEmpty();
+    mockSprintCommitmentsAsInForce();
   });
 
   describe('startSprint with backlog items and tasks', () => {
@@ -2315,6 +2350,36 @@ describe('SprintService - Additional Coverage', () => {
       await expect(sprintService.startSprint('sprint-1', 'user-1')).rejects.toMatchObject({
         statusCode: 400,
         code: GATE_CODES.PBI_NOT_READY,
+      });
+
+      expect(withTransaction).not.toHaveBeenCalled();
+    });
+
+    it('should refuse with GATE_DOD_REQUIRED when the Sprint would open with no Definition of Done', async () => {
+      const mockSprint = {
+        id: 'sprint-1',
+        teamId: 'team-1',
+        name: 'Sprint 1',
+        status: 'PLANNED',
+        startDate: new Date(),
+        endDate: new Date(),
+        sprintGoal: 'Goal',
+        goalId: 'goal-active-1',
+      };
+
+      (prisma.sprint.findUnique as any).mockResolvedValue(mockSprint);
+      // First read: the saved backlog. Second read: the cross-Sprint exclusivity check.
+      (prisma.sprintBacklogItem.findMany as any)
+        .mockResolvedValueOnce([{ pbiId: 'pbi-1' }])
+        .mockResolvedValueOnce([]);
+      // The team emptied its Definition of Done after the backlog was committed.
+      (prisma.definitionOfDone.findUnique as any).mockResolvedValue({ items: [] });
+
+      // A Sprint opened against no Definition of Done is a Sprint whose Increment can never satisfy
+      // one, so the boundary asks the same question the Done transition asks -- one event earlier.
+      await expect(sprintService.startSprint('sprint-1', 'user-1')).rejects.toMatchObject({
+        statusCode: 400,
+        code: GATE_CODES.DOD_REQUIRED,
       });
 
       expect(withTransaction).not.toHaveBeenCalled();
@@ -2830,6 +2895,82 @@ describe('SprintService - Additional Coverage', () => {
       expect(withTransaction).not.toHaveBeenCalled();
     });
 
+    it('should refuse with GATE_DOD_REQUIRED when the team holds no active Definition of Done', async () => {
+      (prisma.sprint.findUnique as any).mockResolvedValue({
+        id: 'sprint-1',
+        teamId: 'team-1',
+        status: 'PLANNED',
+      });
+      // A team that has never opened Team Definitions has no Definition of Done row at all.
+      (prisma.definitionOfDone.findUnique as any).mockResolvedValue(null);
+
+      await expect(
+        sprintService.saveSprintBacklog('sprint-1', 'user-1', { items: [{ pbiId: 'pbi-1' }] })
+      ).rejects.toMatchObject({
+        statusCode: 400,
+        code: GATE_CODES.DOD_REQUIRED,
+      });
+
+      // Nothing is written: a Sprint Backlog cannot be committed against an empty commitment.
+      expect(withTransaction).not.toHaveBeenCalled();
+    });
+
+    it('should refuse with GATE_DOR_REQUIRED when the readiness agreement holds no active criterion', async () => {
+      (prisma.sprint.findUnique as any).mockResolvedValue({
+        id: 'sprint-1',
+        teamId: 'team-1',
+        status: 'PLANNED',
+      });
+      (prisma.definitionOfReady.findUnique as any).mockResolvedValue({ items: [] });
+
+      await expect(
+        sprintService.saveSprintBacklog('sprint-1', 'user-1', { items: [{ pbiId: 'pbi-1' }] })
+      ).rejects.toMatchObject({
+        statusCode: 400,
+        code: GATE_CODES.DOR_REQUIRED,
+      });
+
+      expect(withTransaction).not.toHaveBeenCalled();
+    });
+
+    it('should refuse with GATE_DOR_NOT_VERIFIED and name the items that are not ready', async () => {
+      (prisma.sprint.findUnique as any).mockResolvedValue({
+        id: 'sprint-1',
+        teamId: 'team-1',
+        status: 'PLANNED',
+      });
+      (prisma.definitionOfReady.findUnique as any).mockResolvedValue({
+        items: [{ id: 'dor-item-1' }, { id: 'dor-item-2' }],
+      });
+      // Only one of the two active criteria is verified for the selected item.
+      (prisma.doRChecklistVerification.findMany as any).mockImplementation(async (args: any) => {
+        const requestedPbiIds: string[] = args?.where?.pbiId?.in ?? [];
+        return requestedPbiIds.map((pbiId) => ({ pbiId, dorItemId: 'dor-item-1' }));
+      });
+
+      await expect(
+        sprintService.saveSprintBacklog('sprint-1', 'user-1', { items: [{ pbiId: 'pbi-1' }] })
+      ).rejects.toMatchObject({
+        statusCode: 400,
+        code: GATE_CODES.DOR_NOT_VERIFIED,
+        message: expect.stringContaining('pbi-1'),
+      });
+
+      expect(withTransaction).not.toHaveBeenCalled();
+    });
+
+    it('should accept a committed backlog when both agreements are satisfied', async () => {
+      (prisma.sprint.findUnique as any).mockResolvedValue({
+        id: 'sprint-1',
+        teamId: 'team-1',
+        status: 'PLANNED',
+      });
+
+      await expect(
+        sprintService.saveSprintBacklog('sprint-1', 'user-1', { items: [{ pbiId: 'pbi-1' }] })
+      ).resolves.toMatchObject({ sprintId: 'sprint-1' });
+    });
+
     it('should refuse a selected item that belongs to another team', async () => {
       const mockSprint = {
         id: 'sprint-1',
@@ -3117,6 +3258,11 @@ describe('SprintService - Additional Coverage', () => {
       );
       expect(result.sprintId).toBe('sprint-real-1');
       expect(result.sprintGoal).toBe('Goal 1');
+
+      // A draft is explicitly revisable before the container opens, so the two commitments are
+      // deliberately not consulted here -- only when the plan is committed and the Sprint starts.
+      expect(prisma.definitionOfDone.findUnique).not.toHaveBeenCalled();
+      expect(prisma.definitionOfReady.findUnique).not.toHaveBeenCalled();
     });
 
     it('should save a draft against an existing DRAFT sprint (resume re-save)', async () => {

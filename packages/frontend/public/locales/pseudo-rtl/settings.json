@@ -165,6 +165,11 @@
     "lastUpdated": "Last updated:",
     "loading": "Loading Definition of Ready...",
     "noTeam": "Please select a team to view Definition of Ready.",
+    "practice": {
+      "message": "[Ít ís nót óné óf thé thréé àrtífàcts óf thé 2020 Scrúm Gúídé, só Scrúmóóth làbéls ít à cómpléméntàry pràctícé. Ít ís stíll énförcéd às thé téàm's ówn àgrééménttttttttttttttttt.]",
+      "scrumMasterOnly": "[Thé téàm's Scrúm Màstér màíntàíns thís àgrééménttttttttttttt.]",
+      "title": "[Cómpléméntàry pràctícé, nót à Gúídé àrtífàctttttttt]"
+    },
     "retry": "Retry",
     "shortLabel": "DoR",
     "title": "Definition of Ready",

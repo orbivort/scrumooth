@@ -43,12 +43,13 @@ The **Definition of Done (DoD)** is a shared agreement within a Scrum team on wh
 
 ### What the API enforces
 
-The DoD is the Increment's commitment, so the API holds four rules around it rather than treating it as a setting:
+The DoD is the Increment's commitment, so the API holds five rules around it rather than treating it as a setting:
 
 - **It cannot be emptied.** A DoD must keep at least one active item (`400 GATE_DOD_REQUIRED`). An empty checklist would silently satisfy the Done gate — the one call that could defeat the rule the DoD exists to enforce.
+- **A Sprint cannot open without it.** Committing a Sprint Backlog (`POST /sprints/:id/backlog`) and starting a Sprint (`POST /sprints/:id/start`) are both refused while the team's governing DoD holds no active item (`400 GATE_DOD_REQUIRED`) — including for a team that has never created one (`400 GATE_DOD_REQUIRED`). A Sprint opened against no commitment is a Sprint whose Increment can never satisfy one.
 - **Work cannot be marked Done without it.** A Product Backlog item cannot transition to `DONE` while the team has no active DoD item, and every active item must be verified for it (`400 GATE_DOD_REQUIRED`, `400 GATE_DOD_NOT_VERIFIED`).
 - **It belongs to its team.** Reading or changing a team's DoD, recording a verification against one of its items, and reading its Sprint compliance report all require membership of that team (`403 GATE_DOD_TEAM_MEMBERS_ONLY`).
-- **It is append-only.** `GET /history` lists every version the DoD has had, newest first, with the current version marked. A change preserves the version it supersedes instead of erasing it.
+- **It is append-only, and edits are not destructive.** `GET /history` lists every version the DoD has had, newest first, with the current version marked; a change preserves the version it supersedes instead of erasing it. A criterion the payload keeps by id is updated in place, so the verifications recorded against it survive the edit.
 
 ### Common DoD Criteria Examples
 
@@ -200,9 +201,10 @@ PUT /api/v1/teams/:teamId/definition-of-done
 
 **Behaviour**
 
-- All existing items are replaced by the supplied list, and the version is incremented.
+- The supplied list becomes the new version, and the version is incremented.
 - **The version being superseded is preserved**: the update writes an append-only snapshot of it inside the same transaction, so `GET /history` can show what the team previously worked to and who changed it.
 - **A DoD with no active item is refused** with `400 GATE_DOD_REQUIRED`.
+- **A criterion that survives the edit keeps its row** (see _How the list is applied_), so the verifications recorded against it survive too.
 
 **Path Parameters**
 
@@ -214,11 +216,33 @@ PUT /api/v1/teams/:teamId/definition-of-done
 {
   "items": [
     {
-      "description": "string (required, 1-500 chars)"
+      "id": "550e8400-e29b-41d4-a716-446655440021 (optional, UUID of an existing criterion)",
+      "description": "string (required, 1-500 chars)",
+      "category": "string (optional)",
+      "isActive": "boolean (required)",
+      "order": "number (accepted, ignored: the final order follows list position)"
     }
   ]
 }
 ```
+
+**How the list is applied**
+
+Each criterion's identity decides how it is applied:
+
+- an item carrying an `id` that names a criterion **of this Definition of Done** updates that row in
+  place. Every `DoDChecklistVerification` recorded against it survives, so rewording one criterion
+  no longer discards the evidence that an item satisfied the others;
+- an item with **no `id`** — or with an `id` this Definition of Done does not hold — is inserted as a
+  new criterion, under an id the service assigns. An id cannot be used to reach across teams or
+  across scopes;
+- a criterion **absent from the payload** is deleted, and its verifications go with it. The snapshot
+  of the superseded version still records what the criterion said, so the change is auditable even
+  though the verifications are gone — a removed criterion is one nobody can satisfy any more.
+
+Send the whole list, with ids for the criteria that already exist. Omitting the ids is read as
+"replace every criterion with these new ones": the old rows are deleted, taking their verifications
+with them.
 
 **Success Response**
 
@@ -719,11 +743,12 @@ curl -X GET https://api.scrumooth.dev/api/v1/sprints/550e8400-e29b-41d4-a716-446
 
 ### Gate Rejections
 
-| Code                         | HTTP | Rule enforced                                                                                     |
-| ---------------------------- | ---- | ------------------------------------------------------------------------------------------------- |
-| `GATE_DOD_REQUIRED`          | 400  | A DoD must keep at least one active item, and work cannot be marked Done while a team has none    |
-| `GATE_DOD_NOT_VERIFIED`      | 400  | A Product Backlog item cannot be marked Done until every active DoD item is verified for it       |
-| `GATE_DOD_TEAM_MEMBERS_ONLY` | 403  | The DoD belongs to its Scrum Team: reading, changing, or verifying against it requires membership |
+| Code                         | HTTP | Rule enforced                                                                                                                                                                |
+| ---------------------------- | ---- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GATE_DOD_REQUIRED`          | 400  | A DoD must keep at least one active item; a Sprint Backlog cannot be committed, and a Sprint cannot start, without one; and work cannot be marked Done while a team has none |
+| `GATE_DOD_NOT_VERIFIED`      | 400  | A Product Backlog item cannot be marked Done until every active DoD item is verified for it                                                                                  |
+| `GATE_DOD_TEAM_MEMBERS_ONLY` | 403  | The DoD belongs to its Scrum Team: reading, changing, or verifying against it requires membership                                                                            |
+| `GATE_DOD_GROUP_GOVERNED`    | 409  | A team in a group complies with the group's shared DoD, so it cannot replace its own — see [Team Groups API](./team-groups.md)                                               |
 
 ## Best Practices
 

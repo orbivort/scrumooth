@@ -585,6 +585,20 @@ export interface DoRItem {
   order: number;
 }
 
+/**
+ * A Definition of Done / Definition of Ready criterion as the API expects it on a write.
+ *
+ * The identity of a criterion is what decides how the server treats it: an `id` naming a criterion
+ * of this Definition updates that row in place — so the verifications recorded against it survive
+ * the edit — while an absent `id` inserts a new criterion. `order` is accepted for payload
+ * compatibility and ignored: the final order follows the position in the list.
+ */
+export type DefinitionItemPayload<T extends { id: string }> = Omit<T, 'id'> & { id?: string };
+
+export type DoDItemPayload = DefinitionItemPayload<DoDItem>;
+
+export type DoRItemPayload = DefinitionItemPayload<DoRItem>;
+
 export interface DoRChecklistVerification {
   id: string;
   pbiId: string;

@@ -75,6 +75,33 @@ Items ready for sprint have:
 - No blocking dependencies
 - "Ready" status in the backlog
 
+### The team's two commitments
+
+Beyond the READY status of the items themselves, Scrumooth refuses to commit a Sprint Backlog — and
+refuses to start a Sprint — until two team-level agreements are in place. Both live in
+**Settings → Team Definitions**, and the Start dialog explains which one is missing instead of
+failing silently.
+
+| Agreement               | What is required                                                                                                                                                          | Who maintains it                                                                            |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| **Definition of Done**  | The team has at least one active criterion. A team that has never opened Team Definitions has none, so the first visit creates a sensible default list to review and save | Any member of the Scrum Team — the Guide says the Scrum Team creates the Definition of Done |
+| **Definition of Ready** | Every selected item has verified every active readiness criterion                                                                                                         | The team's Scrum Master maintains the list; any team member records the verdicts per item   |
+
+The Definition of Ready is a **complementary practice, not a 2020 Scrum Guide artifact** — the
+Guide's three artifacts are the Product Backlog, the Sprint Backlog and the Increment. Scrumooth
+says so on the checklist itself, and enforces it as the team's own agreement rather than borrowing
+the Guide's authority.
+
+**If you are refused**, the message names the rule and the items involved:
+
+- _no Definition of Done_ → open **Team Definitions → Definition of Done**, review the defaults, save.
+  The refusal is the same one you would meet when marking an item Done, moved one event earlier: a
+  Sprint opened against no commitment is a Sprint whose Increment can never satisfy one.
+- _Definition of Ready not met_ → the refusal names the items that are not ready. Verify the
+  outstanding criteria in the backlog (each item's readiness checklist), or remove those items from
+  the selection. An item nobody has assessed counts as unmet, exactly like one recorded as not
+  verified.
+
 ---
 
 ## Conducting Sprint Planning
@@ -375,6 +402,8 @@ Before starting the sprint, verify:
 - [ ] Sprint Goal is defined and agreed
 - [ ] **The Sprint Backlog has been saved** (required — "Start Sprint" stays disabled until you save)
 - [ ] **Planning participation is recorded** — the Product Owner and at least one Developer are marked present
+- [ ] **The team has an active Definition of Done** (Team Definitions; a team that has never opened the page has none)
+- [ ] **Every selected item meets the team's Definition of Ready** — otherwise the Start dialog names the items that are not ready
 - [ ] Capacity has been recorded and the selected items fit within it (a plan may exceed the recorded capacity by up to the configured tolerance, default 10%)
 - [ ] All items have acceptance criteria
 - [ ] Team commits to the sprint backlog

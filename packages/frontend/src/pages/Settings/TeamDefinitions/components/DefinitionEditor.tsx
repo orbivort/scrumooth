@@ -1,5 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
+
+import type { DefinitionItemPayload } from '../../../../types';
 
 import { getCategoryColor, type CategoryConfig } from './categories';
 import styles from './DefinitionEditor.module.css';
@@ -15,11 +17,18 @@ import {
   SaveIcon,
 } from '@/components/common/Icons';
 
-interface DefinitionEditorProps<T> {
+/**
+ * The id of a criterion the user has just added and that the server has never seen. It exists only so
+ * React has a stable key and the row can be edited before it is saved; it is stripped from the
+ * payload, because "no id" is what tells the service to insert a new criterion.
+ */
+const LOCAL_ITEM_ID_PREFIX = 'local-';
+
+interface DefinitionEditorProps<T extends { id: string }> {
   definition: { items: T[]; version: number; updatedAt: string };
   definitionType: 'DoD' | 'DoR';
   categories: CategoryConfig[];
-  onSave: (items: T[]) => Promise<void>;
+  onSave: (items: DefinitionItemPayload<T>[]) => Promise<void>;
   onCancel: () => void;
   isLoading?: boolean;
 }
@@ -46,6 +55,8 @@ export function DefinitionEditor<
   const [newItemCategory, setNewItemCategory] = useState<string>(categories[0]?.value ?? '');
   const [hasChanges, setHasChanges] = useState(false);
   const [showCancelDialog, setShowCancelDialog] = useState(false);
+  // Only ever used to key criteria the user has not saved yet, so a monotonic counter is enough.
+  const localItemSeq = useRef(0);
 
   const definitionLabel = definitionType === 'DoD' ? t('dodPanel.title') : t('dorPanel.title');
   const shortLabel = definitionType === 'DoD' ? t('dodPanel.shortLabel') : t('dorPanel.shortLabel');
@@ -61,8 +72,14 @@ export function DefinitionEditor<
   const handleAddItem = () => {
     if (!newItemText.trim()) return;
 
+    // A criterion carries its identity to the server: an `id` that names an existing criterion is
+    // updated in place, so the verifications recorded against it survive the edit. This one has no
+    // server identity yet, so it is marked local and sent without an id -- which is the payload
+    // contract for "insert this as a new criterion". The marker is local-only on purpose: it must
+    // never look like a row id the service would try to match.
+    localItemSeq.current += 1;
     const newItem = {
-      id: `${shortLabel.toLowerCase()}-item-${Date.now()}`,
+      id: `${LOCAL_ITEM_ID_PREFIX}${localItemSeq.current}`,
       description: newItemText.trim(),
       category: newItemCategory,
       isActive: true,
@@ -121,7 +138,19 @@ export function DefinitionEditor<
   };
 
   const handleSave = async () => {
-    await onSave(items);
+    await onSave(
+      items.map((item): DefinitionItemPayload<T> => {
+        // A criterion the server already knows keeps its id; one the user just added is sent
+        // without one, so the service inserts it rather than trying to update a row that is not
+        // there.
+        if (!item.id.startsWith(LOCAL_ITEM_ID_PREFIX)) {
+          return item;
+        }
+
+        const { id: _localOnlyId, ...newItem } = item;
+        return newItem;
+      })
+    );
     setHasChanges(false);
   };
 

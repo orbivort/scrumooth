@@ -642,6 +642,97 @@ describe('StartSprintModal', () => {
     });
   });
 
+  describe('Commitment Warnings', () => {
+    it('should explain a missing Definition of Done and block the start', () => {
+      renderWithProviders(<StartSprintModal {...defaultProps} hasDefinitionOfDone={false} />);
+
+      expect(
+        screen.getByText(
+          new RegExp(
+            i18nT('sprint:sprintPlanning.startSprintModal.commitment.definitionOfDoneMissing')
+          )
+        )
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', {
+          name: new RegExp(`^${i18nT('sprint:sprintPlanning.startSprintModal.start')}$`),
+        })
+      ).toBeDisabled();
+    });
+
+    it('should offer a way to the definitions when the Definition of Done is missing', () => {
+      const onOpenDefinitions = vi.fn();
+      renderWithProviders(
+        <StartSprintModal
+          {...defaultProps}
+          hasDefinitionOfDone={false}
+          onOpenDefinitions={onOpenDefinitions}
+        />
+      );
+
+      fireEvent.click(
+        screen.getByRole('button', {
+          name: new RegExp(
+            i18nT('sprint:sprintPlanning.startSprintModal.commitment.openDefinitions')
+          ),
+        })
+      );
+
+      expect(onOpenDefinitions).toHaveBeenCalled();
+    });
+
+    it('should name how many items have not met the Definition of Ready and block the start', () => {
+      renderWithProviders(<StartSprintModal {...defaultProps} unreadyReadinessItemCount={3} />);
+
+      expect(
+        screen.getByText(
+          new RegExp(i18nT('sprint:sprintPlanning.startSprintModal.commitment.readinessIncomplete'))
+        )
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', {
+          name: new RegExp(`^${i18nT('sprint:sprintPlanning.startSprintModal.start')}$`),
+        })
+      ).toBeDisabled();
+    });
+
+    it('should not warn about the readiness agreement when every item has met it', () => {
+      renderWithProviders(<StartSprintModal {...defaultProps} unreadyReadinessItemCount={0} />);
+
+      expect(
+        screen.queryByText(
+          new RegExp(i18nT('sprint:sprintPlanning.startSprintModal.commitment.readinessIncomplete'))
+        )
+      ).not.toBeInTheDocument();
+    });
+
+    it('should explain a Definition of Done refusal from its gate code', () => {
+      renderWithProviders(
+        <StartSprintModal {...defaultProps} error="Refused" errorCode="GATE_DOD_REQUIRED" />
+      );
+
+      expect(
+        screen.getByText(
+          new RegExp(i18nT('sprint:sprintPlanning.startSprintModal.error.definitionOfDoneRequired'))
+        )
+      ).toBeInTheDocument();
+    });
+
+    it('should explain a readiness refusal from its gate code', () => {
+      renderWithProviders(
+        <StartSprintModal {...defaultProps} error="Refused" errorCode="GATE_DOR_NOT_VERIFIED" />
+      );
+
+      expect(
+        screen.getByText(
+          new RegExp(
+            i18nT('sprint:sprintPlanning.startSprintModal.error.definitionOfReadyNotVerified')
+          )
+        )
+      ).toBeInTheDocument();
+    });
+  });
+
   describe('Capacity Boundary Values', () => {
     it('should display capacity percentage value', () => {
       renderWithProviders(<StartSprintModal {...defaultProps} capacityPercentage={80} />);

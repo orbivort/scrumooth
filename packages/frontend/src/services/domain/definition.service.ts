@@ -1,11 +1,11 @@
 import type {
   DefinitionOfDone,
-  DoDItem,
+  DoDItemPayload,
   DoDChecklistVerification,
   DoDComplianceReport,
   DoDVersionSnapshot,
   DefinitionOfReady,
-  DoRItem,
+  DoRItemPayload,
   DoRChecklistVerification,
   ApiResponse,
 } from '../../types';
@@ -21,7 +21,7 @@ class DefinitionService {
 
   async updateDefinitionOfDone(
     teamId: string,
-    items: DoDItem[]
+    items: DoDItemPayload[]
   ): Promise<ApiResponse<DefinitionOfDone>> {
     const response = await apiService.put<ApiResponse<DefinitionOfDone>>(
       `/teams/${teamId}/definition-of-done`,
@@ -75,7 +75,7 @@ class DefinitionService {
 
   async updateDefinitionOfReady(
     teamId: string,
-    items: DoRItem[]
+    items: DoRItemPayload[]
   ): Promise<ApiResponse<DefinitionOfReady>> {
     const response = await apiService.put<ApiResponse<DefinitionOfReady>>(
       `/teams/${teamId}/definition-of-ready`,

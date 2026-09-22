@@ -23,8 +23,12 @@
   "developerOnlySizing": "Solo los desarrolladores pueden establecer puntos de historia, ya que los desarrolladores que realizan el trabajo son responsables de la estimación.",
   "dodGroupGoverned": "Este equipo trabaja con otros equipos Scrum en un mismo producto, por lo que cumple su Definición de Terminado compartida. Modifique la Definición de Terminado compartida en el grupo, donde todos los equipos que la comparten pueden ver el cambio.",
   "dodNotVerified": "Este elemento no puede marcarse como Terminado hasta que se verifique cada criterio activo de la Definición de Terminado. Aún deben verificarse {{count}} criterio(s) activo(s).",
-  "dodRequired": "Nada está Terminado hasta que el equipo ha definido qué significa Terminado, por lo que una Definición de Terminado debe conservar al menos un criterio activo. Una lista vacía permitiría marcar cualquier elemento como Terminado sin revisión.",
+  "dodRequired": "Nada está Terminado hasta que el equipo ha definido qué significa Terminado: una Definición de Terminado debe conservar al menos un criterio activo, y sin ella no se puede comprometer ni iniciar un Sprint. Una lista vacía permitiría marcar cualquier elemento como Terminado sin revisión.",
   "dodTeamMembersOnly": "La Definición de Terminado es el acuerdo del propio Scrum Team sobre qué significa «Terminado»: solo un miembro de ese equipo puede leerla o modificarla.",
+  "dorNotVerified": "Este Sprint no puede comprometerse ni iniciarse hasta que cada elemento seleccionado cumpla la Definición de Preparado del equipo. {{count}} elemento(s) aún tienen criterios de preparación sin verificar: {{items}}.",
+  "dorRequired": "Una Definición de Preparado debe conservar al menos un criterio activo, y sin ella no se puede comprometer ni iniciar un Sprint: una lista vacía permitiría que la regla de preparación pasara sin revisión.",
+  "dorScrumMasterOnly": "La Definición de Preparado es una práctica complementaria y no un artefacto de la Guía de Scrum, y la posee el Scrum Master del equipo: solo el Scrum Master de ese equipo puede modificarla.",
+  "dorTeamMembersOnly": "La Definición de Preparado es el acuerdo del propio Scrum Team sobre cuándo un elemento está listo para planificarse: solo un miembro de ese equipo puede leerla o registrar una verificación de preparación.",
   "emailAlreadyExists": "Ya existe una cuenta con el correo electrónico {{email}}",
   "entityNotFound": "{{entity}} no encontrado",
   "facilitation": {

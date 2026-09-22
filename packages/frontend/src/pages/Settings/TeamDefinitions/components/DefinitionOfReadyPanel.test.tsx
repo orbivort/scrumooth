@@ -42,6 +42,9 @@ describe('DefinitionOfReadyPanel', () => {
     useTeamStoreMock = (await import('../../../../store')).default;
     useTeamStoreMock.mockReturnValue({
       currentTeam: mockTeam,
+      // The readiness agreement is the team's Scrum Master's to maintain, which is what its
+      // published contract promises and what the service enforces.
+      userRoleInCurrentTeam: 'SCRUM_MASTER',
     });
   });
 
@@ -134,6 +137,52 @@ describe('DefinitionOfReadyPanel', () => {
     renderWithProviders(<DefinitionOfReadyPanel />);
     expect(
       await screen.findByText('Please select a team to view Definition of Ready.')
+    ).toBeInTheDocument();
+  });
+
+  it('should label the agreement as a complementary practice rather than a Guide artifact', async () => {
+    (definitionService.getDefinitionOfReady as vi.Mock).mockResolvedValue({
+      success: true,
+      data: {
+        id: 'dor-1',
+        teamId: 'team-1',
+        items: [{ id: 'item-1', description: 'Test item', isActive: true, order: 0 }],
+        version: 1,
+        updatedAt: '2024-01-01T00:00:00Z',
+      },
+    });
+
+    renderWithProviders(<DefinitionOfReadyPanel />);
+
+    // A team has to be able to tell the Guide's commitments from this product's own: the readiness
+    // agreement is enforced, but it is not one of the three artifacts of the 2020 Scrum Guide.
+    expect(
+      await screen.findByText(/Complementary practice, not a Guide artifact/i)
+    ).toBeInTheDocument();
+  });
+
+  it('should keep the edit affordance from a member who is not the Scrum Master', async () => {
+    useTeamStoreMock.mockReturnValue({
+      currentTeam: mockTeam,
+      userRoleInCurrentTeam: 'DEVELOPERS',
+    });
+    (definitionService.getDefinitionOfReady as vi.Mock).mockResolvedValue({
+      success: true,
+      data: {
+        id: 'dor-1',
+        teamId: 'team-1',
+        items: [{ id: 'item-1', description: 'Test item', isActive: true, order: 0 }],
+        version: 1,
+        updatedAt: '2024-01-01T00:00:00Z',
+      },
+    });
+
+    renderWithProviders(<DefinitionOfReadyPanel />);
+
+    expect(await screen.findByText('Test item')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Edit DoR' })).not.toBeInTheDocument();
+    expect(
+      screen.getByText(/The team's Scrum Master maintains this agreement/i)
     ).toBeInTheDocument();
   });
 });

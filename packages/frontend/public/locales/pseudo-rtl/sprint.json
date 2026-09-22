@@ -427,11 +427,24 @@
     "startSprintModal": {
       "cancel": "Cancel",
       "capacityUtilization": "Capacity Utilization",
+      "commitment": {
+        "definitionOfDoneMissing": "No Definition of Done",
+        "definitionOfDoneMissingMessage": "This team has no Definition of Done, so a Sprint cannot open: the Increment it produces could never satisfy one. Create it in Team Definitions — the default criteria are waiting there to be saved.",
+        "openDefinitions": "Open Team Definitions",
+        "readinessIncomplete": "Definition of Ready Not Met",
+        "readinessIncompleteMessage": "{{count}} selected item(s) still have an unverified readiness criterion. The team's Definition of Ready applies when the Sprint Backlog is committed and when the Sprint starts, so verify those criteria first."
+      },
       "duration": "Duration",
       "error": {
         "activeSprintExists": "Active Sprint Exists",
         "addItemsFirst": "Add backlog items to the sprint before starting.",
         "anotherSprintActive": "Another sprint is already active. Please complete the current sprint before starting a new one.",
+        "definitionOfDoneRequired": "No Definition of Done",
+        "definitionOfDoneRequiredMessage": "A Sprint cannot be opened while the team has no Definition of Done, because the Increment it produces could never satisfy one. Define the team's Definition of Done in Team Definitions first.",
+        "definitionOfReadyNotVerified": "Definition of Ready Not Met",
+        "definitionOfReadyNotVerifiedMessage": "Every selected item must meet the team's Definition of Ready before the Sprint Backlog is committed or the Sprint starts. Verify the outstanding readiness criteria, or remove the items that are not ready.",
+        "definitionOfReadyRequired": "No Definition of Ready",
+        "definitionOfReadyRequiredMessage": "The team has no active readiness criterion, so the agreement cannot be applied. Define at least one in Team Definitions — the default criteria are waiting there to be saved.",
         "invalidRequest": "Invalid Request",
         "invalidRequestMessage": "Please check your sprint data and try again. Make sure all required fields are filled correctly.",
         "invalidSprintBacklog": "Invalid Sprint Backlog",

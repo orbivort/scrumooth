@@ -23,8 +23,12 @@
   "developerOnlySizing": "Solo gli sviluppatori possono impostare gli story point, poiché gli sviluppatori che eseguono il lavoro sono responsabili della stima.",
   "dodGroupGoverned": "Questo team lavora con altri team Scrum su un unico prodotto, quindi rispetta la loro Definition of Done condivisa. Modificate la Definition of Done condivisa nel gruppo, dove ogni team che la condivide può vedere la modifica.",
   "dodNotVerified": "Questo elemento non può essere contrassegnato come Completato finché ogni criterio attivo della Definition of Done non è verificato. {{count}} criterio/i attivo/i deve ancora essere verificato.",
-  "dodRequired": "Nulla è Completato finché il team non ha definito cosa significa Completato: una Definition of Done deve mantenere almeno un criterio attivo. Una lista vuota lascerebbe contrassegnare ogni elemento come Completato senza verifica.",
+  "dodRequired": "Nulla è Completato finché il team non ha definito cosa significa Completato: una Definition of Done deve mantenere almeno un criterio attivo, e senza di essa uno Sprint non può essere assunto né avviato. Una lista vuota lascerebbe contrassegnare ogni elemento come Completato senza verifica.",
   "dodTeamMembersOnly": "La Definition of Done è l'accordo dello Scrum Team stesso su cosa significa «Completato»: solo un membro di quel team può leggerla o modificarla.",
+  "dorNotVerified": "Questo Sprint non può essere assunto né avviato finché ogni elemento selezionato non soddisfa la Definition of Ready del team. {{count}} elemento/i ha ancora criteri di prontezza non verificati: {{items}}.",
+  "dorRequired": "Una Definition of Ready deve mantenere almeno un criterio attivo, e senza di essa uno Sprint non può essere assunto né avviato: una lista vuota lascerebbe passare senza verifica la regola di prontezza.",
+  "dorScrumMasterOnly": "La Definition of Ready è una pratica complementare e non un artefatto della Guida Scrum, ed è di competenza dello Scrum Master del team: solo lo Scrum Master di quel team può modificarla.",
+  "dorTeamMembersOnly": "La Definition of Ready è l'accordo dello Scrum Team stesso su quando un elemento è pronto per essere pianificato: solo un membro di quel team può leggerla o registrare una verifica di prontezza.",
   "emailAlreadyExists": "Un account con l'email {{email}} esiste già",
   "entityNotFound": "{{entity}} non trovato",
   "facilitation": {

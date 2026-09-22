@@ -51,14 +51,20 @@ vi.mock('../../../utils/uuid', () => ({
 }));
 
 /**
- * The transaction client handed to `prisma.$transaction`'s interactive callback. The DoD update
- * must snapshot, delete and recreate inside one transaction, so the assertions target this client
- * to prove the three writes share it.
+ * The transaction client handed to `prisma.$transaction`'s interactive callback. The DoD update must
+ * snapshot the superseded version and then replace the criteria inside one transaction, so the
+ * assertions target this client to prove every write shares it.
  */
 const tx = {
   $queryRaw: vi.fn(),
   doDVersionSnapshot: { upsert: vi.fn() },
-  doDItem: { deleteMany: vi.fn(), findMany: vi.fn() },
+  doDItem: {
+    deleteMany: vi.fn(),
+    findMany: vi.fn(),
+    updateMany: vi.fn(),
+    update: vi.fn(),
+    create: vi.fn(),
+  },
   definitionOfDone: { update: vi.fn(), findUniqueOrThrow: vi.fn() },
 };
 
@@ -83,6 +89,9 @@ describe('DefinitionOfDoneService', () => {
     tx.doDVersionSnapshot.upsert.mockResolvedValue({} as never);
     tx.doDItem.deleteMany.mockResolvedValue({ count: 0 } as never);
     tx.doDItem.findMany.mockResolvedValue([] as never);
+    tx.doDItem.updateMany.mockResolvedValue({ count: 0 } as never);
+    tx.doDItem.update.mockResolvedValue({} as never);
+    tx.doDItem.create.mockResolvedValue({} as never);
   });
 
   describe('getDefinitionOfDone', () => {
@@ -298,14 +307,18 @@ describe('DefinitionOfDoneService', () => {
       };
 
       vi.mocked(prisma.definitionOfDone.findUnique).mockResolvedValue(existingDoD as any);
-      tx.doDItem.findMany.mockResolvedValue([
-        {
-          description: 'Superseded item',
-          category: 'review',
-          isActive: true,
-          order: 0,
-        },
-      ] as never);
+      // First read: the version being superseded (snapshotted). Second read: the criteria that
+      // exist, which is what decides update-in-place versus insert.
+      tx.doDItem.findMany
+        .mockResolvedValueOnce([
+          {
+            description: 'Superseded item',
+            category: 'review',
+            isActive: true,
+            order: 0,
+          },
+        ] as never)
+        .mockResolvedValueOnce([{ id: 'existing-item-1' }] as never);
       tx.definitionOfDone.update.mockResolvedValue(updatedDoD as never);
 
       const items = [{ description: 'New item 1', category: 'quality', isActive: true, order: 0 }];
@@ -331,27 +344,27 @@ describe('DefinitionOfDoneService', () => {
         },
         update: {},
       });
-      // ...and every write happens inside the same transaction.
+      // ...a criterion the payload no longer carries is dropped...
       expect(tx.doDItem.deleteMany).toHaveBeenCalledWith({
-        where: { dodId: 'dod-1' },
+        where: { id: { in: ['existing-item-1'] } },
+      });
+      // ...a criterion the payload adds is inserted under a fresh id...
+      expect(tx.doDItem.create).toHaveBeenCalledWith({
+        data: {
+          id: 'mock-uuid-v7',
+          dodId: 'dod-1',
+          description: 'New item 1',
+          category: 'quality',
+          isActive: true,
+          order: 0,
+          createdBy: 'user-1',
+        },
       });
       expect(tx.definitionOfDone.update).toHaveBeenCalledWith({
         where: { id: 'dod-1' },
         data: {
           version: { increment: 1 },
           updatedBy: 'user-1',
-          items: {
-            create: [
-              {
-                id: 'mock-uuid-v7',
-                description: 'New item 1',
-                category: 'quality',
-                isActive: true,
-                order: 0,
-                createdBy: 'user-1',
-              },
-            ],
-          },
         },
         include: {
           items: {
@@ -359,8 +372,60 @@ describe('DefinitionOfDoneService', () => {
           },
         },
       });
+      // The live row is only ever touched through the transaction client.
       expect(prisma.definitionOfDone.update).not.toHaveBeenCalled();
       expect(result).toEqual(updatedDoD);
+    });
+
+    it('should keep a criterion that survives the edit so its verifications are not cascaded away', async () => {
+      vi.mocked(prisma.definitionOfDone.findUnique).mockResolvedValue({
+        id: 'dod-1',
+        teamId: 'team-1',
+        version: 3,
+      } as never);
+      tx.definitionOfDone.findUniqueOrThrow.mockResolvedValue({ version: 3 } as never);
+      tx.doDItem.findMany
+        .mockResolvedValueOnce([] as never)
+        .mockResolvedValueOnce([{ id: 'item-a' }, { id: 'item-b' }] as never);
+      tx.definitionOfDone.update.mockResolvedValue({ id: 'dod-1', version: 4 } as never);
+
+      await definitionOfDoneService.updateDefinitionOfDone(
+        'team-1',
+        [
+          // Same criterion, reworded: its row -- and therefore every verification recorded against
+          // it -- has to survive.
+          { id: 'item-a', description: 'Peer review completed', isActive: true, order: 0 },
+          { description: 'Added this Sprint', isActive: true, order: 1 },
+        ],
+        'user-1'
+      );
+
+      // Only the criterion the payload dropped is deleted.
+      expect(tx.doDItem.deleteMany).toHaveBeenCalledTimes(1);
+      expect(tx.doDItem.deleteMany).toHaveBeenCalledWith({ where: { id: { in: ['item-b'] } } });
+
+      // The surviving criterion is moved out of the final order range first, so the dense
+      // renumbering cannot collide on `@@unique([dodId, order])`.
+      expect(tx.doDItem.updateMany).toHaveBeenCalledWith({
+        where: { id: { in: ['item-a'] } },
+        data: { order: { increment: 10000 } },
+      });
+
+      expect(tx.doDItem.update).toHaveBeenCalledWith({
+        where: { id: 'item-a' },
+        data: {
+          description: 'Peer review completed',
+          category: 'quality',
+          isActive: true,
+          order: 0,
+          updatedBy: 'user-1',
+        },
+      });
+
+      expect(tx.doDItem.create).toHaveBeenCalledTimes(1);
+      expect(tx.doDItem.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({ description: 'Added this Sprint', order: 1 }),
+      });
     });
 
     it('should lock the Definition of Done row so the superseded version cannot be skipped', async () => {
@@ -488,20 +553,12 @@ describe('DefinitionOfDoneService', () => {
 
       await definitionOfDoneService.updateDefinitionOfDone('team-1', items, 'user-1');
 
-      expect(tx.definitionOfDone.update).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: expect.objectContaining({
-            items: expect.objectContaining({
-              create: expect.arrayContaining([
-                expect.objectContaining({
-                  description: 'Item without category',
-                  category: 'quality',
-                }),
-              ]),
-            }),
-          }),
-        })
-      );
+      expect(tx.doDItem.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          description: 'Item without category',
+          category: 'quality',
+        }),
+      });
     });
   });
 

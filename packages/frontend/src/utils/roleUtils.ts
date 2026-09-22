@@ -101,3 +101,17 @@ export function canCancelSprint(role: string | null | undefined): boolean {
 export function canOrderBacklog(role: string | null | undefined): boolean {
   return String(role ?? '').toLowerCase() === 'product_owner';
 }
+
+/**
+ * Whether the given team role may edit the team's Definition of Ready.
+ *
+ * The readiness agreement is a complementary practice rather than a 2020 Scrum Guide artifact — the
+ * Guide's three artifacts are the Product Backlog, the Sprint Backlog and the Increment — and its
+ * published contract assigns it to the team's Scrum Master. The backend enforces that with
+ * `GATE_DOR_SCRUM_MASTER_ONLY`; the interface mirrors it so the affordance is not offered where it
+ * would be refused. Everyone in the team can still read it, and the team records the readiness
+ * verifications. The role may be uppercase (backend enum) or lowercase.
+ */
+export function canEditDefinitionOfReady(role: string | null | undefined): boolean {
+  return String(role ?? '').toLowerCase() === 'scrum_master';
+}

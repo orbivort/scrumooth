@@ -494,11 +494,24 @@
     "startSprintModal": {
       "cancel": "Abbrechen",
       "capacityUtilization": "Kapazitätsauslastung",
+      "commitment": {
+        "definitionOfDoneMissing": "Keine Definition of Done",
+        "definitionOfDoneMissingMessage": "Dieses Team hat keine Definition of Done, daher kann kein Sprint starten: Sein Increment könnte nie eine erfüllen. Legen Sie sie in Team Definitions an – die Standardkriterien warten dort darauf, gespeichert zu werden.",
+        "openDefinitions": "Team Definitions öffnen",
+        "readinessIncomplete": "Definition of Ready nicht erfüllt",
+        "readinessIncompleteMessage": "{{count}} ausgewählte(s) Element(e) haben noch ein unverifiziertes Bereitschaftskriterium. Die Definition of Ready des Teams gilt beim Festlegen des Sprint Backlogs und beim Start des Sprints – verifizieren Sie diese Kriterien zuerst."
+      },
       "duration": "Dauer",
       "error": {
         "activeSprintExists": "Aktiver Sprint existiert",
         "addItemsFirst": "Fügen Sie Backlog-Elemente zum Sprint hinzu, bevor Sie starten.",
         "anotherSprintActive": "Ein anderer Sprint ist bereits aktiv. Bitte schließen Sie den aktuellen Sprint ab, bevor Sie einen neuen starten.",
+        "definitionOfDoneRequired": "Keine Definition of Done",
+        "definitionOfDoneRequiredMessage": "Ein Sprint kann nicht gestartet werden, solange das Team keine Definition of Done hat, denn das entstehende Increment könnte nie eine erfüllen. Definieren Sie die Definition of Done des Teams zuerst in Team Definitions.",
+        "definitionOfReadyNotVerified": "Definition of Ready nicht erfüllt",
+        "definitionOfReadyNotVerifiedMessage": "Jedes ausgewählte Element muss die Definition of Ready des Teams erfüllen, bevor das Sprint Backlog festgelegt oder der Sprint gestartet wird. Verifizieren Sie die offenen Bereitschaftskriterien oder entfernen Sie die Elemente, die nicht bereit sind.",
+        "definitionOfReadyRequired": "Keine Definition of Ready",
+        "definitionOfReadyRequiredMessage": "Das Team hat kein aktives Bereitschaftskriterium, daher kann die Vereinbarung nicht angewendet werden. Definieren Sie mindestens eines in Team Definitions – die Standardkriterien warten dort darauf, gespeichert zu werden.",
         "invalidRequest": "Ungültige Anfrage",
         "invalidRequestMessage": "Bitte überprüfen Sie Ihre Sprint-Daten und versuchen Sie es erneut. Stellen Sie sicher, dass alle Pflichtfelder korrekt ausgefüllt sind.",
         "invalidSprintBacklog": "Ungültiger Sprint-Backlog",

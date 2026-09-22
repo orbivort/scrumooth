@@ -53,6 +53,10 @@ export const getDoRHistory = asyncHandler(async (req: Request, res: Response) =>
     return res.status(400).json({ success: false, error: { message: 'Team ID is required' } });
   }
 
+  // The Definition of Ready keeps its version number but no superseded snapshots: unlike the
+  // Definition of Done it is a complementary team agreement, not the Increment's commitment, so
+  // there is no version to preserve for an audit. The history is therefore the version in force,
+  // reported in the same array shape an integrator already handles.
   const dor = await definitionOfReadyService.getDefinitionOfReady(teamId);
   return res.json(createSuccessResponse(dor ? [dor] : []));
 });
@@ -94,11 +98,18 @@ export const verifyDoRForPBI = asyncHandler(async (req: Request, res: Response) 
 
 export const getDoRVerificationsForPBI = asyncHandler(async (req: Request, res: Response) => {
   const id = getParamValue(req.params.id);
+  const userId = req.userId;
 
   if (!id) {
     return res.status(400).json({ success: false, error: { message: 'PBI ID is required' } });
   }
 
-  const verifications = await definitionOfReadyService.getDoRVerificationsForPBI(id);
+  if (!userId) {
+    return res.status(401).json({ success: false, error: { message: 'User not authenticated' } });
+  }
+
+  // The item's own team is not in the path, so membership is asserted in the service, where the
+  // team the item belongs to is known.
+  const verifications = await definitionOfReadyService.getDoRVerificationsForPBI(id, userId);
   return res.json(createSuccessResponse(verifications));
 });

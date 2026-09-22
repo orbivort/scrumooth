@@ -48,6 +48,12 @@ export interface StartSprintModalProps {
   isLoading?: boolean;
   hasSprintGoal?: boolean;
   hasSavedBacklog?: boolean;
+  /** Whether the team's resolved Definition of Done holds at least one active criterion. */
+  hasDefinitionOfDone?: boolean;
+  /** How many selected items still have an unverified active readiness criterion. */
+  unreadyReadinessItemCount?: number;
+  /** Leaves this dialog for the definitions the refusal points at (Team Definitions). */
+  onOpenDefinitions?: () => void;
 }
 
 // Icons imported from shared library
@@ -69,6 +75,27 @@ const getFriendlyErrorFromCode = (
     return {
       title: t('sprintPlanning.startSprintModal.error.teamMembersOnly'),
       message: t('sprintPlanning.startSprintModal.error.teamMembersOnlyMessage'),
+    };
+  }
+
+  if (code === GATE_CODES.DOD_REQUIRED) {
+    return {
+      title: t('sprintPlanning.startSprintModal.error.definitionOfDoneRequired'),
+      message: t('sprintPlanning.startSprintModal.error.definitionOfDoneRequiredMessage'),
+    };
+  }
+
+  if (code === GATE_CODES.DOR_REQUIRED) {
+    return {
+      title: t('sprintPlanning.startSprintModal.error.definitionOfReadyRequired'),
+      message: t('sprintPlanning.startSprintModal.error.definitionOfReadyRequiredMessage'),
+    };
+  }
+
+  if (code === GATE_CODES.DOR_NOT_VERIFIED) {
+    return {
+      title: t('sprintPlanning.startSprintModal.error.definitionOfReadyNotVerified'),
+      message: t('sprintPlanning.startSprintModal.error.definitionOfReadyNotVerifiedMessage'),
     };
   }
 
@@ -185,6 +212,9 @@ export const StartSprintModal: React.FC<StartSprintModalProps> = ({
   isLoading = false,
   hasSprintGoal = false,
   hasSavedBacklog = false,
+  hasDefinitionOfDone = true,
+  unreadyReadinessItemCount = 0,
+  onOpenDefinitions,
 }) => {
   const { t } = useTranslation('sprint');
   const modalRef = useRef<HTMLDivElement>(null);
@@ -274,11 +304,16 @@ export const StartSprintModal: React.FC<StartSprintModalProps> = ({
   // participation), not role-gated. `backlogReady` is tracked separately only so the two
   // distinct reasons can be explained side by side.
   const backlogReady = hasSprintGoal && hasSavedBacklog;
-  const readyToStart = canStartSprint({
-    hasSprintGoal,
-    hasSavedBacklog,
-    hasPlanningParticipation: participationReady,
-  });
+  // The two commitments the Sprint boundary is also gated on. The service refuses a Sprint opened
+  // without a Definition of Done, or with a selected item that has not met the team's readiness
+  // agreement; both are surfaced here so the refusal is explained, not discovered on submit.
+  const commitmentsReady = hasDefinitionOfDone && unreadyReadinessItemCount === 0;
+  const readyToStart =
+    canStartSprint({
+      hasSprintGoal,
+      hasSavedBacklog,
+      hasPlanningParticipation: participationReady,
+    }) && commitmentsReady;
 
   if (!isOpen) return null;
 
@@ -369,6 +404,51 @@ export const StartSprintModal: React.FC<StartSprintModalProps> = ({
                     : !participationHasProductOwner
                       ? t('sprintPlanning.startSprintModal.participationMissingProductOwner')
                       : t('sprintPlanning.startSprintModal.participationMissingDeveloper')}
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* Definition of Done Warning — a Sprint cannot open against an empty commitment. */}
+          {!hasDefinitionOfDone && (
+            <div className={styles['error-banner']} role="alert">
+              <span className={styles['error-icon']}>
+                <AlertTriangleIcon size={16} />
+              </span>
+              <div className={styles['error-content']}>
+                <span className={styles['error-title']}>
+                  {t('sprintPlanning.startSprintModal.commitment.definitionOfDoneMissing')}
+                </span>
+                <span className={styles['error-text']}>
+                  {t('sprintPlanning.startSprintModal.commitment.definitionOfDoneMissingMessage')}
+                </span>
+                {onOpenDefinitions && (
+                  <button
+                    type="button"
+                    className={styles['button-secondary']}
+                    onClick={onOpenDefinitions}
+                  >
+                    {t('sprintPlanning.startSprintModal.commitment.openDefinitions')}
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Definition of Ready Warning — the agreement is enforced at the Sprint boundary. */}
+          {hasDefinitionOfDone && unreadyReadinessItemCount > 0 && (
+            <div className={styles['error-banner']} role="alert">
+              <span className={styles['error-icon']}>
+                <AlertTriangleIcon size={16} />
+              </span>
+              <div className={styles['error-content']}>
+                <span className={styles['error-title']}>
+                  {t('sprintPlanning.startSprintModal.commitment.readinessIncomplete')}
+                </span>
+                <span className={styles['error-text']}>
+                  {t('sprintPlanning.startSprintModal.commitment.readinessIncompleteMessage', {
+                    count: unreadyReadinessItemCount,
+                  })}
                 </span>
               </div>
             </div>
@@ -561,9 +641,13 @@ export const StartSprintModal: React.FC<StartSprintModalProps> = ({
             aria-busy={isLoading}
             title={
               !readyToStart
-                ? !participationReady
-                  ? t('sprintPlanning.startSprintModal.participationIncomplete')
-                  : t('sprintPlanning.startSprintModal.saveBacklogFirstHint')
+                ? !hasDefinitionOfDone
+                  ? t('sprintPlanning.startSprintModal.commitment.definitionOfDoneMissing')
+                  : unreadyReadinessItemCount > 0
+                    ? t('sprintPlanning.startSprintModal.commitment.readinessIncomplete')
+                    : !participationReady
+                      ? t('sprintPlanning.startSprintModal.participationIncomplete')
+                      : t('sprintPlanning.startSprintModal.saveBacklogFirstHint')
                 : undefined
             }
           >

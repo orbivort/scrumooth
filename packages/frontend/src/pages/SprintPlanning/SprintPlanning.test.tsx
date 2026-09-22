@@ -188,6 +188,23 @@ vi.mock('../../services', () => ({
     updateGeneratedSprint: vi.fn(),
     getProductGoals: vi.fn(),
   },
+  // The Sprint boundary reads the team's two agreements through the Definition service. Answer them
+  // with a team that holds both and whose items are fully verified, so the page's pre-submit
+  // explanation is never what a test is accidentally exercising.
+  definitionService: {
+    getDefinitionOfDone: vi.fn().mockResolvedValue({
+      success: true,
+      data: { id: 'dod-1', items: [{ id: 'dod-item-1', isActive: true }] },
+    }),
+    getDefinitionOfReady: vi.fn().mockResolvedValue({
+      success: true,
+      data: { id: 'dor-1', items: [{ id: 'dor-item-1', isActive: true }] },
+    }),
+    getDoRVerificationsForPBI: vi.fn().mockImplementation(async (pbiId: string) => ({
+      success: true,
+      data: [{ dorItemId: 'dor-item-1', pbiId, isVerified: true }],
+    })),
+  },
 }));
 
 // Mock EmptyState component

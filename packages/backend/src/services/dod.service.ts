@@ -78,12 +78,28 @@ function withRequestingTeam<T extends { teamId: string | null }>(dod: T, teamId:
 const sharedDoDRefusal = () =>
   localizedError('errors:dodGroupGoverned', {}, 409, GATE_CODES.DOD_GROUP_GOVERNED);
 
+/**
+ * Order values are reassigned densely (`0..n-1`) on every write, so a swap between two surviving
+ * criteria would collide with `DoDItem @@unique([dodId, order])` if it were applied row by row.
+ * Survivors are shifted out of the final range first, inside the same transaction; the offset only
+ * has to exceed the largest Definition of Done the schema accepts (50 criteria).
+ */
+const ORDER_SHIFT = 10_000;
+
 export interface DoDItemInput {
+  /**
+   * The row this criterion already is. Present means "update it in place", so the verifications
+   * recorded against it survive the edit; absent means "this is a new criterion".
+   */
   id?: string;
   description: string;
   category?: string;
   isActive: boolean;
-  order: number;
+  /**
+   * Accepted for payload compatibility and deliberately ignored: the final order follows the
+   * position of the criterion in the list, which is what the editor sends.
+   */
+  order?: number;
 }
 
 interface DoDVerificationInput {
@@ -328,14 +344,17 @@ class DefinitionOfDoneService {
   /**
    * Write a new version of the Definition of Done a scope owns.
    *
-   * Two rules make this safe, and both exist because the Definition of Done is the Increment's
-   * commitment:
+   * Three rules make this safe, and all three exist because the Definition of Done is the
+   * Increment's commitment:
    *
    *  * It cannot be emptied. A Definition of Done with no active item silently satisfies the Done
    *    gate, so clearing it would be a one-call way to defeat the rule it exists to enforce.
    *  * It cannot be rewritten silently. The version being superseded is copied into an append-only
-   *    snapshot inside the same transaction, so the change history survives the delete-and-recreate
-   *    that keeps `DoDItem @@unique([dodId, order])` satisfiable.
+   *    snapshot inside the same transaction, so the change history survives the edit.
+   *  * It cannot be edited destructively. A criterion the payload keeps by id is updated in place,
+   *    so the `DoDChecklistVerification` rows recorded against it survive: rewriting one criterion
+   *    must not erase the evidence that an item satisfied the others. Only a criterion the team
+   *    actually removed loses its verifications, and the snapshot records what it said.
    *
    * @throws AppError (400, `GATE_DOD_REQUIRED`) when the resulting Definition of Done would hold
    * no active item.
@@ -396,25 +415,70 @@ class DefinitionOfDoneService {
         update: {},
       });
 
-      await tx.doDItem.deleteMany({
+      // Identity-preserving replace: an id that names a criterion of *this* Definition of Done is an
+      // update to that row; an absent id -- or an id belonging to another scope -- inserts a new row,
+      // so a payload cannot reach across scopes by guessing an id.
+      const existingItems = await tx.doDItem.findMany({
         where: { dodId: existingDod.id },
+        select: { id: true },
       });
+      const existingIds = new Set(existingItems.map((item) => item.id));
+      const retainedIds = items
+        .map((item) => item.id)
+        .filter((id): id is string => typeof id === 'string' && existingIds.has(id));
+      const retainedIdSet = new Set(retainedIds);
+      const removedIds = existingItems
+        .filter((item) => !retainedIdSet.has(item.id))
+        .map((item) => item.id);
+
+      if (removedIds.length > 0) {
+        await tx.doDItem.deleteMany({ where: { id: { in: removedIds } } });
+      }
+
+      // Surviving criteria are moved out of the final order range before the dense renumbering, so a
+      // swap between two of them cannot collide with `DoDItem @@unique([dodId, order])`.
+      if (retainedIds.length > 0) {
+        await tx.doDItem.updateMany({
+          where: { id: { in: retainedIds } },
+          data: { order: { increment: ORDER_SHIFT } },
+        });
+      }
+
+      for (const [index, item] of items.entries()) {
+        const isUpdate = typeof item.id === 'string' && retainedIdSet.has(item.id);
+
+        if (isUpdate) {
+          await tx.doDItem.update({
+            where: { id: item.id as string },
+            data: {
+              description: item.description,
+              category: item.category ?? 'quality',
+              isActive: item.isActive,
+              order: index,
+              updatedBy: userId,
+            },
+          });
+          continue;
+        }
+
+        await tx.doDItem.create({
+          data: {
+            id: generateUUIDv7(),
+            dodId: existingDod.id,
+            description: item.description,
+            category: item.category ?? 'quality',
+            isActive: item.isActive,
+            order: index,
+            createdBy: userId,
+          },
+        });
+      }
 
       return tx.definitionOfDone.update({
         where: { id: existingDod.id },
         data: {
           version: { increment: 1 },
           updatedBy: userId,
-          items: {
-            create: items.map((item, index) => ({
-              id: generateUUIDv7(),
-              description: item.description,
-              category: item.category ?? 'quality',
-              isActive: item.isActive,
-              order: index,
-              createdBy: userId,
-            })),
-          },
         },
         include: {
           items: {

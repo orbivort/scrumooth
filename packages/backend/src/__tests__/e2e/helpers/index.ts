@@ -220,6 +220,7 @@ export {
   createTestBurndownDataInDb,
   addPBIToSprintBacklog,
   seedPlanningParticipation,
+  seedTeamDefinitions,
   addPBIToIncrement,
   cleanupUsers,
   cleanupTeams,

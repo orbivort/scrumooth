@@ -275,6 +275,11 @@
     "lastUpdated": "Zuletzt aktualisiert:",
     "loading": "Definition of Ready wird geladen...",
     "noTeam": "Bitte wählen Sie ein Team aus, um die Definition of Ready anzuzeigen.",
+    "practice": {
+      "message": "Sie ist keines der drei Artefakte des Scrum Guide 2020 – Product Backlog, Sprint Backlog und Increment – deshalb kennzeichnet Scrumooth sie als ergänzende Praxis. Sie wird dennoch als eigene Vereinbarung des Teams durchgesetzt: Ein Sprint Backlog kann nicht festgelegt und ein Sprint nicht gestartet werden, solange ein ausgewähltes Element ein unverifiziertes Kriterium hat. Die Verifizierungen erfassen die Teammitglieder, die Vereinbarung pflegt der Scrum Master.",
+      "scrumMasterOnly": "Diese Vereinbarung pflegt der Scrum Master des Teams.",
+      "title": "Ergänzende Praxis, kein Artefakt des Guide."
+    },
     "retry": "Erneut versuchen",
     "shortLabel": "DoR",
     "title": "Definition of Ready",

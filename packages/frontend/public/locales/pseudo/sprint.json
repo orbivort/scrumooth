@@ -494,11 +494,24 @@
     "startSprintModal": {
       "cancel": "[Càncélll]",
       "capacityUtilization": "[Càpàcíty Útílízàtíónnnnnnn]",
+      "commitment": {
+        "definitionOfDoneMissing": "[Nó Défínítíón óf Dónééééééééé]",
+        "definitionOfDoneMissingMessage": "[Thís téàm hàs nó Défínítíón óf Dóné, só à Sprínt càn nó ópénnnnnnnnnnnnnnnnn.]",
+        "openDefinitions": "[Ópén Téàm Défínítíónsssssss]",
+        "readinessIncomplete": "[Défínítíón óf Réàdy Nót Méééééééééét]",
+        "readinessIncompleteMessage": "[{{count}} séléctéd ítém(s) stíll hàvé àn únvérafíéd réàdínéss crítéríónnnnnnnnn.]"
+      },
       "duration": "[Dúràtíónnnn]",
       "error": {
         "activeSprintExists": "[Àctívé Sprínt Éxístsssssss]",
         "addItemsFirst": "[Àdd bàcklóg ítéms tó thé sprínt béfóré stàrtíngggggggggggggggg.]",
         "anotherSprintActive": "[Ànóthér sprínt ís àlréàdy àctívé. Pléàsé cómplété thé cúrrént sprínt béfóré stàrtíng à néw ónéééééééééééééééééééééééééééééé.]",
+        "definitionOfDoneRequired": "[Nó Défínítíón óf Dónééééééééé]",
+        "definitionOfDoneRequiredMessage": "[À Sprínt càn nót bé ópénéd whílé thé téàm hàs nó Défínítíón óf Dónééééééééé.]",
+        "definitionOfReadyNotVerified": "[Défínítíón óf Réàdy Nót Méééééééééét]",
+        "definitionOfReadyNotVerifiedMessage": "[Évéry séléctéd ítém múst méét thé téàm's Défínítíón óf Réàdyyyyyyyyy.]",
+        "definitionOfReadyRequired": "[Nó Défínítíón óf Réàdyyyyyy]",
+        "definitionOfReadyRequiredMessage": "[Thé téàm hàs nó àctívé réàdínéss crítéríónnnnnnnnnnnnn.]",
         "invalidRequest": "[Ínvàlíd Réqúéstttttt]",
         "invalidRequestMessage": "[Pléàsé chéck yóúr sprínt dàtà ànd try àgàín. Màké súré àll réqúíréd fíélds àré fílléd córréctlyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy.]",
         "invalidSprintBacklog": "[Ínvàlíd Sprínt Bàcklógggggggg]",

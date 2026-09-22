@@ -11,7 +11,13 @@ import { useTeamStore } from '../../../../store';
 import { useToast } from '../../../../hooks/useToast';
 import { queryKeys } from '../../../../hooks/queryKeys';
 import { DEFAULT_DOD_ITEMS } from '../constants/defaults';
-import type { DefinitionOfDone, DoDItem, ApiResponse, Team } from '../../../../types';
+import type {
+  DefinitionOfDone,
+  DoDItem,
+  DoDItemPayload,
+  ApiResponse,
+  Team,
+} from '../../../../types';
 
 import { DefinitionEditor } from './DefinitionEditor';
 import { DOD_CATEGORIES, getCategoryColor } from './categories';
@@ -64,7 +70,7 @@ export function DefinitionOfDonePanel(): React.ReactElement {
   });
 
   const updateMutation = useMutation({
-    mutationFn: (items: DoDItem[]) => {
+    mutationFn: (items: DoDItemPayload[]) => {
       if (!teamId) throw new Error('Team ID is required');
       return definitionService.updateDefinitionOfDone(teamId, items);
     },
@@ -98,7 +104,7 @@ export function DefinitionOfDonePanel(): React.ReactElement {
 
   const sharedWithGroup = teamData?.success && teamData.data ? (teamData.data.group ?? null) : null;
 
-  const handleSave = async (items: DoDItem[]): Promise<void> => {
+  const handleSave = async (items: DoDItemPayload[]): Promise<void> => {
     await updateMutation.mutateAsync(items);
   };
 

@@ -81,6 +81,30 @@
   font-size: var(--font-size-sm);
 }
 
+/* The readiness agreement is a complementary practice, not a Guide artifact, and it is enforced:
+   the notice has to say both, or a team cannot tell which commitments the Guide requires. */
+.practice-notice {
+  margin-bottom: var(--space-5);
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-warning-50);
+  border: var(--border-width-1) solid var(--color-warning-200);
+  border-left: var(--border-width-4) solid var(--color-warning-500);
+  border-radius: var(--radius-lg);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-normal);
+}
+
+.practice-notice-title {
+  color: var(--color-warning-800);
+}
+
+.practice-note {
+  color: var(--color-text-tertiary);
+  font-size: var(--font-size-sm);
+  font-style: italic;
+}
+
 .button {
   display: inline-flex;
   align-items: center;

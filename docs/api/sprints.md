@@ -739,6 +739,46 @@ the recorded total by more than `SPRINT_CAPACITY_TOLERANCE_PCT` (default 10%).
 > Capacity is only enforced against a _recorded_ capacity. A Sprint whose planning never
 > recorded capacity starts on the remaining gates alone, so existing plans are not stranded.
 
+**400 Bad Request - No Definition of Done**
+
+A Sprint cannot open while the team's Definition of Done holds no active item — including a team
+that has never created one. A Sprint opened against no commitment is a Sprint whose Increment could
+never satisfy one, so the boundary asks the same question the Done transition asks, one event
+earlier.
+
+```json
+{
+  "success": false,
+  "error": {
+    "code": "GATE_DOD_REQUIRED",
+    "message": "Nothing is Done until the team has defined what Done means: a Definition of Done must keep at least one active item, and a Sprint cannot be committed or started without one. An empty checklist would let every item be marked Done unchecked."
+  }
+}
+```
+
+**400 Bad Request - Definition of Ready Not Met**
+
+Scrumooth also enforces the team's **Definition of Ready** — a complementary practice, not a 2020
+Scrum Guide artifact (see the [Definition of Ready API](./definition-of-ready.md)). A Sprint cannot
+open while a selected item still has an unverified active readiness criterion; the refusal names the
+items that are not ready. A team with no active readiness criterion at all is refused with
+`GATE_DOR_REQUIRED` instead, so the agreement cannot be emptied to make the rule pass.
+
+```json
+{
+  "success": false,
+  "error": {
+    "code": "GATE_DOR_NOT_VERIFIED",
+    "message": "This Sprint cannot be committed or started until every selected item meets the team's Definition of Ready. 1 item(s) still have unverified readiness criteria: \"Checkout - retry\"."
+  }
+}
+```
+
+> The Definition of Ready is **not** applied to `PUT /sprints/:id/backlog/draft`. A draft is
+> explicitly revisable before the container opens, and refusing every intermediate save would make
+> planning unusable; the agreement bites when the plan becomes the Sprint Backlog and when the
+> Sprint starts.
+
 **409 Conflict - Team Already Has Active Sprint**
 
 ```json
@@ -1689,6 +1729,39 @@ Content-Type: application/json
   "error": {
     "code": "GATE_PBI_NOT_READY",
     "message": "Only Product Backlog items refined to READY can enter a Sprint. 1 selected item(s) are not READY yet: \"Checkout - retry\"."
+  }
+}
+```
+
+**400 Bad Request - No Definition of Done**
+
+The commitment the Sprint Backlog is written against has to exist before the backlog is committed,
+not only before an item is marked Done. A team with no active Definition of Done item — including
+one that has never created a Definition of Done at all — is refused here.
+
+```json
+{
+  "success": false,
+  "error": {
+    "code": "GATE_DOD_REQUIRED",
+    "message": "Nothing is Done until the team has defined what Done means: a Definition of Done must keep at least one active item, and a Sprint cannot be committed or started without one. An empty checklist would let every item be marked Done unchecked."
+  }
+}
+```
+
+**400 Bad Request - Definition of Ready Not Met**
+
+The team's **Definition of Ready** — a complementary practice rather than a Guide artifact — is
+applied at the moment the plan becomes the Sprint Backlog: every selected item must have verified
+every active readiness criterion. The refusal names the items that are not ready, and a team with no
+active criterion at all is refused with `GATE_DOR_REQUIRED`.
+
+```json
+{
+  "success": false,
+  "error": {
+    "code": "GATE_DOR_NOT_VERIFIED",
+    "message": "This Sprint cannot be committed or started until every selected item meets the team's Definition of Ready. 2 item(s) still have unverified readiness criteria: \"Checkout - retry, Bulk export\"."
   }
 }
 ```

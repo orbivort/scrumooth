@@ -43,6 +43,129 @@ const seedPlanningParticipation = async (sprintId: string, createdBy?: string): 
   });
 };
 
+/**
+ * Seed the two agreements the Sprint boundary requires for this Sprint: a Definition of Done the
+ * team holds, and a Definition of Ready whose active criterion every item on the Sprint's backlog
+ * satisfies.
+ *
+ * The boundary refuses a Sprint Backlog commit, and a Sprint start, when the team has no Definition
+ * of Done, when its readiness agreement holds no active criterion, or when a selected item has an
+ * unverified one -- so a fixture that intends to open a Sprint has to represent a team that holds
+ * both. Idempotent, because several Sprints can share one team. Written directly, like the
+ * participation seed above; the definitions' own rules are covered by
+ * `integration/team-definitions.test.ts`.
+ *
+ * `pbiIds` defaults to the items already on the Sprint's backlog. A test that is *about* saving the
+ * backlog has nothing persisted yet, so it names the items it is about to commit instead.
+ */
+const seedTeamDefinitions = async (
+  sprintId: string,
+  createdBy?: string,
+  pbiIds?: string[]
+): Promise<void> => {
+  const sprint = await prisma.sprint.findUnique({
+    where: { id: sprintId },
+    select: { teamId: true, sprintBacklogItems: { select: { pbiId: true } } },
+  });
+
+  if (!sprint) {
+    return;
+  }
+
+  const existingDoD = await prisma.definitionOfDone.findUnique({
+    where: { teamId: sprint.teamId },
+    select: { id: true },
+  });
+
+  if (!existingDoD) {
+    await prisma.definitionOfDone.create({
+      data: {
+        id: generateUUIDv7(),
+        teamId: sprint.teamId,
+        createdBy,
+        items: {
+          create: {
+            id: generateUUIDv7(),
+            description: 'Code is peer-reviewed and approved',
+            category: 'review',
+            isActive: true,
+            order: 0,
+            createdBy,
+          },
+        },
+      },
+    });
+  }
+
+  const existingDoR = await prisma.definitionOfReady.findUnique({
+    where: { teamId: sprint.teamId },
+    select: { items: { where: { isActive: true }, select: { id: true }, take: 1 } },
+  });
+
+  let dorItemId = existingDoR?.items[0]?.id;
+
+  if (!dorItemId) {
+    dorItemId = generateUUIDv7();
+    const newItem = {
+      create: {
+        id: dorItemId,
+        description: 'Acceptance criteria defined and agreed',
+        category: 'acceptance',
+        isActive: true,
+        order: 0,
+        createdBy,
+      },
+    };
+
+    await prisma.definitionOfReady.upsert({
+      where: { teamId: sprint.teamId },
+      create: { id: generateUUIDv7(), teamId: sprint.teamId, createdBy, items: newItem },
+      update: { items: newItem },
+    });
+  }
+
+  // A readiness verification carries a foreign key to the user who recorded it.
+  const verifier =
+    createdBy ??
+    (
+      await prisma.teamMember.findFirst({
+        where: { teamId: sprint.teamId },
+        select: { userId: true },
+      })
+    )?.userId;
+
+  if (!verifier) {
+    return;
+  }
+
+  const itemsToVerify = pbiIds ?? sprint.sprintBacklogItems.map((item) => item.pbiId);
+
+  for (const pbiId of itemsToVerify) {
+    await prisma.doRChecklistVerification.upsert({
+      where: { pbiId_dorItemId: { pbiId, dorItemId } },
+      create: {
+        id: generateUUIDv7(),
+        pbiId,
+        dorItemId,
+        isVerified: true,
+        verifiedBy: verifier,
+        createdBy: verifier,
+      },
+      update: { isVerified: true, verifiedBy: verifier },
+    });
+  }
+};
+
+/**
+ * Everything a Sprint start requires of the team's records except the gate a test is exercising:
+ * planning participation plus the two agreements. Most start tests want a Sprint that can open, so
+ * they use this; a test that asserts a start gate seeds only what that gate needs.
+ */
+const seedStartPrerequisites = async (sprintId: string, createdBy?: string): Promise<void> => {
+  await seedPlanningParticipation(sprintId, createdBy);
+  await seedTeamDefinitions(sprintId, createdBy);
+};
+
 describe('Sprint Management Integration Tests', () => {
   // Helper to create a test user directly in the database
   const createTestUserInDb = async (
@@ -539,7 +662,7 @@ describe('Sprint Management Integration Tests', () => {
         },
       });
       // Planning participation is a start gate: record the PO and a Developer as present.
-      await seedPlanningParticipation(sprint.id, user.id);
+      await seedStartPrerequisites(sprint.id, user.id);
 
       const response = await request(app)
         .post(`/api/v1/sprints/${sprint.id}/start`)
@@ -639,7 +762,10 @@ describe('Sprint Management Integration Tests', () => {
     });
 
     it('refuses to start without recorded planning participation', async () => {
-      const { sprint, cookies, csrfToken } = await setupPlanningSprint();
+      const { sprint, user, cookies, csrfToken } = await setupPlanningSprint();
+      // The team's two agreements are seeded so the participation rule is what refuses, not an
+      // earlier gate.
+      await seedTeamDefinitions(sprint.id, user.id);
 
       const response = await request(app)
         .post(`/api/v1/sprints/${sprint.id}/start`)
@@ -653,7 +779,7 @@ describe('Sprint Management Integration Tests', () => {
 
     it('refuses to start when the plan exceeds recorded capacity beyond the tolerance', async () => {
       const { sprint, cookies, csrfToken } = await setupPlanningSprint({ withCapacity: true });
-      await seedPlanningParticipation(sprint.id);
+      await seedStartPrerequisites(sprint.id);
 
       const response = await request(app)
         .post(`/api/v1/sprints/${sprint.id}/start`)
@@ -667,7 +793,7 @@ describe('Sprint Management Integration Tests', () => {
 
     it('starts once participation is recorded and the plan fits capacity', async () => {
       const { sprint, cookies, csrfToken } = await setupPlanningSprint();
-      await seedPlanningParticipation(sprint.id);
+      await seedStartPrerequisites(sprint.id);
 
       const response = await request(app)
         .post(`/api/v1/sprints/${sprint.id}/start`)
@@ -703,6 +829,10 @@ describe('Sprint Management Integration Tests', () => {
       await addTeamMember(team.id, user.id, 'DEVELOPERS');
       const sprint = await createTestSprint(team.id, 'Sprint to Plan', 'PLANNED');
       const pbi = await createTestPBI(team.id, 'Planned PBI', 'READY');
+      // The two agreements the Sprint boundary requires, with this item verified against the
+      // readiness agreement: the commit under test is refused without them, and the refusal under
+      // test would then be the wrong one.
+      await seedTeamDefinitions(sprint.id, user.id, [pbi.id]);
 
       const cookies = await loginAndGetCookies(email);
       const { csrfToken } = extractCsrfFromCookies(cookies);
@@ -743,6 +873,10 @@ describe('Sprint Management Integration Tests', () => {
       await addTeamMember(team.id, user.id, 'PRODUCT_OWNER');
       const sprint = await createTestSprint(team.id, 'Sprint to Plan', 'PLANNED');
       const pbi = await createTestPBI(team.id, 'Planned PBI', 'READY');
+      // The two agreements the Sprint boundary requires, with this item verified against the
+      // readiness agreement: the commit under test is refused without them, and the refusal under
+      // test would then be the wrong one.
+      await seedTeamDefinitions(sprint.id, user.id, [pbi.id]);
 
       const cookies = await loginAndGetCookies(email);
       const { csrfToken } = extractCsrfFromCookies(cookies);
@@ -778,6 +912,10 @@ describe('Sprint Management Integration Tests', () => {
       await addTeamMember(team.id, otherUser.id, 'DEVELOPERS');
       const sprint = await createTestSprint(team.id, 'Sprint to Plan', 'PLANNED');
       const pbi = await createTestPBI(team.id, 'Planned PBI', 'READY');
+      // The two agreements the Sprint boundary requires, with this item verified against the
+      // readiness agreement: the commit under test is refused without them, and the refusal under
+      // test would then be the wrong one.
+      await seedTeamDefinitions(sprint.id, user.id, [pbi.id]);
 
       const cookies = await loginAndGetCookies(email);
       const { csrfToken } = extractCsrfFromCookies(cookies);
@@ -811,6 +949,10 @@ describe('Sprint Management Integration Tests', () => {
       await addTeamMember(team.id, otherUser.id, 'DEVELOPERS');
       const sprint = await createTestSprint(team.id, 'Sprint to Plan', 'PLANNED');
       const pbi = await createTestPBI(team.id, 'Planned PBI', 'READY');
+      // The two agreements the Sprint boundary requires, with this item verified against the
+      // readiness agreement: the commit under test is refused without them, and the refusal under
+      // test would then be the wrong one.
+      await seedTeamDefinitions(sprint.id, user.id, [pbi.id]);
 
       const cookies = await loginAndGetCookies(email);
       const { csrfToken } = extractCsrfFromCookies(cookies);
@@ -859,6 +1001,10 @@ describe('Sprint Management Integration Tests', () => {
       await addTeamMember(team.id, poUser.id, 'PRODUCT_OWNER');
       const sprint = await createTestSprint(team.id, 'Sprint to Plan', 'PLANNED');
       const pbi = await createTestPBI(team.id, 'Planned PBI', 'READY');
+      // The two agreements the Sprint boundary requires, with this item verified against the
+      // readiness agreement: the commit under test is refused without them, and the refusal under
+      // test would then be the wrong one.
+      await seedTeamDefinitions(sprint.id, user.id, [pbi.id]);
 
       const cookies = await loginAndGetCookies(email);
       const { csrfToken } = extractCsrfFromCookies(cookies);
@@ -899,6 +1045,10 @@ describe('Sprint Management Integration Tests', () => {
       await createTestProductGoal(team.id, 'Test Product Goal');
       const sprint = await createTestSprint(team.id, 'Sprint to Plan', 'PLANNED');
       const pbi = await createTestPBI(team.id, 'Planned PBI', 'READY');
+      // The two agreements the Sprint boundary requires, with this item verified against the
+      // readiness agreement: the commit under test is refused without them, and the refusal under
+      // test would then be the wrong one.
+      await seedTeamDefinitions(sprint.id, user.id, [pbi.id]);
 
       const cookies = await loginAndGetCookies(email);
       const { csrfToken } = extractCsrfFromCookies(cookies);
@@ -933,7 +1083,7 @@ describe('Sprint Management Integration Tests', () => {
       expect(resumeResponse.body.data.tasks[0].pbiId).toBe(pbi.id);
 
       // 3. Start the sprint from the resumed draft.
-      await seedPlanningParticipation(sprint.id, user.id);
+      await seedStartPrerequisites(sprint.id, user.id);
       const startResponse = await request(app)
         .post(`/api/v1/sprints/${sprint.id}/start`)
         .set('Cookie', cookies)
@@ -1158,6 +1308,10 @@ describe('Sprint Management Integration Tests', () => {
       await addTeamMember(team.id, user.id, 'PRODUCT_OWNER');
       const sprint = await createTestSprint(team.id, 'Sprint to Plan', 'PLANNED');
       const pbi = await createTestPBI(team.id, 'Planned PBI', 'READY');
+      // The two agreements the Sprint boundary requires, with this item verified against the
+      // readiness agreement: the commit under test is refused without them, and the refusal under
+      // test would then be the wrong one.
+      await seedTeamDefinitions(sprint.id, user.id, [pbi.id]);
 
       const cookies = await loginAndGetCookies(email);
       const { csrfToken } = extractCsrfFromCookies(cookies);
@@ -1184,6 +1338,10 @@ describe('Sprint Management Integration Tests', () => {
       await addTeamMember(team.id, user.id, 'DEVELOPERS');
       const sprint = await createTestSprint(team.id, 'Sprint to Plan', 'PLANNED');
       const pbi = await createTestPBI(team.id, 'Planned PBI', 'READY');
+      // The two agreements the Sprint boundary requires, with this item verified against the
+      // readiness agreement: the commit under test is refused without them, and the refusal under
+      // test would then be the wrong one.
+      await seedTeamDefinitions(sprint.id, user.id, [pbi.id]);
 
       const cookies = await loginAndGetCookies(email);
       const { csrfToken } = extractCsrfFromCookies(cookies);
@@ -1302,7 +1460,7 @@ describe('Sprint Management Integration Tests', () => {
       const { csrfToken } = extractCsrfFromCookies(cookies);
 
       // Draft B goes ACTIVE.
-      await seedPlanningParticipation(draftB.id);
+      await seedStartPrerequisites(draftB.id);
       await request(app)
         .post(`/api/v1/sprints/${draftB.id}/start`)
         .set('Cookie', cookies)
@@ -1994,7 +2152,7 @@ describe('Sprint Management Integration Tests', () => {
             createdBy: user.id,
           },
         });
-        await seedPlanningParticipation(sprint.id, user.id);
+        await seedStartPrerequisites(sprint.id, user.id);
 
         const response = await request(app)
           .post(`/api/v1/sprints/${sprint.id}/start`)

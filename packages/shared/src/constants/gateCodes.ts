@@ -41,6 +41,31 @@ export const GATE_CODES = {
    * of that team.
    */
   DOD_TEAM_MEMBERS_ONLY: 'GATE_DOD_TEAM_MEMBERS_ONLY',
+  /**
+   * The Definition of Ready is a complementary practice rather than a 2020 Scrum Guide artifact --
+   * the Guide's three artifacts are the Product Backlog, the Sprint Backlog and the Increment -- but
+   * it is still the team's own agreement about when an item is ready to be planned, so reading it or
+   * recording a readiness verification requires membership of the team that owns it.
+   */
+  DOR_TEAM_MEMBERS_ONLY: 'GATE_DOR_TEAM_MEMBERS_ONLY',
+  /**
+   * The readiness agreement is the team's standing quality bar for entering a Sprint, and a bar that
+   * any member could lower is not a bar. Its published contract already assigns it to the team's
+   * Scrum Master, so the code enforces what the API documentation promised: one owner, one agreement.
+   */
+  DOR_SCRUM_MASTER_ONLY: 'GATE_DOR_SCRUM_MASTER_ONLY',
+  /**
+   * A readiness agreement with no active criterion is not an agreement -- there is nothing for an
+   * item to satisfy, so the Sprint boundary rule it exists to enforce would pass vacuously. A team
+   * must keep at least one active criterion, and a Sprint cannot be committed or opened without one.
+   */
+  DOR_REQUIRED: 'GATE_DOR_REQUIRED',
+  /**
+   * A readiness agreement is only worth having if it is actually applied: committing a Sprint
+   * Backlog or opening a Sprint is refused while any selected item still has an unverified active
+   * readiness criterion, and the refusal names the items that are not ready.
+   */
+  DOR_NOT_VERIFIED: 'GATE_DOR_NOT_VERIFIED',
   /** A team can hold exactly one Product Owner and one Scrum Master. */
   LEADERSHIP_ROLE_TAKEN: 'GATE_LEADERSHIP_ROLE_TAKEN',
   /** A Scrum Team cannot grow past `TEAM_MAX_SIZE`. */
@@ -388,6 +413,26 @@ export const GATE_DEFINITIONS: Record<GateCode, GateDefinition> = {
     code: GATE_CODES.DOD_TEAM_MEMBERS_ONLY,
     httpStatus: 403,
     i18nKey: 'dodTeamMembersOnly',
+  },
+  [GATE_CODES.DOR_TEAM_MEMBERS_ONLY]: {
+    code: GATE_CODES.DOR_TEAM_MEMBERS_ONLY,
+    httpStatus: 403,
+    i18nKey: 'dorTeamMembersOnly',
+  },
+  [GATE_CODES.DOR_SCRUM_MASTER_ONLY]: {
+    code: GATE_CODES.DOR_SCRUM_MASTER_ONLY,
+    httpStatus: 403,
+    i18nKey: 'dorScrumMasterOnly',
+  },
+  [GATE_CODES.DOR_REQUIRED]: {
+    code: GATE_CODES.DOR_REQUIRED,
+    httpStatus: 400,
+    i18nKey: 'dorRequired',
+  },
+  [GATE_CODES.DOR_NOT_VERIFIED]: {
+    code: GATE_CODES.DOR_NOT_VERIFIED,
+    httpStatus: 400,
+    i18nKey: 'dorNotVerified',
   },
   [GATE_CODES.LEADERSHIP_ROLE_TAKEN]: {
     code: GATE_CODES.LEADERSHIP_ROLE_TAKEN,

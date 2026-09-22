@@ -6,13 +6,14 @@ Complete Definition of Ready (DoR) API reference for managing team DoR criteria 
 
 - [Overview](#overview)
 - [DoR Concepts](#dor-concepts)
-- [Authentication](#authentication)
+- [Authorization](#authorization)
 - [Endpoints](#endpoints)
   - [Get Team DoR](#get-team-dor)
   - [Update Team DoR](#update-team-dor)
   - [Get DoR Version History](#get-dor-version-history)
   - [Verify DoR for PBI](#verify-dor-for-pbi)
   - [Get DoR Verifications for PBI](#get-dor-verifications-for-pbi)
+- [Gate rejections](#gate-rejections)
 - [Error Codes](#error-codes)
 - [Best Practices](#best-practices)
 
@@ -21,7 +22,7 @@ Complete Definition of Ready (DoR) API reference for managing team DoR criteria 
 The Definition of Ready API provides capabilities for:
 
 - Managing a team's Definition of Ready criteria
-- Tracking DoR version history over time
+- Reading the Definition of Ready in force, and the version it carries
 - Verifying DoR compliance on individual Product Backlog Items
 - Retrieving DoR verification records for a PBI
 
@@ -29,15 +30,24 @@ All DoR endpoints are mounted under `/api/v1/teams/:teamId/definition-of-ready` 
 
 ## DoR Concepts
 
-The **Definition of Ready (DoR)** is a shared agreement within a Scrum team on what conditions must be met before a Product Backlog Item (PBI) can be selected for a sprint. It acts as a quality gate that ensures work brought into a sprint is well-understood, properly refined, and ready for implementation.
+The **Definition of Ready (DoR)** is a shared agreement within a Scrum team on what conditions must be met before a Product Backlog Item (PBI) can be selected for a sprint. It ensures work brought into a sprint is well-understood, properly refined, and ready for implementation.
+
+### It is a complementary practice, not a Scrum Guide artifact
+
+The 2020 Scrum Guide names exactly three artifacts — the Product Backlog, the Sprint Backlog and the Increment — with the **Definition of Done** as the Increment's commitment. The Definition of Ready is not one of them: it is a team's own agreement, and Scrumooth presents it as such. It is **not** a Guide rule, and the gate it produces below is **not** claimed as Guide conformance.
+
+### It is nonetheless enforced
+
+Scrumooth enforces the agreement as the team's own commitment. Committing a Sprint Backlog (`POST /sprints/:id/backlog`) or starting a Sprint (`POST /sprints/:id/start`) is **refused** while any selected item still has an unverified active readiness criterion, and refused outright while the team has no active criterion at all. A definition that could be ignored at the moment it matters would be decorative, so the agreement made in refinement is applied at the boundary. See [Gate rejections](#gate-rejections).
 
 ### Key Principles
 
 - **Prevents Waste**: Items that are not ready waste sprint capacity when the team discovers missing information mid-sprint
 - **Shared Understanding**: The DoR ensures the team and Product Owner have a common understanding of what "ready" means
 - **Refinement Guide**: The DoR serves as a checklist during backlog refinement to assess PBI readiness
-- **Negotiable Gate**: Unlike the DoD, DoR criteria can be partially met; the team may choose to bring an item into a sprint even if some criteria are not fully satisfied
-- **Per-Team**: Each team defines its own DoR, which may differ from other teams based on context and maturity
+- **Applied, not merely advisory**: The agreement is read by the service when a Sprint Backlog is committed and when a Sprint starts. Verifying an item is still the team's own judgement — the tool records the verdict, it does not invent one — but an unverified criterion stops the boundary rather than warning about it
+- **Cannot be emptied**: The agreement must keep at least one active criterion, so its gate can never pass vacuously
+- **Per-Team**: Each team defines its own DoR, which may differ from other teams based on context and maturity. There is no group- or organization-level readiness agreement
 
 ### Common DoR Criteria Examples
 
@@ -50,13 +60,16 @@ The **Definition of Ready (DoR)** is a shared agreement within a Scrum team on w
 
 ### DoR vs. DoD
 
-| Aspect         | Definition of Ready                             | Definition of Done                    |
-| -------------- | ----------------------------------------------- | ------------------------------------- |
-| **Timing**     | Checked before sprint planning                  | Checked during/after sprint execution |
-| **Purpose**    | Ensures PBI is ready to be worked on            | Ensures PBI meets quality standards   |
-| **Strictness** | Advisory; team may accept partially ready items | Mandatory; all criteria must be met   |
-| **Owner**      | Entire team (with Product Owner input)          | Entire team                           |
-| **Focus**      | Preparedness and clarity                        | Quality and completeness              |
+| Aspect              | Definition of Ready                                                 | Definition of Done                                         |
+| ------------------- | ------------------------------------------------------------------- | ---------------------------------------------------------- |
+| **Guide status**    | Complementary practice; not a 2020 Scrum Guide artifact             | The Increment's commitment, named in the Guide             |
+| **Timing**          | Applied when a Sprint Backlog is committed and when a Sprint starts | Applied when a PBI is marked Done, and reported per Sprint |
+| **What it gates**   | Committing a Sprint Backlog and opening a Sprint                    | Marking a PBI Done, and Increment composition              |
+| **Strictness**      | Every active criterion must be verified for every selected item     | Every active criterion must be verified for that item      |
+| **Who maintains**   | The team's Scrum Master (the agreement itself)                      | The Scrum Team, member by member (the agreement itself)    |
+| **Who records it**  | Any team member, per criterion, per PBI                             | Any team member, per criterion, per PBI                    |
+| **Version history** | The version in force; superseded versions are not snapshotted       | Append-only snapshots of every superseded version          |
+| **Focus**           | Preparedness and clarity                                            | Quality and completeness                                   |
 
 ### When to Verify DoR
 
@@ -64,7 +77,7 @@ The **Definition of Ready (DoR)** is a shared agreement within a Scrum team on w
 - **Sprint Planning**: Before committing to items, verify they meet DoR criteria
 - **Continuous**: Product Owner and team can verify DoR at any time as understanding evolves
 
-## Authentication
+## Authorization
 
 All DoR endpoints require authentication. Include the access token in your request:
 
@@ -81,6 +94,21 @@ Cookie: accessToken=eyJhbGc...
 GET /api/v1/teams/:teamId/definition-of-ready
 Authorization: Bearer eyJhbGc...
 ```
+
+**Who may do what.** The agreement belongs to the team it describes, so every operation is scoped to
+the caller's role _in that team_ — never to a role held in some other team:
+
+| Operation                                          | Rule                                             | Refusal                                                                                |
+| -------------------------------------------------- | ------------------------------------------------ | -------------------------------------------------------------------------------------- |
+| Reading the agreement, or one item's verifications | Membership of the item's/the team's Scrum Team   | `403 GATE_DOR_TEAM_MEMBERS_ONLY`                                                       |
+| Recording a readiness verification                 | Membership of the item's Scrum Team              | `403 GATE_DOR_TEAM_MEMBERS_ONLY`                                                       |
+| Replacing the agreement                            | The team's **Scrum Master** (membership implied) | `403 GATE_DOR_SCRUM_MASTER_ONLY`, or `403 GATE_DOR_TEAM_MEMBERS_ONLY` for a non-member |
+
+Recording the verdict stays a team activity — the Developers and the Product Owner assess readiness
+together during refinement — while _maintaining the agreement itself_ is the Scrum Master's, so one
+person owns what "ready" means and the checklist cannot drift under the team mid-refinement. The
+Definition of Done is deliberately different: the Guide says the _Scrum Team_ creates it, so its
+agreement stays member-editable.
 
 ## Endpoints
 
@@ -179,7 +207,7 @@ curl -X GET https://api.scrumooth.dev/api/v1/teams/550e8400-e29b-41d4-a716-44665
 
 ### Update Team DoR
 
-Update the Definition of Ready for a team. Replaces all existing items. Requires Scrum Master role.
+Replace the Definition of Ready for a team. Requires the team's Scrum Master.
 
 **Endpoint**
 
@@ -187,10 +215,10 @@ Update the Definition of Ready for a team. Replaces all existing items. Requires
 PUT /api/v1/teams/:teamId/definition-of-ready
 ```
 
-**Authentication**
+**Authorization**
 
 - Required
-- Scrum Master role required
+- The caller must be the team's Scrum Master (`403 GATE_DOR_SCRUM_MASTER_ONLY` otherwise)
 
 **Path Parameters**
 
@@ -202,11 +230,35 @@ PUT /api/v1/teams/:teamId/definition-of-ready
 {
   "items": [
     {
-      "description": "string (required, 1-500 chars)"
+      "id": "550e8400-e29b-41d4-a716-446655440121 (optional, UUID of an existing criterion)",
+      "description": "string (required, 1-500 chars)",
+      "category": "string (optional)",
+      "isActive": "boolean (required)",
+      "order": "number (accepted, ignored: the final order follows list position)"
     }
   ]
 }
 ```
+
+**How the list is applied**
+
+The payload is the agreement's new state, and each criterion's identity decides how it is applied:
+
+- an item carrying an `id` that names a criterion **of this agreement** updates that row in place;
+  every readiness verification recorded against it survives the edit, so rewording one criterion no
+  longer discards the evidence for the others;
+- an item with **no `id`** — or with an `id` this agreement does not hold — is inserted as a new
+  criterion, under an id the service assigns;
+- a criterion **absent from the payload** is deleted, and its verifications go with it. Version
+  history is not kept for the DoR, so a removed criterion is not recoverable: retiring a criterion
+  loses the verdicts recorded against it.
+
+The resulting agreement must keep **at least one active criterion** (`400 GATE_DOR_REQUIRED`
+otherwise), so the Sprint boundary rule it feeds can never be emptied away. Sending `items: []`, or
+a list where every criterion is `isActive: false`, is refused and writes nothing.
+
+For a body that only needs to reword one criterion, send its `id` alongside the new description;
+sending the whole list without ids is read as "replace every criterion with these new ones".
 
 **Success Response**
 
@@ -312,7 +364,18 @@ curl -X PUT https://api.scrumooth.dev/api/v1/teams/550e8400-e29b-41d4-a716-44665
 
 ### Get DoR Version History
 
-Get the version history of the team's Definition of Ready, showing how it has evolved over time.
+Get the Definition of Ready in force for a team.
+
+**The DoR keeps a version number, not a history.** Unlike the Definition of Done — whose superseded
+versions are preserved as append-only snapshots because it is the Increment's commitment — the
+readiness agreement is a complementary practice, and Scrumooth does not keep snapshots of it. The
+`version` field advances on every replacement, which makes "has this changed since we agreed it?" a
+question an integrator can answer; `GET /teams/:teamId/definition-of-done/history` is the endpoint
+with real version history.
+
+The response is therefore an array holding the agreement currently in force (or empty when the team
+has never had one), in the same shape `GET /teams/:teamId/definition-of-ready` returns it. There are
+no paging parameters.
 
 **Endpoint**
 
@@ -320,7 +383,7 @@ Get the version history of the team's Definition of Ready, showing how it has ev
 GET /api/v1/teams/:teamId/definition-of-ready/history
 ```
 
-**Authentication**
+**Authorization**
 
 - Required
 - User must be a team member
@@ -328,11 +391,6 @@ GET /api/v1/teams/:teamId/definition-of-ready/history
 **Path Parameters**
 
 - `teamId` (string, required): Team UUID
-
-**Query Parameters**
-
-- `page` (integer, optional): Page number (default: 1)
-- `limit` (integer, optional): Items per page (default: 20, max: 100)
 
 **Success Response**
 
@@ -342,84 +400,35 @@ Content-Type: application/json
 
 {
   "success": true,
-  "data": {
-    "history": [
-      {
-        "id": "550e8400-e29b-41d4-a716-446655440130",
-        "version": 2,
-        "items": [
-          {
-            "id": "550e8400-e29b-41d4-a716-446655440121",
-            "description": "User story has clear and testable acceptance criteria",
-            "order": 1
-          },
-          {
-            "id": "550e8400-e29b-41d4-a716-446655440122",
-            "description": "Dependencies have been identified and resolved",
-            "order": 2
-          },
-          {
-            "id": "550e8400-e29b-41d4-a716-446655440123",
-            "description": "Design mockups or wireframes are available",
-            "order": 3
-          },
-          {
-            "id": "550e8400-e29b-41d4-a716-446655440124",
-            "description": "Story has been estimated by the team",
-            "order": 4
-          },
-          {
-            "id": "550e8400-e29b-41d4-a716-446655440125",
-            "description": "Story is small enough to be completed within a sprint",
-            "order": 5
-          }
-        ],
-        "updatedBy": {
-          "id": "550e8400-e29b-41d4-a716-446655440001",
-          "firstName": "John",
-          "lastName": "Doe"
+  "data": [
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440110",
+      "teamId": "550e8400-e29b-41d4-a716-446655440000",
+      "version": 2,
+      "items": [
+        {
+          "id": "550e8400-e29b-41d4-a716-446655440121",
+          "description": "User story has clear and testable acceptance criteria",
+          "category": "acceptance",
+          "isActive": true,
+          "order": 0
         },
-        "createdAt": "2026-04-29T13:00:00.000Z"
-      },
-      {
-        "id": "550e8400-e29b-41d4-a716-446655440131",
-        "version": 1,
-        "items": [
-          {
-            "id": "550e8400-e29b-41d4-a716-446655440111",
-            "description": "User story has clear acceptance criteria",
-            "order": 1
-          },
-          {
-            "id": "550e8400-e29b-41d4-a716-446655440112",
-            "description": "Dependencies have been identified and resolved",
-            "order": 2
-          },
-          {
-            "id": "550e8400-e29b-41d4-a716-446655440113",
-            "description": "Story has been estimated by the team",
-            "order": 3
-          }
-        ],
-        "updatedBy": {
-          "id": "550e8400-e29b-41d4-a716-446655440001",
-          "firstName": "John",
-          "lastName": "Doe"
-        },
-        "createdAt": "2026-04-29T12:00:00.000Z"
-      }
-    ],
-    "pagination": {
-      "page": 1,
-      "limit": 20,
-      "total": 2,
-      "totalPages": 1,
-      "hasNext": false,
-      "hasPrev": false
+        {
+          "id": "550e8400-e29b-41d4-a716-446655440122",
+          "description": "Dependencies have been identified and resolved",
+          "category": "dependencies",
+          "isActive": true,
+          "order": 1
+        }
+      ],
+      "createdAt": "2026-04-29T12:00:00.000Z",
+      "updatedAt": "2026-04-29T13:00:00.000Z"
     }
-  }
+  ]
 }
 ```
+
+An empty array means the team has no readiness agreement yet.
 
 **Error Responses**
 
@@ -447,6 +456,10 @@ curl -X GET https://api.scrumooth.dev/api/v1/teams/550e8400-e29b-41d4-a716-44665
 ### Verify DoR for PBI
 
 Verify Definition of Ready compliance for a specific Product Backlog Item. Each DoR item can be marked as verified or not verified with optional notes.
+
+This is the call that unblocks the Sprint boundary: a selected item whose active criteria are all
+verified is a selected item the team may commit. An item recorded as `isVerified: false` counts as
+unmet, exactly like one nobody has assessed.
 
 **Endpoint**
 
@@ -596,61 +609,52 @@ GET /api/v1/product-backlog/:id/dor-verifications
 
 **Success Response**
 
+One entry per recorded criterion — the response is a flat list of verification rows, not a grouped
+report:
+
 ```http
 HTTP/1.1 200 OK
 Content-Type: application/json
 
 {
   "success": true,
-  "data": {
-    "verifications": [
-      {
-        "id": "550e8400-e29b-41d4-a716-446655440140",
-        "pbiId": "550e8400-e29b-41d4-a716-446655440150",
-        "verifiedBy": {
-          "id": "550e8400-e29b-41d4-a716-446655440001",
-          "firstName": "John",
-          "lastName": "Doe"
-        },
-        "verifications": [
-          {
-            "dorItemId": "550e8400-e29b-41d4-a716-446655440121",
-            "dorItemDescription": "User story has clear and testable acceptance criteria",
-            "isVerified": true,
-            "notes": "Acceptance criteria defined in Jira ticket"
-          },
-          {
-            "dorItemId": "550e8400-e29b-41d4-a716-446655440122",
-            "dorItemDescription": "Dependencies have been identified and resolved",
-            "isVerified": true,
-            "notes": "No external dependencies"
-          },
-          {
-            "dorItemId": "550e8400-e29b-41d4-a716-446655440123",
-            "dorItemDescription": "Design mockups or wireframes are available",
-            "isVerified": false,
-            "notes": "Wireframes still in progress"
-          },
-          {
-            "dorItemId": "550e8400-e29b-41d4-a716-446655440124",
-            "dorItemDescription": "Story has been estimated by the team",
-            "isVerified": true,
-            "notes": "Estimated at 5 story points"
-          },
-          {
-            "dorItemId": "550e8400-e29b-41d4-a716-446655440125",
-            "dorItemDescription": "Story is small enough to be completed within a sprint",
-            "isVerified": true,
-            "notes": null
-          }
-        ],
-        "allVerified": false,
-        "createdAt": "2026-04-29T14:00:00.000Z"
+  "data": [
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440140",
+      "pbiId": "550e8400-e29b-41d4-a716-446655440150",
+      "dorItemId": "550e8400-e29b-41d4-a716-446655440121",
+      "isVerified": true,
+      "verifiedBy": "550e8400-e29b-41d4-a716-446655440001",
+      "verifiedAt": "2026-04-29T14:00:00.000Z",
+      "notes": "Acceptance criteria defined in Jira ticket",
+      "createdAt": "2026-04-29T14:00:00.000Z",
+      "dorItem": {
+        "id": "550e8400-e29b-41d4-a716-446655440121",
+        "description": "User story has clear and testable acceptance criteria",
+        "category": "acceptance"
       }
-    ]
-  }
+    },
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440141",
+      "pbiId": "550e8400-e29b-41d4-a716-446655440150",
+      "dorItemId": "550e8400-e29b-41d4-a716-446655440122",
+      "isVerified": false,
+      "verifiedBy": "550e8400-e29b-41d4-a716-446655440001",
+      "verifiedAt": "2026-04-29T14:00:00.000Z",
+      "notes": "Wireframes still in progress",
+      "createdAt": "2026-04-29T14:00:00.000Z",
+      "dorItem": {
+        "id": "550e8400-e29b-41d4-a716-446655440122",
+        "description": "Dependencies have been identified and resolved",
+        "category": "dependencies"
+      }
+    }
+  ]
 }
 ```
+
+Only criteria that have been recorded appear; a criterion nobody has assessed has no row, and an
+unrecorded criterion is what the Sprint boundary treats as unmet.
 
 **Error Responses**
 
@@ -675,6 +679,24 @@ curl -X GET https://api.scrumooth.dev/api/v1/product-backlog/550e8400-e29b-41d4-
 
 ---
 
+## Gate rejections
+
+These are the readiness agreement's rules. When one refuses an action the response carries the
+stable `error.code` below, so an integrator can branch on the refusal without parsing the localized
+message. The canonical list of every gate in the product lives in
+[`docs/api/README.md`](./README.md#gate-rejections).
+
+| Code                         | HTTP | When                                                                                                                                      | Rule                                                                                                |
+| ---------------------------- | ---- | ----------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| `GATE_DOR_REQUIRED`          | 400  | Replacing the agreement with no active criterion; committing a Sprint Backlog or starting a Sprint while the team has no active criterion | The agreement must keep at least one active criterion, so its gate can never pass vacuously         |
+| `GATE_DOR_NOT_VERIFIED`      | 400  | Committing a Sprint Backlog or starting a Sprint while a selected item has an unverified active criterion                                 | The team's own agreement is applied at the boundary; the refusal names the items that are not ready |
+| `GATE_DOR_TEAM_MEMBERS_ONLY` | 403  | Reading the agreement or a verification, or recording one, as a non-member                                                                | The agreement belongs to the team it describes                                                      |
+| `GATE_DOR_SCRUM_MASTER_ONLY` | 403  | Replacing the agreement as a member who is not the team's Scrum Master                                                                    | One owner for what "ready" means                                                                    |
+
+The last two are authorization, not process rules. The first two **can refuse the Guide's Sprint
+Planning and Sprint start** — which is the point of enforcing a complementary practice, and is
+disclosed in the project README outside its Guide-gate table so the distinction stays visible.
+
 ## Error Codes
 
 | Code                   | HTTP Status | Description                                   |
@@ -685,33 +707,37 @@ curl -X GET https://api.scrumooth.dev/api/v1/product-backlog/550e8400-e29b-41d4-
 | `NOT_FOUND`            | 404         | Team or PBI not found                         |
 | `CONFLICT`             | 409         | Resource conflict                             |
 
+Gate refusals are returned with the reason codes listed under
+[Gate rejections](#gate-rejections) rather than a generic `AUTHORIZATION_ERROR`, so the specific rule
+that refused is machine-readable.
+
 ## Best Practices
 
 ### DoR Management
 
-1. **Team Collaboration**: Define DoR items collaboratively to ensure shared understanding of readiness
-2. **Practical Criteria**: Write DoR criteria that are practical and verifiable, not aspirational
-3. **Regular Review**: Revisit the DoR during retrospectives to adapt to team maturity and process changes
-4. **Version Awareness**: Use version history to track how the DoR has evolved and why
-5. **Balance**: Avoid overly strict DoR that blocks sprint planning; aim for criteria that ensure readiness without creating bottlenecks
+1. **Team Collaboration**: Agree the criteria collaboratively so the whole Scrum Team shares one understanding of readiness — then let the Scrum Master keep the written list current
+2. **Practical Criteria**: Write DoR criteria that are practical and verifiable, not aspirational. Every criterion you add is one the team must verify for every item it commits
+3. **Regular Review**: Revisit the DoR as the team matures. The Retrospective is the natural place: inspect whether each criterion still earns its keep
+4. **Keep the identities**: When rewording a criterion, send its `id` so the row is updated rather than replaced — that is what preserves the verifications already recorded against it
+5. **Balance**: The agreement is enforced at the Sprint boundary, so a criterion nobody can reasonably satisfy will block planning. Write the fewest criteria that genuinely protect the team
 
 ### DoR Verification
 
-1. **Verify During Refinement**: Assess DoR readiness during backlog refinement, not just at sprint planning
+1. **Verify During Refinement**: Assess readiness during backlog refinement, well before the Sprint Backlog is committed
 2. **Document Notes**: Use the notes field to capture context for why an item was or was not verified
-3. **Advisory Nature**: Remember that DoR is advisory; the team may choose to bring a partially ready item into a sprint if they accept the risk
+3. **Enforced, not advisory**: An unverified active criterion refuses the Sprint Backlog commit and the Sprint start. If the team decides an item is ready anyway, the honest record is `isVerified: true` with a note explaining the judgement — not an unverified criterion that blocks the boundary
 4. **Product Owner Involvement**: The Product Owner should be actively involved in ensuring DoR criteria are met
 5. **Update as Understanding Evolves**: Re-verify DoR as the team's understanding of a PBI deepens
 
 ### Sprint Planning
 
-1. **Use as Input**: Leverage DoR verification results during sprint planning to assess which items are safe to commit to
+1. **Use as Input**: The verification results are exactly what the commit gate reads, so review them before committing rather than discovering them through a refusal
 2. **Risk Assessment**: Items that do not meet all DoR criteria carry higher risk; factor this into sprint commitments
 3. **Continuous Improvement**: Track patterns of DoR non-compliance to identify systemic refinement gaps
 
 ---
 
-**Last Updated**: 2026-05-10
+**Last Updated**: 2026-09-22
 
 **Related Documentation**
 
@@ -719,3 +745,4 @@ curl -X GET https://api.scrumooth.dev/api/v1/product-backlog/550e8400-e29b-41d4-
 - [Teams API](./teams.md)
 - [Product Backlog API](./product-backlog.md)
 - [Sprints API](./sprints.md)
+- [Gate rejections (canonical list)](./README.md#gate-rejections)

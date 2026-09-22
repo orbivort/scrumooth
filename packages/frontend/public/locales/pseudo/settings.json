@@ -275,6 +275,11 @@
     "lastUpdated": "[Làst úpdàtéddddd:]",
     "loading": "[Lóàdíng Défínítíón óf Réàdyyyyyyyyyy...]",
     "noTeam": "[Pléàsé séléct à téàm tó víéw Défínítíón óf Réàdyyyyyyyyyyyyyyyy.]",
+    "practice": {
+      "message": "[Ít ís nót óné óf thé thréé àrtífàcts óf thé 2020 Scrúm Gúídé, só Scrúmóóth làbéls ít à cómpléméntàry pràctícé. Ít ís stíll énförcéd às thé téàm's ówn àgrééménttttttttttttttttt.]",
+      "scrumMasterOnly": "[Thé téàm's Scrúm Màstér màíntàíns thís àgrééménttttttttttttt.]",
+      "title": "[Cómpléméntàry pràctícé, nót à Gúídé àrtífàctttttttt]"
+    },
     "retry": "[Rétryyy]",
     "shortLabel": "[DóRR]",
     "title": "[Défínítíón óf Réàdyyyyyyy]",

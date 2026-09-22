@@ -11,7 +11,7 @@ import { useTeamStore } from '../../../../store';
 import { useToast } from '../../../../hooks/useToast';
 import { queryKeys } from '../../../../hooks/queryKeys';
 import { DEFAULT_DOR_ITEMS } from '../constants/defaults';
-import type { DefinitionOfReady, DoRItem, ApiResponse } from '../../../../types';
+import type { DefinitionOfReady, DoRItem, DoRItemPayload, ApiResponse } from '../../../../types';
 
 import { DefinitionEditor } from './DefinitionEditor';
 import { DOR_CATEGORIES, getCategoryColor } from './categories';
@@ -19,6 +19,7 @@ import styles from './DefinitionOfReadyPanel.module.css';
 
 import { useI18nStore } from '@/i18n/useI18nStore';
 import { EditIcon, PlusIcon, RefreshCwIcon } from '@/components/common/Icons';
+import { canEditDefinitionOfReady } from '@/utils/roleUtils';
 
 /**
  * Maps default DoR descriptions to translation keys
@@ -49,9 +50,14 @@ export function DefinitionOfReadyPanel(): React.JSX.Element {
   const { locale } = useI18nStore();
   const [isEditing, setIsEditing] = useState(false);
   const queryClient = useQueryClient();
-  const { currentTeam } = useTeamStore();
+  const { currentTeam, userRoleInCurrentTeam } = useTeamStore();
   const teamId = currentTeam?.id;
   const { toasts, success, error: showError, removeToast } = useToast();
+
+  // The readiness agreement is a complementary practice, and its published contract assigns it to
+  // the team's Scrum Master. The service enforces that (`GATE_DOR_SCRUM_MASTER_ONLY`); hiding the
+  // affordance keeps the interface from offering an action that would be refused.
+  const canEdit = canEditDefinitionOfReady(userRoleInCurrentTeam);
 
   const {
     data: response,
@@ -72,7 +78,7 @@ export function DefinitionOfReadyPanel(): React.JSX.Element {
     definition?.items && definition.items.length > 0 ? definition.items : DEFAULT_DOR_ITEMS;
 
   const updateMutation = useMutation({
-    mutationFn: (updatedItems: DoRItem[]) => {
+    mutationFn: (updatedItems: DoRItemPayload[]) => {
       if (!teamId) throw new Error('Team ID is required');
       return definitionService.updateDefinitionOfReady(teamId, updatedItems);
     },
@@ -89,7 +95,7 @@ export function DefinitionOfReadyPanel(): React.JSX.Element {
     },
   });
 
-  const handleSave = async (updatedItems: DoRItem[]): Promise<void> => {
+  const handleSave = async (updatedItems: DoRItemPayload[]): Promise<void> => {
     await updateMutation.mutateAsync(updatedItems);
   };
 
@@ -166,13 +172,17 @@ export function DefinitionOfReadyPanel(): React.JSX.Element {
           <h3 className={styles['empty-title']}>{t('dorPanel.empty.title')}</h3>
           <p className={styles['empty-text']}>{t('dorPanel.empty.message')}</p>
           <p className={styles['empty-description']}>{t('dorPanel.empty.description')}</p>
-          <button
-            className={`${styles.button} ${styles['button-primary']}`}
-            onClick={handleConfigure}
-          >
-            <PlusIcon size={16} />
-            {t('dorPanel.empty.configureButton')}
-          </button>
+          {canEdit ? (
+            <button
+              className={`${styles.button} ${styles['button-primary']}`}
+              onClick={handleConfigure}
+            >
+              <PlusIcon size={16} />
+              {t('dorPanel.empty.configureButton')}
+            </button>
+          ) : (
+            <p className={styles['practice-note']}>{t('dorPanel.practice.scrumMasterOnly')}</p>
+          )}
         </div>
       </div>
     );
@@ -195,14 +205,30 @@ export function DefinitionOfReadyPanel(): React.JSX.Element {
             </div>
           </div>
           <div className={styles['header-right']}>
-            <button
-              className={`${styles.button} ${styles['button-primary']}`}
-              onClick={handleConfigure}
-            >
-              <EditIcon size={16} />
-              {t('dorPanel.editButton')}
-            </button>
+            {canEdit ? (
+              <button
+                className={`${styles.button} ${styles['button-primary']}`}
+                onClick={handleConfigure}
+              >
+                <EditIcon size={16} />
+                {t('dorPanel.editButton')}
+              </button>
+            ) : (
+              <span className={styles['practice-note']}>
+                {t('dorPanel.practice.scrumMasterOnly')}
+              </span>
+            )}
           </div>
+        </div>
+
+        {/* The readiness agreement is not a 2020 Scrum Guide artifact, and saying so is the point:
+            a team must be able to tell the Guide's commitments from this product's complementary
+            ones. It is also enforced, so the notice says when it bites. */}
+        <div className={styles['practice-notice']} role="note">
+          <strong className={styles['practice-notice-title']}>
+            {t('dorPanel.practice.title')}
+          </strong>{' '}
+          {t('dorPanel.practice.message')}
         </div>
 
         <div className={styles.list}>

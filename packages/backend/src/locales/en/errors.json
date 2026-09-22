@@ -23,8 +23,12 @@
   "developerOnlySizing": "Only Developers can set story points, as the Developers who perform the work are responsible for sizing.",
   "dodGroupGoverned": "This team works with other Scrum Teams on one product, so it complies with their shared Definition of Done. Change the shared Definition of Done at the group instead, where every team that shares it can see the change.",
   "dodNotVerified": "This item cannot be marked Done until every active Definition of Done item is verified. {{count}} active item(s) still need verification.",
-  "dodRequired": "Nothing is Done until the team has defined what Done means, so a Definition of Done must keep at least one active item. An empty checklist would let every item be marked Done unchecked.",
+  "dodRequired": "Nothing is Done until the team has defined what Done means: a Definition of Done must keep at least one active item, and a Sprint cannot be committed or started without one. An empty checklist would let every item be marked Done unchecked.",
   "dodTeamMembersOnly": "The Definition of Done is the Scrum Team's own agreement about what \"Done\" means: only a member of that team can read or change it.",
+  "dorNotVerified": "This Sprint cannot be committed or started until every selected item meets the team's Definition of Ready. {{count}} item(s) still have unverified readiness criteria: {{items}}.",
+  "dorRequired": "A Definition of Ready must keep at least one active criterion, and a Sprint cannot be committed or started without one: an empty checklist would let the readiness rule pass unchecked.",
+  "dorScrumMasterOnly": "The Definition of Ready is a complementary practice rather than a Scrum Guide artifact, and the team's Scrum Master owns it: only the team's Scrum Master can change it.",
+  "dorTeamMembersOnly": "The Definition of Ready is the Scrum Team's own agreement about when an item is ready to be planned: only a member of that team can read it or record a readiness verification.",
   "emailAlreadyExists": "An account with email {{email}} already exists",
   "entityNotFound": "{{entity}} not found",
   "facilitation": {

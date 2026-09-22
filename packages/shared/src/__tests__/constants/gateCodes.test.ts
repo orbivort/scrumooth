@@ -10,8 +10,8 @@ import {
 } from '../../constants/gateCodes.js';
 
 describe('gateCodes', () => {
-  it('should define fifty-eight gates', () => {
-    expect(GATE_CODE_LIST).toHaveLength(58);
+  it('should define sixty-two gates', () => {
+    expect(GATE_CODE_LIST).toHaveLength(62);
   });
 
   it('should prefix every gate code with GATE_', () => {
@@ -100,6 +100,24 @@ describe('gateCodes', () => {
     expect(GATE_DEFINITIONS[GATE_CODES.DOD_REQUIRED].i18nKey).toBe('dodRequired');
     expect(GATE_DEFINITIONS[GATE_CODES.DOD_TEAM_MEMBERS_ONLY].httpStatus).toBe(403);
     expect(GATE_DEFINITIONS[GATE_CODES.DOD_TEAM_MEMBERS_ONLY].i18nKey).toBe('dodTeamMembersOnly');
+  });
+
+  it('should identify the Definition of Ready agreement gates', () => {
+    expect(isGateCode(GATE_CODES.DOR_REQUIRED)).toBe(true);
+    expect(isGateCode(GATE_CODES.DOR_NOT_VERIFIED)).toBe(true);
+    expect(isGateCode(GATE_CODES.DOR_TEAM_MEMBERS_ONLY)).toBe(true);
+    expect(isGateCode(GATE_CODES.DOR_SCRUM_MASTER_ONLY)).toBe(true);
+  });
+
+  it('should refuse the readiness agreement gates with the documented status', () => {
+    expect(GATE_DEFINITIONS[GATE_CODES.DOR_REQUIRED].httpStatus).toBe(400);
+    expect(GATE_DEFINITIONS[GATE_CODES.DOR_REQUIRED].i18nKey).toBe('dorRequired');
+    expect(GATE_DEFINITIONS[GATE_CODES.DOR_NOT_VERIFIED].httpStatus).toBe(400);
+    expect(GATE_DEFINITIONS[GATE_CODES.DOR_NOT_VERIFIED].i18nKey).toBe('dorNotVerified');
+    expect(GATE_DEFINITIONS[GATE_CODES.DOR_TEAM_MEMBERS_ONLY].httpStatus).toBe(403);
+    expect(GATE_DEFINITIONS[GATE_CODES.DOR_TEAM_MEMBERS_ONLY].i18nKey).toBe('dorTeamMembersOnly');
+    expect(GATE_DEFINITIONS[GATE_CODES.DOR_SCRUM_MASTER_ONLY].httpStatus).toBe(403);
+    expect(GATE_DEFINITIONS[GATE_CODES.DOR_SCRUM_MASTER_ONLY].i18nKey).toBe('dorScrumMasterOnly');
   });
 
   it('should identify the Increment ownership, usability and lifecycle gates', () => {

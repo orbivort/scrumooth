@@ -25,6 +25,15 @@ const requireDoDTeamContext = createRequireTeamContext({
   gateCode: GATE_CODES.DOD_TEAM_MEMBERS_ONLY,
 });
 
+// The Definition of Ready is the team's own agreement about when an item is ready to be planned --
+// a complementary practice rather than a Guide artifact, but still the team's own: reading it asks
+// for membership, and changing it is the team's Scrum Master's (asserted in the service, where the
+// caller's role is resolved from this team's roster rather than from any team's).
+const requireDoRTeamContext = createRequireTeamContext({
+  messageKey: 'errors:dorTeamMembersOnly',
+  gateCode: GATE_CODES.DOR_TEAM_MEMBERS_ONLY,
+});
+
 // A health check reads the team's own reflection on how it lives the Scrum Values, so the team
 // context is asserted before the handler runs. The stronger rule -- results and trend belong to
 // the team's Scrum Master, and to no other team's -- is enforced in the service, where the
@@ -58,28 +67,23 @@ const memberIdSchema = z.object({
   memberId: z.string().uuid('Invalid member ID'),
 });
 
+// `id` is the identity of a criterion that already exists: naming one updates that row in place, so
+// the verifications recorded against it survive the edit. It must be a UUID, because an id that
+// cannot name a row would otherwise be silently treated as a new criterion.
+const definitionItemSchema = z.object({
+  id: z.string().uuid('Invalid item ID').optional(),
+  description: z.string().min(1, 'Description is required'),
+  category: z.string().optional(),
+  isActive: z.boolean(),
+  order: z.number(),
+});
+
 const updateDoDSchema = z.object({
-  items: z.array(
-    z.object({
-      id: z.string().optional(),
-      description: z.string().min(1, 'Description is required'),
-      category: z.string().optional(),
-      isActive: z.boolean(),
-      order: z.number(),
-    })
-  ),
+  items: z.array(definitionItemSchema),
 });
 
 const updateDoRSchema = z.object({
-  items: z.array(
-    z.object({
-      id: z.string().optional(),
-      description: z.string().min(1, 'Description is required'),
-      category: z.string().optional(),
-      isActive: z.boolean(),
-      order: z.number(),
-    })
-  ),
+  items: z.array(definitionItemSchema),
 });
 
 /**
@@ -241,34 +245,40 @@ router.get(
 /**
  * @route   GET /api/v1/teams/:teamId/definition-of-ready
  * @desc    Get Definition of Ready for a team
- * @access  Private
+ * @access  Private (team members)
  */
 router.get(
   '/:teamId/definition-of-ready',
   validateParams(teamIdSchema),
+  requireDoRTeamContext,
   dorController.getDefinitionOfReady
 );
 
 /**
  * @route   PUT /api/v1/teams/:teamId/definition-of-ready
- * @desc    Update Definition of Ready for a team
- * @access  Private (Scrum Master)
+ * @desc    Replace the Definition of Ready with a new version. Refused when the new version would
+ *          hold no active criterion. Criteria the payload keeps by id are updated in place, so the
+ *          readiness verifications recorded against them survive the edit.
+ * @access  Private (the team's Scrum Master) — the readiness agreement is a complementary team
+ *          practice, and the API reference documents the Scrum Master as its owner.
  */
 router.put(
   '/:teamId/definition-of-ready',
   validateParams(teamIdSchema),
+  requireDoRTeamContext,
   validateBody(updateDoRSchema),
   dorController.updateDefinitionOfReady
 );
 
 /**
  * @route   GET /api/v1/teams/:teamId/definition-of-ready/history
- * @desc    Get Definition of Ready history for a team
- * @access  Private
+ * @desc    Get the Definition of Ready in force for a team (it keeps a version, not snapshots)
+ * @access  Private (team members)
  */
 router.get(
   '/:teamId/definition-of-ready/history',
   validateParams(teamIdSchema),
+  requireDoRTeamContext,
   dorController.getDoRHistory
 );
 

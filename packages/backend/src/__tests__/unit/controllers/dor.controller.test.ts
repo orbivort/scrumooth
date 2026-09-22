@@ -359,6 +359,7 @@ describe('DoR Controller', () => {
   describe('getDoRVerificationsForPBI', () => {
     it('should return DoR verifications for PBI', async () => {
       mockReq.params = { id: 'pbi-123' };
+      mockReq.userId = 'user-123';
       const mockVerifications = [
         { dorItemId: 'item-1', isVerified: true, verifiedBy: 'user-123' },
         { dorItemId: 'item-2', isVerified: false, verifiedBy: null },
@@ -372,7 +373,12 @@ describe('DoR Controller', () => {
       await new Promise((resolve) => setTimeout(resolve, 0));
 
       expect(mockNext).not.toHaveBeenCalled();
-      expect(definitionOfReadyService.getDoRVerificationsForPBI).toHaveBeenCalledWith('pbi-123');
+      // The caller is handed to the service, which resolves the item's team and asserts membership:
+      // the team is not in the path, so the service is where the rule can be applied.
+      expect(definitionOfReadyService.getDoRVerificationsForPBI).toHaveBeenCalledWith(
+        'pbi-123',
+        'user-123'
+      );
       expect(mockRes._json).toEqual({
         success: true,
         data: mockVerifications,
@@ -381,6 +387,7 @@ describe('DoR Controller', () => {
 
     it('should return 400 when PBI ID is missing', async () => {
       mockReq.params = {};
+      mockReq.userId = 'user-123';
 
       getDoRVerificationsForPBI(mockReq as any, mockRes as any, mockNext);
       await new Promise((resolve) => setTimeout(resolve, 0));
@@ -392,8 +399,20 @@ describe('DoR Controller', () => {
       });
     });
 
+    it('should return 401 when the caller is not authenticated', async () => {
+      mockReq.params = { id: 'pbi-123' };
+      mockReq.userId = undefined;
+
+      getDoRVerificationsForPBI(mockReq as any, mockRes as any, mockNext);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(mockRes._status).toBe(401);
+      expect(definitionOfReadyService.getDoRVerificationsForPBI).not.toHaveBeenCalled();
+    });
+
     it('should handle service errors', async () => {
       mockReq.params = { id: 'pbi-123' };
+      mockReq.userId = 'user-123';
       const error = new Error('Database error');
 
       (definitionOfReadyService.getDoRVerificationsForPBI as any).mockRejectedValue(error);

@@ -1,4 +1,5 @@
 import React from 'react';
+import { waitFor } from '@testing-library/react';
 import { screen, fireEvent, renderWithProviders, initTestI18n } from '../../../../test-utils';
 import { vi } from 'vitest';
 
@@ -113,6 +114,35 @@ describe('DefinitionEditor', () => {
     fireEvent.click(saveButton);
 
     expect(onSaveMock).toHaveBeenCalled();
+  });
+
+  it('should send a surviving criterion with its id and a newly added one without', async () => {
+    onSaveMock.mockResolvedValue(undefined);
+    renderWithProviders(
+      <DefinitionEditor
+        definition={{ items: mockItems, version: 1, updatedAt: '2024-01-01T00:00:00Z' }}
+        definitionType="DoR"
+        categories={mockCategories}
+        onSave={onSaveMock}
+        onCancel={onCancelMock}
+      />
+    );
+
+    const input = screen.getByPlaceholderText('Enter new DoR criterion...');
+    fireEvent.change(input, { target: { value: 'Brand new criterion' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Add new item' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Save Changes' }));
+
+    await waitFor(() => expect(onSaveMock).toHaveBeenCalled());
+
+    const payload = onSaveMock.mock.calls[0]![0];
+    // An existing criterion keeps its identity, which is what makes the service update that row in
+    // place and leave the verifications recorded against it alone.
+    expect(payload[0]).toMatchObject({ id: 'item-1', description: 'Test item 1' });
+    // The one just added has no server identity yet: sending an id would make the service look for a
+    // row that does not exist.
+    expect(payload[2]).not.toHaveProperty('id');
+    expect(payload[2]).toMatchObject({ description: 'Brand new criterion', isActive: true });
   });
 
   it('should call onCancel when cancel button clicked and no changes', () => {

@@ -35,7 +35,7 @@ export const updateTeamGroupSchema = z.object({
  * of criteria would hide what the teams changed their minds about.
  */
 const sharedDoDItemSchema = z.object({
-  id: z.string().optional(),
+  id: z.string().uuid('Invalid item ID').optional(),
   description: z.string().min(1, 'Description is required').max(500),
   category: z.string().max(100).optional(),
   isActive: z.boolean(),

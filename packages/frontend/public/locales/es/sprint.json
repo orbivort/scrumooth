@@ -494,11 +494,24 @@
     "startSprintModal": {
       "cancel": "Cancelar",
       "capacityUtilization": "Utilización de Capacidad",
+      "commitment": {
+        "definitionOfDoneMissing": "Sin Definición de Terminado",
+        "definitionOfDoneMissingMessage": "Este equipo no tiene Definición de Terminado, así que no puede iniciarse un Sprint: su Incremento nunca podría cumplir una. Créela en Team Definitions: los criterios predeterminados esperan allí para guardarse.",
+        "openDefinitions": "Abrir Team Definitions",
+        "readinessIncomplete": "Definición de Preparado no cumplida",
+        "readinessIncompleteMessage": "{{count}} elemento(s) seleccionado(s) aún tienen un criterio de preparación sin verificar. La Definición de Preparado del equipo se aplica al comprometer el Sprint Backlog y al iniciar el Sprint, así que verifique esos criterios primero."
+      },
       "duration": "Duración",
       "error": {
         "activeSprintExists": "Sprint Activo Existente",
         "addItemsFirst": "Agregue elementos del Backlog al Sprint antes de iniciar.",
         "anotherSprintActive": "Otro Sprint ya esta activo. Por favor completa el Sprint actual antes de iniciar uno nuevo.",
+        "definitionOfDoneRequired": "Sin Definición de Terminado",
+        "definitionOfDoneRequiredMessage": "No se puede iniciar un Sprint mientras el equipo no tenga Definición de Terminado, porque el Incremento que produzca nunca podría cumplir una. Defina primero la Definición de Terminado del equipo en Team Definitions.",
+        "definitionOfReadyNotVerified": "Definición de Preparado no cumplida",
+        "definitionOfReadyNotVerifiedMessage": "Cada elemento seleccionado debe cumplir la Definición de Preparado del equipo antes de comprometer el Sprint Backlog o iniciar el Sprint. Verifique los criterios de preparación pendientes o quite los elementos que no estén listos.",
+        "definitionOfReadyRequired": "Sin Definición de Preparado",
+        "definitionOfReadyRequiredMessage": "El equipo no tiene ningún criterio de preparación activo, así que el acuerdo no puede aplicarse. Defina al menos uno en Team Definitions: los criterios predeterminados esperan allí para guardarse.",
         "invalidRequest": "Solicitud inválida",
         "invalidRequestMessage": "Por favor verifique sus datos de Sprint y reintente. Asegúrese de que todos los campos requeridos están llenados correctamente.",
         "invalidSprintBacklog": "Sprint Backlog Invalido",

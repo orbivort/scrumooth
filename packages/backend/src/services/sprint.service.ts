@@ -48,6 +48,7 @@ import { config } from '../config';
 import { PRODUCT_BACKLOG_ORDER } from '../config/backlogOrder';
 import { t as requestT } from '../i18n/requestT.js';
 import { redactSmNotesForCaller } from './smNotesAccess';
+import { getActiveDoDItemIds, getDoRShortfall } from './incrementAccess';
 
 // Sprint with relations (optimized for API responses)
 export type SprintWithRelations = Omit<Sprint, 'createdBy' | 'updatedBy'> & {
@@ -661,6 +662,15 @@ class SprintService {
     // a Sprint. Same rule (and same gate code) as adding an item to an ACTIVE Sprint, so the two
     // paths cannot disagree about what is selectable.
     await this.assertSelectedPBIsAreReady(
+      sprint.teamId,
+      items.map((item) => item.pbiId)
+    );
+
+    // The Sprint Backlog is *the* commitment of the Sprint, so it cannot be committed while the team
+    // has no Definition of Done to hold the Increment to, or while a selected item has not met the
+    // readiness agreement the team itself set. Both are service-layer gates, not interface hints.
+    await this.assertDefinitionOfDoneIsConfigured(sprint.teamId);
+    await this.assertSelectedPBIsMeetDoR(
       sprint.teamId,
       items.map((item) => item.pbiId)
     );
@@ -1518,6 +1528,12 @@ class SprintService {
     // the Sprint Backlog, so the refinement rule has to hold here too.
     await this.assertSelectedPBIsAreReady(sprint.teamId, pbiIds);
 
+    // The two commitments are re-checked at the moment the plan becomes the Sprint: the readiness
+    // agreement may have been edited since the backlog was committed, and a team that has no
+    // Definition of Done cannot open a Sprint it could never complete to one.
+    await this.assertDefinitionOfDoneIsConfigured(sprint.teamId);
+    await this.assertSelectedPBIsMeetDoR(sprint.teamId, pbiIds);
+
     // Collaboration gate: the Sprint Backlog is "created by the collaborative work of the entire
     // Scrum Team" (Sprint Planning). Opening the Sprint on evidence that only one person planned
     // is the anti-pattern that clause exists to prevent, so the recorded participation must
@@ -2139,6 +2155,75 @@ class SprintService {
         GATE_CODES.PBI_NOT_READY
       );
     }
+  }
+
+  /**
+   * Refuse to commit a Sprint Backlog, or to open a Sprint, while the team has no Definition of Done.
+   *
+   * The Done transition already refuses an item marked Done against an empty commitment
+   * (`checkDoDEligibility` reports `NO_DOD`, `assertFullDoDVerified` raises `GATE_DOD_REQUIRED`). The
+   * Sprint boundary asks the same question one event earlier, and reuses the same rule rather than
+   * writing a second version of it: a Sprint opened against no Definition of Done is a Sprint whose
+   * Increment can never satisfy one, and "a team that has never opened Team Definitions" has no
+   * Definition of Done row at all -- which is exactly the state this must catch.
+   *
+   * @param teamId - the team the Sprint belongs to
+   * @throws AppError (400, `GATE_DOD_REQUIRED`) when the governing Definition of Done holds no
+   * active item, or does not exist.
+   */
+  private async assertDefinitionOfDoneIsConfigured(teamId: string): Promise<void> {
+    const activeDoDItemIds = await getActiveDoDItemIds(teamId);
+
+    if (activeDoDItemIds.length === 0) {
+      throw localizedError('errors:dodRequired', {}, 400, GATE_CODES.DOD_REQUIRED);
+    }
+  }
+
+  /**
+   * Refuse to commit a Sprint Backlog, or to open a Sprint, while a selected item has an unverified
+   * active readiness criterion.
+   *
+   * Scrumooth treats the Definition of Ready as a complementary team agreement rather than a Guide
+   * artifact, and enforces it as one: the agreement is the team's own statement of when an item is
+   * ready to be planned, so committing against it and then ignoring it would make the agreement
+   * decorative. It is deliberately NOT applied to `saveSprintPlanningDraft`: a draft is revisable
+   * before the Sprint opens, and refusing every intermediate save would make planning unusable.
+   *
+   * @param teamId - the team the Sprint belongs to
+   * @param pbiIds - the items the team is about to commit to
+   * @throws AppError (400, `GATE_DOR_REQUIRED`) when the team has no active readiness criterion.
+   * @throws AppError (400, `GATE_DOR_NOT_VERIFIED`) when any selected item is not fully verified.
+   */
+  private async assertSelectedPBIsMeetDoR(teamId: string, pbiIds: string[]): Promise<void> {
+    const shortfall = await getDoRShortfall(teamId, pbiIds);
+
+    if (shortfall.activeItemCount === 0) {
+      throw localizedError('errors:dorRequired', {}, 400, GATE_CODES.DOR_REQUIRED);
+    }
+
+    if (shortfall.incompletePbiIds.length === 0) {
+      return;
+    }
+
+    // Name at most a few items so the refusal stays readable and the message bounded, exactly as the
+    // readiness-transition gate does.
+    const items = await prisma.productBacklogItem.findMany({
+      where: { id: { in: shortfall.incompletePbiIds } },
+      select: { id: true, title: true },
+    });
+    const titleById = new Map(items.map((item) => [item.id, item.title]));
+    const named = shortfall.incompletePbiIds
+      .slice(0, MAX_NOT_READY_ITEMS_IN_MESSAGE)
+      .map((id) => titleById.get(id) ?? id)
+      .join(', ');
+    const truncated = shortfall.incompletePbiIds.length > MAX_NOT_READY_ITEMS_IN_MESSAGE ? '…' : '';
+
+    throw localizedError(
+      'errors:dorNotVerified',
+      { count: shortfall.incompletePbiIds.length, items: `${named}${truncated}` },
+      400,
+      GATE_CODES.DOR_NOT_VERIFIED
+    );
   }
 
   /**

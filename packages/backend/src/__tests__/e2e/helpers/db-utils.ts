@@ -903,6 +903,72 @@ export const seedPlanningParticipation = async (
   });
 };
 
+/**
+ * Seed the two agreements the Sprint boundary requires: a Definition of Done the team holds, and a
+ * Definition of Ready whose active criterion every given item satisfies.
+ *
+ * The boundary refuses a Sprint Backlog commit, and a Sprint start, when the team has no Definition
+ * of Done, when its readiness agreement holds no active criterion, or when a selected item has an
+ * unverified one — so a fixture that intends to open a Sprint has to represent a team that holds
+ * both. Written directly so lifecycle tests can focus on the behaviour under test; the definitions'
+ * own authorization and editing rules are covered by `integration/team-definitions.test.ts`.
+ */
+export const seedTeamDefinitions = async (
+  teamId: string,
+  pbiIds: string[],
+  createdBy: string
+): Promise<void> => {
+  await prisma.definitionOfDone.create({
+    data: {
+      id: generateUUIDv7(),
+      teamId,
+      createdBy,
+      items: {
+        create: {
+          id: generateUUIDv7(),
+          description: 'Code is peer-reviewed and approved',
+          category: 'review',
+          isActive: true,
+          order: 0,
+          createdBy,
+        },
+      },
+    },
+  });
+
+  const dorItemId = generateUUIDv7();
+  await prisma.definitionOfReady.create({
+    data: {
+      id: generateUUIDv7(),
+      teamId,
+      createdBy,
+      items: {
+        create: {
+          id: dorItemId,
+          description: 'Acceptance criteria defined and agreed',
+          category: 'acceptance',
+          isActive: true,
+          order: 0,
+          createdBy,
+        },
+      },
+    },
+  });
+
+  if (pbiIds.length > 0) {
+    await prisma.doRChecklistVerification.createMany({
+      data: pbiIds.map((pbiId) => ({
+        id: generateUUIDv7(),
+        pbiId,
+        dorItemId,
+        isVerified: true,
+        verifiedBy: createdBy,
+        createdBy,
+      })),
+    });
+  }
+};
+
 export const addPBIToSprintBacklog = async (
   sprintId: string,
   pbiId: string
