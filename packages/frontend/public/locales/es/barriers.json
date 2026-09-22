@@ -1,0 +1,120 @@
+{
+  "action": {
+    "add": "Registrar una acción",
+    "addTitle": "Acción con un stakeholder",
+    "cancelled": "Cancelada",
+    "complete": "Marcar como hecha",
+    "delete": "Eliminar acción",
+    "description": "Acción",
+    "done": "Hecha",
+    "dueDate": "Vence",
+    "noDueDate": "Sin fecha límite",
+    "open": "Abierta",
+    "overdue": "Vencida",
+    "owner": "Quién actúa",
+    "required": "Describe la acción (al menos tres caracteres).",
+    "status": "Estado"
+  },
+  "actionStatus": {
+    "cancelled": "Cancelada",
+    "done": "Hecha",
+    "open": "Abierta"
+  },
+  "actions": {
+    "cancel": "Cancelar",
+    "created": "Barrera registrada",
+    "delete": "Eliminar",
+    "deleted": "Barrera eliminada",
+    "edit": "Editar",
+    "new": "Nueva barrera",
+    "reopen": "Reabrir",
+    "resolve": "Resolver",
+    "save": "Guardar",
+    "saved": "Barrera actualizada"
+  },
+  "detail": {
+    "description": "Descripción",
+    "escalatedFrom": "Escalada desde el Impediment",
+    "noActions": "Aún no hay acciones registradas. Una barrera se elimina acordando con alguien fuera del equipo.",
+    "provenance": "Cómo se planteó esta barrera",
+    "raisedBy": "Planteada por",
+    "resolution": "Resolución",
+    "resolvedAt": "Resuelta",
+    "stakeholderActions": "Acciones con stakeholders",
+    "title": "Barrera"
+  },
+  "errors": {
+    "delete": "No se pudo eliminar la barrera.",
+    "load": "No se pudo cargar el registro de barreras.",
+    "resolve": "No se pudo resolver la barrera.",
+    "save": "No se pudo guardar la barrera."
+  },
+  "escalate": {
+    "action": "Escalar a una barrera",
+    "alreadyEscalated": "Ya escalado a «{{title}}».",
+    "cancel": "Cancelar",
+    "confirm": "Escalar",
+    "descriptionLabel": "Qué debe hacer la organización",
+    "error": "No se pudo escalar el Impediment.",
+    "impediment": "Impediment",
+    "intro": "Una barrera es un problema que el equipo no puede eliminar por sí solo. Escalarla registra quién fuera del equipo debe actuar.",
+    "onlyScrumMaster": "Solo el Scrum Master del equipo puede escalar un Impediment.",
+    "owner": "Responsable",
+    "priority": "Impacto",
+    "targetDate": "Fecha objetivo",
+    "title": "Escalar a una barrera organizativa",
+    "titleLabel": "Título de la barrera"
+  },
+  "filters": {
+    "all": "Todas",
+    "empty": "Ninguna barrera coincide con estos filtros.",
+    "priority": "Impacto",
+    "search": "Buscar",
+    "searchPlaceholder": "Buscar por título o responsable",
+    "status": "Estado"
+  },
+  "form": {
+    "createTitle": "Nueva barrera organizativa",
+    "description": "Qué debe hacer la organización",
+    "descriptionRequired": "Describe qué debe hacer la organización (al menos diez caracteres).",
+    "editTitle": "Editar barrera organizativa",
+    "owner": "Responsable",
+    "priority": "Impacto",
+    "resolution": "Resolución",
+    "resolutionPlaceholder": "¿Qué cambió y quién lo acordó?",
+    "resolutionRequired": "Una barrera no puede resolverse ni cerrarse sin una resolución escrita: indica qué cambió y quién lo acordó.",
+    "status": "Estado",
+    "targetDate": "Fecha objetivo",
+    "title": "Barrera",
+    "titleRequired": "Pon a la barrera un título de al menos tres caracteres."
+  },
+  "list": {
+    "actions": "Acciones",
+    "age": "Antigüedad",
+    "empty": "No se ha escalado ninguna barrera fuera del equipo.",
+    "emptyHint": "Escala un Impediment que el equipo no puede eliminar por sí solo.",
+    "noTargetDate": "Sin fecha objetivo",
+    "overdue": "Vencida",
+    "owner": "Responsable",
+    "source": "Escalada desde",
+    "targetDate": "Fecha objetivo",
+    "unassigned": "Sin asignar"
+  },
+  "page": {
+    "subtitle": "Lo que bloquea al equipo Scrum desde fuera y quién actúa al respecto.",
+    "title": "Barreras organizativas"
+  },
+  "priority": {
+    "critical": "Crítica",
+    "high": "Alta",
+    "low": "Baja",
+    "medium": "Media"
+  },
+  "stats": {
+    "closed": "Cerradas",
+    "inProgress": "En curso",
+    "open": "Abiertas",
+    "overdue": "Vencidas",
+    "resolved": "Resueltas"
+  }
+}

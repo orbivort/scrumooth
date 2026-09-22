@@ -221,6 +221,70 @@ export const GATE_CODES = {
    * requires membership of the team whose history it is.
    */
   REPORTS_TEAM_MEMBERS_ONLY: 'GATE_REPORTS_TEAM_MEMBERS_ONLY',
+  /**
+   * The Sprint's Scrum Master notes are coaching observations about the Sprint, not a shared
+   * field, so -- like the notes on a Sprint Review and a Sprint Retrospective -- they are readable
+   * and writable only by the team's Scrum Master, and their revision history is theirs too.
+   */
+  SPRINT_SM_NOTES_SM_ONLY: 'GATE_SPRINT_SM_NOTES_SM_ONLY',
+  /**
+   * A health check reads the Scrum Team's own reflection on how it is living the Scrum Values, so
+   * answering one asks for membership of the team being surveyed: no member of another team can
+   * submit a ballot on a survey that is not theirs.
+   */
+  HEALTH_CHECK_TEAM_MEMBERS_ONLY: 'GATE_HEALTH_CHECK_TEAM_MEMBERS_ONLY',
+  /**
+   * Results aggregate a team's own scores, so they are readable only by that team's Scrum Master.
+   *
+   * The check is resolved from the health check's own team. A role held in *some other* team
+   * cannot satisfy it: a Scrum Master of team A has no business reading team B's values survey.
+   */
+  HEALTH_CHECK_RESULTS_SM_OF_TEAM_ONLY: 'GATE_HEALTH_CHECK_RESULTS_SM_OF_TEAM_ONLY',
+  /**
+   * A barrier records what blocks the Scrum Team from outside it, so it belongs to that team:
+   * reading one requires membership of the team it was raised for.
+   */
+  ORGANIZATIONAL_BARRIER_TEAM_MEMBERS_ONLY: 'GATE_ORGANIZATIONAL_BARRIER_TEAM_MEMBERS_ONLY',
+  /**
+   * *"Removing barriers between stakeholders and Scrum Teams"* is the Scrum Master's service to
+   * the organization, so raising, amending, resolving and closing a barrier -- and recording the
+   * actions taken to remove it -- are the team's Scrum Master's to do.
+   */
+  ORGANIZATIONAL_BARRIER_SM_ONLY: 'GATE_ORGANIZATIONAL_BARRIER_SM_ONLY',
+  /**
+   * Reaching a terminal state requires written resolution text, for the same reason an impediment
+   * does: closing a barrier without stating how it was removed lifts the record of the problem
+   * while saying nothing about what changed.
+   */
+  ORGANIZATIONAL_BARRIER_RESOLUTION_REQUIRED: 'GATE_ORGANIZATIONAL_BARRIER_RESOLUTION_REQUIRED',
+  /**
+   * One barrier per impediment. An impediment escalated twice is the same organizational problem
+   * recorded twice, which would let the register report progress on a problem as if it were two.
+   */
+  ORGANIZATIONAL_BARRIER_ALREADY_ESCALATED: 'GATE_ORGANIZATIONAL_BARRIER_ALREADY_ESCALATED',
+  /**
+   * An impediment can only be escalated by the team that raised it, and only into a barrier of that
+   * same team: a barrier is the continuation of that team's blocked work, not a general register.
+   */
+  ORGANIZATIONAL_BARRIER_SOURCE_NOT_OF_TEAM: 'GATE_ORGANIZATIONAL_BARRIER_SOURCE_NOT_OF_TEAM',
+  /**
+   * The coaching log holds the Scrum Master's working notes on coaching the team toward
+   * self-management and cross-functionality -- candid material about a team's struggles, so it is
+   * readable and writable only by the team's Scrum Master.
+   */
+  COACHING_SM_ONLY: 'GATE_COACHING_SM_ONLY',
+  /**
+   * The cross-functionality assessment is recorded by the Scrum Master, as the values health check
+   * is: it is a team-level judgement the Scrum Master is accountable for maintaining, and the team
+   * reads it to inspect its own coverage.
+   */
+  CROSS_FUNCTIONALITY_SM_ONLY: 'GATE_CROSS_FUNCTIONALITY_SM_ONLY',
+  /**
+   * Working agreements and the cross-functionality record describe how a specific team works, so
+   * they require membership of that team -- the Guide's transparency is visibility to those doing
+   * and receiving the work, not to the whole installation.
+   */
+  FACILITATION_TEAM_MEMBERS_ONLY: 'GATE_FACILITATION_TEAM_MEMBERS_ONLY',
 } as const;
 
 export type GateCode = (typeof GATE_CODES)[keyof typeof GATE_CODES];
@@ -490,6 +554,61 @@ export const GATE_DEFINITIONS: Record<GateCode, GateDefinition> = {
     code: GATE_CODES.REPORTS_TEAM_MEMBERS_ONLY,
     httpStatus: 403,
     i18nKey: 'reportsTeamMembersOnly',
+  },
+  [GATE_CODES.SPRINT_SM_NOTES_SM_ONLY]: {
+    code: GATE_CODES.SPRINT_SM_NOTES_SM_ONLY,
+    httpStatus: 403,
+    i18nKey: 'sprintSmNotesSmOnly',
+  },
+  [GATE_CODES.HEALTH_CHECK_TEAM_MEMBERS_ONLY]: {
+    code: GATE_CODES.HEALTH_CHECK_TEAM_MEMBERS_ONLY,
+    httpStatus: 403,
+    i18nKey: 'healthCheckTeamMembersOnly',
+  },
+  [GATE_CODES.HEALTH_CHECK_RESULTS_SM_OF_TEAM_ONLY]: {
+    code: GATE_CODES.HEALTH_CHECK_RESULTS_SM_OF_TEAM_ONLY,
+    httpStatus: 403,
+    i18nKey: 'healthCheckResultsSmOfTeamOnly',
+  },
+  [GATE_CODES.ORGANIZATIONAL_BARRIER_TEAM_MEMBERS_ONLY]: {
+    code: GATE_CODES.ORGANIZATIONAL_BARRIER_TEAM_MEMBERS_ONLY,
+    httpStatus: 403,
+    i18nKey: 'organizationalBarrierTeamMembersOnly',
+  },
+  [GATE_CODES.ORGANIZATIONAL_BARRIER_SM_ONLY]: {
+    code: GATE_CODES.ORGANIZATIONAL_BARRIER_SM_ONLY,
+    httpStatus: 403,
+    i18nKey: 'organizationalBarrierSmOnly',
+  },
+  [GATE_CODES.ORGANIZATIONAL_BARRIER_RESOLUTION_REQUIRED]: {
+    code: GATE_CODES.ORGANIZATIONAL_BARRIER_RESOLUTION_REQUIRED,
+    httpStatus: 400,
+    i18nKey: 'organizationalBarrierResolutionRequired',
+  },
+  [GATE_CODES.ORGANIZATIONAL_BARRIER_ALREADY_ESCALATED]: {
+    code: GATE_CODES.ORGANIZATIONAL_BARRIER_ALREADY_ESCALATED,
+    httpStatus: 409,
+    i18nKey: 'organizationalBarrierAlreadyEscalated',
+  },
+  [GATE_CODES.ORGANIZATIONAL_BARRIER_SOURCE_NOT_OF_TEAM]: {
+    code: GATE_CODES.ORGANIZATIONAL_BARRIER_SOURCE_NOT_OF_TEAM,
+    httpStatus: 403,
+    i18nKey: 'organizationalBarrierSourceNotOfTeam',
+  },
+  [GATE_CODES.COACHING_SM_ONLY]: {
+    code: GATE_CODES.COACHING_SM_ONLY,
+    httpStatus: 403,
+    i18nKey: 'coachingSmOnly',
+  },
+  [GATE_CODES.CROSS_FUNCTIONALITY_SM_ONLY]: {
+    code: GATE_CODES.CROSS_FUNCTIONALITY_SM_ONLY,
+    httpStatus: 403,
+    i18nKey: 'crossFunctionalitySmOnly',
+  },
+  [GATE_CODES.FACILITATION_TEAM_MEMBERS_ONLY]: {
+    code: GATE_CODES.FACILITATION_TEAM_MEMBERS_ONLY,
+    httpStatus: 403,
+    i18nKey: 'facilitationTeamMembersOnly',
   },
 };
 

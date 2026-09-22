@@ -2168,6 +2168,19 @@ curl -X GET https://api.scrumooth.dev/api/v1/sprints/660e8400-e29b-41d4-a716-446
 
 **Last Updated**: 2026-05-10
 
+## Scrum Master notes and their revision history
+
+A Sprint carries the Scrum Master's coaching notes (`smNotes`), which are readable and writable only
+by the team's Scrum Master:
+
+- **Read:** `smNotes` is omitted from the Sprint list, the active Sprint and the Sprint detail for
+  every other caller.
+- **Write:** `PATCH /sprints/:id/sm-notes` with `{ "smNotes": "..." }` refuses anyone else with
+  `GATE_SPRINT_SM_NOTES_SM_ONLY`.
+- **History:** `GET /sprints/:id/sm-notes/revisions?limit=20&offset=0` returns the trail, newest
+  first. Each real edit appends a revision in the same transaction as the update; a write whose text
+  is unchanged appends nothing, so the trail answers "what did the notes say before" without noise.
+
 **Related Documentation**
 
 - [Authentication API](./authentication.md)

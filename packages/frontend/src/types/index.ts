@@ -247,6 +247,13 @@ export interface Sprint {
   sprintGoal?: string;
   status: SprintStatus;
   cancellationReason?: string;
+  /**
+   * The Scrum Master's coaching notes on the Sprint.
+   *
+   * Present only for the team's Scrum Master: the server withholds the field from every other
+   * caller, so `undefined` here means "not yours to read", not "empty".
+   */
+  smNotes?: string | null;
   createdAt: string;
   updatedAt: string;
   items?: ProductBacklogItem[];

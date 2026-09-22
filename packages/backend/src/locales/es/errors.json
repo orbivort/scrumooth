@@ -11,6 +11,14 @@
     "selfMove": "Un elemento no se puede mover antes o después de sí mismo.",
     "tooMany": "Una reordenación no puede contener más de {{max}} elementos del Product Backlog."
   },
+  "coaching": {
+    "invalidDate": "Fecha no válida: se espera una fecha ISO (YYYY-MM-DD).",
+    "smOnly": "El registro de coaching es la anotación de trabajo del propio Scrum Master sobre cómo entrena al equipo hacia la autogestión y la cross-funcionalidad, así que solo el Scrum Master del equipo puede leerlo o escribirlo.",
+    "sprintNotOfTeam": "Una entrada de coaching solo puede referirse a un Sprint del equipo al que pertenece, así que una nota de coaching nunca se adjunta al evento de otro equipo."
+  },
+  "crossFunctionality": {
+    "smOnly": "La evaluación de cross-funcionalidad la registra el Scrum Master del equipo, igual que la encuesta de valores: el equipo la lee para inspeccionar si reúne colectivamente las habilidades que necesita."
+  },
   "databaseError": "Ocurrió un error de base de datos",
   "developerOnlySizing": "Solo los desarrolladores pueden establecer puntos de historia, ya que los desarrolladores que realizan el trabajo son responsables de la estimación.",
   "dodNotVerified": "Este elemento no puede marcarse como Terminado hasta que se verifique cada criterio activo de la Definición de Terminado. Aún deben verificarse {{count}} criterio(s) activo(s).",
@@ -18,9 +26,16 @@
   "dodTeamMembersOnly": "La Definición de Terminado es el acuerdo del propio Scrum Team sobre qué significa «Terminado»: solo un miembro de ese equipo puede leerla o modificarla.",
   "emailAlreadyExists": "Ya existe una cuenta con el correo electrónico {{email}}",
   "entityNotFound": "{{entity}} no encontrado",
+  "facilitation": {
+    "teamMembersOnly": "Los acuerdos de trabajo y el registro de cross-funcionalidad describen cómo trabaja un equipo Scrum concreto, así que solo los miembros de ese equipo pueden leerlos."
+  },
   "fieldAlreadyExists": "{{field}} ya existe",
   "fieldAlreadyTaken": "{{field}} ya está en uso",
   "forbidden": "No tiene permiso para realizar esta acción",
+  "healthCheck": {
+    "resultsSmOfTeamOnly": "Los resultados de la encuesta agregan las puntuaciones del propio equipo, por lo que solo puede leerlos el Scrum Master del equipo al que pertenece la encuesta. Un Scrum Master de otro equipo no puede leerlos.",
+    "teamMembersOnly": "Una encuesta de los valores Scrum registra cómo un equipo juzga su propia práctica de los cinco valores, así que solo un miembro del equipo encuestado puede responderla o consultar su estado."
+  },
   "impediment": {
     "deleteForbidden": "Solo la persona que reportó un impedimento, su propietario o el Scrum Master pueden eliminarlo. El registro de lo que bloqueó al equipo es evidencia.",
     "invalidTargetDate": "La fecha objetivo debe ser una fecha ISO válida, por ejemplo 2026-05-15.",
@@ -44,6 +59,15 @@
   "invalidRelation": "Relación inválida",
   "invalidToken": "Token inválido",
   "notTeamMember": "No es miembro de este equipo",
+  "organizationalBarrier": {
+    "alreadyEscalated": "Este impedimento ya se ha escalado a la barrera \"{{title}}\". El impedimento y su barrera son un mismo problema, así que se continúa allí en lugar de registrarlo dos veces.",
+    "invalidDate": "Fecha no válida: se espera una fecha ISO (YYYY-MM-DD).",
+    "ownerNotFound": "El propietario de una barrera debe ser un usuario de esta instalación, porque el registro debe poder nombrar quién es responsable de eliminarla.",
+    "resolutionRequired": "Cerrar una barrera exige una resolución escrita: sin ella, el registro mostraría la barrera como eliminada sin decir qué cambió realmente.",
+    "smOnly": "Eliminar las barreras entre los stakeholders y los equipos Scrum es el servicio del Scrum Master a la organización, por lo que crear, modificar, resolver y cerrar una barrera —y registrar las acciones realizadas— corresponde al Scrum Master del equipo.",
+    "sourceNotOfTeam": "Solo se puede escalar una barrera desde un impedimento del mismo equipo. Una barrera es la continuación del trabajo bloqueado de ese equipo, no un registro general.",
+    "teamMembersOnly": "Una barrera organizativa registra lo que bloquea al equipo Scrum desde fuera, así que solo un miembro de ese equipo puede leer el registro."
+  },
   "pleaseLoginAgain": "Inicie sesión nuevamente para continuar",
   "productGoal": {
     "abandonmentReasonRequired": "Abandonar un objetivo de producto requiere un motivo para que el equipo pueda inspeccionar por qué se descartó el objetivo.",
@@ -93,6 +117,7 @@
     "scopeChangeAlreadyPending": "Ya hay un cambio de este elemento que pone en peligro el objetivo del sprint esperando la aprobación del Product Owner. Resuélvelo antes de solicitar otro.",
     "scopeGoalRenegotiationRequired": "Aprobar un cambio que pone en peligro el objetivo del sprint requiere el objetivo del sprint renegociado, para que el equipo sepa hacia qué trabaja ahora.",
     "scopeReasonRequired": "Todo cambio del Sprint Backlog debe registrar por qué se realiza.",
+    "smNotesSmOnly": "Las notas del Scrum Master son observaciones de coaching sobre el Sprint, no un campo compartido: solo el Scrum Master del equipo puede leerlas o escribirlas.",
     "teamMembersOnly": "El sprint pertenece a su Scrum Team: solo un miembro de ese equipo puede crearlo, iniciarlo o replanificarlo."
   },
   "sprintBacklog": {

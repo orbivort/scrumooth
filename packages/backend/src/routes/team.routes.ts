@@ -23,6 +23,15 @@ const requireDoDTeamContext = createRequireTeamContext({
   gateCode: GATE_CODES.DOD_TEAM_MEMBERS_ONLY,
 });
 
+// A health check reads the team's own reflection on how it lives the Scrum Values, so the team
+// context is asserted before the handler runs. The stronger rule -- results and trend belong to
+// the team's Scrum Master, and to no other team's -- is enforced in the service, where the
+// health check's own team is known.
+const requireHealthCheckTeamContext = createRequireTeamContext({
+  messageKey: 'errors:healthCheck.teamMembersOnly',
+  gateCode: GATE_CODES.HEALTH_CHECK_TEAM_MEMBERS_ONLY,
+});
+
 // Validation schemas
 const createTeamSchema = z.object({
   name: z.string().min(1, 'Name is required').max(100),
@@ -248,6 +257,7 @@ router.get(
 router.post(
   '/:teamId/health-checks',
   validateParams(teamIdSchema),
+  requireHealthCheckTeamContext,
   requireRoles(UserRole.SCRUM_MASTER),
   validateBody(z.object({ sprintId: z.string().uuid().optional().nullable() })),
   healthCheckController.createHealthCheck
@@ -261,6 +271,7 @@ router.post(
 router.get(
   '/:teamId/health-checks/latest',
   validateParams(teamIdSchema),
+  requireHealthCheckTeamContext,
   healthCheckController.getLatestStatus
 );
 
@@ -272,6 +283,7 @@ router.get(
 router.get(
   '/:teamId/health-check-trend',
   validateParams(teamIdSchema),
+  requireHealthCheckTeamContext,
   requireRoles(UserRole.SCRUM_MASTER),
   healthCheckController.getTrend
 );

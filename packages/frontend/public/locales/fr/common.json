@@ -458,6 +458,7 @@
     "impediments": "Impediment",
     "increments": "Increment",
     "notifications": "Notifications",
+    "organizationalBarriers": "Barrières organisationnelles",
     "productBacklog": "Product Backlog",
     "productGoals": "Product Goal",
     "reports": "Rapports",
@@ -476,7 +477,8 @@
     "settingsLabel": "Paramètres",
     "sprintPlanning": "Sprint Planning",
     "sprintReview": "Sprint Review",
-    "team": "Équipe"
+    "team": "Équipe",
+    "workingAgreements": "Accords de travail"
   },
   "networkErrors": {
     "networkError": "Erreur réseau. Veuillez vérifier votre connexion et réessayer.",

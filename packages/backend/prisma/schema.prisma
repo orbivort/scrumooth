@@ -58,6 +58,11 @@ model User {
   createdTeams           Team[]                     @relation("TeamCreator")
   createdWorkflows       Workflow[]                 @relation("WorkflowCreator")
   sprintCompletionSnapshots SprintCompletionSnapshot[] @relation("SprintCompletionCapturer")
+  smNotesRevisions       SmNotesRevision[]          @relation("SmNotesRevisionAuthor")
+  ownedBarriers          OrganizationalBarrier[]    @relation("BarrierOwner")
+  raisedBarriers         OrganizationalBarrier[]    @relation("BarrierRaisedBy")
+  barrierActions         BarrierStakeholderAction[] @relation("BarrierActionOwner")
+  coachingEntries        CoachingEntry[]            @relation("CoachingEntryAuthor")
 
   @@map("users")
 }
@@ -88,6 +93,11 @@ model Team {
   timeboxes           Timebox[]
   dodVersionSnapshots DoDVersionSnapshot[]
   sprintCompletionSnapshots SprintCompletionSnapshot[]
+  smNotesRevisions    SmNotesRevision[]
+  organizationalBarriers OrganizationalBarrier[]
+  coachingEntries     CoachingEntry[]
+  workingAgreements   WorkingAgreement[]
+  crossFunctionalityAssessments CrossFunctionalityAssessment[]
   creator             User?                 @relation("TeamCreator", fields: [createdBy], references: [id], onDelete: SetNull)
 
   @@index([createdBy])
@@ -211,6 +221,7 @@ model Sprint {
   sprintReview       SprintReview?
   completionSnapshot SprintCompletionSnapshot?
   healthChecks       TeamHealthCheck[]
+  coachingEntries    CoachingEntry[]
   timeboxes          Timebox[]
   goal               ProductGoal?             @relation(fields: [goalId], references: [id], onDelete: SetNull)
   team               Team                     @relation(fields: [teamId], references: [id], onDelete: Cascade)
@@ -490,6 +501,7 @@ model Impediment {
   reportedBy      User               @relation("ImpedimentReporter", fields: [reportedById], references: [id], onDelete: Restrict)
   sprint          Sprint?            @relation(fields: [sprintId], references: [id], onDelete: SetNull)
   team            Team               @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  escalatedBarrier OrganizationalBarrier? @relation("BarrierSourceImpediment")
 
   @@index([teamId])
   @@index([status])
@@ -1438,6 +1450,200 @@ model TeamNonWorkingDay {
   @@map("team_non_working_days")
 }
 
+/// One append-only version of a Scrum Master's notes on a Scrum event.
+///
+/// The notes fields on `sprints`, `sprint_reviews` and `sprint_retrospectives` hold only the
+/// current text. The Guide's Scrum Master accountability is to coach the team's effectiveness,
+/// and a coaching observation that any later writer can silently overwrite is not a trail. Each
+/// write therefore appends the full text here in the same transaction as the update, so the note
+/// and its history can never diverge. `revision` is dense and per-entity (1..N) and a write whose
+/// text is unchanged appends nothing.
+model SmNotesRevision {
+  id         String            @id @db.Uuid
+  entityType SmNotesEntityType
+  entityId   String            @db.Uuid
+  teamId     String            @db.Uuid
+  revision   Int
+  content    String
+  createdBy  String            @db.Uuid
+  createdAt  DateTime          @default(now()) @db.Timestamptz(3)
+  author     User              @relation("SmNotesRevisionAuthor", fields: [createdBy], references: [id], onDelete: Restrict)
+  team       Team              @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  // The history of one event is read in revision order, and the pair is what makes a revision
+  // number unique inside its entity.
+  @@unique([entityType, entityId, revision])
+  @@index([createdBy])
+  @@index([teamId])
+  @@map("sm_notes_revisions")
+}
+
+/// A barrier the Scrum Team cannot remove by itself.
+///
+/// The Guide gives the Scrum Master a third service beyond the team: *"serving the organization
+/// ... removing barriers between stakeholders and Scrum Teams."* The team's own impediments record
+/// what blocks the team; a barrier records what blocks the team from outside it and therefore needs
+/// someone with organizational authority. It is deliberately a separate aggregate rather than an
+/// `Impediment` subtype: a barrier's owner is not required to be a team member, and its resolution
+/// is an agreement with the organization, not a team decision.
+///
+/// `sourceImpedimentId` is unique, so escalating the same impediment twice is refused by the
+/// database rather than by convention.
+model OrganizationalBarrier {
+  id                 String                   @id @db.Uuid
+  teamId             String                   @db.Uuid
+  sourceImpedimentId String?                  @unique @db.Uuid
+  title              String
+  description        String
+  /// Impact ordering shares the impediment scale so the register sorts impact-first the same way.
+  priority           ImpedimentPriority       @default(MEDIUM)
+  status             BarrierStatus            @default(OPEN)
+  ownerId            String?                  @db.Uuid
+  raisedById         String                   @db.Uuid
+  targetDate         DateTime?                @db.Date
+  resolution         String?
+  resolvedAt         DateTime?                @db.Timestamptz(3)
+  createdAt          DateTime                 @default(now()) @db.Timestamptz(3)
+  createdBy          String?                  @db.Uuid
+  updatedAt          DateTime                 @updatedAt @db.Timestamptz(3)
+  updatedBy          String?                  @db.Uuid
+  owner              User?                    @relation("BarrierOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  raisedBy           User                     @relation("BarrierRaisedBy", fields: [raisedById], references: [id], onDelete: Restrict)
+  sourceImpediment   Impediment?              @relation("BarrierSourceImpediment", fields: [sourceImpedimentId], references: [id], onDelete: SetNull)
+  team               Team                     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  actions            BarrierStakeholderAction[]
+
+  @@index([teamId])
+  @@index([status])
+  @@index([ownerId])
+  @@index([raisedById])
+  @@index([priority])
+  @@index([teamId, status, createdAt])
+  @@index([teamId, priority, createdAt])
+  @@map("organizational_barriers")
+}
+
+/// One action taken with a stakeholder to remove a barrier.
+///
+/// Barrier removal is not a status change but a sequence of conversations and decisions with
+/// people outside the team. Recording each as its own row (with an owner and a due date) is what
+/// makes *"removing barriers between stakeholders and Scrum Teams"* inspectable instead of a
+/// claim: the register shows who agreed to do what, and when it was done.
+model BarrierStakeholderAction {
+  id          String                 @id @db.Uuid
+  barrierId   String                 @db.Uuid
+  description String
+  ownerId     String?                @db.Uuid
+  dueDate     DateTime?              @db.Date
+  status      StakeholderActionStatus @default(OPEN)
+  completedAt DateTime?              @db.Timestamptz(3)
+  createdAt   DateTime               @default(now()) @db.Timestamptz(3)
+  createdBy   String?                @db.Uuid
+  updatedAt   DateTime               @updatedAt @db.Timestamptz(3)
+  updatedBy   String?                @db.Uuid
+  owner       User?                  @relation("BarrierActionOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  barrier     OrganizationalBarrier  @relation(fields: [barrierId], references: [id], onDelete: Cascade)
+
+  @@index([barrierId])
+  @@index([ownerId])
+  @@index([barrierId, status])
+  @@map("barrier_stakeholder_actions")
+}
+
+/// The Scrum Master's private record of coaching a team toward self-management and
+/// cross-functionality.
+///
+/// The Guide's first two Scrum Master services are coaching the team in self-management and
+/// cross-functionality. That work leaves no trace in any other artifact, so it is recorded here --
+/// readable only by the team's Scrum Master, because a coaching note about a team's struggles with
+/// self-management is the Scrum Master's working material, not a published assessment.
+model CoachingEntry {
+  id           String        @id @db.Uuid
+  teamId       String        @db.Uuid
+  topic        CoachingTopic
+  note         String
+  sprintId     String?       @db.Uuid
+  followUpDate DateTime?     @db.Date
+  authorId     String        @db.Uuid
+  createdAt    DateTime      @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime      @updatedAt @db.Timestamptz(3)
+  author       User          @relation("CoachingEntryAuthor", fields: [authorId], references: [id], onDelete: Restrict)
+  sprint       Sprint?       @relation(fields: [sprintId], references: [id], onDelete: SetNull)
+  team         Team          @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@index([teamId])
+  @@index([sprintId])
+  @@index([authorId])
+  @@index([teamId, createdAt])
+  @@map("coaching_entries")
+}
+
+/// An agreement the Scrum Team made with itself about how it works.
+///
+/// Self-management means the team decides internally how it works, so the agreements belong to the
+/// team: every member can read and change them, and authorship is recorded. Retirement is an
+/// explicit state change with a timestamp rather than deletion, because a working agreement that
+/// silently disappears hides the fact that the team changed its mind.
+model WorkingAgreement {
+  id          String                 @id @db.Uuid
+  teamId      String                 @db.Uuid
+  title       String
+  description String
+  status      WorkingAgreementStatus @default(ACTIVE)
+  agreedAt    DateTime               @default(now()) @db.Timestamptz(3)
+  retiredAt   DateTime?              @db.Timestamptz(3)
+  createdAt   DateTime               @default(now()) @db.Timestamptz(3)
+  createdBy   String?                @db.Uuid
+  updatedAt   DateTime               @updatedAt @db.Timestamptz(3)
+  updatedBy   String?                @db.Uuid
+  team        Team                   @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@index([teamId])
+  @@index([status])
+  @@index([teamId, status])
+  @@map("working_agreements")
+}
+
+/// The team's own judgement of whether it collectively holds the skills it needs.
+///
+/// The Guide defines the Scrum Team as cross-functional -- *"collectively they have all the skills
+/// necessary to create value each Sprint"* -- and makes the Scrum Master responsible for coaching
+/// cross-functionality. Each assessment is a timestamped snapshot with one row per needed skill, so
+/// the signal can be inspected over time instead of being asserted once. It is a team-level
+/// assessment by design: no per-person skill inventory, which would turn a composition signal into
+/// an appraisal of individuals.
+model CrossFunctionalityAssessment {
+  id         String                    @id @db.Uuid
+  teamId     String                    @db.Uuid
+  assessedAt DateTime                  @default(now()) @db.Timestamptz(3)
+  summary    String?
+  createdAt  DateTime                  @default(now()) @db.Timestamptz(3)
+  createdBy  String?                   @db.Uuid
+  updatedAt  DateTime                  @updatedAt @db.Timestamptz(3)
+  updatedBy  String?                   @db.Uuid
+  team       Team                      @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  skills     CrossFunctionalitySkill[]
+
+  @@index([teamId])
+  @@index([teamId, assessedAt])
+  @@map("cross_functionality_assessments")
+}
+
+/// One skill a team needs, and how far the team collectively covers it today.
+model CrossFunctionalitySkill {
+  id           String                      @id @db.Uuid
+  assessmentId String                      @db.Uuid
+  name         String
+  coverage     SkillCoverage
+  note         String?
+  createdAt    DateTime                    @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime                    @updatedAt @db.Timestamptz(3)
+  assessment   CrossFunctionalityAssessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+
+  @@index([assessmentId])
+  @@map("cross_functionality_skills")
+}
+
 enum UserRole {
   PRODUCT_OWNER
   SCRUM_MASTER
@@ -1612,6 +1818,7 @@ enum NotificationType {
   DIRECT_MESSAGE
   ACCOUNT_DELETION_SCHEDULED
   ACCOUNT_DELETION_CANCELLED
+  ORGANIZATIONAL_BARRIER
 }
 
 enum EmailType {
@@ -1632,4 +1839,51 @@ enum EmailStatus {
   BOUNCED
   OPENED
   CLICKED
+}
+
+/**
+ * Which Scrum event a set of Scrum Master notes belongs to.
+ *
+ * The three events keep their own notes column, so the revision table is polymorphic in order to
+ * hold one history shape rather than three near-identical tables.
+ */
+enum SmNotesEntityType {
+  SPRINT
+  SPRINT_REVIEW
+  SPRINT_RETROSPECTIVE
+}
+
+/** Lifecycle of an organizational barrier, mirroring the impediment states it escalates from. */
+enum BarrierStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+/** Lifecycle of one action taken with a stakeholder to remove a barrier. */
+enum StakeholderActionStatus {
+  OPEN
+  DONE
+  CANCELLED
+}
+
+/** What a Scrum Master coaching entry is about. */
+enum CoachingTopic {
+  SELF_MANAGEMENT
+  CROSS_FUNCTIONALITY
+  OTHER
+}
+
+/** An agreement is retired explicitly so a change of mind stays visible. */
+enum WorkingAgreementStatus {
+  ACTIVE
+  RETIRED
+}
+
+/** How far the team collectively covers a skill it needs. */
+enum SkillCoverage {
+  NONE
+  PARTIAL
+  COVERED
 }

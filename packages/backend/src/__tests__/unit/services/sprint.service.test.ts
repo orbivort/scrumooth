@@ -310,6 +310,28 @@ describe('SprintService', () => {
         orderBy: { startDate: 'desc' },
       });
     });
+
+    it('should withhold the Scrum Master notes from a caller who does not lead the team', async () => {
+      (prisma.sprint.findMany as any).mockResolvedValue([
+        { id: 'sprint-1', teamId: 'team-1', name: 'Sprint 1', smNotes: 'coaching' },
+      ]);
+      (prisma.teamMember.findMany as any).mockResolvedValue([]);
+
+      const [sprint] = await sprintService.getSprints('team-1', 'user-1');
+
+      expect(sprint).not.toHaveProperty('smNotes');
+    });
+
+    it('should keep the Scrum Master notes for the team Scrum Master', async () => {
+      (prisma.sprint.findMany as any).mockResolvedValue([
+        { id: 'sprint-1', teamId: 'team-1', name: 'Sprint 1', smNotes: 'coaching' },
+      ]);
+      (prisma.teamMember.findMany as any).mockResolvedValue([{ teamId: 'team-1' }]);
+
+      const [sprint] = await sprintService.getSprints('team-1', 'sm-1');
+
+      expect(sprint?.smNotes).toBe('coaching');
+    });
   });
 
   describe('getActiveSprint', () => {

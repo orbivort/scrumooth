@@ -23,6 +23,8 @@
   "mention": "{{userName}} ti ha menzionato in un commento",
   "newTaskAssignedMessage": "Nello Sprint \"{{sprintName}}\"",
   "newTaskAssignedTitle": "Nuovo task assegnato: \"{{taskTitle}}\"",
+  "organizationalBarrierRaised": "Barriera organizzativa assegnata: \"{{barrierTitle}}\"",
+  "organizationalBarrierRaisedMessage": "Questa barriera è esterna al team Scrum. Sei responsabile di rimuoverla perché il team possa proseguire.",
   "reminderFailed": "Impossibile inviare promemoria a {{memberName}}",
   "remindersNone": "Nessun promemoria inviato",
   "remindersSent": "Promemoria inviato a {{count}} membro del team",

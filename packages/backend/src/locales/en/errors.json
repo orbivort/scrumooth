@@ -11,6 +11,14 @@
     "selfMove": "An item cannot be moved before or after itself.",
     "tooMany": "A reorder cannot contain more than {{max}} Product Backlog items."
   },
+  "coaching": {
+    "invalidDate": "Invalid date: expected an ISO date (YYYY-MM-DD).",
+    "smOnly": "The coaching log is the Scrum Master's own working record of coaching the team toward self-management and cross-functionality, so only the team's Scrum Master can read or write it.",
+    "sprintNotOfTeam": "A coaching entry can only refer to a Sprint of the team it belongs to, so a note about coaching is never attached to another team’s event."
+  },
+  "crossFunctionality": {
+    "smOnly": "The cross-functionality assessment is recorded by the team’s Scrum Master, as the values health check is: the team reads it to inspect whether it collectively holds the skills it needs."
+  },
   "databaseError": "A database error occurred",
   "developerOnlySizing": "Only Developers can set story points, as the Developers who perform the work are responsible for sizing.",
   "dodNotVerified": "This item cannot be marked Done until every active Definition of Done item is verified. {{count}} active item(s) still need verification.",
@@ -18,9 +26,16 @@
   "dodTeamMembersOnly": "The Definition of Done is the Scrum Team's own agreement about what \"Done\" means: only a member of that team can read or change it.",
   "emailAlreadyExists": "An account with email {{email}} already exists",
   "entityNotFound": "{{entity}} not found",
+  "facilitation": {
+    "teamMembersOnly": "Working agreements and the cross-functionality record describe how a specific Scrum Team works, so they are readable only by members of that team."
+  },
   "fieldAlreadyExists": "{{field}} already exists",
   "fieldAlreadyTaken": "{{field}} is already taken",
   "forbidden": "You do not have permission to perform this action",
+  "healthCheck": {
+    "resultsSmOfTeamOnly": "Health check results aggregate the team’s own scores, so they are readable only by the Scrum Master of the team the survey belongs to. A Scrum Master of another team cannot read them.",
+    "teamMembersOnly": "A Scrum Values health check records how a team judges its own practice of the five values, so only a member of the team being surveyed can answer it or look up its status."
+  },
   "impediment": {
     "deleteForbidden": "Only the person who reported an impediment, its owner, or the Scrum Master can delete it. The record of what held the team back is evidence.",
     "invalidTargetDate": "A target date must be a valid ISO date, for example 2026-05-15.",
@@ -44,6 +59,15 @@
   "invalidRelation": "Invalid relation",
   "invalidToken": "Invalid token",
   "notTeamMember": "You are not a member of this team",
+  "organizationalBarrier": {
+    "alreadyEscalated": "This impediment has already been escalated into the barrier \"{{title}}\". An impediment and its barrier are one problem, so it is continued there rather than recorded twice.",
+    "invalidDate": "Invalid date: expected an ISO date (YYYY-MM-DD).",
+    "ownerNotFound": "The owner of a barrier must be a user of this installation, because the register has to be able to name who is accountable for removing it.",
+    "resolutionRequired": "Closing a barrier requires a written resolution: without one, the register would show the barrier as removed while saying nothing about what actually changed.",
+    "smOnly": "Removing barriers between stakeholders and Scrum Teams is the Scrum Master's service to the organization, so raising, amending, resolving and closing a barrier — and recording the actions taken against it — are the team's Scrum Master's to do.",
+    "sourceNotOfTeam": "A barrier can only be escalated from an impediment of the same team. A barrier is the continuation of that team's blocked work, not a general register.",
+    "teamMembersOnly": "An organizational barrier records what blocks the Scrum Team from outside it, so only a member of that team can read the register."
+  },
   "pleaseLoginAgain": "Please log in again to continue",
   "productGoal": {
     "abandonmentReasonRequired": "Abandoning a Product Goal requires a reason so the team can inspect why the objective was dropped.",
@@ -93,6 +117,7 @@
     "scopeChangeAlreadyPending": "A change to this item that endangers the Sprint Goal is already awaiting the Product Owner's acknowledgement. Resolve it before requesting another.",
     "scopeGoalRenegotiationRequired": "Approving a change that endangers the Sprint Goal requires the renegotiated Sprint Goal, so the team knows what it is now working toward.",
     "scopeReasonRequired": "Every Sprint Backlog change must record why it is being made.",
+    "smNotesSmOnly": "The Scrum Master's notes are coaching observations about the Sprint, not a shared field: only the team's Scrum Master can read or write them.",
     "teamMembersOnly": "The Sprint belongs to its Scrum Team: only a member of that team can create, start, or replan it."
   },
   "sprintBacklog": {

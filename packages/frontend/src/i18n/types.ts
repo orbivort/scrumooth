@@ -16,6 +16,8 @@ import type enErrors from '../../public/locales/en/errors.json';
 import type enValidation from '../../public/locales/en/validation.json';
 import type enScrumMasterDashboard from '../../public/locales/en/scrum-master-dashboard.json';
 import type enTimebox from '../../public/locales/en/timebox.json';
+import type enBarriers from '../../public/locales/en/barriers.json';
+import type enAgreements from '../../public/locales/en/agreements.json';
 
 declare module 'i18next' {
   interface CustomTypeOptions {
@@ -39,6 +41,8 @@ declare module 'i18next' {
       validation: typeof enValidation;
       'scrum-master-dashboard': typeof enScrumMasterDashboard;
       timebox: typeof enTimebox;
+      barriers: typeof enBarriers;
+      agreements: typeof enAgreements;
     };
   }
 }

@@ -743,3 +743,69 @@
   list-style: none;
   font-variant-numeric: tabular-nums;
 }
+
+/* ============================================
+   BARRIER REGISTER SUMMARY & COACHING LOG
+   ============================================ */
+
+.barriers-link {
+  align-self: flex-start;
+  margin-top: var(--space-2);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-primary-600);
+  text-decoration: none;
+}
+
+.barriers-link:hover {
+  text-decoration: underline;
+}
+
+.barriers-link:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+  border-radius: var(--radius-sm);
+}
+
+.coaching-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  gap: var(--space-3);
+  margin-block: var(--space-2);
+}
+
+.coaching-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.coaching-input,
+.coaching-textarea {
+  padding: var(--space-2);
+  border: var(--input-border-width) solid var(--input-border-color);
+  border-radius: var(--input-border-radius);
+  background: var(--input-background);
+  color: var(--input-text-color);
+  font-family: var(--font-family-sans);
+  font-size: var(--font-size-sm);
+  box-sizing: border-box;
+  inline-size: 100%;
+}
+
+.coaching-textarea {
+  resize: vertical;
+}
+
+.coaching-input:focus,
+.coaching-textarea:focus {
+  border-color: var(--input-border-color-focus);
+  box-shadow: var(--focus-ring);
+  outline: none;
+}
+
+.coaching-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-block: var(--space-2);
+}

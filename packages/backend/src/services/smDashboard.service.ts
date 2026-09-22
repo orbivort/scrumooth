@@ -449,8 +449,12 @@ export const smDashboardService = {
 
   /**
    * Single aggregation endpoint for the SM dashboard.
+   *
+   * `actorUserId` is threaded through to the team-owned reads that carry their own authorization
+   * (the values health check belongs to the team's Scrum Master), so the dashboard cannot become a
+   * way around a rule that holds everywhere else.
    */
-  async getDashboard(teamId: string, sprintCount = 5) {
+  async getDashboard(teamId: string, sprintCount = 5, actorUserId?: string) {
     const sprintDurationDays = await this.getSprintDurationDays(teamId);
 
     const [
@@ -466,7 +470,7 @@ export const smDashboardService = {
       this.getDoDComplianceTrend(teamId, sprintCount),
       this.getSprintGoalAchievement(teamId, sprintCount),
       this.getActionItemCompletion(teamId),
-      teamHealthCheckService.getLatestForTeam(teamId),
+      teamHealthCheckService.getLatestForTeam(teamId, actorUserId),
     ]);
 
     return {

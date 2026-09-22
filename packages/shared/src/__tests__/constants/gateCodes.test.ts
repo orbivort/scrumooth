@@ -10,8 +10,8 @@ import {
 } from '../../constants/gateCodes.js';
 
 describe('gateCodes', () => {
-  it('should define forty-seven gates', () => {
-    expect(GATE_CODE_LIST).toHaveLength(47);
+  it('should define fifty-eight gates', () => {
+    expect(GATE_CODE_LIST).toHaveLength(58);
   });
 
   it('should prefix every gate code with GATE_', () => {
@@ -184,6 +184,73 @@ describe('gateCodes', () => {
     expect(GATE_DEFINITIONS[GATE_CODES.RETROSPECTIVE_DOD_CHANGES_MISSING].httpStatus).toBe(400);
     expect(GATE_DEFINITIONS[GATE_CODES.RETROSPECTIVE_DOD_CHANGES_MISSING].i18nKey).toBe(
       'retrospectiveDodChangesMissing'
+    );
+  });
+
+  it('should identify the Scrum Master facilitation gates', () => {
+    expect(isGateCode(GATE_CODES.SPRINT_SM_NOTES_SM_ONLY)).toBe(true);
+    expect(isGateCode(GATE_CODES.HEALTH_CHECK_TEAM_MEMBERS_ONLY)).toBe(true);
+    expect(isGateCode(GATE_CODES.HEALTH_CHECK_RESULTS_SM_OF_TEAM_ONLY)).toBe(true);
+    expect(isGateCode(GATE_CODES.ORGANIZATIONAL_BARRIER_TEAM_MEMBERS_ONLY)).toBe(true);
+    expect(isGateCode(GATE_CODES.ORGANIZATIONAL_BARRIER_SM_ONLY)).toBe(true);
+    expect(isGateCode(GATE_CODES.ORGANIZATIONAL_BARRIER_RESOLUTION_REQUIRED)).toBe(true);
+    expect(isGateCode(GATE_CODES.ORGANIZATIONAL_BARRIER_ALREADY_ESCALATED)).toBe(true);
+    expect(isGateCode(GATE_CODES.ORGANIZATIONAL_BARRIER_SOURCE_NOT_OF_TEAM)).toBe(true);
+    expect(isGateCode(GATE_CODES.COACHING_SM_ONLY)).toBe(true);
+    expect(isGateCode(GATE_CODES.CROSS_FUNCTIONALITY_SM_ONLY)).toBe(true);
+    expect(isGateCode(GATE_CODES.FACILITATION_TEAM_MEMBERS_ONLY)).toBe(true);
+  });
+
+  it('should refuse Scrum Master only surfaces with 403 and unevidenced closures with 400', () => {
+    expect(GATE_DEFINITIONS[GATE_CODES.SPRINT_SM_NOTES_SM_ONLY].httpStatus).toBe(403);
+    expect(GATE_DEFINITIONS[GATE_CODES.SPRINT_SM_NOTES_SM_ONLY].i18nKey).toBe(
+      'sprintSmNotesSmOnly'
+    );
+    expect(GATE_DEFINITIONS[GATE_CODES.HEALTH_CHECK_TEAM_MEMBERS_ONLY].httpStatus).toBe(403);
+    expect(GATE_DEFINITIONS[GATE_CODES.HEALTH_CHECK_TEAM_MEMBERS_ONLY].i18nKey).toBe(
+      'healthCheckTeamMembersOnly'
+    );
+    expect(GATE_DEFINITIONS[GATE_CODES.HEALTH_CHECK_RESULTS_SM_OF_TEAM_ONLY].httpStatus).toBe(403);
+    expect(GATE_DEFINITIONS[GATE_CODES.HEALTH_CHECK_RESULTS_SM_OF_TEAM_ONLY].i18nKey).toBe(
+      'healthCheckResultsSmOfTeamOnly'
+    );
+    expect(GATE_DEFINITIONS[GATE_CODES.ORGANIZATIONAL_BARRIER_TEAM_MEMBERS_ONLY].httpStatus).toBe(
+      403
+    );
+    expect(GATE_DEFINITIONS[GATE_CODES.ORGANIZATIONAL_BARRIER_TEAM_MEMBERS_ONLY].i18nKey).toBe(
+      'organizationalBarrierTeamMembersOnly'
+    );
+    expect(GATE_DEFINITIONS[GATE_CODES.ORGANIZATIONAL_BARRIER_SM_ONLY].httpStatus).toBe(403);
+    expect(GATE_DEFINITIONS[GATE_CODES.ORGANIZATIONAL_BARRIER_SM_ONLY].i18nKey).toBe(
+      'organizationalBarrierSmOnly'
+    );
+    expect(GATE_DEFINITIONS[GATE_CODES.ORGANIZATIONAL_BARRIER_RESOLUTION_REQUIRED].httpStatus).toBe(
+      400
+    );
+    expect(GATE_DEFINITIONS[GATE_CODES.ORGANIZATIONAL_BARRIER_RESOLUTION_REQUIRED].i18nKey).toBe(
+      'organizationalBarrierResolutionRequired'
+    );
+    expect(GATE_DEFINITIONS[GATE_CODES.ORGANIZATIONAL_BARRIER_ALREADY_ESCALATED].httpStatus).toBe(
+      409
+    );
+    expect(GATE_DEFINITIONS[GATE_CODES.ORGANIZATIONAL_BARRIER_ALREADY_ESCALATED].i18nKey).toBe(
+      'organizationalBarrierAlreadyEscalated'
+    );
+    expect(GATE_DEFINITIONS[GATE_CODES.ORGANIZATIONAL_BARRIER_SOURCE_NOT_OF_TEAM].httpStatus).toBe(
+      403
+    );
+    expect(GATE_DEFINITIONS[GATE_CODES.ORGANIZATIONAL_BARRIER_SOURCE_NOT_OF_TEAM].i18nKey).toBe(
+      'organizationalBarrierSourceNotOfTeam'
+    );
+    expect(GATE_DEFINITIONS[GATE_CODES.COACHING_SM_ONLY].httpStatus).toBe(403);
+    expect(GATE_DEFINITIONS[GATE_CODES.COACHING_SM_ONLY].i18nKey).toBe('coachingSmOnly');
+    expect(GATE_DEFINITIONS[GATE_CODES.CROSS_FUNCTIONALITY_SM_ONLY].httpStatus).toBe(403);
+    expect(GATE_DEFINITIONS[GATE_CODES.CROSS_FUNCTIONALITY_SM_ONLY].i18nKey).toBe(
+      'crossFunctionalitySmOnly'
+    );
+    expect(GATE_DEFINITIONS[GATE_CODES.FACILITATION_TEAM_MEMBERS_ONLY].httpStatus).toBe(403);
+    expect(GATE_DEFINITIONS[GATE_CODES.FACILITATION_TEAM_MEMBERS_ONLY].i18nKey).toBe(
+      'facilitationTeamMembersOnly'
     );
   });
 

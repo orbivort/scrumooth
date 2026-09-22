@@ -13,7 +13,7 @@ export const getSprints = asyncHandler(async (req: Request, res: Response) => {
   if (!teamId || typeof teamId !== 'string') {
     throw new BadRequestError('teamId is required');
   }
-  const sprints = await sprintService.getSprints(teamId);
+  const sprints = await sprintService.getSprints(teamId, req.user?.id);
   res.json(createSuccessResponse(sprints));
 });
 
@@ -25,7 +25,7 @@ export const getActiveSprint = asyncHandler(async (req: Request, res: Response) 
   if (!teamId || typeof teamId !== 'string') {
     throw new BadRequestError('teamId is required');
   }
-  const sprint = await sprintService.getActiveSprint(teamId);
+  const sprint = await sprintService.getActiveSprint(teamId, req.user?.id);
 
   if (!sprint) {
     res.json(createSuccessResponse(null));
@@ -43,7 +43,7 @@ export const getSprintById = asyncHandler(async (req: Request, res: Response) =>
   if (!id) {
     throw new BadRequestError('Sprint ID is required');
   }
-  const sprint = await sprintService.getSprintById(id);
+  const sprint = await sprintService.getSprintById(id, req.user?.id);
   res.json(createSuccessResponse(sprint));
 });
 

@@ -23,6 +23,8 @@
   "mention": "{{userName}} vous a mentionné dans un commentaire",
   "newTaskAssignedMessage": "Dans le Sprint « {{sprintName}} »",
   "newTaskAssignedTitle": "Nouvelle tâche assignée : « {{taskTitle}} »",
+  "organizationalBarrierRaised": "Barrière organisationnelle attribuée : « {{barrierTitle}} »",
+  "organizationalBarrierRaisedMessage": "Cette barrière se situe hors de l'équipe Scrum. Vous êtes responsable de sa levée pour que l'équipe puisse continuer.",
   "reminderFailed": "Échec de l'envoi du rappel à {{memberName}}",
   "remindersNone": "Aucun rappel envoyé",
   "remindersSent": "Rappels envoyés à {{count}} membre de l'équipe",

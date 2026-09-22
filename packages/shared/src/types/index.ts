@@ -258,3 +258,4 @@ export interface DailyScrumCadence {
 }
 
 export * from './scrumGuideCompliance.js';
+export * from './smFacilitation.js';

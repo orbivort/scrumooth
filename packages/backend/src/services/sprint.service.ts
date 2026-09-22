@@ -47,6 +47,7 @@ import { captureSprintCompletion } from './sprintCompletion';
 import { config } from '../config';
 import { PRODUCT_BACKLOG_ORDER } from '../config/backlogOrder';
 import { t as requestT } from '../i18n/requestT.js';
+import { redactSmNotesForCaller } from './smNotesAccess';
 
 // Sprint with relations (optimized for API responses)
 export type SprintWithRelations = Omit<Sprint, 'createdBy' | 'updatedBy'> & {
@@ -262,8 +263,11 @@ const MAX_NOT_READY_ITEMS_IN_MESSAGE = 3;
 class SprintService {
   /**
    * Get all sprints for a team
+   *
+   * `smNotes` are the Scrum Master's coaching notes, so they are redacted for every caller who is
+   * not the team's Scrum Master. `actorUserId` is the authenticated caller.
    */
-  async getSprints(teamId: string): Promise<Sprint[]> {
+  async getSprints(teamId: string, actorUserId?: string): Promise<Sprint[]> {
     const sprints = await prisma.sprint.findMany({
       where: { teamId },
       select: {
@@ -285,13 +289,15 @@ class SprintService {
       orderBy: { startDate: 'desc' },
     });
 
-    return sprints;
+    return redactSmNotesForCaller(sprints, actorUserId);
   }
 
   /**
    * Get active sprint for a team
+   *
+   * `smNotes` is redacted for anyone but the team's Scrum Master, as in `getSprints`.
    */
-  async getActiveSprint(teamId: string): Promise<SprintWithRelations | null> {
+  async getActiveSprint(teamId: string, actorUserId?: string): Promise<SprintWithRelations | null> {
     const sprint = await prisma.sprint.findFirst({
       where: {
         teamId,
@@ -368,16 +374,25 @@ class SprintService {
     }
 
     // Transform to match frontend expectations
-    return {
-      ...sprint,
-      items: sprint.sprintBacklogItems.map((sbi) => sbi.pbi),
-    } as SprintWithRelations;
+    const [visible] = await redactSmNotesForCaller(
+      [
+        {
+          ...sprint,
+          items: sprint.sprintBacklogItems.map((sbi) => sbi.pbi),
+        } as SprintWithRelations,
+      ],
+      actorUserId
+    );
+
+    return visible ?? null;
   }
 
   /**
    * Get sprint by ID
+   *
+   * `smNotes` is redacted for anyone but the team's Scrum Master, as in `getSprints`.
    */
-  async getSprintById(sprintId: string): Promise<SprintWithRelations> {
+  async getSprintById(sprintId: string, actorUserId?: string): Promise<SprintWithRelations> {
     const sprint = await prisma.sprint.findUnique({
       where: { id: sprintId },
       select: {
@@ -445,10 +460,17 @@ class SprintService {
       throw new NotFoundError('Sprint');
     }
 
-    return {
-      ...sprint,
-      items: sprint.sprintBacklogItems.map((sbi) => sbi.pbi),
-    } as SprintWithRelations;
+    const [visible] = await redactSmNotesForCaller(
+      [
+        {
+          ...sprint,
+          items: sprint.sprintBacklogItems.map((sbi) => sbi.pbi),
+        } as SprintWithRelations,
+      ],
+      actorUserId
+    );
+
+    return visible as SprintWithRelations;
   }
 
   /**

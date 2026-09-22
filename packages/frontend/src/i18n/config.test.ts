@@ -348,6 +348,8 @@ describe('i18n config', () => {
         'validation',
         'scrum-master-dashboard',
         'timebox',
+        'barriers',
+        'agreements',
       ];
       expect(ns).toEqual(expected);
     });

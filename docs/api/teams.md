@@ -889,6 +889,29 @@ For Definition of Done and Definition of Ready endpoints, see:
 
 **Last Updated**: 2026-05-10
 
+## Scrum Values health checks
+
+A health check is a survey of the team's own judgement of how it lives the five Scrum Values. It is
+opened by the team's Scrum Master and answered by the team.
+
+| Endpoint                              | Method | Who                                                |
+| ------------------------------------- | ------ | -------------------------------------------------- |
+| `/teams/:teamId/health-checks`        | POST   | The team's Scrum Master                            |
+| `/teams/:teamId/health-checks/latest` | GET    | Any member of the team                             |
+| `/teams/:teamId/health-check-trend`   | GET    | The team's Scrum Master                            |
+| `/health-checks/:id/responses`        | POST   | Any member of the team the survey belongs to       |
+| `/health-checks/:id/results`          | GET    | The Scrum Master of the team the survey belongs to |
+
+**The resource's own team governs access, and nothing else does.** Results and trend aggregate the
+team's own scores, so they are readable only by the Scrum Master _of that team_: a Scrum Master of
+another team is refused with `GATE_HEALTH_CHECK_RESULTS_SM_OF_TEAM_ONLY`, and answering a survey or
+looking up its status requires membership of the team being surveyed
+(`GATE_HEALTH_CHECK_TEAM_MEMBERS_ONLY`). The check is resolved from the health check's own team,
+because the results route carries no `teamId` — a generic role guard there would fall back to
+"holds this role in any team", which is exactly the defect this rule closes.
+
+Results are aggregate-only: per-value averages and response counts, never an individual score.
+
 **Related Documentation**
 
 - [Authentication API](./authentication.md)

@@ -172,6 +172,7 @@ describe('Team Health Check Controller', () => {
   describe('getResults', () => {
     it('should return results for a health check', async () => {
       mockReq.params = { id: 'hc-123' };
+      mockReq.user = { id: 'user-123' };
       const mockResults = { healthCheckId: 'hc-123', overallAverage: 4.2, results: [] };
 
       (teamHealthCheckService.getResults as any).mockResolvedValue(mockResults);
@@ -180,7 +181,9 @@ describe('Team Health Check Controller', () => {
       await new Promise((resolve) => setTimeout(resolve, 0));
 
       expect(mockNext).not.toHaveBeenCalled();
-      expect(teamHealthCheckService.getResults).toHaveBeenCalledWith('hc-123');
+      // The service resolves the health check's own team and asserts the caller's role there, so
+      // the actor travels with the request.
+      expect(teamHealthCheckService.getResults).toHaveBeenCalledWith('hc-123', 'user-123');
       expect(mockRes._json).toEqual({
         success: true,
         data: mockResults,
@@ -213,6 +216,7 @@ describe('Team Health Check Controller', () => {
   describe('getTrend', () => {
     it('should return the trend for a team via teamId param', async () => {
       mockReq.params = { teamId: 'team-123' };
+      mockReq.user = { id: 'user-123' };
       const mockTrend = [{ healthCheckId: 'hc-1', overallAverage: 3.5, values: [] }];
 
       (teamHealthCheckService.getTrend as any).mockResolvedValue(mockTrend);
@@ -221,7 +225,7 @@ describe('Team Health Check Controller', () => {
       await new Promise((resolve) => setTimeout(resolve, 0));
 
       expect(mockNext).not.toHaveBeenCalled();
-      expect(teamHealthCheckService.getTrend).toHaveBeenCalledWith('team-123');
+      expect(teamHealthCheckService.getTrend).toHaveBeenCalledWith('team-123', 'user-123');
       expect(mockRes._json).toEqual({
         success: true,
         data: mockTrend,
@@ -230,6 +234,7 @@ describe('Team Health Check Controller', () => {
 
     it('should fall back to id param when teamId is absent', async () => {
       mockReq.params = { id: 'team-789' };
+      mockReq.user = { id: 'user-123' };
       const mockTrend: unknown[] = [];
 
       (teamHealthCheckService.getTrend as any).mockResolvedValue(mockTrend);
@@ -237,7 +242,7 @@ describe('Team Health Check Controller', () => {
       getTrend(mockReq as any, mockRes as any, mockNext);
       await new Promise((resolve) => setTimeout(resolve, 0));
 
-      expect(teamHealthCheckService.getTrend).toHaveBeenCalledWith('team-789');
+      expect(teamHealthCheckService.getTrend).toHaveBeenCalledWith('team-789', 'user-123');
     });
 
     it('should throw error when team ID is missing', async () => {
@@ -266,6 +271,7 @@ describe('Team Health Check Controller', () => {
   describe('getLatestStatus', () => {
     it('should return the latest health check status for a team via teamId param', async () => {
       mockReq.params = { teamId: 'team-123' };
+      mockReq.user = { id: 'user-123' };
       const mockLatest = {
         healthCheckId: 'hc-1',
         status: 'OPEN',
@@ -278,7 +284,10 @@ describe('Team Health Check Controller', () => {
       await new Promise((resolve) => setTimeout(resolve, 0));
 
       expect(mockNext).not.toHaveBeenCalled();
-      expect(teamHealthCheckService.getLatestStatusForTeam).toHaveBeenCalledWith('team-123');
+      expect(teamHealthCheckService.getLatestStatusForTeam).toHaveBeenCalledWith(
+        'team-123',
+        'user-123'
+      );
       expect(mockRes._json).toEqual({
         success: true,
         data: mockLatest,
@@ -287,13 +296,17 @@ describe('Team Health Check Controller', () => {
 
     it('should return null when no health check exists for the team', async () => {
       mockReq.params = { teamId: 'team-123' };
+      mockReq.user = { id: 'user-123' };
 
       (teamHealthCheckService.getLatestStatusForTeam as any).mockResolvedValue(null);
 
       getLatestStatus(mockReq as any, mockRes as any, mockNext);
       await new Promise((resolve) => setTimeout(resolve, 0));
 
-      expect(teamHealthCheckService.getLatestStatusForTeam).toHaveBeenCalledWith('team-123');
+      expect(teamHealthCheckService.getLatestStatusForTeam).toHaveBeenCalledWith(
+        'team-123',
+        'user-123'
+      );
       expect(mockRes._json).toEqual({
         success: true,
         data: null,

@@ -2,7 +2,10 @@ import express, { type Router as RouterType } from 'express';
 import authenticate from '../middleware/auth.middleware';
 import { createRequireTeamContext } from '../middleware/teamContext.middleware';
 import { validateBody } from '../middleware/validation.middleware';
-import { updateRetrospectiveSmNotes } from '../controllers/smDashboard.controller';
+import {
+  updateRetrospectiveSmNotes,
+  getRetrospectiveSmNotesRevisions,
+} from '../controllers/smDashboard.controller';
 import { GATE_CODES } from '@scrumooth/shared';
 import { z } from 'zod';
 import {
@@ -115,5 +118,12 @@ router.patch(
   validateBody(z.object({ smNotes: z.string().max(5000).optional().default('') })),
   updateRetrospectiveSmNotes
 );
+
+/**
+ * @route   GET /api/v1/retrospectives/:id/sm-notes/revisions
+ * @desc    The Scrum Master's notes history for a Sprint Retrospective, newest first
+ * @access  Private (the team's Scrum Master)
+ */
+router.get('/:id/sm-notes/revisions', authenticate, getRetrospectiveSmNotesRevisions);
 
 export default router;

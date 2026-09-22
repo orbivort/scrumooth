@@ -1,0 +1,72 @@
+{
+  "agreements": {
+    "active": "Aktiv",
+    "add": "Vereinbarung hinzufügen",
+    "agreedAt": "Vereinbart",
+    "cancel": "Abbrechen",
+    "created": "Vereinbarung hinzugefügt",
+    "createdBy": "Hinzugefügt von",
+    "edit": "Bearbeiten",
+    "empty": "Noch keine Arbeitsvereinbarung erfasst.",
+    "hint": "Jedes Teammitglied kann eine Vereinbarung hinzufügen oder zurückziehen.",
+    "reactivate": "Reaktivieren",
+    "retire": "Zurückziehen",
+    "retired": "Zurückgezogen",
+    "retiredAt": "Zurückgezogen am",
+    "retiredGroup": "Zurückgezogene Vereinbarungen",
+    "save": "Speichern",
+    "saved": "Vereinbarung aktualisiert",
+    "title": "Vereinbarungen",
+    "updatedBy": "Zuletzt geändert von"
+  },
+  "assessmentForm": {
+    "addSkill": "Fähigkeit hinzufügen",
+    "atLeastOneSkill": "Erfasse mindestens eine Fähigkeit.",
+    "cancel": "Abbrechen",
+    "removeSkill": "Fähigkeit entfernen",
+    "save": "Einschätzung speichern",
+    "saved": "Einschätzung erfasst",
+    "skillCoverage": "Abdeckung",
+    "skillName": "Fähigkeit",
+    "skillNote": "Notiz",
+    "skillRequired": "Jede Zeile braucht einen Namen.",
+    "summary": "Was das Team festgestellt hat",
+    "title": "Einschätzung der Cross-Funktionalität"
+  },
+  "crossFunctionality": {
+    "assessedAt": "Eingeschätzt am",
+    "assessedBy": "Erfasst von",
+    "coverage": "Abdeckung",
+    "covered": "Abgedeckt",
+    "empty": "Noch keine Cross-Funktionalitäts-Einschätzung erfasst.",
+    "gaps": "Lücken",
+    "hint": "Fähigkeiten, die das Team braucht, und wie weit es sie abdeckt.",
+    "history": "Frühere Einschätzungen",
+    "need": "Benötigte Fähigkeit",
+    "none": "Nicht abgedeckt",
+    "note": "Notiz",
+    "onlyScrumMaster": "Nur der Scrum Master des Teams erfasst die Einschätzung.",
+    "partial": "Teilweise abgedeckt",
+    "record": "Einschätzung erfassen",
+    "summary": "{{covered}} abgedeckt · {{partial}} teilweise · {{gaps}} nicht abgedeckt",
+    "title": "Cross-Funktionalität"
+  },
+  "errors": {
+    "delete": "Die Änderung konnte nicht verworfen werden.",
+    "load": "Die Arbeitsvereinbarungen konnten nicht geladen werden.",
+    "record": "Die Einschätzung konnte nicht erfasst werden.",
+    "save": "Die Änderung konnte nicht gespeichert werden."
+  },
+  "form": {
+    "createTitle": "Neue Arbeitsvereinbarung",
+    "description": "Worauf sich das Team verständigt hat",
+    "descriptionRequired": "Beschreibe, worauf sich das Team verständigt hat (mindestens zehn Zeichen).",
+    "editTitle": "Arbeitsvereinbarung bearbeiten",
+    "title": "Vereinbarung",
+    "titleRequired": "Gib der Vereinbarung einen Titel mit mindestens drei Zeichen."
+  },
+  "page": {
+    "subtitle": "Wie dieses Team arbeitet – und ob es die nötigen Fähigkeiten gemeinsam abdeckt.",
+    "title": "Arbeitsvereinbarungen"
+  }
+}

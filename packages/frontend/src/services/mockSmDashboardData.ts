@@ -3,6 +3,8 @@
 // a backend server. Data shapes mirror the domain services in
 // ./domain/smDashboard.service.ts and ./domain/healthCheck.service.ts.
 
+import { SmNotesEntityType, type SmNotesRevisionPage } from '@scrumooth/shared';
+
 import {
   HealthCheckStatus,
   type EventComplianceSummary,
@@ -363,4 +365,36 @@ export const mockHealthCheckLatest: HealthCheckLatest = {
   healthCheckId: 'hc-003',
   status: HealthCheckStatus.OPEN,
   createdAt: '2026-02-10T09:00:00Z',
+};
+
+// ==================== Scrum Master notes revisions ====================
+// Two versions of the same Sprint's coaching notes, so the history disclosure has something real
+// to show in mock mode: what the notes said, and what they say now.
+export const mockSmNotesRevisionPage: SmNotesRevisionPage = {
+  revisions: [
+    {
+      id: 'rev-002',
+      entityType: SmNotesEntityType.SPRINT,
+      entityId: 'sprint-3',
+      revision: 2,
+      content:
+        'Second Sprint in a row where the Daily Scrum ran long. Coached the team to raise blockers first.',
+      createdBy: 'user-sm-1',
+      authorName: 'Grace Hopper',
+      createdAt: '2026-02-11T16:40:00Z',
+    },
+    {
+      id: 'rev-001',
+      entityType: SmNotesEntityType.SPRINT,
+      entityId: 'sprint-3',
+      revision: 1,
+      content: 'The team is still waiting for the staging environment.',
+      createdBy: 'user-sm-1',
+      authorName: 'Grace Hopper',
+      createdAt: '2026-02-04T16:10:00Z',
+    },
+  ],
+  total: 2,
+  limit: 20,
+  offset: 0,
 };

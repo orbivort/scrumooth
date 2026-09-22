@@ -69,6 +69,7 @@ describe('Sprint Controller', () => {
   describe('getSprints', () => {
     it('should return sprints for a team', async () => {
       mockReq.query = { teamId: 'team-123' };
+      mockReq.user = { id: 'user-123' };
       const mockSprints = [{ id: 'sprint-1', name: 'Sprint 1' }];
 
       (sprintService.getSprints as any).mockResolvedValue(mockSprints);
@@ -77,7 +78,8 @@ describe('Sprint Controller', () => {
       await new Promise((resolve) => setTimeout(resolve, 0));
 
       expect(mockNext).not.toHaveBeenCalled();
-      expect(sprintService.getSprints).toHaveBeenCalledWith('team-123');
+      // The actor travels with the read so the service can redact the Scrum Master's notes.
+      expect(sprintService.getSprints).toHaveBeenCalledWith('team-123', 'user-123');
       expect(mockRes._json).toEqual({
         success: true,
         data: mockSprints,
@@ -106,6 +108,7 @@ describe('Sprint Controller', () => {
   describe('getActiveSprint', () => {
     it('should return active sprint for a team', async () => {
       mockReq.query = { teamId: 'team-123' };
+      mockReq.user = { id: 'user-123' };
       const mockSprint = { id: 'sprint-1', name: 'Active Sprint', status: 'ACTIVE' };
 
       (sprintService.getActiveSprint as any).mockResolvedValue(mockSprint);
@@ -114,7 +117,7 @@ describe('Sprint Controller', () => {
       await new Promise((resolve) => setTimeout(resolve, 0));
 
       expect(mockNext).not.toHaveBeenCalled();
-      expect(sprintService.getActiveSprint).toHaveBeenCalledWith('team-123');
+      expect(sprintService.getActiveSprint).toHaveBeenCalledWith('team-123', 'user-123');
       expect(mockRes._json).toEqual({
         success: true,
         data: mockSprint,
@@ -148,6 +151,7 @@ describe('Sprint Controller', () => {
   describe('getSprintById', () => {
     it('should return sprint by ID', async () => {
       mockReq.params = { id: 'sprint-123' };
+      mockReq.user = { id: 'user-123' };
       const mockSprint = { id: 'sprint-123', name: 'Test Sprint' };
 
       (sprintService.getSprintById as any).mockResolvedValue(mockSprint);
@@ -156,7 +160,7 @@ describe('Sprint Controller', () => {
       await new Promise((resolve) => setTimeout(resolve, 0));
 
       expect(mockNext).not.toHaveBeenCalled();
-      expect(sprintService.getSprintById).toHaveBeenCalledWith('sprint-123');
+      expect(sprintService.getSprintById).toHaveBeenCalledWith('sprint-123', 'user-123');
       expect(mockRes._json).toEqual({
         success: true,
         data: mockSprint,

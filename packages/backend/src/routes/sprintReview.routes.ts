@@ -215,6 +215,17 @@ router.patch(
   smDashboardController.updateSprintReviewSmNotes
 );
 
+/**
+ * @route   GET /api/v1/sprint-reviews/:id/sm-notes/revisions
+ * @desc    The Scrum Master's notes history for a Sprint Review, newest first
+ * @access  Private (the team's Scrum Master)
+ */
+router.get(
+  '/:id/sm-notes/revisions',
+  validateParams(reviewIdSchema),
+  smDashboardController.getSprintReviewSmNotesRevisions
+);
+
 // Product Goal integration at Sprint Review
 router.get(
   '/:id/product-goal',

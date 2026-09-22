@@ -8,7 +8,8 @@ export const getSprintReviews = asyncHandler(async (req: Request, res: Response)
   const { teamId, sprintId } = req.query;
   const reviews = await sprintReviewService.getSprintReviews(
     teamId as string,
-    sprintId as string | undefined
+    sprintId as string | undefined,
+    req.user?.id
   );
   res.json(createSuccessResponse(reviews));
 });
@@ -18,7 +19,7 @@ export const getSprintReviewById = asyncHandler(async (req: Request, res: Respon
   if (!id) {
     throw new Error('Review ID is required');
   }
-  const review = await sprintReviewService.getSprintReviewById(id);
+  const review = await sprintReviewService.getSprintReviewById(id, req.user?.id);
   res.json(createSuccessResponse(review));
 });
 

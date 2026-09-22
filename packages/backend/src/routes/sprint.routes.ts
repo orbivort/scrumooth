@@ -513,4 +513,15 @@ router.patch(
   smDashboardController.updateSprintSmNotes
 );
 
+/**
+ * @route   GET /api/v1/sprints/:id/sm-notes/revisions
+ * @desc    The Scrum Master's notes history for a Sprint, newest first
+ * @access  Private (the team's Scrum Master)
+ */
+router.get(
+  '/:id/sm-notes/revisions',
+  validateParams(sprintIdSchema),
+  smDashboardController.getSprintSmNotesRevisions
+);
+
 export default router;

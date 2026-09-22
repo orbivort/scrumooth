@@ -38,6 +38,8 @@ import {
   LazyTeamManagementPage as TeamManagementPage,
   LazyReports as Reports,
   LazySmDashboard as SmDashboard,
+  LazyOrganizationalBarriers as OrganizationalBarriers,
+  LazyWorkingAgreements as WorkingAgreements,
   LazyIncrementList as IncrementList,
   LazyIncrementDetail as IncrementDetail,
   LazyIncrementCreate as IncrementCreate,
@@ -363,6 +365,26 @@ function App() {
                             <ProtectedRoute>
                               <LazyRoute fallbackMessage="Loading Scrum Master dashboard...">
                                 <SmDashboard />
+                              </LazyRoute>
+                            </ProtectedRoute>
+                          }
+                        />
+                        <Route
+                          path="/organizational-barriers"
+                          element={
+                            <ProtectedRoute>
+                              <LazyRoute fallbackMessage="Loading organizational barriers...">
+                                <OrganizationalBarriers />
+                              </LazyRoute>
+                            </ProtectedRoute>
+                          }
+                        />
+                        <Route
+                          path="/working-agreements"
+                          element={
+                            <ProtectedRoute>
+                              <LazyRoute fallbackMessage="Loading working agreements...">
+                                <WorkingAgreements />
                               </LazyRoute>
                             </ProtectedRoute>
                           }

@@ -1682,6 +1682,14 @@ Gate refusals carry a stable `error.code` (see
 
 **Last Updated**: 2026-09-22
 
+## Scrum Master notes: revision history
+
+`GET /retrospectives/:id/sm-notes/revisions?limit=20&offset=0` returns the notes history for the
+event, newest first (`{ revisions, total, limit, offset }`). Only the team's Scrum Master may read it
+(`GATE_RETROSPECTIVE_SM_NOTES_SM_ONLY`), and every real write appends a revision in the same
+transaction as the update. The audit trail records that the notes changed, by whom and how long they
+are — never the note body.
+
 **Related Documentation**
 
 - [Authentication API](./authentication.md)

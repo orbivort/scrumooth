@@ -1298,12 +1298,12 @@ curl -X DELETE https://api.scrumooth.dev/api/v1/sprint-reviews/550e8400-e29b-41d
 
 A refusal that enforces a Scrum Guide rule carries a stable `GATE_*` code in `error.code`, so a client can branch on it without parsing the localized message. The full list lives in `docs/api/README.md`; the codes this module returns are:
 
-| Code                                        | HTTP | Rule enforced                                                                                                                      |
-| ------------------------------------------- | ---- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| `GATE_SPRINT_REVIEW_TEAM_MEMBERS_ONLY`      | 403  | The Sprint Review is the Scrum Team's own event: recording attendance, feedback, adjustments, or completing it requires membership |
-| `GATE_SPRINT_REVIEW_SM_NOTES_SM_ONLY`       | 403  | The Scrum Master's notes are coaching observations: only the team's Scrum Master may write them                                    |
-| `GATE_SPRINT_RETROSPECTIVE_REQUIRES_REVIEW` | 400  | The Retrospective cannot complete before its Sprint Review is completed                                                            |
-| `GATE_SPRINT_EVENT_BEFORE_END_DATE`         | 400  | The Review and the Retrospective cannot be completed before the Sprint's end date has passed                                       |
+| Code                                        | HTTP | Rule enforced                                                                                                                                                        |
+| ------------------------------------------- | ---- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GATE_SPRINT_REVIEW_TEAM_MEMBERS_ONLY`      | 403  | The Sprint Review is the Scrum Team's own event: recording attendance, feedback, adjustments, or completing it requires membership                                   |
+| `GATE_SPRINT_REVIEW_SM_NOTES_SM_ONLY`       | 403  | The Scrum Master's notes are coaching observations: only the team's Scrum Master may read or write them, and `smNotes` is omitted from every other caller's response |
+| `GATE_SPRINT_RETROSPECTIVE_REQUIRES_REVIEW` | 400  | The Retrospective cannot complete before its Sprint Review is completed                                                                                              |
+| `GATE_SPRINT_EVENT_BEFORE_END_DATE`         | 400  | The Review and the Retrospective cannot be completed before the Sprint's end date has passed                                                                         |
 
 ## Best Practices
 
@@ -1331,6 +1331,22 @@ A refusal that enforces a Scrum Guide rule carries a stable `GATE_*` code in `er
 ---
 
 **Last Updated**: 2026-05-10
+
+## Scrum Master notes and their revision history
+
+The Scrum Master's notes on a Review (`smNotes`) are coaching observations about the event, not a
+shared field:
+
+- **Read:** `smNotes` is omitted from every response to a caller who is not the team's Scrum Master.
+  Hiding the editor was never a gate; withholding the value is.
+- **Write:** `PATCH /sprint-reviews/:id/sm-notes` refuses anyone else with
+  `GATE_SPRINT_REVIEW_SM_NOTES_SM_ONLY`.
+- **History:** `GET /sprint-reviews/:id/sm-notes/revisions?limit=20&offset=0` returns the trail,
+  newest first: `{ revisions: [{ revision, content, authorName, createdAt }], total, limit, offset }`.
+  Every real edit appends a revision in the same transaction as the update, so a note and its history
+  cannot diverge; a write whose text is unchanged appends nothing. `limit` is capped at 100.
+
+Reading the trail is reading the notes, so the same rule applies to it.
 
 **Related Documentation**
 

@@ -1,0 +1,72 @@
+{
+  "agreements": {
+    "active": "Actif",
+    "add": "Ajouter un accord",
+    "agreedAt": "Convenu",
+    "cancel": "Annuler",
+    "created": "Accord ajouté",
+    "createdBy": "Ajouté par",
+    "edit": "Modifier",
+    "empty": "Aucun accord de travail enregistré.",
+    "hint": "Tout membre de l'équipe peut ajouter ou retirer un accord.",
+    "reactivate": "Réactiver",
+    "retire": "Retirer",
+    "retired": "Retiré",
+    "retiredAt": "Retiré le",
+    "retiredGroup": "Accords retirés",
+    "save": "Enregistrer",
+    "saved": "Accord mis à jour",
+    "title": "Accords",
+    "updatedBy": "Dernière modification par"
+  },
+  "assessmentForm": {
+    "addSkill": "Ajouter une compétence",
+    "atLeastOneSkill": "Enregistrez au moins une compétence.",
+    "cancel": "Annuler",
+    "removeSkill": "Retirer la compétence",
+    "save": "Enregistrer l'évaluation",
+    "saved": "Évaluation enregistrée",
+    "skillCoverage": "Couverture",
+    "skillName": "Compétence",
+    "skillNote": "Note",
+    "skillRequired": "Chaque ligne doit porter un nom.",
+    "summary": "Ce que l'équipe a conclu",
+    "title": "Évaluation de la pluridisciplinarité"
+  },
+  "crossFunctionality": {
+    "assessedAt": "Évalué le",
+    "assessedBy": "Enregistré par",
+    "coverage": "Couverture",
+    "covered": "Couverte",
+    "empty": "Aucune évaluation de pluridisciplinarité enregistrée.",
+    "gaps": "Lacunes",
+    "hint": "Les compétences dont l'équipe a besoin, et dans quelle mesure elle les couvre.",
+    "history": "Évaluations précédentes",
+    "need": "Compétence requise",
+    "none": "Non couverte",
+    "note": "Note",
+    "onlyScrumMaster": "Seul le Scrum Master de l'équipe enregistre l'évaluation.",
+    "partial": "Partiellement couverte",
+    "record": "Enregistrer une évaluation",
+    "summary": "{{covered}} couvertes · {{partial}} partielles · {{gaps}} non couvertes",
+    "title": "Pluridisciplinarité"
+  },
+  "errors": {
+    "delete": "La modification n'a pas pu être annulée.",
+    "load": "Les accords de travail n'ont pas pu être chargés.",
+    "record": "L'évaluation n'a pas pu être enregistrée.",
+    "save": "La modification n'a pas pu être enregistrée."
+  },
+  "form": {
+    "createTitle": "Nouvel accord de travail",
+    "description": "Ce que l'équipe a convenu",
+    "descriptionRequired": "Décrivez ce que l'équipe a convenu (au moins dix caractères).",
+    "editTitle": "Modifier l'accord de travail",
+    "title": "Accord",
+    "titleRequired": "Donnez à l’accord un titre d’au moins trois caractères."
+  },
+  "page": {
+    "subtitle": "Comment cette équipe fonctionne, et si elle réunit collectivement les compétences nécessaires.",
+    "title": "Accords de travail"
+  }
+}

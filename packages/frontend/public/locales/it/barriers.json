@@ -1,0 +1,120 @@
+{
+  "action": {
+    "add": "Registra un'azione",
+    "addTitle": "Azione con uno stakeholder",
+    "cancelled": "Annullata",
+    "complete": "Segna come fatta",
+    "delete": "Elimina l'azione",
+    "description": "Azione",
+    "done": "Fatta",
+    "dueDate": "Scadenza",
+    "noDueDate": "Nessuna scadenza",
+    "open": "Aperta",
+    "overdue": "Scaduta",
+    "owner": "Chi agisce",
+    "required": "Descrivi l'azione (almeno tre caratteri).",
+    "status": "Stato"
+  },
+  "actionStatus": {
+    "cancelled": "Annullata",
+    "done": "Fatta",
+    "open": "Aperta"
+  },
+  "actions": {
+    "cancel": "Annulla",
+    "created": "Barriera creata",
+    "delete": "Elimina",
+    "deleted": "Barriera eliminata",
+    "edit": "Modifica",
+    "new": "Nuova barriera",
+    "reopen": "Riapri",
+    "resolve": "Risolvi",
+    "save": "Salva",
+    "saved": "Barriera aggiornata"
+  },
+  "detail": {
+    "description": "Descrizione",
+    "escalatedFrom": "Escalata dall'Impediment",
+    "noActions": "Nessuna azione registrata. Una barriera si rimuove accordandosi con qualcuno fuori dal team.",
+    "provenance": "Come è emersa questa barriera",
+    "raisedBy": "Escalata da",
+    "resolution": "Risoluzione",
+    "resolvedAt": "Risolta",
+    "stakeholderActions": "Azioni con gli stakeholder",
+    "title": "Barriera"
+  },
+  "errors": {
+    "delete": "Non è stato possibile eliminare la barriera.",
+    "load": "Non è stato possibile caricare il registro delle barriere.",
+    "resolve": "Non è stato possibile risolvere la barriera.",
+    "save": "Non è stato possibile salvare la barriera."
+  },
+  "escalate": {
+    "action": "Escala a una barriera",
+    "alreadyEscalated": "Già escalato a «{{title}}».",
+    "cancel": "Annulla",
+    "confirm": "Escala",
+    "descriptionLabel": "Cosa deve fare l'organizzazione",
+    "error": "Non è stato possibile escalare l'Impediment.",
+    "impediment": "Impediment",
+    "intro": "Una barriera è un problema che il team non può rimuovere da solo. Escalarla registra chi, fuori dal team, deve agire.",
+    "onlyScrumMaster": "Solo lo Scrum Master del team può escalare un Impediment.",
+    "owner": "Proprietario",
+    "priority": "Impatto",
+    "targetDate": "Data obiettivo",
+    "title": "Escala a una barriera organizzativa",
+    "titleLabel": "Titolo della barriera"
+  },
+  "filters": {
+    "all": "Tutte",
+    "empty": "Nessuna barriera corrisponde a questi filtri.",
+    "priority": "Impatto",
+    "search": "Cerca",
+    "searchPlaceholder": "Cerca per titolo o proprietario",
+    "status": "Stato"
+  },
+  "form": {
+    "createTitle": "Nuova barriera organizzativa",
+    "description": "Cosa deve fare l'organizzazione",
+    "descriptionRequired": "Descrivi cosa deve fare l'organizzazione (almeno dieci caratteri).",
+    "editTitle": "Modifica barriera organizzativa",
+    "owner": "Proprietario",
+    "priority": "Impatto",
+    "resolution": "Risoluzione",
+    "resolutionPlaceholder": "Cosa è cambiato e chi lo ha concordato?",
+    "resolutionRequired": "Una barriera non può essere risolta o chiusa senza una risoluzione scritta: indica cosa è cambiato e chi lo ha concordato.",
+    "status": "Stato",
+    "targetDate": "Data obiettivo",
+    "title": "Barriera",
+    "titleRequired": "Assegna alla barriera un titolo di almeno tre caratteri."
+  },
+  "list": {
+    "actions": "Azioni",
+    "age": "Età",
+    "empty": "Nessuna barriera è stata escalata oltre il team.",
+    "emptyHint": "Escala un Impediment che il team non può rimuovere da solo.",
+    "noTargetDate": "Nessuna data obiettivo",
+    "overdue": "Scaduta",
+    "owner": "Proprietario",
+    "source": "Escalata da",
+    "targetDate": "Data obiettivo",
+    "unassigned": "Non assegnata"
+  },
+  "page": {
+    "subtitle": "Ciò che blocca il team Scrum dall'esterno e chi se ne occupa.",
+    "title": "Barriere organizzative"
+  },
+  "priority": {
+    "critical": "Critica",
+    "high": "Alta",
+    "low": "Bassa",
+    "medium": "Media"
+  },
+  "stats": {
+    "closed": "Chiuse",
+    "inProgress": "In corso",
+    "open": "Aperte",
+    "overdue": "Scadute",
+    "resolved": "Risolte"
+  }
+}

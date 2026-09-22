@@ -23,6 +23,8 @@
   "mention": "{{userName}} mentioned you in a comment",
   "newTaskAssignedMessage": "In sprint \"{{sprintName}}\"",
   "newTaskAssignedTitle": "New task assigned: \"{{taskTitle}}\"",
+  "organizationalBarrierRaised": "Organizational barrier assigned: \"{{barrierTitle}}\"",
+  "organizationalBarrierRaisedMessage": "This barrier lies outside the Scrum Team. You are accountable for removing it, so the team can continue.",
   "reminderFailed": "Failed to send reminder to {{memberName}}",
   "remindersNone": "No reminders sent",
   "remindersSent": "Reminders sent to {{count}} team member",

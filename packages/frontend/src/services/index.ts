@@ -38,6 +38,16 @@ import { mockApiService } from './mockApi';
 import { smDashboardService as realSmDashboardService } from './domain/smDashboard.service';
 import { healthCheckService as realHealthCheckService } from './domain/healthCheck.service';
 import { mockSmDashboardService, mockHealthCheckService } from './mockSmDashboard.service';
+import { organizationalBarriersService as realOrganizationalBarriersService } from './domain/organizationalBarriers.service';
+import { coachingService as realCoachingService } from './domain/coaching.service';
+import { workingAgreementsService as realWorkingAgreementsService } from './domain/workingAgreements.service';
+import { crossFunctionalityService as realCrossFunctionalityService } from './domain/crossFunctionality.service';
+import {
+  mockOrganizationalBarriersService,
+  mockCoachingService,
+  mockWorkingAgreementsService,
+  mockCrossFunctionalityService,
+} from './mockFacilitation.service';
 
 // Use mock API in development mode (when no backend is available)
 // Set VITE_USE_MOCK_API=false in .env to use real API
@@ -53,6 +63,21 @@ export const smDashboardService = (
 export const healthCheckService = (
   USE_MOCK_API ? mockHealthCheckService : realHealthCheckService
 ) as typeof realHealthCheckService;
+
+// The Scrum Master's facilitation surfaces (barriers, coaching log, working agreements,
+// cross-functionality) follow the same substitution convention.
+export const organizationalBarriersService = (
+  USE_MOCK_API ? mockOrganizationalBarriersService : realOrganizationalBarriersService
+) as typeof realOrganizationalBarriersService;
+export const coachingService = (
+  USE_MOCK_API ? mockCoachingService : realCoachingService
+) as typeof realCoachingService;
+export const workingAgreementsService = (
+  USE_MOCK_API ? mockWorkingAgreementsService : realWorkingAgreementsService
+) as typeof realWorkingAgreementsService;
+export const crossFunctionalityService = (
+  USE_MOCK_API ? mockCrossFunctionalityService : realCrossFunctionalityService
+) as typeof realCrossFunctionalityService;
 
 // Stub for setAuthCallbacks when using mock API
 const mockSetAuthCallbacks = (_onLogout: () => void) => {

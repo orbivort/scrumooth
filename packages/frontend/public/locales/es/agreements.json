@@ -1,0 +1,72 @@
+{
+  "agreements": {
+    "active": "Activo",
+    "add": "Añadir acuerdo",
+    "agreedAt": "Acordado",
+    "cancel": "Cancelar",
+    "created": "Acuerdo añadido",
+    "createdBy": "Añadido por",
+    "edit": "Editar",
+    "empty": "Aún no hay acuerdos de trabajo registrados.",
+    "hint": "Cualquier miembro del equipo puede añadir o retirar un acuerdo.",
+    "reactivate": "Reactivar",
+    "retire": "Retirar",
+    "retired": "Retirado",
+    "retiredAt": "Retirado el",
+    "retiredGroup": "Acuerdos retirados",
+    "save": "Guardar",
+    "saved": "Acuerdo actualizado",
+    "title": "Acuerdos",
+    "updatedBy": "Último cambio por"
+  },
+  "assessmentForm": {
+    "addSkill": "Añadir habilidad",
+    "atLeastOneSkill": "Registra al menos una habilidad.",
+    "cancel": "Cancelar",
+    "removeSkill": "Quitar habilidad",
+    "save": "Guardar evaluación",
+    "saved": "Evaluación registrada",
+    "skillCoverage": "Cobertura",
+    "skillName": "Habilidad",
+    "skillNote": "Nota",
+    "skillRequired": "Cada fila necesita un nombre.",
+    "summary": "Lo que concluyó el equipo",
+    "title": "Evaluación de cross-funcionalidad"
+  },
+  "crossFunctionality": {
+    "assessedAt": "Evaluado el",
+    "assessedBy": "Registrado por",
+    "coverage": "Cobertura",
+    "covered": "Cubierta",
+    "empty": "Aún no hay evaluación de cross-funcionalidad.",
+    "gaps": "Brechas",
+    "hint": "Habilidades que el equipo necesita y cuánto las cubre.",
+    "history": "Evaluaciones anteriores",
+    "need": "Habilidad necesaria",
+    "none": "Sin cubrir",
+    "note": "Nota",
+    "onlyScrumMaster": "Solo el Scrum Master del equipo registra la evaluación.",
+    "partial": "Parcialmente cubierta",
+    "record": "Registrar una evaluación",
+    "summary": "{{covered}} cubiertas · {{partial}} parciales · {{gaps}} sin cubrir",
+    "title": "Cross-funcionalidad"
+  },
+  "errors": {
+    "delete": "No se pudo descartar el cambio.",
+    "load": "No se pudieron cargar los acuerdos de trabajo.",
+    "record": "No se pudo registrar la evaluación.",
+    "save": "No se pudo guardar el cambio."
+  },
+  "form": {
+    "createTitle": "Nuevo acuerdo de trabajo",
+    "description": "Lo que el equipo acordó",
+    "descriptionRequired": "Describe lo que el equipo acordó (al menos diez caracteres).",
+    "editTitle": "Editar acuerdo de trabajo",
+    "title": "Acuerdo",
+    "titleRequired": "Pon al acuerdo un título de al menos tres caracteres."
+  },
+  "page": {
+    "subtitle": "Cómo trabaja este equipo y si cubre colectivamente las habilidades que necesita.",
+    "title": "Acuerdos de trabajo"
+  }
+}

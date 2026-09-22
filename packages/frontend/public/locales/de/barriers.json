@@ -1,0 +1,120 @@
+{
+  "action": {
+    "add": "Maßnahme erfassen",
+    "addTitle": "Maßnahme mit einem Stakeholder",
+    "cancelled": "Abgebrochen",
+    "complete": "Als erledigt markieren",
+    "delete": "Maßnahme löschen",
+    "description": "Maßnahme",
+    "done": "Erledigt",
+    "dueDate": "Fällig",
+    "noDueDate": "Kein Fälligkeitsdatum",
+    "open": "Offen",
+    "overdue": "Überfällig",
+    "owner": "Wer handelt",
+    "required": "Beschreibe die Maßnahme (mindestens drei Zeichen).",
+    "status": "Status"
+  },
+  "actionStatus": {
+    "cancelled": "Abgebrochen",
+    "done": "Erledigt",
+    "open": "Offen"
+  },
+  "actions": {
+    "cancel": "Abbrechen",
+    "created": "Barriere angelegt",
+    "delete": "Löschen",
+    "deleted": "Barriere gelöscht",
+    "edit": "Bearbeiten",
+    "new": "Neue Barriere",
+    "reopen": "Wieder öffnen",
+    "resolve": "Lösen",
+    "save": "Speichern",
+    "saved": "Barriere aktualisiert"
+  },
+  "detail": {
+    "description": "Beschreibung",
+    "escalatedFrom": "Eskaliert aus dem Impediment",
+    "noActions": "Noch keine Maßnahme erfasst. Eine Barriere wird beseitigt, indem man sich mit jemandem außerhalb des Teams verständigt.",
+    "provenance": "Wie diese Barriere entstanden ist",
+    "raisedBy": "Eskaliert von",
+    "resolution": "Lösung",
+    "resolvedAt": "Gelöst",
+    "stakeholderActions": "Maßnahmen mit Stakeholdern",
+    "title": "Barriere"
+  },
+  "errors": {
+    "delete": "Die Barriere konnte nicht gelöscht werden.",
+    "load": "Das Barrieren-Register konnte nicht geladen werden.",
+    "resolve": "Die Barriere konnte nicht gelöst werden.",
+    "save": "Die Barriere konnte nicht gespeichert werden."
+  },
+  "escalate": {
+    "action": "Zu einer Barriere eskalieren",
+    "alreadyEscalated": "Bereits eskaliert zu „{{title}}“.",
+    "cancel": "Abbrechen",
+    "confirm": "Eskalieren",
+    "descriptionLabel": "Was die Organisation tun muss",
+    "error": "Das Impediment konnte nicht eskaliert werden.",
+    "impediment": "Impediment",
+    "intro": "Eine Barriere ist ein Problem, das das Team nicht allein beseitigen kann. Die Eskalation hält fest, wer außerhalb des Teams handeln muss.",
+    "onlyScrumMaster": "Nur der Scrum Master des Teams kann ein Impediment eskalieren.",
+    "owner": "Eigentümer",
+    "priority": "Auswirkung",
+    "targetDate": "Zieldatum",
+    "title": "Zu einer organisatorischen Barriere eskalieren",
+    "titleLabel": "Titel der Barriere"
+  },
+  "filters": {
+    "all": "Alle",
+    "empty": "Keine Barriere entspricht diesen Filtern.",
+    "priority": "Auswirkung",
+    "search": "Suche",
+    "searchPlaceholder": "Nach Titel oder Eigentümer suchen",
+    "status": "Status"
+  },
+  "form": {
+    "createTitle": "Neue organisatorische Barriere",
+    "description": "Was die Organisation tun muss",
+    "descriptionRequired": "Beschreibe, was die Organisation tun muss (mindestens zehn Zeichen).",
+    "editTitle": "Organisatorische Barriere bearbeiten",
+    "owner": "Eigentümer",
+    "priority": "Auswirkung",
+    "resolution": "Lösung",
+    "resolutionPlaceholder": "Was hat sich geändert, und wer hat zugestimmt?",
+    "resolutionRequired": "Eine Barriere kann nicht ohne schriftliche Lösung gelöst oder geschlossen werden: Halte fest, was sich geändert hat und wer zugestimmt hat.",
+    "status": "Status",
+    "targetDate": "Zieldatum",
+    "title": "Barriere",
+    "titleRequired": "Gib der Barriere einen Titel mit mindestens drei Zeichen."
+  },
+  "list": {
+    "actions": "Aktionen",
+    "age": "Alter",
+    "empty": "Es wurde keine Barriere über das Team hinaus eskaliert.",
+    "emptyHint": "Eskaliere ein Impediment, das das Team nicht allein beseitigen kann.",
+    "noTargetDate": "Kein Zieldatum",
+    "overdue": "Überfällig",
+    "owner": "Eigentümer",
+    "source": "Eskaliert aus",
+    "targetDate": "Zieldatum",
+    "unassigned": "Nicht zugewiesen"
+  },
+  "page": {
+    "subtitle": "Was das Scrum Team von außen blockiert – und wer daran arbeitet.",
+    "title": "Organisatorische Barrieren"
+  },
+  "priority": {
+    "critical": "Kritisch",
+    "high": "Hoch",
+    "low": "Niedrig",
+    "medium": "Mittel"
+  },
+  "stats": {
+    "closed": "Geschlossen",
+    "inProgress": "In Arbeit",
+    "open": "Offen",
+    "overdue": "Überfällig",
+    "resolved": "Gelöst"
+  }
+}

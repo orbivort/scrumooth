@@ -20,6 +20,10 @@ import { useModalFocus } from '../../hooks/useModalFocus';
 import { queryKeys } from '../../hooks/queryKeys';
 import { EmptyState } from '../../components/EmptyState';
 import { LoadingState } from '../../components/common/Loading';
+import {
+  EscalateImpedimentDialog,
+  type EscalationSource,
+} from '../../components/EscalateImpedimentDialog/EscalateImpedimentDialog';
 import { UnsavedChangesModal } from '../../components/common/Form/UnsavedChangesModal';
 import {
   AlertTriangleIcon,
@@ -33,6 +37,7 @@ import {
   PlusIcon,
   SaveIcon,
   TrashIcon,
+  FlagIcon,
 } from '../../components/common/Icons';
 
 import styles from './Impediments.module.css';
@@ -77,7 +82,7 @@ const PRIORITY_LABEL_KEY = {
 } as const;
 
 export const Impediments: React.FC = () => {
-  const { t } = useTranslation(['impediments', 'common']);
+  const { t } = useTranslation(['impediments', 'common', 'barriers']);
   const { currentTeam, userRoleInCurrentTeam } = useTeamStore();
   const currentUserId = useAuthStore((state) => state.user?.id);
   const { locale } = useI18nStore();
@@ -96,6 +101,8 @@ export const Impediments: React.FC = () => {
     null
   );
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  /** The impediment being carried beyond the team, when the Scrum Master opened the dialog. */
+  const [escalationSource, setEscalationSource] = useState<EscalationSource | null>(null);
   const [showUnsavedChangesModal, setShowUnsavedChangesModal] = useState(false);
   const [pendingCloseAction, setPendingCloseAction] = useState<(() => void) | null>(null);
 
@@ -1214,6 +1221,25 @@ export const Impediments: React.FC = () => {
               )}
             </div>
             <div className={styles['modal-footer']}>
+              {/* The Scrum Master's service to the organization: a problem the team cannot remove
+                  alone is carried into the barrier register, where the actions with stakeholders
+                  against it are recorded. */}
+              {isScrumMaster && (
+                <button
+                  className={`${styles.btn} ${styles['btn-secondary']}`}
+                  onClick={() =>
+                    setEscalationSource({
+                      id: effectiveSelectedImpediment.id,
+                      title: effectiveSelectedImpediment.title,
+                      description: effectiveSelectedImpediment.description,
+                      priority: effectiveSelectedImpediment.priority,
+                    })
+                  }
+                >
+                  <FlagIcon style={{ width: '16px', height: '16px' }} />
+                  {t('barriers:escalate.action')}
+                </button>
+              )}
               <button
                 className={`${styles.btn} ${styles['btn-danger']}`}
                 onClick={() => setShowDeleteConfirm(true)}
@@ -1243,6 +1269,18 @@ export const Impediments: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Escalation into the organizational barrier register */}
+      <EscalateImpedimentDialog
+        open={escalationSource !== null}
+        source={escalationSource}
+        onClose={() => setEscalationSource(null)}
+        onEscalated={() => {
+          // The register lives on its own page; the impediments list itself does not change, so
+          // there is nothing to invalidate here beyond the barrier queries it may hold.
+          void queryClient.invalidateQueries({ queryKey: queryKeys.barriers.all });
+        }}
+      />
 
       {/* Delete Confirmation Modal */}
       {showDeleteConfirm && effectiveSelectedImpediment && (

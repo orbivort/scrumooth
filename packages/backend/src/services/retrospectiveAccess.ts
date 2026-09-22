@@ -14,6 +14,7 @@ import prisma from '../utils/prisma';
 import { localizedError, NotFoundError } from '../utils/errors';
 import { GATE_CODES } from '@scrumooth/shared';
 import type { GateCode } from '@scrumooth/shared';
+import { isSmNotesScrumMasterRole } from './smNotesAccess';
 
 /** Why a Retrospective request was refused, in the caller's own gate vocabulary. */
 export interface RetrospectiveRefusal {
@@ -38,9 +39,13 @@ export const RETROSPECTIVE_TEAM_REFUSAL: RetrospectiveRefusal = {
   gateCode: GATE_CODES.RETROSPECTIVE_TEAM_MEMBERS_ONLY,
 };
 
-/** Whether the caller holds the team role that owns the Retrospective's coaching notes. */
-export const isRetrospectiveScrumMaster = (role: string | undefined): boolean =>
-  role === 'SCRUM_MASTER';
+/**
+ * Whether the caller holds the team role that owns the Retrospective's coaching notes.
+ *
+ * The same rule governs the notes on a Sprint, a Sprint Review and a Sprint Retrospective, so this
+ * is the shared predicate rather than a third copy of it: the three events cannot drift apart.
+ */
+export const isRetrospectiveScrumMaster = isSmNotesScrumMasterRole;
 
 /**
  * Assert that the caller is a member of the team that owns a Retrospective.

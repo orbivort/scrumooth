@@ -23,6 +23,8 @@
   "mention": "{{userName}} lo mencionó en un comentario",
   "newTaskAssignedMessage": "En el sprint \"{{sprintName}}\"",
   "newTaskAssignedTitle": "Nueva tarea asignada: \"{{taskTitle}}\"",
+  "organizationalBarrierRaised": "Barrera organizativa asignada: \"{{barrierTitle}}\"",
+  "organizationalBarrierRaisedMessage": "Esta barrera está fuera del equipo Scrum. Usted es responsable de eliminarla para que el equipo pueda continuar.",
   "reminderFailed": "No se pudo enviar recordatorio a {{memberName}}",
   "remindersNone": "No se enviaron recordatorios",
   "remindersSent": "Recordatorios enviados a {{count}} miembro del equipo",

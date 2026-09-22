@@ -85,6 +85,18 @@ export const LazySmDashboard = lazy(() =>
   }))
 );
 
+export const LazyOrganizationalBarriers = lazy(() =>
+  import('../pages/OrganizationalBarriers/OrganizationalBarriers').then((module) => ({
+    default: module.OrganizationalBarriers,
+  }))
+);
+
+export const LazyWorkingAgreements = lazy(() =>
+  import('../pages/WorkingAgreements/WorkingAgreements').then((module) => ({
+    default: module.WorkingAgreements,
+  }))
+);
+
 export const LazyIncrementList = lazy(() =>
   import('../pages/Increment/IncrementList').then((module) => ({
     default: module.IncrementList,

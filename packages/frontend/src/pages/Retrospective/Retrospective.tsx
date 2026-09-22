@@ -967,6 +967,22 @@ export const SprintRetrospective: React.FC = () => {
     setValidationErrors([]);
   }, []);
 
+  /**
+   * Load the notes revision history on demand.
+   *
+   * The endpoint refuses anyone but the team's Scrum Master, which is what makes the trail safe to
+   * offer from an event that holds candid reflection about the team.
+   */
+  const loadSmNotesHistory = useCallback(async () => {
+    if (!retrospective?.id) {
+      return [];
+    }
+
+    const response = await smDashboardService.getRetrospectiveSmNotesRevisions(retrospective.id);
+
+    return response.data?.revisions ?? [];
+  }, [retrospective?.id]);
+
   if (isLoading) {
     return <LoadingState variant="page" label={t('loading')} />;
   }
@@ -1838,6 +1854,7 @@ export const SprintRetrospective: React.FC = () => {
                   smDashboardService.updateRetrospectiveSmNotes(retrospective.id, notes)
                 }
                 disabled={isCompleted}
+                loadHistory={loadSmNotesHistory}
               />
             </div>
           )}

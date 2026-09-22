@@ -6,6 +6,8 @@
 // These classes implement the exact interfaces of SmDashboardService and
 // HealthCheckService so the UI code is agnostic to mock vs real backend.
 
+import type { SmNotesRevisionPage } from '@scrumooth/shared';
+
 import type { ApiResponse } from '../types';
 
 import { mockDelay } from './mockResponseUtils';
@@ -15,6 +17,7 @@ import {
   mockHealthCheckDetails,
   mockHealthCheckTrend,
   mockHealthCheckLatest,
+  mockSmNotesRevisionPage,
 } from './mockSmDashboardData';
 import type { SmDashboardData, EventSchedule } from './domain/smDashboard.service';
 import type {
@@ -54,6 +57,30 @@ export class MockSmDashboardService {
   ): Promise<ApiResponse<never>> {
     await mockDelay(200);
     return { success: true };
+  }
+
+  async getSprintSmNotesRevisions(
+    _sprintId: string,
+    _params: { limit?: number; offset?: number } = {}
+  ): Promise<ApiResponse<SmNotesRevisionPage>> {
+    await mockDelay(200);
+    return { success: true, data: mockSmNotesRevisionPage };
+  }
+
+  async getSprintReviewSmNotesRevisions(
+    _reviewId: string,
+    _params: { limit?: number; offset?: number } = {}
+  ): Promise<ApiResponse<SmNotesRevisionPage>> {
+    await mockDelay(200);
+    return { success: true, data: mockSmNotesRevisionPage };
+  }
+
+  async getRetrospectiveSmNotesRevisions(
+    _retroId: string,
+    _params: { limit?: number; offset?: number } = {}
+  ): Promise<ApiResponse<SmNotesRevisionPage>> {
+    await mockDelay(200);
+    return { success: true, data: mockSmNotesRevisionPage };
   }
 }
 

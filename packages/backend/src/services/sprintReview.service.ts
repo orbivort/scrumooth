@@ -8,6 +8,7 @@ import { productBacklogService } from './backlog.service';
 import { reportsService } from './reports.service';
 import { NotificationType, type FeedbackCategory } from '../generated/prisma/client';
 import { t as requestT } from '../i18n/requestT.js';
+import { redactSmNotesForCaller } from './smNotesAccess';
 import {
   auditResourceEvent,
   AuditActions,
@@ -292,7 +293,14 @@ export const sprintReviewService = {
     };
   },
 
-  async getSprintReviews(teamId: string, sprintId?: string) {
+  /**
+   * List a team's Sprint Reviews.
+   *
+   * `smNotes` are the Scrum Master's coaching notes on the event, so they are redacted for every
+   * caller who is not the team's Scrum Master: the row used to be spread whole, which handed the
+   * notes to anyone who could read the Review.
+   */
+  async getSprintReviews(teamId: string, sprintId?: string, actorUserId?: string) {
     const where: { teamId: string; sprintId?: string } = { teamId };
     if (sprintId) {
       where.sprintId = sprintId;
@@ -349,7 +357,7 @@ export const sprintReviewService = {
       },
     });
 
-    return reviews.map((review) => ({
+    const mapped = reviews.map((review) => ({
       ...review,
       attendees: review.attendees.map((a) => ({
         id: a.id,
@@ -364,9 +372,12 @@ export const sprintReviewService = {
         category: f.category.toLowerCase(),
       })),
     }));
+
+    return redactSmNotesForCaller(mapped, actorUserId);
   },
 
-  async getSprintReviewById(id: string) {
+  /** Read one Review, with `smNotes` redacted for anyone but the team's Scrum Master. */
+  async getSprintReviewById(id: string, actorUserId?: string) {
     const review = await prisma.sprintReview.findUnique({
       where: { id },
       include: {
@@ -439,7 +450,7 @@ export const sprintReviewService = {
         })
       : null;
 
-    return {
+    const result = {
       ...review,
       attendees: review.attendees.map((a) => ({
         id: a.id,
@@ -460,6 +471,10 @@ export const sprintReviewService = {
           }
         : null,
     };
+
+    const [visible] = await redactSmNotesForCaller([result], actorUserId);
+
+    return visible ?? result;
   },
 
   async createSprintReview(userId: string, data: CreateReviewData) {

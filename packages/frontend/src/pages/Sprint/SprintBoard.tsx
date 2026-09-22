@@ -72,6 +72,7 @@ import {
   PbiPreviewModal,
 } from './components/modals';
 import { SprintBacklogManager } from './SprintBacklogManager';
+import { SprintSmNotes } from './components/SprintSmNotes';
 import styles from './SprintBoard.module.css';
 
 export const SprintBoard: React.FC = () => {
@@ -87,6 +88,10 @@ export const SprintBoard: React.FC = () => {
   // Developers-only; PO/SM keep read-only inspection. Only the Product Owner may cancel.
   const canMutate = canMutateSprintBacklog(userRoleInCurrentTeam);
   const isProductOwner = canCancelSprint(userRoleInCurrentTeam);
+  // The Sprint's notes are the Scrum Master's coaching record: the server withholds them from
+  // everyone else, so the panel is rendered only for the role that owns them.
+  const isScrumMaster =
+    String(userRoleInCurrentTeam).toLowerCase() === UserRole.SCRUM_MASTER.toLowerCase();
   const navigate = useNavigate();
   const { t } = useTranslation('sprint');
   const teamId = currentTeam?.id;
@@ -632,6 +637,8 @@ export const SprintBoard: React.FC = () => {
         totalStoryPoints={sprintStats.totalStoryPoints}
         completedStoryPoints={sprintStats.completedStoryPoints}
       />
+
+      {isScrumMaster && <SprintSmNotes sprintId={sprint.id} smNotes={sprint.smNotes} />}
       {showBurndown && (
         <BurndownChart
           sprintName={sprint.name}

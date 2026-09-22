@@ -13,6 +13,7 @@ export const apiService: Record<string, Mock<AnyFn>> = {
   updateTeam: vi.fn(),
   deleteTeam: vi.fn(),
   getSprint: vi.fn(),
+  getSprints: vi.fn(),
   createSprint: vi.fn(),
   updateSprint: vi.fn(),
   deleteSprint: vi.fn(),
@@ -117,6 +118,46 @@ export const sessionManager: Record<string, Mock<AnyFn>> = {
 export const smDashboardService: Record<string, Mock<AnyFn>> = {
   getDashboard: vi.fn(),
   getEventSchedule: vi.fn(),
+  updateSprintSmNotes: vi.fn(),
+  updateSprintReviewSmNotes: vi.fn(),
+  updateRetrospectiveSmNotes: vi.fn(),
+  getSprintSmNotesRevisions: vi.fn(),
+  getSprintReviewSmNotesRevisions: vi.fn(),
+  getRetrospectiveSmNotesRevisions: vi.fn(),
+};
+
+// The facilitation surfaces added for the Scrum Master dashboard remediation.
+export const organizationalBarriersService: Record<string, Mock<AnyFn>> = {
+  getBarriers: vi.fn(),
+  getStats: vi.fn(),
+  getEscalatableImpediments: vi.fn(),
+  getBarrier: vi.fn(),
+  createBarrier: vi.fn(),
+  escalateImpediment: vi.fn(),
+  updateBarrier: vi.fn(),
+  deleteBarrier: vi.fn(),
+  addStakeholderAction: vi.fn(),
+  updateStakeholderAction: vi.fn(),
+  deleteStakeholderAction: vi.fn(),
+};
+
+export const coachingService: Record<string, Mock<AnyFn>> = {
+  getEntries: vi.fn(),
+  createEntry: vi.fn(),
+  updateEntry: vi.fn(),
+  deleteEntry: vi.fn(),
+};
+
+export const workingAgreementsService: Record<string, Mock<AnyFn>> = {
+  getAgreements: vi.fn(),
+  createAgreement: vi.fn(),
+  updateAgreement: vi.fn(),
+};
+
+export const crossFunctionalityService: Record<string, Mock<AnyFn>> = {
+  getRecord: vi.fn(),
+  getAssessment: vi.fn(),
+  createAssessment: vi.fn(),
 };
 
 export const healthCheckService: Record<string, Mock<AnyFn>> = {

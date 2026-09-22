@@ -1,8 +1,7 @@
 import { Router, type Router as RouterType } from 'express';
 import * as healthCheckController from '../controllers/teamHealthCheck.controller';
-import { authenticate, requireRoles } from '../middleware/auth.middleware';
+import authenticate from '../middleware/auth.middleware';
 import { validateParams, validateBody } from '../middleware/validation.middleware';
-import { UserRole } from '@scrumooth/shared';
 import { z } from 'zod';
 
 const router: RouterType = Router();
@@ -31,11 +30,15 @@ router.post(
   healthCheckController.submitResponses
 );
 
-router.get(
-  '/:id/results',
-  validateParams(idSchema),
-  requireRoles(UserRole.SCRUM_MASTER),
-  healthCheckController.getResults
-);
+/**
+ * Health check results are scoped to the team the survey belongs to, and that team is only known
+ * once the row is loaded -- the route has no `teamId` in its path.
+ *
+ * A role guard here would therefore be actively misleading: `requireRoles` falls back to "holds
+ * this role in *any* team" when it cannot see a team, which let a Scrum Master of team A read team
+ * B's values survey. The rule lives in the service, which resolves the health check's own team and
+ * asserts the caller's role there (`GATE_HEALTH_CHECK_RESULTS_SM_OF_TEAM_ONLY`).
+ */
+router.get('/:id/results', validateParams(idSchema), healthCheckController.getResults);
 
 export default router;

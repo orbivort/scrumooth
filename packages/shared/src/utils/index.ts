@@ -121,6 +121,15 @@ export {
   type AdaptationEvidenceDeclaration,
 } from './dailyScrumAdaptation.js';
 
+export {
+  wholeDaysBetween,
+  daysUntil,
+  isBarrierOverdue,
+  summarizeBarriers,
+  summarizeSkillCoverage,
+  isStakeholderActionOpen,
+} from './smFacilitation.js';
+
 export function isValidEmail(email: string): boolean {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   return emailRegex.test(email);

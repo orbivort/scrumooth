@@ -1,4 +1,38 @@
 {
+  "barriers": {
+    "ageDays": "{{count}} j",
+    "empty": "Rien n'a été escaladé au-delà de l'équipe.",
+    "escalate": "Escalader",
+    "escalated": "Escaladé",
+    "hint": "Des barrières que l'équipe ne peut pas lever seule.",
+    "loadError": "Le registre des barrières n'a pas pu être chargé.",
+    "oldest": "Les plus anciennes",
+    "open": "{{count}} ouvertes",
+    "overdue": "{{count}} en retard",
+    "title": "Barrières organisationnelles",
+    "viewRegister": "Ouvrir le registre"
+  },
+  "coaching": {
+    "add": "Ajouter une entrée",
+    "cancel": "Annuler",
+    "delete": "Supprimer",
+    "empty": "Aucune entrée de coaching pour le moment.",
+    "followUpDate": "À revoir le",
+    "followUpOn": "À revoir",
+    "hint": "Votre propre journal du coaching de l'équipe. Vous seul pouvez le lire.",
+    "loadError": "Le journal de coaching n'a pas pu être chargé.",
+    "noSprint": "Non lié à un Sprint",
+    "note": "Observation",
+    "notePlaceholder": "Qu’avez-vous observé, et qu’avez-vous essayé ?",
+    "saveError": "L'entrée de coaching n'a pas pu être enregistrée.",
+    "saved": "Entrée de coaching enregistrée",
+    "sprint": "Sprint",
+    "title": "Journal de coaching",
+    "topic": "Sujet",
+    "topicCrossFunctionality": "Pluridisciplinarité",
+    "topicOther": "Autre",
+    "topicSelfManagement": "Auto-organisation"
+  },
   "healthCheck": {
     "createNew": "Effectuer un nouveau contrôle de santé",
     "noHealthCheck": "Aucun résultat de contrôle de santé pour le moment",
@@ -86,6 +120,12 @@
   "smNotes": {
     "charCounter": "{{count}} / 2000 caractères",
     "emptyError": "Les notes ne peuvent pas être vides.",
+    "historyEmpty": "Aucune version antérieure de ces notes n'existe.",
+    "historyHide": "Masquer l'historique",
+    "historyLoadError": "L'historique des révisions n'a pas pu être chargé.",
+    "historyRevision": "Révision {{revision}}",
+    "historyShow": "Historique",
+    "historyUnknownAuthor": "Auteur inconnu",
     "maxLengthError": "Les notes doivent comporter 2000 caractères ou moins.",
     "modeEditing": "Modification",
     "modeViewing": "Affichage",
@@ -94,5 +134,8 @@
     "saveError": "Échec de l'enregistrement des notes",
     "saved": "Notes enregistrées",
     "title": "Notes du Scrum Master"
+  },
+  "sprintNotes": {
+    "hint": "Privé : vos observations sur le déroulement de ce Sprint."
   }
 }

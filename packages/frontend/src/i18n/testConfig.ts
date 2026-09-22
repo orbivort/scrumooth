@@ -26,6 +26,8 @@ import enErrors from '../../public/locales/en/errors.json';
 import enValidation from '../../public/locales/en/validation.json';
 import enScrumMasterDashboard from '../../public/locales/en/scrum-master-dashboard.json';
 import enTimebox from '../../public/locales/en/timebox.json';
+import enBarriers from '../../public/locales/en/barriers.json';
+import enAgreements from '../../public/locales/en/agreements.json';
 import deCommon from '../../public/locales/de/common.json';
 import deAuth from '../../public/locales/de/auth.json';
 import deDashboard from '../../public/locales/de/dashboard.json';
@@ -44,6 +46,8 @@ import deErrors from '../../public/locales/de/errors.json';
 import deValidation from '../../public/locales/de/validation.json';
 import deScrumMasterDashboard from '../../public/locales/de/scrum-master-dashboard.json';
 import deTimebox from '../../public/locales/de/timebox.json';
+import deBarriers from '../../public/locales/de/barriers.json';
+import deAgreements from '../../public/locales/de/agreements.json';
 import frCommon from '../../public/locales/fr/common.json';
 import frAuth from '../../public/locales/fr/auth.json';
 import frDashboard from '../../public/locales/fr/dashboard.json';
@@ -62,6 +66,8 @@ import frErrors from '../../public/locales/fr/errors.json';
 import frValidation from '../../public/locales/fr/validation.json';
 import frScrumMasterDashboard from '../../public/locales/fr/scrum-master-dashboard.json';
 import frTimebox from '../../public/locales/fr/timebox.json';
+import frBarriers from '../../public/locales/fr/barriers.json';
+import frAgreements from '../../public/locales/fr/agreements.json';
 import esCommon from '../../public/locales/es/common.json';
 import esAuth from '../../public/locales/es/auth.json';
 import esDashboard from '../../public/locales/es/dashboard.json';
@@ -80,6 +86,8 @@ import esErrors from '../../public/locales/es/errors.json';
 import esValidation from '../../public/locales/es/validation.json';
 import esScrumMasterDashboard from '../../public/locales/es/scrum-master-dashboard.json';
 import esTimebox from '../../public/locales/es/timebox.json';
+import esBarriers from '../../public/locales/es/barriers.json';
+import esAgreements from '../../public/locales/es/agreements.json';
 import itCommon from '../../public/locales/it/common.json';
 import itAuth from '../../public/locales/it/auth.json';
 import itDashboard from '../../public/locales/it/dashboard.json';
@@ -98,6 +106,8 @@ import itErrors from '../../public/locales/it/errors.json';
 import itValidation from '../../public/locales/it/validation.json';
 import itScrumMasterDashboard from '../../public/locales/it/scrum-master-dashboard.json';
 import itTimebox from '../../public/locales/it/timebox.json';
+import itBarriers from '../../public/locales/it/barriers.json';
+import itAgreements from '../../public/locales/it/agreements.json';
 
 const NAMESPACES = [
   'common',
@@ -118,6 +128,8 @@ const NAMESPACES = [
   'validation',
   'scrum-master-dashboard',
   'timebox',
+  'barriers',
+  'agreements',
 ] as const;
 
 // Build resource maps per locale
@@ -140,6 +152,8 @@ const enResources = {
   validation: enValidation,
   'scrum-master-dashboard': enScrumMasterDashboard,
   timebox: enTimebox,
+  barriers: enBarriers,
+  agreements: enAgreements,
 };
 
 const deResources = {
@@ -161,6 +175,8 @@ const deResources = {
   validation: deValidation,
   'scrum-master-dashboard': deScrumMasterDashboard,
   timebox: deTimebox,
+  barriers: deBarriers,
+  agreements: deAgreements,
 };
 
 const frResources = {
@@ -182,6 +198,8 @@ const frResources = {
   validation: frValidation,
   'scrum-master-dashboard': frScrumMasterDashboard,
   timebox: frTimebox,
+  barriers: frBarriers,
+  agreements: frAgreements,
 };
 
 const esResources = {
@@ -203,6 +221,8 @@ const esResources = {
   validation: esValidation,
   'scrum-master-dashboard': esScrumMasterDashboard,
   timebox: esTimebox,
+  barriers: esBarriers,
+  agreements: esAgreements,
 };
 
 const itResources = {
@@ -224,6 +244,8 @@ const itResources = {
   validation: itValidation,
   'scrum-master-dashboard': itScrumMasterDashboard,
   timebox: itTimebox,
+  barriers: itBarriers,
+  agreements: itAgreements,
 };
 
 type LocaleResources = Record<string, Record<string, unknown>>;

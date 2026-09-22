@@ -269,6 +269,42 @@ export const queryKeys = {
     get: (event: string, sprintId: string, date?: string) =>
       [...queryKeys.timebox.all, event, sprintId, date] as const,
   },
+
+  // Organizational barrier register (escalation beyond the team)
+  barriers: {
+    all: ['organizational-barriers'] as const,
+    lists: () => [...queryKeys.barriers.all, 'list'] as const,
+    list: (filters: { teamId?: string; status?: string; priority?: string } = {}) =>
+      [...queryKeys.barriers.lists(), filters] as const,
+    stats: (teamId: string) => [...queryKeys.barriers.all, 'stats', teamId] as const,
+    escalatable: (teamId: string) => [...queryKeys.barriers.all, 'escalatable', teamId] as const,
+    detail: (id: string) => [...queryKeys.barriers.all, 'detail', id] as const,
+  },
+
+  // Scrum Master notes revision history
+  smNotesRevisions: {
+    all: ['sm-notes-revisions'] as const,
+    byEntity: (entityType: string, entityId: string) =>
+      [...queryKeys.smNotesRevisions.all, entityType, entityId] as const,
+  },
+
+  // The Scrum Master's private coaching log
+  coaching: {
+    all: ['coaching-entries'] as const,
+    byTeam: (teamId: string) => [...queryKeys.coaching.all, teamId] as const,
+  },
+
+  // The team's working agreements
+  workingAgreement: {
+    all: ['working-agreements'] as const,
+    byTeam: (teamId: string) => [...queryKeys.workingAgreement.all, teamId] as const,
+  },
+
+  // The team-level cross-functionality assessment
+  crossFunctionality: {
+    all: ['cross-functionality'] as const,
+    byTeam: (teamId: string) => [...queryKeys.crossFunctionality.all, teamId] as const,
+  },
 } as const;
 
 // Type helper for query keys

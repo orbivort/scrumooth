@@ -47,6 +47,7 @@ vi.mock('../../../utils/prisma', () => {
     },
     teamMember: {
       findFirst: vi.fn(),
+      findMany: vi.fn(),
     },
     user: {
       findUnique: vi.fn(),
@@ -173,6 +174,46 @@ describe('SprintReviewService', () => {
         include: expect.any(Object),
         orderBy: { reviewDate: 'desc' },
       });
+    });
+
+    it('should withhold the Scrum Master notes from a caller who does not lead the team', async () => {
+      vi.mocked(prisma.sprintReview.findMany).mockResolvedValue([
+        {
+          id: 'review-1',
+          teamId: 'team-id',
+          sprintId: 'sprint-1',
+          smNotes: 'coaching',
+          sprint: { id: 'sprint-1' },
+          attendees: [],
+          feedback: [],
+          backlogAdjustments: [],
+        },
+      ] as any);
+      vi.mocked(prisma.teamMember.findMany).mockResolvedValue([] as any);
+
+      const [review] = await sprintReviewService.getSprintReviews('team-id', undefined, 'user-1');
+
+      expect(review).not.toHaveProperty('smNotes');
+    });
+
+    it('should keep the Scrum Master notes for the team Scrum Master', async () => {
+      vi.mocked(prisma.sprintReview.findMany).mockResolvedValue([
+        {
+          id: 'review-1',
+          teamId: 'team-id',
+          sprintId: 'sprint-1',
+          smNotes: 'coaching',
+          sprint: { id: 'sprint-1' },
+          attendees: [],
+          feedback: [],
+          backlogAdjustments: [],
+        },
+      ] as any);
+      vi.mocked(prisma.teamMember.findMany).mockResolvedValue([{ teamId: 'team-id' }] as any);
+
+      const [review] = await sprintReviewService.getSprintReviews('team-id', undefined, 'sm-1');
+
+      expect(review?.smNotes).toBe('coaching');
     });
   });
 

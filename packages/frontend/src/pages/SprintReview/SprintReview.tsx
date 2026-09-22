@@ -802,6 +802,22 @@ export const SprintReview: React.FC = () => {
     setValidationErrors([]);
   }, []);
 
+  /**
+   * Load the notes revision history on demand.
+   *
+   * The loader is a callback so the notes component does not refetch on every render, and the
+   * endpoint refuses anyone but the team's Scrum Master -- the history *is* the notes.
+   */
+  const loadSmNotesHistory = useCallback(async () => {
+    if (!review?.id) {
+      return [];
+    }
+
+    const response = await smDashboardService.getSprintReviewSmNotesRevisions(review.id);
+
+    return response.data?.revisions ?? [];
+  }, [review?.id]);
+
   // Tab keyboard navigation handler
   const handleTabKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
@@ -1247,6 +1263,7 @@ export const SprintReview: React.FC = () => {
                   value={review.smNotes}
                   onSave={(notes) => smDashboardService.updateSprintReviewSmNotes(review.id, notes)}
                   disabled={isReviewCompleted}
+                  loadHistory={loadSmNotesHistory}
                 />
               </div>
             )}

@@ -1,4 +1,38 @@
 {
+  "barriers": {
+    "ageDays": "{{count}} g",
+    "empty": "Non è stato escalato nulla oltre il team.",
+    "escalate": "Escala",
+    "escalated": "Escalato",
+    "hint": "Barriere che il team non può rimuovere da solo.",
+    "loadError": "Non è stato possibile caricare il registro delle barriere.",
+    "oldest": "Più vecchie",
+    "open": "{{count}} aperte",
+    "overdue": "{{count}} scadute",
+    "title": "Barriere organizzative",
+    "viewRegister": "Apri il registro"
+  },
+  "coaching": {
+    "add": "Aggiungi voce",
+    "cancel": "Annulla",
+    "delete": "Elimina",
+    "empty": "Nessuna voce di coaching.",
+    "followUpDate": "Verifica il",
+    "followUpOn": "Verifica",
+    "hint": "Il tuo registro del coaching al team. Solo tu puoi leggerlo.",
+    "loadError": "Non è stato possibile caricare il registro di coaching.",
+    "noSprint": "Non legato a uno Sprint",
+    "note": "Osservazione",
+    "notePlaceholder": "Cosa hai osservato e cosa hai provato?",
+    "saveError": "Non è stato possibile salvare la voce di coaching.",
+    "saved": "Voce di coaching salvata",
+    "sprint": "Sprint",
+    "title": "Registro di coaching",
+    "topic": "Tema",
+    "topicCrossFunctionality": "Cross-funzionalità",
+    "topicOther": "Altro",
+    "topicSelfManagement": "Autogestione"
+  },
   "healthCheck": {
     "createNew": "Esegui un nuovo health check",
     "noHealthCheck": "Nessun risultato dell'health check",
@@ -86,6 +120,12 @@
   "smNotes": {
     "charCounter": "{{count}} / 2000 caratteri",
     "emptyError": "Le note non possono essere vuote.",
+    "historyEmpty": "Non esiste una versione precedente di queste note.",
+    "historyHide": "Nascondi cronologia",
+    "historyLoadError": "Non è stato possibile caricare la cronologia delle revisioni.",
+    "historyRevision": "Revisione {{revision}}",
+    "historyShow": "Cronologia",
+    "historyUnknownAuthor": "Autore sconosciuto",
     "maxLengthError": "Le note devono essere di 2000 caratteri o meno.",
     "modeEditing": "Modifica",
     "modeViewing": "Visualizzazione",
@@ -94,5 +134,8 @@
     "saveError": "Impossibile salvare le note",
     "saved": "Note salvate",
     "title": "Note dello Scrum Master"
+  },
+  "sprintNotes": {
+    "hint": "Privato: osservazioni su come sta andando questo Sprint."
   }
 }

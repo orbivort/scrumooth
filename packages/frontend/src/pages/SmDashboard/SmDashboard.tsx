@@ -1,16 +1,27 @@
 // Scrum Master Facilitation Dashboard
 // Aggregates Scrum event compliance, impediment health, DoD adherence, Sprint
 // Goal achievement, retrospective action items, and Scrum Values health.
-import React from 'react';
+import React, { useState } from 'react';
+import { Link } from 'react-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 
 import { useTeamContext } from '../../contexts/TeamContext';
-import { smDashboardService, healthCheckService } from '../../services';
+import {
+  healthCheckService,
+  organizationalBarriersService,
+  smDashboardService,
+} from '../../services';
 import { LoadingState } from '../../components/common/Loading';
 import { ScrumValuesBanner } from '../../components/common/ScrumValuesBanner';
 import { ShieldIcon } from '../../components/common/Icons';
+import { Button } from '../../components/common/Button';
+import {
+  EscalateImpedimentDialog,
+  type EscalationSource,
+} from '../../components/EscalateImpedimentDialog/EscalateImpedimentDialog';
 
+import { CoachingLog } from './components/CoachingLog';
 import { DoDTrendChart } from './DoDTrendChart';
 import { ScrumValuesRadar } from './ScrumValuesRadar';
 import { HealthCheckTrendChart } from './HealthCheckTrendChart';
@@ -20,6 +31,8 @@ const SmDashboardContent: React.FC = () => {
   const { t } = useTranslation(['scrum-master-dashboard', 'common']);
   const { currentTeam } = useTeamContext();
   const queryClient = useQueryClient();
+  /** The impediment being escalated, when the Scrum Master opened the dialog for one. */
+  const [escalationSource, setEscalationSource] = useState<EscalationSource | null>(null);
 
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ['sm-dashboard', currentTeam?.id],
@@ -41,6 +54,21 @@ const SmDashboardContent: React.FC = () => {
       }
       return healthCheckService.getTrend(currentTeam.id);
     },
+    enabled: !!currentTeam?.id,
+  });
+
+  // The barrier register, read here so the dashboard can show what the Scrum Master has carried to
+  // the organization. The tile links to the register itself; nothing is written from this page
+  // except the escalation, which is the act the register exists to make possible.
+  const { data: barrierStats } = useQuery({
+    queryKey: ['sm-dashboard-barriers', currentTeam?.id],
+    queryFn: () => organizationalBarriersService.getStats(currentTeam?.id ?? ''),
+    enabled: !!currentTeam?.id,
+  });
+
+  const { data: barriers } = useQuery({
+    queryKey: ['sm-dashboard-barrier-list', currentTeam?.id],
+    queryFn: () => organizationalBarriersService.getBarriers({ teamId: currentTeam?.id ?? '' }),
     enabled: !!currentTeam?.id,
   });
 
@@ -193,10 +221,71 @@ const SmDashboardContent: React.FC = () => {
                   >
                     {imp.ageDays}d {imp.atRisk ? `· ${t('smDashboard.atRisk')}` : ''}
                   </span>
+                  {/* The act the dashboard lacked: an impediment the team cannot remove alone is
+                      carried to the organization, and the barrier register takes over from here. */}
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() =>
+                      setEscalationSource({
+                        id: imp.id,
+                        title: imp.title,
+                        priority: imp.priority,
+                      })
+                    }
+                  >
+                    {t('barriers.escalate')}
+                  </Button>
                 </li>
               ))}
             </ul>
           )}
+        </div>
+
+        <div className={styles.section} data-testid="barrier-summary">
+          <h2 className={styles['section-title']}>{t('barriers.title')}</h2>
+          <p className={styles.empty}>{t('barriers.hint')}</p>
+
+          <div className={styles['stat-grid']}>
+            <div className={styles.stat}>
+              <span className={styles['stat-value']} data-testid="barriers-open">
+                {barrierStats?.data?.open ?? 0}
+              </span>
+              <span className={styles['stat-label']}>
+                {t('barriers.open', { count: barrierStats?.data?.open ?? 0 })}
+              </span>
+            </div>
+            <div className={styles.stat}>
+              <span className={styles['stat-value']} data-testid="barriers-overdue">
+                {barrierStats?.data?.overdue ?? 0}
+              </span>
+              <span className={styles['stat-label']}>
+                {t('barriers.overdue', { count: barrierStats?.data?.overdue ?? 0 })}
+              </span>
+            </div>
+          </div>
+
+          {(barriers?.data ?? []).length === 0 ? (
+            <p className={styles.empty}>{t('barriers.empty')}</p>
+          ) : (
+            <ul className={styles.list}>
+              <li className={styles['list-item']}>
+                <span className={styles['stat-label']}>{t('barriers.oldest')}</span>
+              </li>
+              {(barriers?.data ?? []).slice(0, 3).map((barrier) => (
+                <li key={barrier.id} className={styles['list-item']}>
+                  <span className={styles['item-text']}>{barrier.title}</span>
+                  <span className={styles['age-tag']}>
+                    {t('barriers.ageDays', { count: barrier.ageDays })}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          <Link className={styles['barriers-link']} to="/organizational-barriers">
+            {t('barriers.viewRegister')}
+          </Link>
         </div>
 
         <div className={styles.section} data-testid="dod-trend">
@@ -300,6 +389,20 @@ const SmDashboardContent: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* The coaching record: the Scrum Master's own notes on coaching self-management and
+          cross-functionality, which no other artifact captures. */}
+      {currentTeam?.id && <CoachingLog teamId={currentTeam.id} />}
+
+      <EscalateImpedimentDialog
+        open={escalationSource !== null}
+        source={escalationSource}
+        onClose={() => setEscalationSource(null)}
+        onEscalated={() => {
+          void queryClient.invalidateQueries({ queryKey: ['sm-dashboard-barriers'] });
+          void queryClient.invalidateQueries({ queryKey: ['sm-dashboard-barrier-list'] });
+        }}
+      />
     </div>
   );
 };

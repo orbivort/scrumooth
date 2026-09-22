@@ -1,4 +1,38 @@
 {
+  "barriers": {
+    "ageDays": "[{{count}}dd]",
+    "empty": "[Nóthíng hàs béén éscàlàtéd béyónd thé téàmmmmmmmmmmmmmm.]",
+    "escalate": "[Éscàlàtéééé]",
+    "escalated": "[Éscàlàtédddd]",
+    "hint": "[Bàrríérs thé téàm cànnót rémóvé àlónééééééééééééé.]",
+    "loadError": "[Thé bàrríér régístér cóúld nót bé lóàdédddddddddddddd.]",
+    "oldest": "[Óldésttt]",
+    "open": "[{{count}} óóppéén]",
+    "overdue": "[{{count}} óvérdúéééé]",
+    "title": "[Órgànízàtíónàl bàrríérssssssss]",
+    "viewRegister": "[Ópén thé régístérrrrrrr]"
+  },
+  "coaching": {
+    "add": "[Àdd éntryyyy]",
+    "cancel": "[Càncélll]",
+    "delete": "[Délétééé]",
+    "empty": "[Nó cóàchíng éntríés yéttttttttt.]",
+    "followUpDate": "[Fóllów úp ónnnnn]",
+    "followUpOn": "[Fóllów úpppp]",
+    "hint": "[Yóúr ówn récórd óf cóàchíng thé téàm. Ónly yóú càn réàd íttttttttttttttttttt.]",
+    "loadError": "[Thé cóàchíng lóg cóúld nót bé lóàdéddddddddddddd.]",
+    "noSprint": "[Nót tíéd tó à Sprínttttttt]",
+    "note": "[Óbsérvàtíónnnnn]",
+    "notePlaceholder": "[Whàt díd yóú óbsérvé, ànd whàt díd yóú tryyyyyyyyyyyyyy?]",
+    "saveError": "[Thé cóàchíng éntry cóúld nót bé sàvéddddddddddddd.]",
+    "saved": "[Cóàchíng éntry sàvéddddddd]",
+    "sprint": "[Sprínttt]",
+    "title": "[Cóàchíng lóggggg]",
+    "topic": "[Tópíccc]",
+    "topicCrossFunctionality": "[Cróss-fúnctíónàlítyyyyyyy]",
+    "topicOther": "[Óthérrr]",
+    "topicSelfManagement": "[Sélf-mànàgéméntttttt]"
+  },
   "healthCheck": {
     "createNew": "[Rún à néw héàlth chéckkkkkkkk]",
     "noHealthCheck": "[Nó héàlth chéck résúlts yétttttttttt]",
@@ -86,6 +120,12 @@
   "smNotes": {
     "charCounter": "[{{count}} / 2000 cchhààrrààccttéérrs]",
     "emptyError": "[Nótés cànnót bé émptyyyyyyyy.]",
+    "historyEmpty": "[Nó éàrlíér vérsíón óf thésé nótés éxístssssssssssssss.]",
+    "historyHide": "[Hídé hístóryyyyy]",
+    "historyLoadError": "[Thé révísíón hístóry cóúld nót bé lóàdédddddddddddddd.]",
+    "historyRevision": "[Révísíónnnn {{revision}}]",
+    "historyShow": "[Hístóryyyy]",
+    "historyUnknownAuthor": "[Únknówn àúthórrrrrr]",
     "maxLengthError": "[Nótés múst bé 2000 chàràctérs ór féwérrrrrrrrrrrrr.]",
     "modeEditing": "[Édítíngggg]",
     "modeViewing": "[Víéwíngggg]",
@@ -94,5 +134,8 @@
     "saveError": "[Fàíléd tó sàvé nótésssssss]",
     "saved": "[Nótés sàvéddddd]",
     "title": "[Scrúm Màstér Nótésssssss]"
+  },
+  "sprintNotes": {
+    "hint": "[Prívàté tó yóú: óbsérvàtíóns àbóút hów thís Sprínt ís rúnníngggggggggggggggggggg.]"
   }
 }
