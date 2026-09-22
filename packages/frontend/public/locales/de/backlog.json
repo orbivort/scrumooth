@@ -113,31 +113,31 @@
     "template": {
       "examples": [
         {
-          "title": "Benutzer-Authentifizierung",
-          "description": "Implementierung von OAuth2-Login mit Google und GitHub-Anbietern für sichere Benutzer-Authentifizierung",
-          "storyPoints": 8,
+          "acceptanceCriteria": "1. Benutzer können sich mit Google anmelden\n2. Benutzer können sich mit GitHub anmelden\n3. Sitzung läuft nach 30 Minuten ab\n4. Ungültige Anmeldung zeigt Fehlermeldung",
           "businessValue": 13,
-          "priority": "Must Have",
+          "description": "Implementierung von OAuth2-Login mit Google und GitHub-Anbietern für sichere Benutzer-Authentifizierung",
           "labels": "auth, sicherheit, backend",
-          "acceptanceCriteria": "1. Benutzer können sich mit Google anmelden\n2. Benutzer können sich mit GitHub anmelden\n3. Sitzung läuft nach 30 Minuten ab\n4. Ungültige Anmeldung zeigt Fehlermeldung"
+          "priority": "Must Have",
+          "storyPoints": 8,
+          "title": "Benutzer-Authentifizierung"
         },
         {
-          "title": "Dashboard-Diagramme",
-          "description": "Hinzufügen von interaktiven Diagrammen zum Dashboard für Sprint-Fortschritt und Team-Geschwindigkeit",
-          "storyPoints": 5,
+          "acceptanceCriteria": "1. Sprint-Fortschrittsdiagramm wird korrekt angezeigt\n2. Team-Geschwindigkeitsdiagramm zeigt die letzten 6 Sprints\n3. Diagramme sind auf Mobilgeräten responsive",
           "businessValue": 8,
-          "priority": "Should Have",
+          "description": "Hinzufügen von interaktiven Diagrammen zum Dashboard für Sprint-Fortschritt und Team-Geschwindigkeit",
           "labels": "frontend, diagramme, dashboard",
-          "acceptanceCriteria": "1. Sprint-Fortschrittsdiagramm wird korrekt angezeigt\n2. Team-Geschwindigkeitsdiagramm zeigt die letzten 6 Sprints\n3. Diagramme sind auf Mobilgeräten responsive"
+          "priority": "Should Have",
+          "storyPoints": 5,
+          "title": "Dashboard-Diagramme"
         },
         {
-          "title": "E-Mail-Benachrichtigungen",
-          "description": "Konfiguration von E-Mail-Benachrichtigungen für Sprint-Start, Sprint-Ende und kritische Impediments",
-          "storyPoints": 3,
+          "acceptanceCriteria": "1. E-Mail wird gesendet, wenn Sprint beginnt\n2. E-Mail wird gesendet, wenn Sprint endet\n3. E-Mail wird für kritische Impediments gesendet\n4. Benutzer können sich abmelden",
           "businessValue": 5,
-          "priority": "Could Have",
+          "description": "Konfiguration von E-Mail-Benachrichtigungen für Sprint-Start, Sprint-Ende und kritische Impediments",
           "labels": "benachrichtigungen, email, backend",
-          "acceptanceCriteria": "1. E-Mail wird gesendet, wenn Sprint beginnt\n2. E-Mail wird gesendet, wenn Sprint endet\n3. E-Mail wird für kritische Impediments gesendet\n4. Benutzer können sich abmelden"
+          "priority": "Could Have",
+          "storyPoints": 3,
+          "title": "E-Mail-Benachrichtigungen"
         }
       ],
       "filename": "backlog-import-vorlage.csv",
@@ -448,8 +448,18 @@
     "headerTitle": "Offene Aktion aus Retrospective",
     "inBacklog": "In Backlog",
     "inProgress": "In Bearbeitung",
+    "linkCancel": "Abbrechen",
+    "linkConfirm": "Verknüpfen",
+    "linkExisting": "Vorhandenen Eintrag verknüpfen",
+    "linkFailed": "Der Eintrag konnte nicht verknüpft werden.",
+    "linkSelectLabel": "Backlog-Eintrag wählen",
+    "linkSelectPlaceholder": "Eintrag auswählen…",
+    "linkedCannotUnmark": "Diese Verbesserung wird durch einen verknüpften Backlog-Eintrag getragen und kann nicht zurückgesetzt werden.",
+    "linkedItemLabel": "Verknüpfter Eintrag:",
     "loadingActionItems": "Aktionen werden geladen",
     "markAdded": "Als hinzugefügt markieren",
+    "markFailed": "Die Verbesserung konnte nicht als hinzugefügt markiert werden.",
+    "materializeFailed": "Der Backlog-Eintrag konnte nicht erstellt werden.",
     "notInBacklog": "Nicht in Backlog",
     "owner": "Eigentümer:",
     "pending": "Offen",

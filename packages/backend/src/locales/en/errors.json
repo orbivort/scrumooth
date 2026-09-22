@@ -56,6 +56,12 @@
     "successMetricsRequired": "A Product Goal must declare at least one success metric: state how the team will know the future state has been reached."
   },
   "recordNotFound": "Record not found",
+  "retrospective": {
+    "actionItemLinked": "This improvement is already carried by the Product Backlog item \"{{title}}\", so it counts as addressed. Remove the link before marking it unaddressed.",
+    "dodChangesMissing": "The Retrospective recorded no Definition of Done reflection, so there is nothing to apply. Inspect at least one criterion first.",
+    "smNotesSmOnly": "The Scrum Master's notes are coaching observations about the Sprint Retrospective, so only the team's Scrum Master can read or write them.",
+    "teamMembersOnly": "The Sprint Retrospective is its Scrum Team's own event and holds candid reflection about individuals and interactions, so only a member of that team can read or change it."
+  },
   "roleAlreadyTaken": "A {{role}} already exists for this team. Each team can have exactly one {{role}}.",
   "routeNotFound": "{{method}} {{path}} not found",
   "sprint": {

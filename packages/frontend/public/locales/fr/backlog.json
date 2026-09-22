@@ -113,31 +113,31 @@
     "template": {
       "examples": [
         {
-          "title": "Authentification utilisateur",
-          "description": "Implémenter la connexion OAuth2 avec les fournisseurs Google et GitHub pour une authentification sécurisée",
-          "storyPoints": 8,
+          "acceptanceCriteria": "1. Les utilisateurs peuvent se connecter avec Google\n2. Les utilisateurs peuvent se connecter avec GitHub\n3. La session expire après 30 minutes\n4. Une connexion invalide affiche un message d'erreur",
           "businessValue": 13,
-          "priority": "Doit avoir",
+          "description": "Implémenter la connexion OAuth2 avec les fournisseurs Google et GitHub pour une authentification sécurisée",
           "labels": "auth, sécurité, backend",
-          "acceptanceCriteria": "1. Les utilisateurs peuvent se connecter avec Google\n2. Les utilisateurs peuvent se connecter avec GitHub\n3. La session expire après 30 minutes\n4. Une connexion invalide affiche un message d'erreur"
+          "priority": "Doit avoir",
+          "storyPoints": 8,
+          "title": "Authentification utilisateur"
         },
         {
-          "title": "Graphiques du tableau de bord",
-          "description": "Ajouter des graphiques interactifs au tableau de bord pour la visualisation de la progression du sprint et de la vélocité de l'équipe",
-          "storyPoints": 5,
+          "acceptanceCriteria": "1. Le graphique de progression du sprint s'affiche correctement\n2. Le graphique de vélocité de l'équipe affiche les 6 derniers sprints\n3. Les graphiques sont responsives sur les appareils mobiles",
           "businessValue": 8,
-          "priority": "Devrait avoir",
+          "description": "Ajouter des graphiques interactifs au tableau de bord pour la visualisation de la progression du sprint et de la vélocité de l'équipe",
           "labels": "frontend, graphiques, dashboard",
-          "acceptanceCriteria": "1. Le graphique de progression du sprint s'affiche correctement\n2. Le graphique de vélocité de l'équipe affiche les 6 derniers sprints\n3. Les graphiques sont responsives sur les appareils mobiles"
+          "priority": "Devrait avoir",
+          "storyPoints": 5,
+          "title": "Graphiques du tableau de bord"
         },
         {
-          "title": "Notifications par email",
-          "description": "Configurer les notifications par email pour le début du sprint, la fin du sprint et les obstacles critiques",
-          "storyPoints": 3,
+          "acceptanceCriteria": "1. Email envoyé au début du sprint\n2. Email envoyé à la fin du sprint\n3. Email envoyé pour les obstacles critiques\n4. Les utilisateurs peuvent se désabonner",
           "businessValue": 5,
-          "priority": "Pourrait avoir",
+          "description": "Configurer les notifications par email pour le début du sprint, la fin du sprint et les obstacles critiques",
           "labels": "notifications, email, backend",
-          "acceptanceCriteria": "1. Email envoyé au début du sprint\n2. Email envoyé à la fin du sprint\n3. Email envoyé pour les obstacles critiques\n4. Les utilisateurs peuvent se désabonner"
+          "priority": "Pourrait avoir",
+          "storyPoints": 3,
+          "title": "Notifications par email"
         }
       ],
       "filename": "modèle-import-backlog.csv",
@@ -448,8 +448,18 @@
     "headerTitle": "Action en attente de la Retrospective",
     "inBacklog": "Dans le backlog",
     "inProgress": "En cours",
+    "linkCancel": "Annuler",
+    "linkConfirm": "Lier",
+    "linkExisting": "Lier un élément existant",
+    "linkFailed": "L'élément n'a pas pu être lié.",
+    "linkSelectLabel": "Choisissez un élément du backlog",
+    "linkSelectPlaceholder": "Sélectionnez un élément…",
+    "linkedCannotUnmark": "Cette amélioration est portée par un élément de backlog lié : elle ne peut pas être dé-marquée.",
+    "linkedItemLabel": "Élément lié :",
     "loadingActionItems": "Chargement des actions",
     "markAdded": "Marquer comme ajouté",
+    "markFailed": "L'amélioration n'a pas pu être marquée comme ajoutée.",
+    "materializeFailed": "L'élément de backlog n'a pas pu être créé.",
     "notInBacklog": "Pas dans le backlog",
     "owner": "Propriétaire :",
     "pending": "En attente",

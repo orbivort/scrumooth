@@ -113,31 +113,31 @@
     "template": {
       "examples": [
         {
-          "title": "Autenticazione utente",
-          "description": "Implementare l'accesso OAuth2 con provider Google e GitHub per un'autenticazione sicura degli utenti",
-          "storyPoints": 8,
+          "acceptanceCriteria": "1. Gli utenti possono accedere con Google\n2. Gli utenti possono accedere con GitHub\n3. La sessione scade dopo 30 minuti\n4. Un accesso non valido mostra un messaggio di errore",
           "businessValue": 13,
-          "priority": "Must Have",
+          "description": "Implementare l'accesso OAuth2 con provider Google e GitHub per un'autenticazione sicura degli utenti",
           "labels": "auth, sicurezza, backend",
-          "acceptanceCriteria": "1. Gli utenti possono accedere con Google\n2. Gli utenti possono accedere con GitHub\n3. La sessione scade dopo 30 minuti\n4. Un accesso non valido mostra un messaggio di errore"
+          "priority": "Must Have",
+          "storyPoints": 8,
+          "title": "Autenticazione utente"
         },
         {
-          "title": "Grafici della dashboard",
-          "description": "Aggiungere grafici interattivi alla dashboard per la visualizzazione del progresso dello sprint e della velocità del team",
-          "storyPoints": 5,
+          "acceptanceCriteria": "1. Il grafico del progresso dello sprint si visualizza correttamente\n2. Il grafico della velocità del team mostra gli ultimi 6 sprint\n3. I grafici sono responsivi sui dispositivi mobili",
           "businessValue": 8,
-          "priority": "Should Have",
+          "description": "Aggiungere grafici interattivi alla dashboard per la visualizzazione del progresso dello sprint e della velocità del team",
           "labels": "frontend, grafici, dashboard",
-          "acceptanceCriteria": "1. Il grafico del progresso dello sprint si visualizza correttamente\n2. Il grafico della velocità del team mostra gli ultimi 6 sprint\n3. I grafici sono responsivi sui dispositivi mobili"
+          "priority": "Should Have",
+          "storyPoints": 5,
+          "title": "Grafici della dashboard"
         },
         {
-          "title": "Notifiche email",
-          "description": "Configurare le notifiche email per l'inizio dello sprint, la fine dello sprint e gli Impediments critici",
-          "storyPoints": 3,
+          "acceptanceCriteria": "1. Email inviata all'inizio dello sprint\n2. Email inviata alla fine dello sprint\n3. Email inviata per Impediments critici\n4. Gli utenti possono disiscriversi",
           "businessValue": 5,
-          "priority": "Could Have",
+          "description": "Configurare le notifiche email per l'inizio dello sprint, la fine dello sprint e gli Impediments critici",
           "labels": "notifiche, email, backend",
-          "acceptanceCriteria": "1. Email inviata all'inizio dello sprint\n2. Email inviata alla fine dello sprint\n3. Email inviata per Impediments critici\n4. Gli utenti possono disiscriversi"
+          "priority": "Could Have",
+          "storyPoints": 3,
+          "title": "Notifiche email"
         }
       ],
       "filename": "modello-importazione-backlog.csv",
@@ -448,8 +448,18 @@
     "headerTitle": "Azione in sospeso dalla Retrospettiva",
     "inBacklog": "Nel Backlog",
     "inProgress": "In corso",
+    "linkCancel": "Annulla",
+    "linkConfirm": "Collega",
+    "linkExisting": "Collega un elemento esistente",
+    "linkFailed": "Non è stato possibile collegare l'elemento.",
+    "linkSelectLabel": "Scegli un elemento del backlog",
+    "linkSelectPlaceholder": "Seleziona un elemento…",
+    "linkedCannotUnmark": "Questo miglioramento è portato da un elemento di backlog collegato, quindi non può essere deselezionato.",
+    "linkedItemLabel": "Elemento collegato:",
     "loadingActionItems": "Caricamento azioni",
     "markAdded": "Contrassegna come aggiunto",
+    "markFailed": "Non è stato possibile segnare il miglioramento come aggiunto.",
+    "materializeFailed": "Non è stato possibile creare l'elemento di backlog.",
     "notInBacklog": "Non nel Backlog",
     "owner": "Proprietario:",
     "pending": "In sospeso",

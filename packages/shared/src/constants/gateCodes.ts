@@ -175,6 +175,33 @@ export const GATE_CODES = {
    * close a Sprint that never ran its course.
    */
   SPRINT_EVENT_BEFORE_END_DATE: 'GATE_SPRINT_EVENT_BEFORE_END_DATE',
+  /**
+   * "The Scrum Team inspects... individuals, interactions, processes, tools, and their Definition
+   * of Done." A Retrospective holds candid criticism of people as well as process, so the room
+   * must be the Scrum Team and not the whole installation: reading or writing one requires
+   * membership of the team whose Sprint it concludes.
+   */
+  RETROSPECTIVE_TEAM_MEMBERS_ONLY: 'GATE_RETROSPECTIVE_TEAM_MEMBERS_ONLY',
+  /**
+   * The Scrum Master's notes are coaching observations about the event, not a shared field, so
+   * they are readable and writable only by the team's Scrum Master -- matching the interface,
+   * which already hides the editor from everyone else.
+   */
+  RETROSPECTIVE_SM_NOTES_SM_ONLY: 'GATE_RETROSPECTIVE_SM_NOTES_SM_ONLY',
+  /**
+   * "The most impactful improvements are addressed as soon as possible." Once an action item has
+   * produced (or been linked to) a Product Backlog item, that link is the evidence it was
+   * addressed; the manual `addedToSprintBacklog` flag must not be turned back off, or the
+   * improvement would look unaddressed while the work exists.
+   */
+  RETROSPECTIVE_ACTION_ITEM_LINKED: 'GATE_RETROSPECTIVE_ACTION_ITEM_LINKED',
+  /**
+   * "The Scrum Team inspects... their Definition of Done... and identifies the most helpful
+   * changes." Applying DoD changes is refused when the Retrospective recorded no reflection,
+   * because an empty application would bump the DoD version without changing anything and
+   * present a version bump as evidence of adaptation that did not happen.
+   */
+  RETROSPECTIVE_DOD_CHANGES_MISSING: 'GATE_RETROSPECTIVE_DOD_CHANGES_MISSING',
 } as const;
 
 export type GateCode = (typeof GATE_CODES)[keyof typeof GATE_CODES];
@@ -409,6 +436,26 @@ export const GATE_DEFINITIONS: Record<GateCode, GateDefinition> = {
     code: GATE_CODES.SPRINT_EVENT_BEFORE_END_DATE,
     httpStatus: 400,
     i18nKey: 'sprintEventBeforeEndDate',
+  },
+  [GATE_CODES.RETROSPECTIVE_TEAM_MEMBERS_ONLY]: {
+    code: GATE_CODES.RETROSPECTIVE_TEAM_MEMBERS_ONLY,
+    httpStatus: 403,
+    i18nKey: 'retrospectiveTeamMembersOnly',
+  },
+  [GATE_CODES.RETROSPECTIVE_SM_NOTES_SM_ONLY]: {
+    code: GATE_CODES.RETROSPECTIVE_SM_NOTES_SM_ONLY,
+    httpStatus: 403,
+    i18nKey: 'retrospectiveSmNotesSmOnly',
+  },
+  [GATE_CODES.RETROSPECTIVE_ACTION_ITEM_LINKED]: {
+    code: GATE_CODES.RETROSPECTIVE_ACTION_ITEM_LINKED,
+    httpStatus: 409,
+    i18nKey: 'retrospectiveActionItemLinked',
+  },
+  [GATE_CODES.RETROSPECTIVE_DOD_CHANGES_MISSING]: {
+    code: GATE_CODES.RETROSPECTIVE_DOD_CHANGES_MISSING,
+    httpStatus: 400,
+    i18nKey: 'retrospectiveDodChangesMissing',
   },
 };
 

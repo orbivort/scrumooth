@@ -56,6 +56,12 @@
     "successMetricsRequired": "Un objetivo de producto debe declarar al menos una métrica de éxito: indica cómo sabrá el equipo que se ha alcanzado el estado futuro."
   },
   "recordNotFound": "Registro no encontrado",
+  "retrospective": {
+    "actionItemLinked": "Esta mejora ya está recogida en el elemento de Product Backlog \"{{title}}\", por lo que cuenta como atendida. Elimina el vínculo antes de marcarla como no atendida.",
+    "dodChangesMissing": "La retrospectiva no registró ninguna reflexión sobre la Definición de Terminado, así que no hay nada que aplicar. Inspecciona primero al menos un criterio.",
+    "smNotesSmOnly": "Las notas del Scrum Master son observaciones de coaching sobre la retrospectiva del Sprint, por lo que solo el Scrum Master del equipo puede leerlas o escribirlas.",
+    "teamMembersOnly": "La retrospectiva del Sprint es el propio evento de su Scrum Team y contiene reflexión sincera sobre personas e interacciones, por lo que solo un miembro de ese equipo puede leerla o modificarla."
+  },
   "roleAlreadyTaken": "Ya existe un {{role}} para este equipo. Cada equipo puede tener exactamente un {{role}}.",
   "routeNotFound": "{{method}} {{path}} no encontrado",
   "sprint": {

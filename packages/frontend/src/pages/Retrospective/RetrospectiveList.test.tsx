@@ -362,7 +362,7 @@ describe('RetrospectiveList', () => {
   });
 
   describe('Create Retrospective', () => {
-    it('should call createRetrospective when no retrospective exists', async () => {
+    it('should ask for the anonymity choice before creating, then create a named Retrospective', async () => {
       const sprints = [createMockSprint({ id: 'sprint-1' })];
       (apiService.getSprints as ReturnType<typeof vi.fn>).mockResolvedValue({
         success: true,
@@ -384,11 +384,70 @@ describe('RetrospectiveList', () => {
         expect(screen.getByText('Sprint 1')).toBeInTheDocument();
       });
 
-      const createButton = screen.getByText('Create Retrospective');
-      await user.click(createButton);
+      // The Retrospective is not created on the first click: anonymity is chosen first, because it
+      // cannot be chosen afterwards.
+      await user.click(screen.getByText('Create Retrospective'));
+
+      expect(apiService.createRetrospective).not.toHaveBeenCalled();
+      expect(screen.getByText('Run this Retrospective anonymously')).toBeInTheDocument();
+
+      await user.click(screen.getByText('Create'));
 
       await waitFor(() => {
-        expect(apiService.createRetrospective).toHaveBeenCalled();
+        expect(apiService.createRetrospective).toHaveBeenCalledWith(
+          expect.objectContaining({ sprintId: 'sprint-1', isAnonymous: false })
+        );
+      });
+    });
+
+    it('should create an anonymous Retrospective when the team asks for one', async () => {
+      const sprints = [createMockSprint({ id: 'sprint-1' })];
+      (apiService.getSprints as ReturnType<typeof vi.fn>).mockResolvedValue({
+        success: true,
+        data: sprints,
+      });
+      (apiService.getRetrospectives as ReturnType<typeof vi.fn>).mockResolvedValue({
+        success: true,
+        data: [],
+      });
+      (apiService.createRetrospective as ReturnType<typeof vi.fn>).mockResolvedValue({
+        success: true,
+        data: createMockRetrospective({ isAnonymous: true }),
+      });
+
+      const user = userEvent.setup();
+      renderWithProviders(<RetrospectiveList />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Sprint 1')).toBeInTheDocument();
+      });
+
+      await user.click(screen.getByText('Create Retrospective'));
+      await user.click(screen.getByRole('checkbox'));
+      await user.click(screen.getByText('Create'));
+
+      await waitFor(() => {
+        expect(apiService.createRetrospective).toHaveBeenCalledWith(
+          expect.objectContaining({ isAnonymous: true })
+        );
+      });
+    });
+
+    it('should flag a Retrospective that was created anonymously', async () => {
+      const sprints = [createMockSprint({ id: 'sprint-1' })];
+      (apiService.getSprints as ReturnType<typeof vi.fn>).mockResolvedValue({
+        success: true,
+        data: sprints,
+      });
+      (apiService.getRetrospectives as ReturnType<typeof vi.fn>).mockResolvedValue({
+        success: true,
+        data: [createMockRetrospective({ id: 'retro-1', sprintId: 'sprint-1', isAnonymous: true })],
+      });
+
+      renderWithProviders(<RetrospectiveList />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Anonymous')).toBeInTheDocument();
       });
     });
 
@@ -440,8 +499,8 @@ describe('RetrospectiveList', () => {
         expect(screen.getByText('Sprint 1')).toBeInTheDocument();
       });
 
-      const createButton = screen.getByText('Create Retrospective');
-      await user.click(createButton);
+      await user.click(screen.getByText('Create Retrospective'));
+      await user.click(screen.getByText('Create'));
 
       await waitFor(() => {
         expect(screen.getByText('Creating...')).toBeInTheDocument();

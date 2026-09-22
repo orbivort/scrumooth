@@ -192,6 +192,8 @@ describe('ProductBacklog handlers coverage', () => {
       linkAdjustmentToPbi: vi.fn().mockResolvedValue({ success: true, data: {} }),
       getPendingRetroActionItems: vi.fn().mockResolvedValue({ success: true, data: [] }),
       getRetroActionItems: vi.fn().mockResolvedValue({ success: true, data: [] }),
+      materializeActionItem: vi.fn().mockResolvedValue({ success: true, data: {} }),
+      linkActionItemToPbi: vi.fn().mockResolvedValue({ success: true, data: {} }),
       getTasksByPbiId: vi.fn().mockResolvedValue({ success: true, data: [] }),
       verifyDoDForPBI: vi.fn().mockResolvedValue({ success: true }),
       verifyDoRForPBI: vi.fn().mockResolvedValue({ success: true }),
@@ -446,14 +448,18 @@ describe('ProductBacklog handlers coverage', () => {
       });
     });
 
-    it('should open the create modal prefilled when creating from a pending retro action item', async () => {
+    it('should materialise a pending retro action item into a linked backlog item', async () => {
       vi.mocked(apiService.getPendingRetroActionItems).mockResolvedValue({
         success: true,
         data: [
           {
-            id: 'retro-1',
+            id: 'action-1',
+            retrospectiveId: 'retro-1',
             title: 'Improve CI pipeline',
             description: 'Speed up builds',
+            ownerId: 'user-1',
+            status: 'PENDING' as const,
+            addedToSprintBacklog: false,
             createdAt: new Date().toISOString(),
           },
         ],
@@ -465,9 +471,14 @@ describe('ProductBacklog handlers coverage', () => {
       const createItemButton = await screen.findByText(i18nT('backlog:pendingRetro.createItem'));
       await user.click(createItemButton);
 
+      // The item is created and linked server-side, so no prefill modal opens and the follow-through
+      // is recorded rather than asserted.
+      await waitFor(() => {
+        expect(apiService.materializeActionItem).toHaveBeenCalledWith('action-1');
+      });
       expect(
-        await screen.findByLabelText(i18nT('backlog:createItem.titleLabel'), { exact: false })
-      ).toBeInTheDocument();
+        screen.queryByLabelText(i18nT('backlog:createItem.titleLabel'), { exact: false })
+      ).not.toBeInTheDocument();
     });
   });
 

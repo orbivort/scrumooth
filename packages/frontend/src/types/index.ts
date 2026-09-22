@@ -703,10 +703,31 @@ export interface SprintRetrospective {
   summary?: string;
   smNotes?: string | null;
   dodEvolutionNotes?: string; // Notes about DoD changes
+  /** The per-criterion Definition of Done reflection recorded during the event. */
+  dodReflections?: DodReflection[] | null;
+  /** The Definition of Done version this Retrospective produced, once its changes were applied. */
+  dodVersionAtPush?: number | null;
   isAnonymous: boolean;
   createdAt: string;
   updatedAt: string;
   sprint?: Sprint;
+}
+
+/**
+ * What the team decided about one Definition of Done criterion during the Retrospective.
+ *
+ * `KEEP` leaves the criterion as it is, `CHANGE` replaces its text, and `RETIRE` removes it. A
+ * reflection with no `dodItemId` proposes a criterion the team does not have yet.
+ */
+export type DodReflectionDecision = 'KEEP' | 'CHANGE' | 'RETIRE';
+
+export interface DodReflection {
+  dodItemId: string | null;
+  description: string;
+  decision: DodReflectionDecision;
+  proposedDescription?: string | null;
+  note?: string | null;
+  order?: number;
 }
 
 export interface RetrospectiveItem {
@@ -714,8 +735,8 @@ export interface RetrospectiveItem {
   retrospectiveId: string;
   category: RetrospectiveCategory;
   content: string;
-  authorId?: string; // Optional if anonymous
-  authorName?: string;
+  authorId?: string | null; // Null in an anonymous Retrospective
+  authorName?: string | null;
   votes: number;
   votedBy?: string[]; // User IDs
   order: number;
@@ -731,7 +752,11 @@ export interface RetroActionItem {
   dueDate?: string;
   status: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
   addedToSprintBacklog: boolean;
-  relatedSprintId?: string; // Sprint where action item is added
+  relatedSprintId?: string | null; // Sprint the improvement was taken into
+  /** The Product Backlog item this improvement produced, or was linked to. */
+  productBacklogItemId?: string | null;
+  /** Evidence of the follow-through: the linked item, when one exists. */
+  productBacklogItem?: { id: string; title: string } | null;
   createdAt: string;
   completedAt?: string;
   owner?: User;

@@ -4720,6 +4720,101 @@ class MockApiService {
     return { success: true, data: { message: 'Attendee deleted' } };
   }
 
+  async applyDodChanges(id: string): Promise<ApiResponse<SprintRetrospective>> {
+    await delay(400);
+    const existing = this.retrospectivesStore.find((r) => r.id === id);
+    if (!existing) {
+      return { success: false, error: { code: 'NOT_FOUND', message: 'Retrospective not found' } };
+    }
+
+    const reflections = existing.dodReflections ?? [];
+    if (reflections.length === 0) {
+      return {
+        success: false,
+        error: {
+          code: 'GATE_RETROSPECTIVE_DOD_CHANGES_MISSING',
+          message: 'Inspect at least one criterion before applying changes.',
+        },
+      };
+    }
+
+    const updated: SprintRetrospective = {
+      ...existing,
+      dodVersionAtPush: (existing.dodVersionAtPush ?? 0) + 1,
+    };
+    return { success: true, data: updated };
+  }
+
+  async materializeActionItem(actionItemId: string): Promise<ApiResponse<RetroActionItem>> {
+    await delay(400);
+    const pbiId = `pbi-${Date.now()}`;
+
+    for (const retro of this.retrospectivesStore) {
+      const item = retro.actionItems.find((action) => action.id === actionItemId);
+      if (item) {
+        if (item.productBacklogItemId) {
+          return {
+            success: false,
+            error: {
+              code: 'GATE_RETROSPECTIVE_ACTION_ITEM_LINKED',
+              message: 'This improvement already has a linked backlog item.',
+            },
+          };
+        }
+
+        item.addedToSprintBacklog = true;
+        item.productBacklogItemId = pbiId;
+        item.productBacklogItem = { id: pbiId, title: item.title };
+        return { success: true, data: item };
+      }
+    }
+
+    return { success: false, error: { code: 'NOT_FOUND', message: 'Action item not found' } };
+  }
+
+  async linkActionItemToPbi(
+    actionItemId: string,
+    pbiId: string
+  ): Promise<ApiResponse<RetroActionItem>> {
+    await delay(400);
+    const pbi = mockProductBacklogItems.find((item) => item.id === pbiId);
+    if (!pbi) {
+      return { success: false, error: { code: 'NOT_FOUND', message: 'Backlog item not found' } };
+    }
+
+    for (const retro of this.retrospectivesStore) {
+      const item = retro.actionItems.find((action) => action.id === actionItemId);
+      if (item) {
+        if (item.productBacklogItemId) {
+          return {
+            success: false,
+            error: {
+              code: 'GATE_RETROSPECTIVE_ACTION_ITEM_LINKED',
+              message: 'This improvement already has a linked backlog item.',
+            },
+          };
+        }
+
+        if (pbi.teamId !== retro.teamId) {
+          return {
+            success: false,
+            error: {
+              code: 'BAD_REQUEST',
+              message: 'The backlog item must belong to the same team as the retrospective',
+            },
+          };
+        }
+
+        item.addedToSprintBacklog = true;
+        item.productBacklogItemId = pbi.id;
+        item.productBacklogItem = { id: pbi.id, title: pbi.title };
+        return { success: true, data: item };
+      }
+    }
+
+    return { success: false, error: { code: 'NOT_FOUND', message: 'Action item not found' } };
+  }
+
   // ==================== Sprint Backlog Management ====================
 
   async getAvailablePBIsForSprint(teamId: string): Promise<ApiResponse<ProductBacklogItem[]>> {

@@ -113,31 +113,31 @@
     "template": {
       "examples": [
         {
-          "title": "User Authentication",
-          "description": "Implement OAuth2 login with Google and GitHub providers for secure user authentication",
-          "storyPoints": 8,
+          "acceptanceCriteria": "1. Users can log in with Google\n2. Users can log in with GitHub\n3. Session expires after 30 minutes\n4. Invalid login shows error message",
           "businessValue": 13,
-          "priority": "Must Have",
+          "description": "Implement OAuth2 login with Google and GitHub providers for secure user authentication",
           "labels": "auth, security, backend",
-          "acceptanceCriteria": "1. Users can log in with Google\n2. Users can log in with GitHub\n3. Session expires after 30 minutes\n4. Invalid login shows error message"
+          "priority": "Must Have",
+          "storyPoints": 8,
+          "title": "User Authentication"
         },
         {
-          "title": "Dashboard Charts",
-          "description": "Add interactive charts to the dashboard for sprint progress and team velocity visualization",
-          "storyPoints": 5,
+          "acceptanceCriteria": "1. Sprint progress chart displays correctly\n2. Team velocity chart shows last 6 sprints\n3. Charts are responsive on mobile devices",
           "businessValue": 8,
-          "priority": "Should Have",
+          "description": "Add interactive charts to the dashboard for sprint progress and team velocity visualization",
           "labels": "frontend, charts, dashboard",
-          "acceptanceCriteria": "1. Sprint progress chart displays correctly\n2. Team velocity chart shows last 6 sprints\n3. Charts are responsive on mobile devices"
+          "priority": "Should Have",
+          "storyPoints": 5,
+          "title": "Dashboard Charts"
         },
         {
-          "title": "Email Notifications",
-          "description": "Configure email notifications for sprint start, sprint end, and critical impediments",
-          "storyPoints": 3,
+          "acceptanceCriteria": "1. Email sent when sprint starts\n2. Email sent when sprint ends\n3. Email sent for critical impediments\n4. Users can unsubscribe",
           "businessValue": 5,
-          "priority": "Could Have",
+          "description": "Configure email notifications for sprint start, sprint end, and critical impediments",
           "labels": "notifications, email, backend",
-          "acceptanceCriteria": "1. Email sent when sprint starts\n2. Email sent when sprint ends\n3. Email sent for critical impediments\n4. Users can unsubscribe"
+          "priority": "Could Have",
+          "storyPoints": 3,
+          "title": "Email Notifications"
         }
       ],
       "filename": "backlog-import-template.csv",
@@ -448,8 +448,18 @@
     "headerTitle": "Pending Action from Retrospective",
     "inBacklog": "In Backlog",
     "inProgress": "In Progress",
+    "linkCancel": "Cancel",
+    "linkConfirm": "Link",
+    "linkExisting": "Link existing item",
+    "linkFailed": "The item could not be linked.",
+    "linkSelectLabel": "Choose a backlog item",
+    "linkSelectPlaceholder": "Select an item…",
+    "linkedCannotUnmark": "This improvement is carried by a linked backlog item, so it cannot be un-marked.",
+    "linkedItemLabel": "Linked item:",
     "loadingActionItems": "Loading action items",
     "markAdded": "Mark Added",
+    "markFailed": "The improvement could not be marked as added.",
+    "materializeFailed": "The backlog item could not be created.",
     "notInBacklog": "Not in Backlog",
     "owner": "Owner:",
     "pending": "Pending",

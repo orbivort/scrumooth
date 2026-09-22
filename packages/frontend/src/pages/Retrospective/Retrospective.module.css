@@ -731,6 +731,28 @@
   font-weight: var(--font-weight-medium);
 }
 
+/* Anonymity is a feature, not a warning: the chip is neutral, the label is plain. */
+.item-author-anonymous {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  font-style: italic;
+  font-weight: var(--font-weight-medium);
+}
+
+.anonymous-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1-5);
+  padding: var(--space-1) var(--space-2-5);
+  border-radius: var(--radius-full);
+  border: var(--border-width-1) solid var(--color-gray-300);
+  background: var(--color-gray-100);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  white-space: nowrap;
+}
+
 .item-actions {
   display: flex;
   gap: var(--space-1);

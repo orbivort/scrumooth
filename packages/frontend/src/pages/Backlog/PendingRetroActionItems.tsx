@@ -16,6 +16,7 @@ import {
   ChevronDownIcon,
   ChevronRightIcon,
   FileCheckIcon,
+  PackageIcon,
 } from '../../components/common/Icons';
 
 import styles from './PendingRetroActionItems.module.css';
@@ -28,13 +29,16 @@ interface RetroActionItemWithSprint extends RetroActionItem {
   };
 }
 
-interface PendingRetroActionItemsProps {
-  onCreateWorkItem?: (actionItem: RetroActionItem) => void;
-}
-
-export const PendingRetroActionItems: React.FC<PendingRetroActionItemsProps> = ({
-  onCreateWorkItem,
-}) => {
+/**
+ * The improvements a Retrospective committed to, and where they ended up.
+ *
+ * "The most impactful improvements are addressed as soon as possible. They may even be added to the
+ * Sprint Backlog for the next Sprint." Adding an improvement to the backlog is therefore an action
+ * with an outcome, not a checkbox: the panel creates the item (or records an existing one) and the
+ * link that results is what proves the follow-through. The manual "mark as added" remains only for
+ * improvements whose outcome is not an item at all, and it cannot contradict a link.
+ */
+export const PendingRetroActionItems: React.FC = () => {
   const { currentTeam } = useTeamStore();
   const { t } = useTranslation('backlog');
   const { locale } = useI18nStore();
@@ -42,11 +46,52 @@ export const PendingRetroActionItems: React.FC<PendingRetroActionItemsProps> = (
   const queryClient = useQueryClient();
   const [isExpanded, setIsExpanded] = useState(true);
   const [filter, setFilter] = useState<'all' | 'PENDING' | 'IN_PROGRESS'>('all');
+  const [linkingActionItemId, setLinkingActionItemId] = useState<string | null>(null);
+  const [selectedPbiId, setSelectedPbiId] = useState('');
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const { data: actionItemsData, isLoading } = useQuery({
     queryKey: ['pending-retro-action-items', teamId],
     queryFn: () => apiService.getPendingRetroActionItems(teamId ?? ''),
     enabled: !!teamId,
+  });
+
+  // Only loaded while an improvement is being linked, so the common case costs nothing.
+  const { data: backlogData } = useQuery({
+    queryKey: ['product-backlog', teamId, 'retro-link'],
+    queryFn: () => apiService.getProductBacklog(teamId ?? '', { limit: 200 }),
+    enabled: !!teamId && !!linkingActionItemId,
+  });
+
+  const invalidate = () => {
+    void queryClient.invalidateQueries({ queryKey: queryKeys.pendingRetroActionItems.all });
+    void queryClient.invalidateQueries({ queryKey: queryKeys.retrospective.allList });
+    void queryClient.invalidateQueries({ queryKey: queryKeys.productBacklog.all });
+  };
+
+  const materializeMutation = useMutation({
+    mutationFn: (actionItemId: string) => apiService.materializeActionItem(actionItemId),
+    onSuccess: () => {
+      setActionError(null);
+      invalidate();
+    },
+    onError: () => {
+      setActionError(t('pendingRetro.materializeFailed') as string);
+    },
+  });
+
+  const linkMutation = useMutation({
+    mutationFn: ({ actionItemId, pbiId }: { actionItemId: string; pbiId: string }) =>
+      apiService.linkActionItemToPbi(actionItemId, pbiId),
+    onSuccess: () => {
+      setActionError(null);
+      setLinkingActionItemId(null);
+      setSelectedPbiId('');
+      invalidate();
+    },
+    onError: () => {
+      setActionError(t('pendingRetro.linkFailed') as string);
+    },
   });
 
   const markAddedMutation = useMutation({
@@ -56,12 +101,16 @@ export const PendingRetroActionItems: React.FC<PendingRetroActionItemsProps> = (
         status: 'COMPLETED',
       }),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: queryKeys.pendingRetroActionItems.all });
-      void queryClient.invalidateQueries({ queryKey: queryKeys.retrospective.allList });
+      setActionError(null);
+      invalidate();
+    },
+    onError: () => {
+      setActionError(t('pendingRetro.markFailed') as string);
     },
   });
 
   const actionItems = (actionItemsData?.data ?? []) as RetroActionItemWithSprint[];
+  const backlogItems = backlogData?.data ?? [];
 
   const filteredActionItems =
     filter === 'all' ? actionItems : actionItems.filter((item) => item.status === filter);
@@ -101,13 +150,29 @@ export const PendingRetroActionItems: React.FC<PendingRetroActionItemsProps> = (
     );
   };
 
+  const isBusy =
+    materializeMutation.isPending || linkMutation.isPending || markAddedMutation.isPending;
+
   const handleCreateItem = (actionItem: RetroActionItem) => {
-    if (onCreateWorkItem) {
-      onCreateWorkItem(actionItem);
+    setActionError(null);
+    materializeMutation.mutate(actionItem.id);
+  };
+
+  const handleStartLink = (actionItemId: string) => {
+    setActionError(null);
+    setSelectedPbiId('');
+    setLinkingActionItemId(actionItemId);
+  };
+
+  const handleConfirmLink = (actionItemId: string) => {
+    if (!selectedPbiId) {
+      return;
     }
+    linkMutation.mutate({ actionItemId, pbiId: selectedPbiId });
   };
 
   const handleMarkAdded = (actionItem: RetroActionItem) => {
+    setActionError(null);
     markAddedMutation.mutate({
       retroId: actionItem.retrospectiveId,
       actionItemId: actionItem.id,
@@ -158,6 +223,12 @@ export const PendingRetroActionItems: React.FC<PendingRetroActionItemsProps> = (
             })}
           </div>
 
+          {actionError && (
+            <div className={styles['action-error']} role="alert">
+              {actionError}
+            </div>
+          )}
+
           {isLoading ? (
             <LoadingState
               variant="skeleton-list"
@@ -168,6 +239,8 @@ export const PendingRetroActionItems: React.FC<PendingRetroActionItemsProps> = (
             <div className={styles['action-items-list']}>
               {filteredActionItems.map((item) => {
                 const config = getStatusConfig(item.status);
+                const isLinking = linkingActionItemId === item.id;
+                const linkedItem = item.productBacklogItem;
                 return (
                   <div key={item.id} className={styles['action-item-card']}>
                     <div className={styles['card-header']}>
@@ -207,19 +280,84 @@ export const PendingRetroActionItems: React.FC<PendingRetroActionItemsProps> = (
                       </div>
                     )}
 
+                    {linkedItem && (
+                      <div className={styles['evidence-row']}>
+                        <PackageIcon size={14} aria-hidden="true" />
+                        <span className={styles['evidence-label']}>
+                          {t('pendingRetro.linkedItemLabel') as string}
+                        </span>
+                        <span className={styles['evidence-title']}>{linkedItem.title}</span>
+                      </div>
+                    )}
+
+                    {isLinking && (
+                      <div className={styles['link-picker']}>
+                        <label htmlFor={`link-pbi-${item.id}`}>
+                          {t('pendingRetro.linkSelectLabel') as string}
+                        </label>
+                        <select
+                          id={`link-pbi-${item.id}`}
+                          value={selectedPbiId}
+                          onChange={(event) => setSelectedPbiId(event.target.value)}
+                        >
+                          <option value="">
+                            {t('pendingRetro.linkSelectPlaceholder') as string}
+                          </option>
+                          {backlogItems.map((backlogItem) => (
+                            <option key={backlogItem.id} value={backlogItem.id}>
+                              {backlogItem.title}
+                            </option>
+                          ))}
+                        </select>
+                        <div className={styles['link-picker-actions']}>
+                          <button
+                            className={styles['create-item-button']}
+                            onClick={() => handleConfirmLink(item.id)}
+                            disabled={!selectedPbiId || linkMutation.isPending}
+                          >
+                            {t('pendingRetro.linkConfirm') as string}
+                          </button>
+                          <button
+                            className={styles['mark-added-button']}
+                            onClick={() => {
+                              setLinkingActionItemId(null);
+                              setSelectedPbiId('');
+                            }}
+                            disabled={linkMutation.isPending}
+                          >
+                            {t('pendingRetro.linkCancel') as string}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
                     <div className={styles['card-actions']}>
                       <button
                         className={styles['create-item-button']}
                         onClick={() => handleCreateItem(item)}
+                        disabled={isBusy || !!linkedItem}
                       >
-                        {t('pendingRetro.createItem') as string}
+                        {materializeMutation.isPending && materializeMutation.variables === item.id
+                          ? (t('pendingRetro.updating') as string)
+                          : (t('pendingRetro.createItem') as string)}
+                      </button>
+                      <button
+                        className={styles['link-button']}
+                        onClick={() => handleStartLink(item.id)}
+                        disabled={isBusy || !!linkedItem}
+                      >
+                        <PackageIcon size={14} /> {t('pendingRetro.linkExisting') as string}
                       </button>
                       <button
                         className={styles['mark-added-button']}
                         onClick={() => handleMarkAdded(item)}
-                        disabled={markAddedMutation.isPending}
+                        disabled={isBusy || !!linkedItem}
+                        title={
+                          linkedItem ? (t('pendingRetro.linkedCannotUnmark') as string) : undefined
+                        }
                       >
-                        {markAddedMutation.isPending
+                        {markAddedMutation.isPending &&
+                        markAddedMutation.variables.actionItemId === item.id
                           ? (t('pendingRetro.updating') as string)
                           : (t('pendingRetro.markAdded') as string)}
                       </button>

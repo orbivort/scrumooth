@@ -29,6 +29,7 @@ import {
   CheckIcon,
   SearchIcon,
   EyeIcon,
+  EyeOffIcon,
   PlusIcon,
 } from '@/components/common/Icons';
 import { useI18nStore } from '@/i18n/useI18nStore';
@@ -123,7 +124,8 @@ const getRetroStatusConfig = (sprint: SprintWithRetro, t: any) => {
 interface RetroCardProps {
   sprint: SprintWithRetro;
   locale: Locale;
-  onView: (sprintId: string, hasRetro: boolean) => void;
+  onView: (sprintId: string) => void;
+  onCreate: (sprintId: string, isAnonymous: boolean) => void;
   isCreating: boolean;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- TFunction signature varies by i18next version
   t: any;
@@ -131,19 +133,47 @@ interface RetroCardProps {
 
 // Renders a single reviewable sprint card. Extracted so both the "Active" and "Completed"
 // sections can reuse identical markup without duplication.
-const RetroCard: React.FC<RetroCardProps> = ({ sprint, locale, onView, isCreating, t }) => {
+const RetroCard: React.FC<RetroCardProps> = ({
+  sprint,
+  locale,
+  onView,
+  onCreate,
+  isCreating,
+  t,
+}) => {
   const statusConfig = getStatusConfig(sprint.status, t);
   const retroConfig = getRetroStatusConfig(sprint, t);
   const RetroIcon = retroConfig.icon;
+  // Opening a Retrospective is the one moment anonymity can be chosen: recording it later cannot
+  // un-record the authors of contributions already made, and clearing it would expose
+  // contributions that were made on the promise of anonymity.
+  const [showCreatePanel, setShowCreatePanel] = useState(false);
+  const [isAnonymous, setIsAnonymous] = useState(false);
+
+  const handlePrimaryAction = () => {
+    if (sprint.retrospective) {
+      onView(sprint.id);
+      return;
+    }
+    setShowCreatePanel(true);
+  };
 
   return (
     <article className={styles['sprint-card']}>
       <div className={styles['card-header']}>
         <div className={styles['sprint-name']}>{sprint.name}</div>
-        <span className={`${styles['status-badge']} ${statusConfig.className}`}>
-          <span className={styles['status-badge-icon']} />
-          {statusConfig.label}
-        </span>
+        <div className={styles['card-header-badges']}>
+          {sprint.retrospective?.isAnonymous && (
+            <span className={styles['anonymous-chip']} title={t('anonymity.hint') as string}>
+              <EyeOffIcon size={12} aria-hidden="true" />
+              {t('anonymity.badge')}
+            </span>
+          )}
+          <span className={`${styles['status-badge']} ${statusConfig.className}`}>
+            <span className={styles['status-badge-icon']} />
+            {statusConfig.label}
+          </span>
+        </div>
       </div>
 
       <div className={styles['card-date']}>
@@ -177,6 +207,37 @@ const RetroCard: React.FC<RetroCardProps> = ({ sprint, locale, onView, isCreatin
         </div>
       )}
 
+      {showCreatePanel && !sprint.retrospective && (
+        <div className={styles['create-panel']}>
+          <label className={styles['anonymous-toggle']}>
+            <input
+              type="checkbox"
+              checked={isAnonymous}
+              onChange={(event) => setIsAnonymous(event.target.checked)}
+              disabled={isCreating}
+            />
+            <span className={styles['anonymous-toggle-label']}>{t('anonymity.chooseLabel')}</span>
+          </label>
+          <p className={styles['anonymous-hint']}>{t('anonymity.hint')}</p>
+          <div className={styles['create-panel-actions']}>
+            <button
+              className={styles['create-confirm-button']}
+              onClick={() => onCreate(sprint.id, isAnonymous)}
+              disabled={isCreating}
+            >
+              {isCreating ? t('list.creating') : t('list.createConfirm')}
+            </button>
+            <button
+              className={styles['create-cancel-button']}
+              onClick={() => setShowCreatePanel(false)}
+              disabled={isCreating}
+            >
+              {t('list.createCancel')}
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className={styles['card-footer']}>
         <div className={`${styles['retro-status']} ${retroConfig.className}`}>
           <RetroIcon className={styles['retro-icon']} />
@@ -184,14 +245,13 @@ const RetroCard: React.FC<RetroCardProps> = ({ sprint, locale, onView, isCreatin
         </div>
 
         <div className={styles['card-actions']}>
+          {/* The create panel owns the pending state, so this button never reports progress itself. */}
           <button
             className={styles['view-button']}
-            onClick={() => onView(sprint.id, !!sprint.retrospective)}
-            disabled={isCreating}
+            onClick={handlePrimaryAction}
+            disabled={isCreating || showCreatePanel}
           >
-            {isCreating ? (
-              t('list.creating')
-            ) : sprint.retrospective ? (
+            {sprint.retrospective ? (
               <>
                 <EyeIcon size={16} /> {t('list.viewRetrospective')}
               </>
@@ -266,7 +326,7 @@ export const RetrospectiveList: React.FC = () => {
   }, [retroReviewableSprints]);
 
   const createRetroMutation = useMutation({
-    mutationFn: (sprintId: string) => {
+    mutationFn: ({ sprintId, isAnonymous }: { sprintId: string; isAnonymous: boolean }) => {
       if (!teamId || !user?.id) {
         throw new Error('Team or user not available');
       }
@@ -275,10 +335,10 @@ export const RetrospectiveList: React.FC = () => {
         teamId,
         retroDate: new Date().toISOString().split('T')[0],
         facilitatorId: user.id,
-        isAnonymous: false,
+        isAnonymous,
       });
     },
-    onSuccess: (_, sprintId) => {
+    onSuccess: (_, { sprintId }) => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.retrospective.allByTeam(teamId) });
       void navigate(`/retrospective/${sprintId}`);
     },
@@ -288,13 +348,13 @@ export const RetrospectiveList: React.FC = () => {
     },
   });
 
-  const handleViewRetro = (sprintId: string, hasRetro: boolean) => {
-    if (hasRetro) {
-      void navigate(`/retrospective/${sprintId}`);
-    } else {
-      setCreatingSprintId(sprintId);
-      createRetroMutation.mutate(sprintId);
-    }
+  const handleViewRetro = (sprintId: string) => {
+    void navigate(`/retrospective/${sprintId}`);
+  };
+
+  const handleCreateRetro = (sprintId: string, isAnonymous: boolean) => {
+    setCreatingSprintId(sprintId);
+    createRetroMutation.mutate({ sprintId, isAnonymous });
   };
 
   if (!teamId) {
@@ -360,6 +420,7 @@ export const RetrospectiveList: React.FC = () => {
                     sprint={sprint}
                     locale={locale}
                     onView={handleViewRetro}
+                    onCreate={handleCreateRetro}
                     isCreating={creatingSprintId === sprint.id && createRetroMutation.isPending}
                     t={t}
                   />
@@ -381,6 +442,7 @@ export const RetrospectiveList: React.FC = () => {
                     sprint={sprint}
                     locale={locale}
                     onView={handleViewRetro}
+                    onCreate={handleCreateRetro}
                     isCreating={creatingSprintId === sprint.id && createRetroMutation.isPending}
                     t={t}
                   />

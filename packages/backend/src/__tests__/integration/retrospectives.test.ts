@@ -558,6 +558,33 @@ describe('Retrospectives Integration Tests', () => {
         },
       });
 
+      // "The Sprint Review is the second-to-last event of the Sprint and the Sprint Retrospective
+      // concludes the Sprint": the Review must be completed before the Retrospective can be.
+      const increment = await prisma.increment.create({
+        data: {
+          id: generateUUIDv7(),
+          sprintId: sprint.id,
+          teamId: team.id,
+          name: 'Review Increment',
+          status: 'DELIVERED',
+          integrationVerified: true,
+          totalStoryPoints: 0,
+        },
+      });
+
+      await prisma.sprintReview.create({
+        data: {
+          id: generateUUIDv7(),
+          sprintId: sprint.id,
+          teamId: team.id,
+          incrementId: increment.id,
+          reviewDate: new Date(),
+          status: 'completed',
+          createdBy: user.id,
+          updatedBy: user.id,
+        },
+      });
+
       const cookies = await loginAndGetCookies(email);
 
       const { csrfToken } = extractCsrfFromCookies(cookies);
@@ -574,6 +601,207 @@ describe('Retrospectives Integration Tests', () => {
 
       expect(response.body.success).toBe(true);
       expect(response.body.data.status).toBe('COMPLETED');
+    });
+
+    it('should refuse to complete the Retrospective while its Sprint Review is still open', async () => {
+      const email = `retro-update-gate-${uniqueId()}@example.com`;
+      testEmails.push(email);
+
+      const user = await createTestUserInDb(email);
+      const teamName = `Retro Gate Team ${uniqueId()}`;
+      testTeams.push(teamName);
+
+      const team = await createTestTeam(teamName);
+      await addTeamMember(team.id, user.id, 'SCRUM_MASTER');
+      const sprint = await createTestSprint(team.id, 'Sprint');
+
+      const retro = await prisma.sprintRetrospective.create({
+        data: {
+          id: generateUUIDv7(),
+          sprintId: sprint.id,
+          teamId: team.id,
+          facilitatorId: user.id,
+          retroDate: new Date(),
+        },
+      });
+
+      const cookies = await loginAndGetCookies(email);
+      const { csrfToken } = extractCsrfFromCookies(cookies);
+
+      const response = await request(app)
+        .put(`/api/v1/retrospectives/${retro.id}`)
+        .set('Cookie', cookies)
+        .set(CSRF_CONSTANTS.HEADER_NAME, csrfToken)
+        .send({ status: 'COMPLETED' })
+        .expect(400);
+
+      expect(response.body.success).toBe(false);
+      expect(response.body.error.code).toBe('GATE_SPRINT_RETROSPECTIVE_REQUIRES_REVIEW');
+
+      const unchanged = await prisma.sprintRetrospective.findUnique({ where: { id: retro.id } });
+      expect(unchanged?.status).not.toBe('COMPLETED');
+    });
+
+    it('should refuse a caller who is not a member of the team that owns the Retrospective', async () => {
+      const ownerEmail = `retro-owner-${uniqueId()}@example.com`;
+      const outsiderEmail = `retro-outsider-${uniqueId()}@example.com`;
+      testEmails.push(ownerEmail, outsiderEmail);
+
+      const owner = await createTestUserInDb(ownerEmail);
+      await createTestUserInDb(outsiderEmail);
+      const teamName = `Retro Access Team ${uniqueId()}`;
+      testTeams.push(teamName);
+
+      const team = await createTestTeam(teamName);
+      await addTeamMember(team.id, owner.id, 'SCRUM_MASTER');
+      const sprint = await createTestSprint(team.id, 'Sprint');
+
+      const retro = await prisma.sprintRetrospective.create({
+        data: {
+          id: generateUUIDv7(),
+          sprintId: sprint.id,
+          teamId: team.id,
+          facilitatorId: owner.id,
+          retroDate: new Date(),
+          smNotes: 'Coaching observation about the facilitator',
+        },
+      });
+
+      const cookies = await loginAndGetCookies(outsiderEmail);
+      const { csrfToken } = extractCsrfFromCookies(cookies);
+
+      const readResponse = await request(app)
+        .get(`/api/v1/retrospectives/${retro.id}`)
+        .set('Cookie', cookies)
+        .expect(403);
+
+      expect(readResponse.body.error.code).toBe('GATE_RETROSPECTIVE_TEAM_MEMBERS_ONLY');
+
+      const writeResponse = await request(app)
+        .put(`/api/v1/retrospectives/${retro.id}`)
+        .set('Cookie', cookies)
+        .set(CSRF_CONSTANTS.HEADER_NAME, csrfToken)
+        .send({ summary: 'An outsider rewriting a team’s retrospective' })
+        .expect(403);
+
+      expect(writeResponse.body.error.code).toBe('GATE_RETROSPECTIVE_TEAM_MEMBERS_ONLY');
+    });
+
+    it('should withhold the Scrum Master notes from a member who is not the Scrum Master', async () => {
+      const developerEmail = `retro-dev-${uniqueId()}@example.com`;
+      const smEmail = `retro-sm-${uniqueId()}@example.com`;
+      testEmails.push(developerEmail, smEmail);
+
+      const developer = await createTestUserInDb(developerEmail);
+      const scrumMaster = await createTestUserInDb(smEmail);
+      const teamName = `Retro Notes Team ${uniqueId()}`;
+      testTeams.push(teamName);
+
+      const team = await createTestTeam(teamName);
+      await addTeamMember(team.id, developer.id, 'DEVELOPERS');
+      await addTeamMember(team.id, scrumMaster.id, 'SCRUM_MASTER');
+      const sprint = await createTestSprint(team.id, 'Sprint');
+
+      const retro = await prisma.sprintRetrospective.create({
+        data: {
+          id: generateUUIDv7(),
+          sprintId: sprint.id,
+          teamId: team.id,
+          facilitatorId: scrumMaster.id,
+          retroDate: new Date(),
+          smNotes: 'Coaching observation about the facilitator',
+        },
+      });
+
+      const developerCookies = await loginAndGetCookies(developerEmail);
+      const developerView = await request(app)
+        .get(`/api/v1/retrospectives/${retro.id}`)
+        .set('Cookie', developerCookies)
+        .expect(200);
+
+      expect(developerView.body.data.smNotes).toBeUndefined();
+
+      const smCookies = await loginAndGetCookies(smEmail);
+      const scrumMasterView = await request(app)
+        .get(`/api/v1/retrospectives/${retro.id}`)
+        .set('Cookie', smCookies)
+        .expect(200);
+
+      expect(scrumMasterView.body.data.smNotes).toBe('Coaching observation about the facilitator');
+    });
+  });
+
+  describe('PATCH /api/v1/retrospectives/:id/sm-notes', () => {
+    const testEmails: string[] = [];
+    const testTeams: string[] = [];
+
+    afterEach(async () => {
+      await cleanupTeams(testTeams);
+      await cleanupTestData(testEmails);
+      testEmails.length = 0;
+      testTeams.length = 0;
+    });
+
+    const setupRetrospective = async (
+      email: string,
+      role: 'SCRUM_MASTER' | 'DEVELOPERS'
+    ): Promise<{ retrospectiveId: string; cookies: string[]; csrfToken: string }> => {
+      testEmails.push(email);
+      const user = await createTestUserInDb(email);
+      const teamName = `Retro Notes Write Team ${uniqueId()}`;
+      testTeams.push(teamName);
+
+      const team = await createTestTeam(teamName);
+      await addTeamMember(team.id, user.id, role);
+      const sprint = await createTestSprint(team.id, 'Sprint');
+
+      const retro = await prisma.sprintRetrospective.create({
+        data: {
+          id: generateUUIDv7(),
+          sprintId: sprint.id,
+          teamId: team.id,
+          facilitatorId: user.id,
+          retroDate: new Date(),
+        },
+      });
+
+      const cookies = await loginAndGetCookies(email);
+      const { csrfToken } = extractCsrfFromCookies(cookies);
+
+      return { retrospectiveId: retro.id, cookies, csrfToken };
+    };
+
+    it('should refuse the notes from anyone but the team’s Scrum Master', async () => {
+      const setup = await setupRetrospective(
+        `retro-notes-dev-${uniqueId()}@example.com`,
+        'DEVELOPERS'
+      );
+
+      const response = await request(app)
+        .patch(`/api/v1/retrospectives/${setup.retrospectiveId}/sm-notes`)
+        .set('Cookie', setup.cookies)
+        .set(CSRF_CONSTANTS.HEADER_NAME, setup.csrfToken)
+        .send({ smNotes: 'A developer writing the Scrum Master’s notes' })
+        .expect(403);
+
+      expect(response.body.error.code).toBe('GATE_RETROSPECTIVE_SM_NOTES_SM_ONLY');
+    });
+
+    it('should let the team’s Scrum Master write the notes', async () => {
+      const setup = await setupRetrospective(
+        `retro-notes-sm-${uniqueId()}@example.com`,
+        'SCRUM_MASTER'
+      );
+
+      const response = await request(app)
+        .patch(`/api/v1/retrospectives/${setup.retrospectiveId}/sm-notes`)
+        .set('Cookie', setup.cookies)
+        .set(CSRF_CONSTANTS.HEADER_NAME, setup.csrfToken)
+        .send({ smNotes: 'Coaching observation' })
+        .expect(200);
+
+      expect(response.body.success).toBe(true);
+      expect(response.body.data.smNotes).toBe('Coaching observation');
     });
   });
 

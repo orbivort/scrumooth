@@ -17,7 +17,6 @@ import {
   type ProductBacklogItem,
   type Task,
   type StakeholderFeedback,
-  type RetroActionItem,
 } from '../../types';
 import { EmptyState } from '../../components/EmptyState';
 import { LoadingState } from '../../components/common/Loading';
@@ -598,21 +597,7 @@ const BacklogContent: React.FC = () => {
           }}
         />
 
-        <PendingRetroActionItems
-          onCreateWorkItem={(actionItem: RetroActionItem) => {
-            setFormData({
-              title: actionItem.title,
-              description: actionItem.description ?? `Action item from retrospective`,
-              estimate: undefined,
-              moscowPriority: MoSCoWPriority.COULD_HAVE,
-              businessValue: undefined,
-              labels: 'retro-action',
-              acceptanceCriteria: '',
-              status: ItemStatus.NEW,
-            });
-            setShowCreateModal(true);
-          }}
-        />
+        <PendingRetroActionItems />
 
         <ActiveGoalBanner
           goal={activeGoal}

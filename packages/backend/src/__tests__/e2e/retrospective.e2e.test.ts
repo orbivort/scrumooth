@@ -1291,4 +1291,139 @@ describe('E2E: Retrospective Management', () => {
       expect(response.body.success).toBe(true);
     });
   });
+
+  describe('POST /api/v1/retrospectives/:id/apply-dod-changes', () => {
+    it('should refuse an empty reflection rather than bump the Definition of Done', async () => {
+      const email = `retro-dod-empty-${uniqueTestId()}@example.com`;
+      testEmails.push(email);
+
+      const { user, team } = await setupTeamWithUser(email, ROLES.SCRUM_MASTER);
+      const sprint = await createTestSprintInDb(
+        team.id,
+        `Sprint ${uniqueTestId()}`,
+        SPRINT_STATUSES.COMPLETED
+      );
+      const retro = await createTestRetrospectiveInDb(sprint.id, team.id, user.id);
+
+      const cookies = await loginAndGetCookies(email);
+      const { csrfToken } = extractCsrfFromCookies(cookies);
+
+      const response = await request(app)
+        .post(`/api/v1/retrospectives/${retro.id}/apply-dod-changes`)
+        .set('Cookie', cookies)
+        .set(CSRF_CONSTANTS.HEADER_NAME, csrfToken)
+        .expect(HTTP_STATUS.BAD_REQUEST);
+
+      expect(response.body.error.code).toBe('GATE_RETROSPECTIVE_DOD_CHANGES_MISSING');
+    });
+
+    it('should apply the recorded reflection and stamp the produced Definition of Done version', async () => {
+      const email = `retro-dod-apply-${uniqueTestId()}@example.com`;
+      testEmails.push(email);
+
+      const { user, team } = await setupTeamWithUser(email, ROLES.SCRUM_MASTER);
+      const sprint = await createTestSprintInDb(
+        team.id,
+        `Sprint ${uniqueTestId()}`,
+        SPRINT_STATUSES.COMPLETED
+      );
+      const retro = await createTestRetrospectiveInDb(sprint.id, team.id, user.id);
+
+      const cookies = await loginAndGetCookies(email);
+      const { csrfToken } = extractCsrfFromCookies(cookies);
+
+      await request(app)
+        .put(`/api/v1/retrospectives/${retro.id}`)
+        .set('Cookie', cookies)
+        .set(CSRF_CONSTANTS.HEADER_NAME, csrfToken)
+        .send({
+          dodEvolutionNotes: 'Our Definition of Done missed the deployment step',
+          dodReflections: [
+            {
+              dodItemId: null,
+              description: 'Deployed to staging and smoke-tested',
+              decision: 'KEEP',
+            },
+          ],
+        })
+        .expect(HTTP_STATUS.OK);
+
+      const response = await request(app)
+        .post(`/api/v1/retrospectives/${retro.id}/apply-dod-changes`)
+        .set('Cookie', cookies)
+        .set(CSRF_CONSTANTS.HEADER_NAME, csrfToken)
+        .expect(HTTP_STATUS.OK);
+
+      expect(response.body.data.dodVersionAtPush).toBeGreaterThan(0);
+
+      const dod = await prisma.definitionOfDone.findUnique({
+        where: { teamId: team.id },
+        include: { items: true },
+      });
+
+      expect(dod?.items.map((item) => item.description)).toContain(
+        'Deployed to staging and smoke-tested'
+      );
+    });
+
+    it('should refuse a caller who is not a member of the team', async () => {
+      const ownerEmail = `retro-dod-owner-${uniqueTestId()}@example.com`;
+      const outsiderEmail = `retro-dod-outsider-${uniqueTestId()}@example.com`;
+      testEmails.push(ownerEmail, outsiderEmail);
+
+      const { user, team } = await setupTeamWithUser(ownerEmail, ROLES.SCRUM_MASTER);
+      await createTestUser(outsiderEmail);
+      const sprint = await createTestSprintInDb(
+        team.id,
+        `Sprint ${uniqueTestId()}`,
+        SPRINT_STATUSES.COMPLETED
+      );
+      const retro = await createTestRetrospectiveInDb(sprint.id, team.id, user.id);
+
+      const cookies = await loginAndGetCookies(outsiderEmail);
+      const { csrfToken } = extractCsrfFromCookies(cookies);
+
+      const response = await request(app)
+        .post(`/api/v1/retrospectives/${retro.id}/apply-dod-changes`)
+        .set('Cookie', cookies)
+        .set(CSRF_CONSTANTS.HEADER_NAME, csrfToken)
+        .expect(HTTP_STATUS.FORBIDDEN);
+
+      expect(response.body.error.code).toBe('GATE_RETROSPECTIVE_TEAM_MEMBERS_ONLY');
+    });
+  });
+
+  describe('POST /api/v1/retrospectives/action-items/:actionItemId/materialize', () => {
+    it('should refuse a caller who is not a member of the team', async () => {
+      const ownerEmail = `retro-materialize-owner-${uniqueTestId()}@example.com`;
+      const outsiderEmail = `retro-materialize-outsider-${uniqueTestId()}@example.com`;
+      testEmails.push(ownerEmail, outsiderEmail);
+
+      const { user, team } = await setupTeamWithUser(ownerEmail, ROLES.SCRUM_MASTER);
+      await createTestUser(outsiderEmail);
+      const sprint = await createTestSprintInDb(
+        team.id,
+        `Sprint ${uniqueTestId()}`,
+        SPRINT_STATUSES.COMPLETED
+      );
+      const retro = await createTestRetrospectiveInDb(sprint.id, team.id, user.id);
+      const actionItem = await createTestRetroActionItemInDb(retro.id, user.id);
+
+      const cookies = await loginAndGetCookies(outsiderEmail);
+      const { csrfToken } = extractCsrfFromCookies(cookies);
+
+      const response = await request(app)
+        .post(`/api/v1/retrospectives/action-items/${actionItem.id}/materialize`)
+        .set('Cookie', cookies)
+        .set(CSRF_CONSTANTS.HEADER_NAME, csrfToken)
+        .expect(HTTP_STATUS.FORBIDDEN);
+
+      expect(response.body.error.code).toBe('GATE_RETROSPECTIVE_TEAM_MEMBERS_ONLY');
+
+      const unchanged = await prisma.retroActionItem.findUnique({
+        where: { id: actionItem.id },
+      });
+      expect(unchanged?.productBacklogItemId).toBeNull();
+    });
+  });
 });

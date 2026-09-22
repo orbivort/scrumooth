@@ -15,6 +15,12 @@
     "title": "Action Items",
     "unassigned": "Unassigned"
   },
+  "anonymity": {
+    "authorHidden": "Anonymous",
+    "badge": "Anonymous",
+    "chooseLabel": "Run this Retrospective anonymously",
+    "hint": "Item authors are not recorded, for anyone — including the Scrum Master."
+  },
   "ariaLabels": {
     "columnsRegion": "Retrospective feedback columns",
     "sprintInfoRegion": "Sprint Information",
@@ -109,6 +115,44 @@
     "message": "Delete Action Item",
     "title": "Confirm Deletion"
   },
+  "dodInspection": {
+    "addCriterion": "Add criterion",
+    "addCriterionPlaceholder": "A criterion the team should add",
+    "adoptedVersion": "Adopted v{{version}}",
+    "applyChanges": "Apply to Definition of Done",
+    "applyFailed": "The Definition of Done could not be updated. Nothing was changed — adjust the decisions and try again.",
+    "applying": "Applying…",
+    "arriving": "Arriving",
+    "cancel": "Cancel",
+    "changeIncomplete": "Every changed criterion needs its new wording",
+    "confirmApply": "Apply changes",
+    "confirmSubtitle": "This replaces Definition of Done v{{from}} with v{{to}} and keeps v{{from}} in the version history.",
+    "confirmTitle": "Apply these changes to the Definition of Done?",
+    "currentVersion": "Definition of Done v{{version}}",
+    "decisionLabel": "Decision for {{criterion}}",
+    "decisions": {
+      "CHANGE": "Change",
+      "KEEP": "Keep",
+      "RETIRE": "Retire"
+    },
+    "discardProposal": "Discard proposal",
+    "loading": "Loading the Definition of Done…",
+    "noCriteria": "This team has no active Definition of Done criterion yet. Add the criteria the team works to, or define them in Team Definitions.",
+    "none": "None",
+    "noteLabel": "Reason (optional)",
+    "notePlaceholder": "Why this decision?",
+    "notesLabel": "What the team concluded about its Definition of Done",
+    "notesPlaceholder": "Record the reasoning behind these decisions…",
+    "proposedLabel": "New wording",
+    "proposedPlaceholder": "How should this criterion read instead?",
+    "retiring": "Retiring",
+    "rewording": "Rewording",
+    "saveFailed": "The reflection could not be saved. Your decisions are still on screen.",
+    "saveReflection": "Save reflection",
+    "saving": "Saving…",
+    "subtitle": "The Scrum Guide asks this event to inspect the Definition of Done and identify the most helpful changes. Decide on each criterion, then apply what the team accepts.",
+    "title": "Definition of Done inspection"
+  },
   "errorState": {
     "backToRetrospectives": "Back to Retrospectives",
     "message": "The retrospective for this sprint could not be loaded.",
@@ -130,6 +174,8 @@
     "completedSprint": "Completed Sprint",
     "completedSprints": "Completed Sprints",
     "completedSprints_plural": "Completed Sprints",
+    "createCancel": "Cancel",
+    "createConfirm": "Create",
     "createRetrospective": "Create Retrospective",
     "creating": "Creating...",
     "goal": "Goal:",

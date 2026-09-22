@@ -15,6 +15,12 @@
     "title": "Punti d'azione",
     "unassigned": "Non assegnato"
   },
+  "anonymity": {
+    "authorHidden": "Anonimo",
+    "badge": "Anonima",
+    "chooseLabel": "Svolgi questa retrospettiva in forma anonima",
+    "hint": "L'autore degli elementi non viene registrato per nessuno, nemmeno per lo Scrum Master."
+  },
   "ariaLabels": {
     "columnsRegion": "Colonne di feedback della Retrospective",
     "sprintInfoRegion": "Informazioni del Sprint",
@@ -109,6 +115,44 @@
     "message": "Elimina Action Item",
     "title": "Conferma Eliminazione"
   },
+  "dodInspection": {
+    "addCriterion": "Aggiungi criterio",
+    "addCriterionPlaceholder": "Un criterio che il team dovrebbe aggiungere",
+    "adoptedVersion": "Adottata v{{version}}",
+    "applyChanges": "Applica alla Definition of Done",
+    "applyFailed": "Non è stato possibile aggiornare la Definition of Done. Non è stato modificato nulla: correggi le decisioni e riprova.",
+    "applying": "Applicazione…",
+    "arriving": "In arrivo",
+    "cancel": "Annulla",
+    "changeIncomplete": "Ogni criterio modificato deve indicare la nuova formulazione",
+    "confirmApply": "Applica i cambiamenti",
+    "confirmSubtitle": "Questo sostituisce la Definition of Done v{{from}} con la v{{to}} e conserva la v{{from}} nello storico.",
+    "confirmTitle": "Applicare questi cambiamenti alla Definition of Done?",
+    "currentVersion": "Definition of Done v{{version}}",
+    "decisionLabel": "Decisione su {{criterion}}",
+    "decisions": {
+      "CHANGE": "Cambia",
+      "KEEP": "Mantieni",
+      "RETIRE": "Rimuovi"
+    },
+    "discardProposal": "Scarta la proposta",
+    "loading": "Caricamento della Definition of Done…",
+    "noCriteria": "Questo team non ha ancora criteri attivi nella sua Definition of Done. Aggiungi i criteri con cui lavora oppure definiscili nelle Definizioni del team.",
+    "none": "Nessuno",
+    "noteLabel": "Motivo (facoltativo)",
+    "notePlaceholder": "Perché questa decisione?",
+    "notesLabel": "Ciò che il team ha concluso sulla sua Definition of Done",
+    "notesPlaceholder": "Registra il ragionamento dietro queste decisioni…",
+    "proposedLabel": "Nuova formulazione",
+    "proposedPlaceholder": "Come dovrebbe essere formulato questo criterio?",
+    "retiring": "In uscita",
+    "rewording": "Riformulati",
+    "saveFailed": "Non è stato possibile salvare la riflessione. Le tue decisioni restano visibili.",
+    "saveReflection": "Salva la riflessione",
+    "saving": "Salvataggio…",
+    "subtitle": "La Guida di Scrum chiede a questo evento di esaminare la Definition of Done e di individuare i cambiamenti più utili. Decidi per ogni criterio, poi applica ciò che il team accetta.",
+    "title": "Esame della Definition of Done"
+  },
   "errorState": {
     "backToRetrospectives": "Torna alle Retrospectives",
     "message": "La Retrospective per questo Sprint non può essere caricata.",
@@ -130,6 +174,8 @@
     "completedSprint": "Sprint completato",
     "completedSprints": "Sprints completati",
     "completedSprints_plural": "Sprints completati",
+    "createCancel": "Annulla",
+    "createConfirm": "Crea",
     "createRetrospective": "Crea Retrospective",
     "creating": "Creazione in corso...",
     "goal": "Goal:",

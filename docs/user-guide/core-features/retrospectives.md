@@ -11,6 +11,7 @@ The Sprint Retrospective is an opportunity for the Scrum Team to inspect itself 
 - [Collecting Feedback](#collecting-feedback)
 - [Creating Action Items](#creating-action-items)
 - [Tracking Improvements](#tracking-improvements)
+- [Inspecting the Definition of Done](#inspecting-the-definition-of-done)
 - [Best Practices](#best-practices)
 
 ---
@@ -85,7 +86,16 @@ Bring to the retrospective:
 1. Navigate to "Retrospectives" in the sidebar
 2. View the list of sprints with their retrospective status
 3. Click on a completed sprint to view or create its retrospective
-4. If no retrospective exists, click "Create Retrospective"
+4. If no retrospective exists, click "Create Retrospective", choose whether the event is anonymous,
+   then confirm
+
+> **The room is the Scrum Team.** A Retrospective can only be read or changed by members of the team
+> whose Sprint it concludes, and the Scrum Master's coaching notes are visible only to that team's
+> Scrum Master. Nothing here is visible to the rest of the installation.
+
+> **Anonymity is chosen once.** If the team chooses an anonymous Retrospective, item authors are not
+> recorded at all — not shown as unknown, but never stored. No one, including the Scrum Master, can
+> attribute an item afterwards. The choice cannot be changed once the Retrospective exists.
 
 ### Standard Agenda
 
@@ -295,23 +305,33 @@ Action items have their own workflow:
 | **Completed**   | Successfully finished     |
 | **Cancelled**   | No longer relevant        |
 
-### Adding to Sprint Backlog
+### Carrying an Improvement into the Backlog
 
-Action items can be flagged for addition to the sprint backlog:
+> "The most impactful improvements are addressed as soon as possible. They may even be added to the
+> Sprint Backlog for the next Sprint."
 
-**How to Mark for Backlog:**
+Outstanding action items from previous retrospectives appear on the Product Backlog page in the
+**Pending Action from Retrospective** panel. Each one offers three outcomes:
 
-1. When creating or editing an action item, enable the "Add to Sprint Backlog" option
-2. Select the target sprint for the item
-3. The action item will display an "In Backlog" badge
+| Action                 | What it does                                                                         |
+| ---------------------- | ------------------------------------------------------------------------------------ |
+| **Create Item**        | Creates a Product Backlog item from the improvement and records the link             |
+| **Link existing item** | Records an existing backlog item as the outcome of the improvement                   |
+| **Mark Added**         | For improvements whose outcome is not an item at all (a process change, for example) |
+
+The link is the evidence: the panel then shows which backlog item carries the improvement, and the
+action item is recorded as taken into the team's active Sprint. Once a link exists, **Mark Added** is
+disabled, because the record would otherwise contradict itself — an improvement cannot be both
+carried by an item and marked as never added.
 
 **Tracking:**
 
-- Items marked for backlog show a visual indicator
-- A hint appears: "This item will be present in the Product Backlog page for action"
-- Track the item's progress through the sprint backlog
+- Linked improvements display the backlog item's title as an evidence chip
+- Items leave the pending panel once they are carried by an item or marked as added
+- Track the item's progress through the Product Backlog and Sprint Backlog as usual
 
-> **Note**: Action items marked for sprint backlog are flagged for team awareness during sprint planning. The team should review these during refinement and decide whether to create corresponding backlog items.
+> **Note**: Creating the item requires the team to have an **ACTIVE Product Goal**, exactly like
+> creating an item by hand on the Product Backlog page.
 
 ### Reviewing Previous Actions
 
@@ -334,6 +354,50 @@ At the start of each retrospective:
 - Keep incomplete items visible
 - Re-commit or adjust as needed
 - Don't let items disappear
+
+---
+
+## Inspecting the Definition of Done
+
+> "The Scrum Team inspects … individuals, interactions, processes, tools, and their Definition of
+> Done … and identifies the most helpful changes to improve its effectiveness."
+
+The Definition of Done is one of the artifacts the Guide names for this event, so Scrumooth puts it in
+the room. The **Definition of Done inspection** panel sits between the Scrum Values reflection and the
+Sprint data on the Retrospective page, and it is the one place where the event stops reflecting and
+starts deciding.
+
+### How to Run the Inspection
+
+1. Read the criteria the team currently works to. The header shows the current Definition of Done
+   version.
+2. Decide on each criterion:
+   - **Keep** — the criterion still earns its place
+   - **Change** — it needs different wording; the new wording is required before the changes can be
+     applied
+   - **Retire** — it no longer catches anything
+3. Add a criterion the team is missing with the dashed **Add criterion** row.
+4. Record **what the team concluded and why** in the notes field.
+5. **Save reflection** keeps the decisions on the Retrospective without changing the Definition of
+   Done. The reflection is kept even if nothing changes, so a deliberate "we inspected it and kept it"
+   is visible in the record.
+6. **Apply to Definition of Done** shows a preview of exactly what will be retired, reworded and
+   added, with the version transition (for example v3 → v4), and only then writes it.
+
+### What Applying Does
+
+- The Definition of Done is updated through the same machinery as Team Definitions: the version is
+  incremented and the superseded version is kept in the version history.
+- An **Adopted vN** chip then appears on the Retrospective, recording which version this event
+  produced. That chip is the evidence that the inspection led somewhere.
+- A Definition of Done cannot be emptied: retiring every criterion is refused, because an empty
+  Definition of Done would let any item be marked Done unchecked.
+- Criteria the team did not inspect are left exactly as they were.
+
+### After the Event
+
+A completed Retrospective is a record, not a workspace: its items, action items and Definition of Done
+reflection are read-only, so the history of what the team decided cannot be rewritten later.
 
 ---
 

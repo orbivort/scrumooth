@@ -17,9 +17,13 @@ import {
   addRetroAttendee,
   updateRetroAttendee,
   deleteRetroAttendee,
+  applyDodChanges,
+  materializeActionItem,
+  linkActionItemToPbi,
 } from '../../../controllers/retrospective.controller';
 import { retrospectiveService } from '../../../services/retrospective.service';
-import { NotFoundError } from '../../../utils/errors';
+import { BadRequestError, NotFoundError } from '../../../utils/errors';
+import { GATE_CODES } from '@scrumooth/shared';
 import { createMockRequest, createMockResponse } from '../../setup/testSetup';
 
 vi.mock('../../../services/retrospective.service', () => ({
@@ -41,6 +45,9 @@ vi.mock('../../../services/retrospective.service', () => ({
     addAttendee: vi.fn(),
     updateAttendee: vi.fn(),
     deleteAttendee: vi.fn(),
+    applyDodChanges: vi.fn(),
+    materializeActionItem: vi.fn(),
+    linkActionItemToPbi: vi.fn(),
   },
 }));
 
@@ -135,7 +142,7 @@ describe('Retrospective Controller', () => {
         success: false,
         error: {
           code: 'NOT_FOUND',
-          message: 'Retrospective not found',
+          message: error.message,
         },
       });
     });
@@ -453,6 +460,7 @@ describe('Retrospective Controller', () => {
 
     it('should trim name and email', async () => {
       mockReq.params = { retroId: 'retro-123' };
+      mockReq.userId = 'user-123';
       mockReq.body = { name: '  John Doe  ', email: '  john@example.com  ', role: 'DEVELOPERS' };
       const mockAttendee = { id: 'attendee-123', name: 'John Doe' };
 
@@ -460,12 +468,16 @@ describe('Retrospective Controller', () => {
 
       await addRetroAttendee(mockReq as any, mockRes as any);
 
-      expect(retrospectiveService.addAttendee).toHaveBeenCalledWith('retro-123', {
-        name: 'John Doe',
-        email: 'john@example.com',
-        role: 'DEVELOPERS',
-        attended: true,
-      });
+      expect(retrospectiveService.addAttendee).toHaveBeenCalledWith(
+        'retro-123',
+        {
+          name: 'John Doe',
+          email: 'john@example.com',
+          role: 'DEVELOPERS',
+          attended: true,
+        },
+        'user-123'
+      );
     });
   });
 
@@ -771,6 +783,7 @@ describe('Retrospective Controller', () => {
 
     it('should handle addRetroAttendee with attended set to false', async () => {
       mockReq.params = { retroId: 'retro-123' };
+      mockReq.userId = 'user-123';
       mockReq.body = {
         name: 'John Doe',
         email: 'john@example.com',
@@ -783,17 +796,22 @@ describe('Retrospective Controller', () => {
 
       await addRetroAttendee(mockReq as any, mockRes as any);
 
-      expect(retrospectiveService.addAttendee).toHaveBeenCalledWith('retro-123', {
-        name: 'John Doe',
-        email: 'john@example.com',
-        role: 'DEVELOPERS',
-        attended: false,
-      });
+      expect(retrospectiveService.addAttendee).toHaveBeenCalledWith(
+        'retro-123',
+        {
+          name: 'John Doe',
+          email: 'john@example.com',
+          role: 'DEVELOPERS',
+          attended: false,
+        },
+        'user-123'
+      );
       expect(mockRes._status).toBe(201);
     });
 
     it('should handle updateRetroAttendee with partial updates', async () => {
       mockReq.params = { attendeeId: 'attendee-123' };
+      mockReq.userId = 'user-123';
       mockReq.body = { attended: true };
       const mockAttendee = { id: 'attendee-123', name: 'John Doe', attended: true };
 
@@ -801,13 +819,18 @@ describe('Retrospective Controller', () => {
 
       await updateRetroAttendee(mockReq as any, mockRes as any);
 
-      expect(retrospectiveService.updateAttendee).toHaveBeenCalledWith('attendee-123', {
-        attended: true,
-      });
+      expect(retrospectiveService.updateAttendee).toHaveBeenCalledWith(
+        'attendee-123',
+        {
+          attended: true,
+        },
+        'user-123'
+      );
     });
 
     it('should handle updateRetroAttendee with email as empty string', async () => {
       mockReq.params = { attendeeId: 'attendee-123' };
+      mockReq.userId = 'user-123';
       mockReq.body = { name: 'John Doe', email: '' };
       const mockAttendee = { id: 'attendee-123', name: 'John Doe', email: undefined };
 
@@ -815,10 +838,116 @@ describe('Retrospective Controller', () => {
 
       await updateRetroAttendee(mockReq as any, mockRes as any);
 
-      expect(retrospectiveService.updateAttendee).toHaveBeenCalledWith('attendee-123', {
-        name: 'John Doe',
-        email: undefined,
-      });
+      expect(retrospectiveService.updateAttendee).toHaveBeenCalledWith(
+        'attendee-123',
+        {
+          name: 'John Doe',
+          email: undefined,
+        },
+        'user-123'
+      );
+    });
+  });
+
+  describe('gate refusals', () => {
+    it('should propagate a gate refusal with its own status and code, not a generic 500', async () => {
+      mockReq.params = { retroId: 'retro-123' };
+      mockReq.userId = 'user-123';
+      mockReq.body = { category: 'WENT_WELL', content: 'x' };
+
+      (retrospectiveService.addItem as any).mockRejectedValue(
+        new BadRequestError(
+          'The Retrospective belongs to its Scrum Team',
+          undefined,
+          GATE_CODES.RETROSPECTIVE_TEAM_MEMBERS_ONLY
+        )
+      );
+
+      await addItem(mockReq as any, mockRes as any);
+
+      expect(mockRes._status).toBe(400);
+      expect(mockRes._json.error.code).toBe(GATE_CODES.RETROSPECTIVE_TEAM_MEMBERS_ONLY);
+    });
+  });
+
+  describe('applyDodChanges', () => {
+    it('should apply the recorded Definition of Done changes', async () => {
+      mockReq.params = { id: 'retro-123' };
+      mockReq.userId = 'user-123';
+      const updated = { id: 'retro-123', dodVersionAtPush: 4 };
+
+      (retrospectiveService.applyDodChanges as any).mockResolvedValue(updated);
+
+      await applyDodChanges(mockReq as any, mockRes as any);
+
+      expect(retrospectiveService.applyDodChanges).toHaveBeenCalledWith('retro-123', 'user-123');
+      expect(mockRes._json).toEqual({ success: true, data: updated });
+    });
+
+    it('should propagate the refusal when nothing was inspected', async () => {
+      mockReq.params = { id: 'retro-123' };
+      mockReq.userId = 'user-123';
+
+      (retrospectiveService.applyDodChanges as any).mockRejectedValue(
+        new BadRequestError(
+          'Nothing to apply',
+          undefined,
+          GATE_CODES.RETROSPECTIVE_DOD_CHANGES_MISSING
+        )
+      );
+
+      await applyDodChanges(mockReq as any, mockRes as any);
+
+      expect(mockRes._status).toBe(400);
+      expect(mockRes._json.error.code).toBe(GATE_CODES.RETROSPECTIVE_DOD_CHANGES_MISSING);
+    });
+  });
+
+  describe('materializeActionItem', () => {
+    it('should create a backlog item from the action item', async () => {
+      mockReq.params = { actionItemId: 'action-123' };
+      mockReq.userId = 'user-123';
+      const linked = { id: 'action-123', productBacklogItemId: 'pbi-1' };
+
+      (retrospectiveService.materializeActionItem as any).mockResolvedValue(linked);
+
+      await materializeActionItem(mockReq as any, mockRes as any);
+
+      expect(retrospectiveService.materializeActionItem).toHaveBeenCalledWith(
+        'action-123',
+        'user-123'
+      );
+      expect(mockRes._status).toBe(201);
+      expect(mockRes._json).toEqual({ success: true, data: linked });
+    });
+
+    it('should require the action item id', async () => {
+      mockReq.params = {};
+
+      await materializeActionItem(mockReq as any, mockRes as any);
+
+      expect(mockRes._status).toBe(400);
+      expect(retrospectiveService.materializeActionItem).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('linkActionItemToPbi', () => {
+    it('should link the action item to an existing backlog item', async () => {
+      mockReq.params = { actionItemId: 'action-123' };
+      mockReq.userId = 'user-123';
+      mockReq.body = { pbiId: 'pbi-1' };
+      const linked = { id: 'action-123', productBacklogItemId: 'pbi-1' };
+
+      (retrospectiveService.linkActionItemToPbi as any).mockResolvedValue(linked);
+
+      await linkActionItemToPbi(mockReq as any, mockRes as any);
+
+      expect(retrospectiveService.linkActionItemToPbi).toHaveBeenCalledWith(
+        'action-123',
+        'pbi-1',
+        'user-123'
+      );
+      expect(mockRes._json).toEqual({ success: true, data: linked });
     });
   });
 });

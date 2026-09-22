@@ -35,6 +35,7 @@ import {
   CheckIcon,
   ClipboardListIcon,
   EditIcon,
+  EyeOffIcon,
   InfoIcon,
   LightbulbIcon,
   PlusIcon,
@@ -43,6 +44,7 @@ import {
 
 import styles from './Retrospective.module.css';
 import { CreateActionItemModal } from './CreateActionItemModal';
+import { DodInspection } from './components/DodInspection';
 
 import { AttendeesSection, type AttendeeFormData } from '@/components/AttendeesSection';
 import { useI18nStore } from '@/i18n/useI18nStore';
@@ -662,15 +664,16 @@ export const SprintRetrospective: React.FC = () => {
       return;
     }
 
+    // Authorship is the caller's session, decided by the backend: sending a name here would let a
+    // contribution be attributed to someone else, and would attach a name inside an anonymous
+    // Retrospective.
     addItemMutation.mutate({
       category: activeCategory,
       content: trimmedContent,
-      authorName: user ? `${user.firstName} ${user.lastName}` : 'Anonymous',
     });
   }, [
     formState.newItemContent,
     activeCategory,
-    user,
     addItemMutation,
     showNotification,
     retrospective?.id,
@@ -1178,6 +1181,12 @@ export const SprintRetrospective: React.FC = () => {
             </p>
           </div>
           <div className={styles['header-actions']}>
+            {retrospective.isAnonymous && (
+              <span className={styles['anonymous-chip']} title={t('anonymity.hint') as string}>
+                <EyeOffIcon size={12} aria-hidden="true" />
+                {t('anonymity.badge')}
+              </span>
+            )}
             <EventTimebox event={SCRUM_EVENTS.retrospective} sprintId={sprintId} />
             <span
               className={styles['participant-count']}
@@ -1214,6 +1223,11 @@ export const SprintRetrospective: React.FC = () => {
             ))}
           </div>
         </details>
+
+        {/* "The Scrum Team inspects... their Definition of Done." The DoD is the one artifact the
+            Guide names for this event that free-text columns cannot carry: it has to be read
+            criterion by criterion, and the team has to be able to change it from here. */}
+        <DodInspection retrospective={retrospective} readOnly={isCompleted} />
 
         {sprint && (
           <section
@@ -1444,7 +1458,17 @@ export const SprintRetrospective: React.FC = () => {
                             <>
                               <p className={styles['item-content']}>{item.content}</p>
                               <div className={styles['item-footer']}>
-                                <span className={styles['item-author']}>— {item.authorName}</span>
+                                <span
+                                  className={
+                                    retrospective.isAnonymous
+                                      ? styles['item-author-anonymous']
+                                      : styles['item-author']
+                                  }
+                                >
+                                  {retrospective.isAnonymous
+                                    ? `— ${t('anonymity.authorHidden')}`
+                                    : `— ${item.authorName}`}
+                                </span>
                                 <div className={styles['item-actions']}>
                                   {(() => {
                                     const hasVoted = user?.id && item.votedBy?.includes(user.id);

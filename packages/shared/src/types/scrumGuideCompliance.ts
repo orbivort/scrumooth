@@ -190,6 +190,37 @@ export interface DoDVersionSnapshot {
   isCurrent: boolean;
 }
 
+// --- Definition of Done inspection during the Sprint Retrospective ---
+
+/**
+ * What the Scrum Team decided about one Definition of Done criterion during the Retrospective.
+ *
+ * `KEEP` leaves the criterion as it is, `CHANGE` replaces its text, and `RETIRE` removes it. A
+ * reflection with no `dodItemId` proposes a criterion the team does not have yet.
+ */
+export type DodReflectionDecision = 'KEEP' | 'CHANGE' | 'RETIRE';
+
+/**
+ * One Definition of Done criterion as the Retrospective inspected it.
+ *
+ * The Guide makes the Definition of Done one of the things the Retrospective inspects, so the
+ * reflection is recorded even when the team decides to change nothing -- otherwise the inspection
+ * would only be visible when it produced a change.
+ */
+export interface DodReflection {
+  /** The criterion's Definition of Done item id, or null when the criterion is newly proposed. */
+  dodItemId: string | null;
+  /** The criterion text at inspection time, kept so the reflection stays readable after edits. */
+  description: string;
+  decision: DodReflectionDecision;
+  /** The replacement text, required when the decision is `CHANGE`. */
+  proposedDescription?: string | null;
+  /** Why the team decided this, kept so the decision can be re-read later. */
+  note?: string | null;
+  /** Position of the criterion at inspection time; new criteria sort after the existing ones. */
+  order?: number;
+}
+
 // --- Product Goal snapshots ---
 
 export interface ProductGoalSnapshot {

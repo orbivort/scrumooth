@@ -18,9 +18,12 @@ Complete Retrospectives API reference for sprint retrospective management, retro
   - [Update Item](#update-item)
   - [Delete Item](#delete-item)
   - [Update Retrospective](#update-retrospective)
+  - [Apply Definition of Done Changes](#apply-definition-of-done-changes)
   - [Add Action Item](#add-action-item)
   - [Update Action Item](#update-action-item)
   - [Delete Action Item](#delete-action-item)
+  - [Materialize Action Item](#materialize-action-item)
+  - [Link Action Item to an Existing Item](#link-action-item-to-an-existing-item)
   - [Add Attendee](#add-attendee)
   - [Update Attendee](#update-attendee)
   - [Delete Attendee](#delete-attendee)
@@ -34,9 +37,11 @@ The Retrospectives API provides comprehensive sprint retrospective management ca
 - Retrospective creation and lifecycle management (DRAFT, IN_PROGRESS, COMPLETED)
 - Retro item management with categories (WENT_WELL, DIDNT_GO_WELL, IMPROVEMENT)
 - Item voting for team prioritization
-- Action item tracking with status management and sprint backlog integration
+- Action item tracking with status management and provable Product Backlog follow-through
 - Attendee management with role-based tracking
-- Definition of Done evolution notes
+- Definition of Done inspection: per-criterion reflection (keep / change / retire) and applying the
+  accepted changes to the team's Definition of Done
+- Optional anonymity, chosen at creation and honoured server-side
 
 ## Authentication
 
@@ -55,6 +60,32 @@ Cookie: accessToken=eyJhbGc...
 GET /api/v1/retrospectives/team/550e8400-e29b-41d4-a716-446655440002
 Authorization: Bearer eyJhbGc...
 ```
+
+### Ownership
+
+A Retrospective belongs to the Scrum Team whose Sprint it concludes. **Every read and every write
+requires membership of that team**, and a non-member is refused with
+`GATE_RETROSPECTIVE_TEAM_MEMBERS_ONLY` (403). This covers the pending action items feed the Backlog
+page reads, and it is not negotiable by role: an account with a global administrator role that is not
+a member of the team cannot read or change the Retrospective over the API.
+
+The Scrum Master's notes (`smNotes`) are additionally private to the team's Scrum Master:
+
+- they are omitted from every response for anyone else — including other members of the team; and
+- `PATCH /retrospectives/:id/sm-notes` refuses anyone else with
+  `GATE_RETROSPECTIVE_SM_NOTES_SM_ONLY` (403).
+
+### Anonymity
+
+`isAnonymous` is chosen when the Retrospective is created and cannot be changed afterwards.
+
+- When it is `true`, an item's author is **not stored at all**: `authorId`, `authorName` and
+  `createdBy` are `null` in every response, for every caller, including the Scrum Master.
+- Authorship is never taken from the request body. `authorId`/`authorName` are not accepted on
+  `POST /retrospectives/:retroId/items`; the author is the authenticated caller, and in an anonymous
+  Retrospective there is no author to record.
+- A Retrospective cannot be flipped to anonymous after contributions were made, because that would
+  leave the authors it already recorded attached to a record that claims to have none.
 
 ## Endpoints
 
@@ -865,6 +896,30 @@ PUT /api/v1/retrospectives/:id
 
 > **Note:** At least one field must be provided. HTML tags are not allowed in `summary` or `dodEvolutionNotes`.
 
+`dodReflections` is the structured counterpart of `dodEvolutionNotes`: what the team decided about
+each Definition of Done criterion. It is bounded (at most 100 criteria) and a `CHANGE` decision must
+state its new wording:
+
+```json
+{
+  "dodEvolutionNotes": "Our Definition of Done missed the deployment step",
+  "dodReflections": [
+    {
+      "dodItemId": "…",
+      "description": "Unit tests pass",
+      "decision": "CHANGE",
+      "proposedDescription": "Unit tests pass with 80% coverage"
+    },
+    { "dodItemId": "…", "description": "Manual sign-off", "decision": "RETIRE" },
+    { "dodItemId": null, "description": "Deployed to staging", "decision": "KEEP" }
+  ]
+}
+```
+
+Two fields are deliberately **not** updatable here: `status` is limited to the documented lifecycle
+transitions (the `COMPLETED` transition is gated by the Sprint Review and the Sprint's end date), and
+`isAnonymous` is fixed at creation.
+
 **Success Response**
 
 ```http
@@ -1423,6 +1478,142 @@ curl -X DELETE https://api.scrumooth.dev/api/v1/retrospectives/attendees/550e840
 
 ---
 
+## Apply Definition of Done Changes
+
+Apply the Definition of Done changes this Retrospective recorded.
+
+> "The Scrum Team inspects … their Definition of Done … and identifies the most helpful changes to
+> improve its effectiveness."
+
+The change set is the **reflection persisted on the Retrospective** (`dodReflections`), not the
+request body, so the endpoint takes no body and a client cannot substitute a different set of
+changes for the one the team agreed.
+
+```http
+POST /api/v1/retrospectives/550e8400-e29b-41d4-a716-446655440001/apply-dod-changes
+Cookie: accessToken=eyJhbGc...
+X-CSRF-Token: <token>
+```
+
+**Success Response** (200 OK)
+
+```json
+{
+  "success": true,
+  "data": {
+    "id": "550e8400-e29b-41d4-a716-446655440001",
+    "status": "COMPLETED",
+    "dodVersionAtPush": 4
+  }
+}
+```
+
+`dodVersionAtPush` records the Definition of Done version this Retrospective produced: the evidence
+that the adaptation loop closed. The Definition of Done itself is written by the Definition of Done
+service, so the version bump, the superseded-version snapshot and the rule that a Definition of Done
+can never be emptied all behave exactly as they do in Team Definitions.
+
+**Behaviour**
+
+- Criteria decided `KEEP` are preserved, `CHANGE` rewrites them with `proposedDescription`, and
+  `RETIRE` removes them.
+- A reflection with `dodItemId: null` appends a new criterion.
+- Criteria the reflection does not mention are left exactly as they were: only what the team
+  inspected is changed.
+
+**Errors**
+
+| Code                                     | HTTP Status | When                                                                        |
+| ---------------------------------------- | ----------- | --------------------------------------------------------------------------- |
+| `GATE_RETROSPECTIVE_DOD_CHANGES_MISSING` | 400         | The Retrospective recorded no reflection to apply                           |
+| `GATE_DOD_REQUIRED`                      | 400         | The reflection would retire every criterion, leaving the DoD unable to gate |
+| `GATE_RETROSPECTIVE_TEAM_MEMBERS_ONLY`   | 403         | The caller is not a member of the team that owns the Retrospective          |
+
+---
+
+## Materialize Action Item
+
+Create a Product Backlog item from an outstanding action item and record the link.
+
+> "The most impactful improvements are addressed as soon as possible. They may even be added to the
+> Sprint Backlog for the next Sprint."
+
+The link is the evidence: `addedToSprintBacklog` alone was an assertion nobody could check. The item
+is created through the Product Backlog service, so its Product Goal anchor, backlog position and
+workflow history are identical to a hand-made item, and `relatedSprintId` is set to the team's
+ACTIVE Sprint.
+
+```http
+POST /api/v1/retrospectives/action-items/550e8400-e29b-41d4-a716-446655440040/materialize
+Cookie: accessToken=eyJhbGc...
+X-CSRF-Token: <token>
+```
+
+**Success Response** (201 Created)
+
+```json
+{
+  "success": true,
+  "data": {
+    "id": "550e8400-e29b-41d4-a716-446655440040",
+    "title": "Improve CI pipeline",
+    "addedToSprintBacklog": true,
+    "relatedSprintId": "550e8400-e29b-41d4-a716-446655440010",
+    "productBacklogItemId": "550e8400-e29b-41d4-a716-446655440050",
+    "productBacklogItem": {
+      "id": "550e8400-e29b-41d4-a716-446655440050",
+      "title": "Improve CI pipeline"
+    }
+  }
+}
+```
+
+The created item carries the label `retro-action`. If the link cannot be written, the just-created
+item is removed so no orphan is left behind.
+
+**Errors**
+
+| Code                                     | HTTP Status | When                                                                |
+| ---------------------------------------- | ----------- | ------------------------------------------------------------------- |
+| `GATE_RETROSPECTIVE_ACTION_ITEM_LINKED`  | 409         | The improvement already has a linked backlog item                   |
+| `GATE_PRODUCT_GOAL_REQUIRED_FOR_BACKLOG` | 400         | The team has no ACTIVE Product Goal, so a backlog item cannot exist |
+| `GATE_RETROSPECTIVE_TEAM_MEMBERS_ONLY`   | 403         | The caller is not a member of the team                              |
+
+---
+
+## Link Action Item to an Existing Item
+
+Record an existing Product Backlog item as the outcome of an action item.
+
+```http
+PUT /api/v1/retrospectives/action-items/550e8400-e29b-41d4-a716-446655440040/link
+Cookie: accessToken=eyJhbGc...
+X-CSRF-Token: <token>
+Content-Type: application/json
+
+{
+  "pbiId": "550e8400-e29b-41d4-a716-446655440050"
+}
+```
+
+The item must belong to the same team: linking across teams would let one team's Retrospective claim
+another team's work.
+
+**Errors**
+
+| Code                                    | HTTP Status | When                                              |
+| --------------------------------------- | ----------- | ------------------------------------------------- |
+| `GATE_RETROSPECTIVE_ACTION_ITEM_LINKED` | 409         | The improvement already has a linked backlog item |
+| `VALIDATION_ERROR`                      | 422         | `pbiId` is missing or not a UUID                  |
+| `NOT_FOUND`                             | 404         | The item or action item does not exist            |
+| `GATE_RETROSPECTIVE_TEAM_MEMBERS_ONLY`  | 403         | The caller is not a member of the team            |
+
+Once an improvement is linked, `addedToSprintBacklog` is no longer writable as `false` through
+`PUT /retrospectives/:retroId/action-items/:actionItemId`: the link is the evidence and the manual
+flag must not contradict it.
+
+---
+
 ## Error Codes
 
 | Code                   | HTTP Status | Description                                                           |
@@ -1432,6 +1623,18 @@ curl -X DELETE https://api.scrumooth.dev/api/v1/retrospectives/attendees/550e840
 | `AUTHORIZATION_ERROR`  | 403         | Insufficient permissions                                              |
 | `NOT_FOUND`            | 404         | Retrospective, item, action item, or attendee not found               |
 | `CONFLICT`             | 409         | Resource conflict (e.g., retrospective already exists, already voted) |
+
+Gate refusals carry a stable `error.code` (see
+[docs/api/README.md](./README.md#gate-rejections)):
+
+| Gate Code                                   | HTTP Status | Rule                                                                                                                                |
+| ------------------------------------------- | ----------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| `GATE_RETROSPECTIVE_TEAM_MEMBERS_ONLY`      | 403         | The Retrospective is the Scrum Team's own event: reading or changing one requires membership of the team whose Sprint it concludes. |
+| `GATE_RETROSPECTIVE_SM_NOTES_SM_ONLY`       | 403         | The Scrum Master's notes are coaching observations: only the team's Scrum Master may read or write them.                            |
+| `GATE_RETROSPECTIVE_ACTION_ITEM_LINKED`     | 409         | An improvement carried by a linked backlog item cannot be marked as unaddressed.                                                    |
+| `GATE_RETROSPECTIVE_DOD_CHANGES_MISSING`    | 400         | Applying Definition of Done changes requires a recorded reflection.                                                                 |
+| `GATE_SPRINT_RETROSPECTIVE_REQUIRES_REVIEW` | 400         | The Retrospective cannot be completed before its Sprint Review is completed.                                                        |
+| `GATE_SPRINT_EVENT_BEFORE_END_DATE`         | 400         | Neither event can be completed before the Sprint's end date has passed.                                                             |
 
 ## Best Practices
 
@@ -1447,25 +1650,37 @@ curl -X DELETE https://api.scrumooth.dev/api/v1/retrospectives/attendees/550e840
 1. **Balanced Categories**: Encourage items across all three categories (WENT_WELL, DIDNT_GO_WELL, IMPROVEMENT)
 2. **Specific Content**: Items should be specific and actionable rather than vague
 3. **Voting Discipline**: Use voting to prioritize the most impactful items
-4. **Author Attribution**: Encourage authors to identify themselves for follow-up discussions
+4. **Author Attribution**: Authors are recorded from the caller's session when the Retrospective is
+   named, and not recorded at all when it is anonymous. Do not ask the team to add names in the item
+   text: in an anonymous Retrospective that would defeat the point of the setting
 
 ### Action Item Tracking
 
 1. **Clear Ownership**: Every action item must have an assigned owner
 2. **Realistic Deadlines**: Set achievable due dates for action items
-3. **Sprint Backlog Integration**: Add high-priority action items to the sprint backlog using `addedToSprintBacklog` and `relatedSprintId`
+3. **Provable Follow-through**: Turn a high-priority improvement into work with
+   `POST /retrospectives/action-items/:id/materialize` (creates and links an item) or
+   `PUT /retrospectives/action-items/:id/link` (links an existing one). Reserve the manual
+   "mark as added" for improvements whose outcome is not an item at all — once a link exists, the
+   flag cannot contradict it
 4. **Status Updates**: Regularly update action item status to maintain momentum
 5. **Pending Review**: Review pending action items at the start of each retrospective
 
 ### Definition of Done Evolution
 
-1. **Document Changes**: Use `dodEvolutionNotes` to track how the Definition of Done evolves
-2. **Team Agreement**: Ensure DoD changes are agreed upon by the entire team
-3. **Incremental Improvement**: Make small, incremental improvements rather than large overhauls
+1. **Inspect, then decide**: Record a reflection for each criterion (`KEEP`, `CHANGE`, `RETIRE`)
+   rather than only a narrative. The reflection is kept even when the team changes nothing, so "we
+   inspected our Definition of Done and kept it" is as visible as "we retired a criterion"
+2. **Apply What Is Accepted**: `POST /retrospectives/:id/apply-dod-changes` writes the accepted
+   changes through the Definition of Done service, bumping its version and keeping the superseded
+   version in the history. `dodVersionAtPush` then records which version the Retrospective produced
+3. **Document Changes**: Use `dodEvolutionNotes` for the reasoning behind the decisions
+4. **Team Agreement**: Ensure DoD changes are agreed upon by the entire team
+5. **Incremental Improvement**: Make small, incremental improvements rather than large overhauls
 
 ---
 
-**Last Updated**: 2026-05-10
+**Last Updated**: 2026-09-22
 
 **Related Documentation**
 

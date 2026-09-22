@@ -56,6 +56,12 @@
     "successMetricsRequired": "Un objectif de produit doit déclarer au moins un indicateur de réussite : précisez comment l'équipe saura que l'état futur est atteint."
   },
   "recordNotFound": "Enregistrement introuvable",
+  "retrospective": {
+    "actionItemLinked": "Cette amélioration est déjà portée par l'élément de Product Backlog « {{title}} » et compte donc comme traitée. Supprimez le lien avant de la marquer comme non traitée.",
+    "dodChangesMissing": "La rétrospective n'a enregistré aucune réflexion sur la Definition of Done : il n'y a donc rien à appliquer. Inspectez d'abord au moins un critère.",
+    "smNotesSmOnly": "Les notes du Scrum Master sont des observations de coaching sur la rétrospective du Sprint ; seul le Scrum Master de l'équipe peut les lire ou les écrire.",
+    "teamMembersOnly": "La rétrospective du Sprint est l'événement propre de son Scrum Team et contient une réflexion franche sur les personnes et les interactions : seul un membre de cette équipe peut la lire ou la modifier."
+  },
   "roleAlreadyTaken": "Un {{role}} existe déjà pour cette équipe. Chaque équipe ne peut avoir qu'un seul {{role}}.",
   "routeNotFound": "{{method}} {{path}} introuvable",
   "sprint": {

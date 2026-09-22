@@ -243,6 +243,9 @@ class ApiService {
   addRetroAttendee = retrospectiveService.addRetroAttendee.bind(retrospectiveService);
   updateRetroAttendee = retrospectiveService.updateRetroAttendee.bind(retrospectiveService);
   deleteRetroAttendee = retrospectiveService.deleteRetroAttendee.bind(retrospectiveService);
+  applyDodChanges = retrospectiveService.applyDodChanges.bind(retrospectiveService);
+  materializeActionItem = retrospectiveService.materializeActionItem.bind(retrospectiveService);
+  linkActionItemToPbi = retrospectiveService.linkActionItemToPbi.bind(retrospectiveService);
 
   // Timebox endpoints (Scrum event timeboxes)
   getTimebox = timeboxService.getTimebox.bind(timeboxService);

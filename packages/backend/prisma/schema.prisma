@@ -160,6 +160,7 @@ model ProductBacklogItem {
   sprintId              String?                 @db.Uuid
   incrementPBIs         IncrementPBI[]
   createdFromAdjustments BacklogAdjustment[]     @relation("AdjustmentCreatedPbi")
+  createdFromRetroActionItems RetroActionItem[]  @relation("RetroActionItemCreatedPbi")
   creator               User?                   @relation("PBICreator", fields: [createdBy], references: [id], onDelete: SetNull)
   goal                  ProductGoal?            @relation(fields: [goalId], references: [id], onDelete: SetNull)
   team                  Team                    @relation(fields: [teamId], references: [id], onDelete: Cascade)
@@ -899,8 +900,19 @@ model SprintRetrospective {
   isAnonymous       Boolean             @default(false)
   status            RetrospectiveStatus @default(DRAFT)
   summary           String?
+  /// "The Scrum Team inspects... their Definition of Done": the narrative of what the team
+  /// concluded about its Definition of Done during the event.
   dodEvolutionNotes String?
+  /// The Scrum Master's coaching observations. Readable only by the team's Scrum Master.
   smNotes           String?
+  /// The structured per-criterion reflection (keep / change / retire + note) the narrative
+  /// summarises. Stored as JSON because it is a snapshot of intent that is never queried by
+  /// field: a child table would add a join to every read for no read benefit.
+  dodReflections    Json?
+  /// The Definition of Done version this Retrospective produced when its accepted changes were
+  /// applied. This is the evidence that the adaptation loop closed -- without it, "we changed
+  /// our Definition of Done" remains an assertion.
+  dodVersionAtPush  Int?
   createdAt         DateTime            @default(now()) @db.Timestamptz(3)
   createdBy         String?             @db.Uuid
   updatedAt         DateTime            @updatedAt @db.Timestamptz(3)
@@ -975,6 +987,12 @@ model RetroItemVote {
   @@map("retro_item_votes")
 }
 
+/// An improvement the Scrum Team committed to during a Sprint Retrospective.
+///
+/// "The most impactful improvements are addressed as soon as possible. They may even be added to
+/// the Sprint Backlog for the next Sprint." `addedToSprintBacklog` alone is an assertion; the
+/// `productBacklogItem` link is the evidence that the improvement actually produced work, so the
+/// manual flag is never allowed to contradict it.
 model RetroActionItem {
   id                   String              @id @db.Uuid
   retrospectiveId      String              @db.Uuid
@@ -984,18 +1002,24 @@ model RetroActionItem {
   dueDate              DateTime?           @db.Timestamptz(3)
   status               ActionItemStatus    @default(PENDING)
   addedToSprintBacklog Boolean             @default(false)
+  /// The Sprint the improvement was taken into (the team's ACTIVE Sprint at the time it was
+  /// added to the backlog). Null until the action item produced or was linked to a backlog item.
   relatedSprintId      String?             @db.Uuid
+  /// The Product Backlog item this improvement produced, or the existing one it was linked to.
+  productBacklogItemId String?             @db.Uuid
   createdAt            DateTime            @default(now()) @db.Timestamptz(3)
   createdBy            String?             @db.Uuid
   updatedAt            DateTime            @updatedAt @db.Timestamptz(3)
   updatedBy            String?             @db.Uuid
   completedAt          DateTime?           @db.Timestamptz(3)
   owner                User                @relation("ActionItemOwner", fields: [ownerId], references: [id], onDelete: Restrict)
+  productBacklogItem   ProductBacklogItem? @relation("RetroActionItemCreatedPbi", fields: [productBacklogItemId], references: [id], onDelete: SetNull)
   retrospective        SprintRetrospective @relation(fields: [retrospectiveId], references: [id], onDelete: Cascade)
 
   @@index([retrospectiveId])
   @@index([ownerId])
   @@index([relatedSprintId])
+  @@index([productBacklogItemId])
   @@index([status])
   @@index([dueDate])
   @@index([completedAt])

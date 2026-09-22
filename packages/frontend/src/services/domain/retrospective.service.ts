@@ -133,6 +133,36 @@ class RetrospectiveService {
     const { data } = await this.api.delete(`/retrospectives/attendees/${attendeeId}`);
     return data;
   }
+
+  /**
+   * Apply the Definition of Done changes this Retrospective recorded.
+   *
+   * No body: the accepted change set is the reflection persisted on the Retrospective, so the
+   * client cannot substitute a different set for the one the team agreed.
+   */
+  async applyDodChanges(id: string): Promise<ApiResponse<SprintRetrospective>> {
+    const { data } = await this.api.post(`/retrospectives/${id}/apply-dod-changes`);
+    return data;
+  }
+
+  /** Carry an outstanding action item into the Product Backlog as a new, linked item. */
+  async materializeActionItem(actionItemId: string): Promise<ApiResponse<RetroActionItem>> {
+    const { data } = await this.api.post(
+      `/retrospectives/action-items/${actionItemId}/materialize`
+    );
+    return data;
+  }
+
+  /** Record an existing Product Backlog item as the improvement an action item produced. */
+  async linkActionItemToPbi(
+    actionItemId: string,
+    pbiId: string
+  ): Promise<ApiResponse<RetroActionItem>> {
+    const { data } = await this.api.put(`/retrospectives/action-items/${actionItemId}/link`, {
+      pbiId,
+    });
+    return data;
+  }
 }
 
 export const retrospectiveService = new RetrospectiveService();

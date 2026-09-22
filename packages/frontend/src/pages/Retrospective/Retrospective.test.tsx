@@ -581,13 +581,13 @@ describe('Retrospective Component', () => {
       fireEvent.click(addButton);
 
       await waitFor(() => {
-        // The API is called with the retrospective ID, not sprint ID
+        // The API is called with the retrospective ID, not sprint ID. Authorship is deliberately
+        // absent: the backend attributes the contribution to the caller's session.
         expect(apiService.addRetrospectiveItem).toHaveBeenCalledWith(
           'retro-1',
           expect.objectContaining({
             content: 'New retrospective item',
             category: RetrospectiveCategory.WENT_WELL,
-            authorName: 'John Doe',
           })
         );
       });

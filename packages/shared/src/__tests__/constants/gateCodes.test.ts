@@ -10,8 +10,8 @@ import {
 } from '../../constants/gateCodes.js';
 
 describe('gateCodes', () => {
-  it('should define forty gates', () => {
-    expect(GATE_CODE_LIST).toHaveLength(40);
+  it('should define forty-four gates', () => {
+    expect(GATE_CODE_LIST).toHaveLength(44);
   });
 
   it('should prefix every gate code with GATE_', () => {
@@ -155,6 +155,35 @@ describe('gateCodes', () => {
     expect(GATE_DEFINITIONS[GATE_CODES.SPRINT_EVENT_BEFORE_END_DATE].httpStatus).toBe(400);
     expect(GATE_DEFINITIONS[GATE_CODES.SPRINT_EVENT_BEFORE_END_DATE].i18nKey).toBe(
       'sprintEventBeforeEndDate'
+    );
+  });
+
+  it('should identify the Retrospective ownership, notes, linkage and reflection gates', () => {
+    expect(isGateCode(GATE_CODES.RETROSPECTIVE_TEAM_MEMBERS_ONLY)).toBe(true);
+    expect(isGateCode(GATE_CODES.RETROSPECTIVE_SM_NOTES_SM_ONLY)).toBe(true);
+    expect(isGateCode(GATE_CODES.RETROSPECTIVE_ACTION_ITEM_LINKED)).toBe(true);
+    expect(isGateCode(GATE_CODES.RETROSPECTIVE_DOD_CHANGES_MISSING)).toBe(true);
+  });
+
+  it('should refuse the Retrospective ownership and notes gates with 403', () => {
+    expect(GATE_DEFINITIONS[GATE_CODES.RETROSPECTIVE_TEAM_MEMBERS_ONLY].httpStatus).toBe(403);
+    expect(GATE_DEFINITIONS[GATE_CODES.RETROSPECTIVE_TEAM_MEMBERS_ONLY].i18nKey).toBe(
+      'retrospectiveTeamMembersOnly'
+    );
+    expect(GATE_DEFINITIONS[GATE_CODES.RETROSPECTIVE_SM_NOTES_SM_ONLY].httpStatus).toBe(403);
+    expect(GATE_DEFINITIONS[GATE_CODES.RETROSPECTIVE_SM_NOTES_SM_ONLY].i18nKey).toBe(
+      'retrospectiveSmNotesSmOnly'
+    );
+  });
+
+  it('should refuse a relinked Retrospective action item with 409 and an empty reflection with 400', () => {
+    expect(GATE_DEFINITIONS[GATE_CODES.RETROSPECTIVE_ACTION_ITEM_LINKED].httpStatus).toBe(409);
+    expect(GATE_DEFINITIONS[GATE_CODES.RETROSPECTIVE_ACTION_ITEM_LINKED].i18nKey).toBe(
+      'retrospectiveActionItemLinked'
+    );
+    expect(GATE_DEFINITIONS[GATE_CODES.RETROSPECTIVE_DOD_CHANGES_MISSING].httpStatus).toBe(400);
+    expect(GATE_DEFINITIONS[GATE_CODES.RETROSPECTIVE_DOD_CHANGES_MISSING].i18nKey).toBe(
+      'retrospectiveDodChangesMissing'
     );
   });
 

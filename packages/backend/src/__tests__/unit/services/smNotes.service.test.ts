@@ -21,6 +21,14 @@ vi.mock('../../../utils/prisma', () => ({
   },
 }));
 
+vi.mock('../../../utils/auditLogger', () => ({
+  auditResourceEvent: vi.fn(),
+  auditLog: vi.fn(),
+  AuditActions: { UPDATE: 'UPDATE' },
+  AuditEventTypes: { RETROSPECTIVE: 'RETROSPECTIVE' },
+  AuditResults: { SUCCESS: 'SUCCESS' },
+}));
+
 // Freeze `new Date()` to a fixed timestamp so the service's updatedAt is deterministic.
 function freezeDate(fixed: Date): void {
   vi.useFakeTimers();
@@ -30,6 +38,7 @@ function freezeDate(fixed: Date): void {
 // Now import the service and dependencies
 import { smNotesService } from '../../../services/smNotes.service';
 import prisma from '../../../utils/prisma';
+import { auditResourceEvent } from '../../../utils/auditLogger';
 import { NotFoundError } from '../../../utils/errors';
 import { GATE_CODES } from '@scrumooth/shared';
 
@@ -209,11 +218,13 @@ describe('SM Notes Service', () => {
     const userId = 'user-1';
     const updatedAt = new Date('2024-01-17T10:00:00.000Z');
 
-    it('should update notes for an existing retrospective', async () => {
-      const existingRetro = { id: retroId };
+    const existingRetro = { id: retroId, teamId: 'team-1' };
+
+    it('should update notes for the team Scrum Master', async () => {
       const updatedRetro = { id: retroId, smNotes: notes };
 
       vi.mocked(prisma.sprintRetrospective.findUnique).mockResolvedValue(existingRetro as any);
+      vi.mocked(prisma.teamMember.findFirst).mockResolvedValue({ role: 'SCRUM_MASTER' } as any);
       vi.mocked(prisma.sprintRetrospective.update).mockResolvedValue(updatedRetro as any);
       freezeDate(updatedAt);
 
@@ -222,6 +233,7 @@ describe('SM Notes Service', () => {
       expect(result).toEqual(updatedRetro);
       expect(prisma.sprintRetrospective.findUnique).toHaveBeenCalledWith({
         where: { id: retroId },
+        select: { id: true, teamId: true },
       });
       expect(prisma.sprintRetrospective.update).toHaveBeenCalledWith({
         where: { id: retroId },
@@ -230,22 +242,53 @@ describe('SM Notes Service', () => {
       });
     });
 
-    it('should update notes when userId is undefined', async () => {
-      vi.mocked(prisma.sprintRetrospective.findUnique).mockResolvedValue({ id: retroId } as any);
+    it('should audit the write without recording the note body', async () => {
+      vi.mocked(prisma.sprintRetrospective.findUnique).mockResolvedValue(existingRetro as any);
+      vi.mocked(prisma.teamMember.findFirst).mockResolvedValue({ role: 'SCRUM_MASTER' } as any);
       vi.mocked(prisma.sprintRetrospective.update).mockResolvedValue({
         id: retroId,
         smNotes: notes,
       } as any);
-      freezeDate(updatedAt);
 
-      const result = await smNotesService.updateRetrospectiveNotes(retroId, notes, undefined);
+      await smNotesService.updateRetrospectiveNotes(retroId, notes, userId);
 
-      expect(result.smNotes).toBe(notes);
-      expect(prisma.sprintRetrospective.update).toHaveBeenCalledWith({
-        where: { id: retroId },
-        data: { smNotes: notes, updatedBy: undefined, updatedAt },
-        select: { id: true, smNotes: true },
-      });
+      expect(auditResourceEvent).toHaveBeenCalledWith(
+        'RETROSPECTIVE',
+        'UPDATE',
+        'SUCCESS',
+        expect.objectContaining({ id: retroId }),
+        expect.objectContaining({ teamId: 'team-1', noteLength: notes.length })
+      );
+      // The audit trail records that the notes changed, never the criticism itself.
+      expect(JSON.stringify(vi.mocked(auditResourceEvent).mock.calls)).not.toContain(notes);
+    });
+
+    it('should refuse notes from a caller with no identity', async () => {
+      vi.mocked(prisma.sprintRetrospective.findUnique).mockResolvedValue(existingRetro as any);
+
+      await expect(
+        smNotesService.updateRetrospectiveNotes(retroId, notes, undefined)
+      ).rejects.toThrow('Authentication required');
+      expect(prisma.sprintRetrospective.update).not.toHaveBeenCalled();
+    });
+
+    it('should refuse notes from a member who is not the Scrum Master', async () => {
+      vi.mocked(prisma.sprintRetrospective.findUnique).mockResolvedValue(existingRetro as any);
+      vi.mocked(prisma.teamMember.findFirst).mockResolvedValue({ role: 'DEVELOPERS' } as any);
+
+      await expect(
+        smNotesService.updateRetrospectiveNotes(retroId, notes, userId)
+      ).rejects.toMatchObject({ code: GATE_CODES.RETROSPECTIVE_SM_NOTES_SM_ONLY });
+      expect(prisma.sprintRetrospective.update).not.toHaveBeenCalled();
+    });
+
+    it('should refuse notes from someone who is not a member of the team at all', async () => {
+      vi.mocked(prisma.sprintRetrospective.findUnique).mockResolvedValue(existingRetro as any);
+      vi.mocked(prisma.teamMember.findFirst).mockResolvedValue(null as any);
+
+      await expect(
+        smNotesService.updateRetrospectiveNotes(retroId, notes, userId)
+      ).rejects.toMatchObject({ code: GATE_CODES.RETROSPECTIVE_SM_NOTES_SM_ONLY });
     });
 
     it('should throw NotFoundError when retrospective does not exist', async () => {
@@ -259,7 +302,8 @@ describe('SM Notes Service', () => {
     });
 
     it('should propagate errors from update', async () => {
-      vi.mocked(prisma.sprintRetrospective.findUnique).mockResolvedValue({ id: retroId } as any);
+      vi.mocked(prisma.sprintRetrospective.findUnique).mockResolvedValue(existingRetro as any);
+      vi.mocked(prisma.teamMember.findFirst).mockResolvedValue({ role: 'SCRUM_MASTER' } as any);
       vi.mocked(prisma.sprintRetrospective.update).mockRejectedValue(new Error('db failure'));
       freezeDate(updatedAt);
 
