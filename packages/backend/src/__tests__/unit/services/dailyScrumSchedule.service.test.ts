@@ -29,6 +29,7 @@ import {
   buildWorkingDayCalendar,
   dailyScrumScheduleService,
   resolveCadenceWindow,
+  toLocalIsoDate,
 } from '../../../services/dailyScrumSchedule.service';
 import prisma from '../../../utils/prisma';
 import { NotFoundError } from '../../../utils/errors';
@@ -448,39 +449,43 @@ describe('buildWorkingDayCalendar', () => {
 });
 
 describe('resolveCadenceWindow', () => {
+  /**
+   * The window ends on today as a *local* wall-clock day, the convention this module -- and the
+   * Daily Scrum module it shares its `@db.Date` column with -- reads and writes dates under
+   * (`toLocalIsoDate`). Expectations have to name the same day: `toISOString()` reports UTC
+   * components, which sit on the previous date between local midnight and the UTC offset, so
+   * deriving them that way made these tests fail for the first hours of every day east of UTC.
+   */
+  const localToday = (): string => toLocalIsoDate(new Date());
+
   it('spans the earliest and latest dates it was given', () => {
-    const today = new Date().toISOString().slice(0, 10);
     expect(
       resolveCadenceWindow([
         new Date('2026-09-18T00:00:00.000Z'),
         new Date('2026-09-07T00:00:00.000Z'),
       ])
-    ).toEqual({ from: '2026-09-07', to: today });
+    ).toEqual({ from: '2026-09-07', to: localToday() });
   });
 
   it('always includes today, so a finished Sprint still knows whether today is a working day', () => {
-    const today = new Date().toISOString().slice(0, 10);
     const window = resolveCadenceWindow([new Date('2026-09-07T00:00:00.000Z')]);
     expect(window.from).toBe('2026-09-07');
-    expect(window.to).toBe(today);
+    expect(window.to).toBe(localToday());
   });
 
   it('clamps a window wider than the calendar API accepts instead of throwing', () => {
-    const today = new Date().toISOString().slice(0, 10);
     // A sweep over years of history must degrade to a bounded read -- the alternative is a
     // dashboard request failing outright because its oldest Sprint is too old.
     const window = resolveCadenceWindow([new Date('2020-01-06T00:00:00.000Z')]);
 
-    expect(window.to).toBe(today);
+    expect(window.to).toBe(localToday());
     expect(window.from).not.toBe('2020-01-06');
     // The clamp keeps the most recent year, which is what a report is actually about.
     expect(() => dailyScrumScheduleService.resolveWindow(window)).not.toThrow();
   });
 
   it('ignores missing dates rather than failing on them', () => {
-    expect(resolveCadenceWindow([null, undefined])).toEqual({
-      from: new Date().toISOString().slice(0, 10),
-      to: new Date().toISOString().slice(0, 10),
-    });
+    const today = localToday();
+    expect(resolveCadenceWindow([null, undefined])).toEqual({ from: today, to: today });
   });
 });

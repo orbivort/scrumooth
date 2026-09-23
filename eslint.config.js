@@ -229,6 +229,48 @@ export default tseslint.config(
       ],
     },
   },
+  // Barrel (facade) index files are excluded from coverage (see the coverage.exclude globs in
+  // packages/frontend/vitest.config.ts). That exemption is only safe as long as these files stay
+  // pure re-export facades, so this guard fails lint as soon as one of them gains runtime code —
+  // which would mean silently losing coverage of real logic.
+  // The globs must stay in sync with packages/frontend/vitest.config.ts and .github/codecov.yml.
+  // Note: no-restricted-syntax is redefined here, so the frontend selectors above are repeated.
+  {
+    files: [
+      'packages/frontend/src/components/**/index.ts',
+      'packages/frontend/src/pages/**/index.ts',
+      'packages/frontend/src/config/index.ts',
+      'packages/frontend/src/hooks/index.ts',
+      'packages/frontend/src/styles/index.ts',
+    ],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector:
+            'Program > VariableDeclaration, Program > ExpressionStatement, Program > IfStatement, Program > ForStatement, Program > ForOfStatement, Program > ForInStatement, Program > WhileStatement, Program > SwitchStatement, Program > TryStatement, Program > ThrowStatement',
+          message:
+            'Barrel index files are coverage-excluded and must only re-export. Move this runtime code into a named module (and keep the barrel a pure facade).',
+        },
+        {
+          selector:
+            'ExportNamedDeclaration[declaration.type=/^(VariableDeclaration|FunctionDeclaration|ClassDeclaration)$/]',
+          message:
+            'Barrel index files are coverage-excluded and must only re-export. Move this runtime export into a named module (and keep the barrel a pure facade).',
+        },
+        {
+          selector: 'CallExpression[callee.property.name="toLocaleDateString"]',
+          message:
+            'Use formatLocaleDate from @scrumooth/shared instead of toLocaleDateString(). This ensures consistent locale-aware date formatting.',
+        },
+        {
+          selector: 'CallExpression[callee.property.name="toLocaleString"]',
+          message:
+            'Use formatLocaleDate from @scrumooth/shared instead of toLocaleString(). This ensures consistent locale-aware date/time formatting.',
+        },
+      ],
+    },
+  },
   {
     files: ['**/*.test.ts', '**/*.test.tsx', '**/__tests__/**/*'],
     languageOptions: {
