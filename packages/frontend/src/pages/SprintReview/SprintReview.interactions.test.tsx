@@ -463,6 +463,73 @@ describe('SprintReview - Keyboard Navigation Tests', () => {
   });
 });
 
+/**
+ * "The purpose of the Sprint Review is to inspect the outcome of the Sprint", so the Review
+ * belongs to the day the Sprint's end date names. The page states that before the team works
+ * through the confirmation modal, instead of letting the backend refuse the submission.
+ */
+describe('SprintReview - Sprint End Date Gate', () => {
+  const completeButton = () => screen.getByRole('button', { name: /Complete Sprint Review/i });
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('should disable completion while the sprint is still running, and say why', async () => {
+    const inThreeDays = new Date();
+    inThreeDays.setDate(inThreeDays.getDate() + 3);
+    setupBasicMocks({
+      sprint: { status: SprintStatus.ACTIVE, endDate: inThreeDays.toISOString() },
+    });
+
+    renderComponent();
+
+    await waitFor(() => {
+      expect(completeButton()).toBeInTheDocument();
+    });
+
+    expect(completeButton()).toBeDisabled();
+    expect(
+      screen.getByText(/This Review can be completed from the Sprint's end date/)
+    ).toBeInTheDocument();
+  });
+
+  it('should allow completion on the day the sprint ends, whatever time the end date stores', async () => {
+    const endOfToday = new Date();
+    endOfToday.setHours(23, 59, 59, 999);
+    setupBasicMocks({
+      sprint: { status: SprintStatus.ACTIVE, endDate: endOfToday.toISOString() },
+    });
+
+    renderComponent();
+
+    await waitFor(() => {
+      expect(completeButton()).toBeInTheDocument();
+    });
+
+    expect(completeButton()).toBeEnabled();
+    expect(
+      screen.queryByText(/This Review can be completed from the Sprint's end date/)
+    ).not.toBeInTheDocument();
+  });
+
+  it('should allow completion of a sprint that already concluded before its end date', async () => {
+    const inThreeDays = new Date();
+    inThreeDays.setDate(inThreeDays.getDate() + 3);
+    setupBasicMocks({
+      sprint: { status: SprintStatus.CANCELLED, endDate: inThreeDays.toISOString() },
+    });
+
+    renderComponent();
+
+    await waitFor(() => {
+      expect(completeButton()).toBeInTheDocument();
+    });
+
+    expect(completeButton()).toBeEnabled();
+  });
+});
+
 describe('SprintReview - Complete Review Validation Tests', () => {
   beforeEach(() => {
     vi.clearAllMocks();

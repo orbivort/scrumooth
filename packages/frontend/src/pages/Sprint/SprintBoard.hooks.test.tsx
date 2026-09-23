@@ -33,6 +33,7 @@ vi.mock('../../services', () => ({
     updateTask: vi.fn(),
     deleteTask: vi.fn(),
     completeSprint: vi.fn(),
+    getSprintBacklogChanges: vi.fn(),
   },
   definitionService: {
     getDefinitionOfDone: vi.fn(),
@@ -94,6 +95,9 @@ describe('useSprintBoardData Hook', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    // The board only counts changes that are still awaiting a decision; a test that cares about
+    // the count supplies its own list.
+    vi.mocked(apiService.getSprintBacklogChanges).mockResolvedValue({ data: [] } as never);
     wrapper = createWrapper();
   });
 
@@ -175,6 +179,53 @@ describe('useSprintBoardData Hook', () => {
 
     expect(result.current.wipLimits).toBeDefined();
     expect(result.current.wipLimits.in_progress).toBeGreaterThan(0);
+  });
+
+  it('should count only the Sprint Backlog changes awaiting the Product Owner', async () => {
+    vi.mocked(apiService.getActiveSprint).mockResolvedValue({
+      data: {
+        id: 'sprint-1',
+        teamId: 'team-1',
+        name: 'Sprint 1',
+        status: 'ACTIVE',
+        sprintGoal: 'Test goal',
+        startDate: new Date().toISOString(),
+        endDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
+        tasks: [],
+        items: [],
+      },
+    } as never);
+
+    vi.mocked(apiService.getSprintTasks).mockResolvedValue({ data: [] } as never);
+    vi.mocked(apiService.getSprintBacklogChanges).mockResolvedValue({
+      data: [
+        { id: 'change-1', approvalStatus: 'PENDING' },
+        { id: 'change-2', approvalStatus: 'APPLIED' },
+        { id: 'change-3', approvalStatus: 'REJECTED' },
+        { id: 'change-4', approvalStatus: 'PENDING' },
+      ],
+    } as never);
+
+    const { result } = renderHook(
+      () =>
+        useSprintBoardData({
+          teamId: 'team-1',
+          showBurndown: false,
+          filterAssignee: 'all',
+          filterPbi: 'all',
+          debouncedSearchQuery: '',
+          swimlaneGroup: 'none',
+        }),
+      { wrapper }
+    );
+
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    });
+
+    // Decided changes are history; only the undecided ones gate the Product Owner.
+    expect(result.current.pendingBacklogChangeCount).toBe(2);
+    expect(apiService.getSprintBacklogChanges).toHaveBeenCalledWith('sprint-1', 20);
   });
 
   it('should filter tasks by assignee', async () => {

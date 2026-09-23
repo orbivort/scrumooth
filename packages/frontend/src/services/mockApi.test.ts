@@ -44,7 +44,7 @@ describe('MockApiService', () => {
       const result = await mockApiService.promoteImpedimentFromDailyScrum(scrum.data?.id ?? '', {
         title: 'Blocked by flaky CI pipeline',
         description: 'Builds fail intermittently.',
-        priority: 'High',
+        priority: 'HIGH',
       });
 
       expect(result.success).toBe(true);

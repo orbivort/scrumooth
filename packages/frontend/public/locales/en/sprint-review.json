@@ -110,6 +110,7 @@
     },
     "defaultSummary": "Sprint Review completed.",
     "failed": "Failed to complete review. Please try again.",
+    "sprintNotEnded": "The Sprint Review inspects the outcome of the Sprint. This Review can be completed from the Sprint's end date ({{endDate}}).",
     "successModal": {
       "close": "Close",
       "message": "Sprint Review completed successfully!",

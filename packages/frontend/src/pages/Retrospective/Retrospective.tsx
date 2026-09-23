@@ -2,7 +2,7 @@ import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useParams, useNavigate } from 'react-router';
 import { useTranslation } from 'react-i18next';
-import { formatLocaleDate, SCRUM_EVENTS } from '@scrumooth/shared';
+import { formatLocaleDate, mayCompleteSprintEvents, SCRUM_EVENTS } from '@scrumooth/shared';
 
 import { apiService, smDashboardService } from '../../services';
 import { useTeamStore, useAuthStore } from '../../store';
@@ -27,19 +27,29 @@ import { EmptyState } from '../../components/EmptyState';
 import { LoadingState } from '../../components/common/Loading/LoadingState';
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { queryKeys } from '../../hooks/queryKeys';
-import { TOAST_SUCCESS_DURATION } from '../../utils/constants';
+import { TOAST_ERROR_DURATION, TOAST_SUCCESS_DURATION } from '../../utils/constants';
 import {
   AlertCircleIcon,
   AlertTriangleIcon,
+  CalendarRangeIcon,
+  ChartIcon,
   CheckCircleIcon,
   CheckIcon,
+  CheckSquareIcon,
   ClipboardListIcon,
   EditIcon,
   EyeOffIcon,
+  FileTextIcon,
   InfoIcon,
   LightbulbIcon,
   PlusIcon,
   SaveIcon,
+  SprintIcon,
+  ThumbsDownIcon,
+  ThumbsUpIcon,
+  TrashIcon,
+  UserIcon,
+  UsersIcon,
 } from '../../components/common/Icons';
 
 import styles from './Retrospective.module.css';
@@ -54,6 +64,45 @@ const BacklogHint: React.FC<{ t: any }> = ({ t }) => (
   <div className={styles['backlog-hint']}>
     <InfoIcon className={styles['hint-icon']} />
     <span className={styles['hint-text']}>{t('backlogHint')}</span>
+  </div>
+);
+
+/**
+ * The four moves of a Retrospective, in the order the Scrum Guide implies them: the team sets the
+ * stage, inspects what happened, decides what to change, and records the outcome.
+ *
+ * Every phase is rendered with a numbered heading so the page reads as a facilitated agenda rather
+ * than a stack of unrelated panels — the reader always knows where they are and what comes next.
+ */
+type RetroPhaseKey = 'stage' | 'reflect' | 'decide' | 'close';
+
+interface RetroPhase {
+  key: RetroPhaseKey;
+  index: number;
+}
+
+const PHASE_STAGE: RetroPhase = { key: 'stage', index: 1 };
+const PHASE_REFLECT: RetroPhase = { key: 'reflect', index: 2 };
+const PHASE_DECIDE: RetroPhase = { key: 'decide', index: 3 };
+const PHASE_CLOSE: RetroPhase = { key: 'close', index: 4 };
+
+interface PhaseHeadingProps {
+  phase: RetroPhase;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- TFunction signature varies by i18next version
+  t: any;
+}
+
+const PhaseHeading: React.FC<PhaseHeadingProps> = ({ phase, t }) => (
+  <div className={styles['phase-heading']}>
+    <span className={styles['phase-index']} aria-hidden="true">
+      {String(phase.index).padStart(2, '0')}
+    </span>
+    <div className={styles['phase-heading-text']}>
+      <h2 id={`phase-${phase.key}`} className={styles['phase-title']}>
+        {t(`phases.${phase.key}.title`)}
+      </h2>
+      <p className={styles['phase-description']}>{t(`phases.${phase.key}.description`)}</p>
+    </div>
   </div>
 );
 
@@ -149,10 +198,10 @@ export const SprintRetrospective: React.FC = () => {
     if (notificationTimeoutRef.current) {
       clearTimeout(notificationTimeoutRef.current);
     }
-    notificationTimeoutRef.current = setTimeout(
-      () => setNotification(null),
-      TOAST_SUCCESS_DURATION
-    );
+    // A refused completion explains a gate in a full sentence, so an error needs more time on
+    // screen than a confirmation the reader already expects.
+    const duration = type === 'error' ? TOAST_ERROR_DURATION : TOAST_SUCCESS_DURATION;
+    notificationTimeoutRef.current = setTimeout(() => setNotification(null), duration);
   }, []);
 
   useEffect(() => {
@@ -520,6 +569,18 @@ export const SprintRetrospective: React.FC = () => {
 
   const isCompleted = retrospective?.status === RetrospectiveStatus.COMPLETED;
 
+  /**
+   * The closing events of a Sprint belong to the day its end date names: the Review inspects the
+   * Sprint's outcome and the Retrospective concludes the Sprint, so neither can be completed while
+   * it is still running. The rule is the shared one the backend enforces -- including its
+   * exemption for a Sprint that has already concluded -- so the button and the gate cannot
+   * disagree about when this Retrospective may be completed.
+   */
+  const mayCompleteRetro = mayCompleteSprintEvents(sprint);
+  const sprintNotEndedHint = t('completeRetro.sprintNotEnded', {
+    endDate: sprint?.endDate ? formatLocaleDate(sprint.endDate, locale, 'PPPP') : '',
+  });
+
   const validateActionFormField = useCallback(
     (field: string, value: string): string | undefined => {
       switch (field) {
@@ -627,20 +688,17 @@ export const SprintRetrospective: React.FC = () => {
     const configs = {
       [RetrospectiveCategory.WENT_WELL]: {
         title: t('categories.wentWell.title'),
-        icon: '😊',
-        color: { bg: '#D1FAE5', border: '#10B981', text: '#065F46' },
+        icon: <ThumbsUpIcon size={18} />,
         placeholder: t('categories.wentWell.placeholder'),
       },
       [RetrospectiveCategory.DIDNT_GO_WELL]: {
         title: t('categories.didntGoWell.title'),
-        icon: '😟',
-        color: { bg: '#FEE2E2', border: '#EF4444', text: '#991B1B' },
+        icon: <ThumbsDownIcon size={18} />,
         placeholder: t('categories.didntGoWell.placeholder'),
       },
       [RetrospectiveCategory.IMPROVEMENT]: {
         title: t('categories.improvements.title'),
-        icon: '💡',
-        color: { bg: '#DBEAFE', border: '#3B82F6', text: '#1E40AF' },
+        icon: <LightbulbIcon size={18} />,
         placeholder: t('categories.improvements.placeholder'),
       },
     };
@@ -886,22 +944,19 @@ export const SprintRetrospective: React.FC = () => {
     setDeleteActionConfirmation({ show: false, actionItemId: null, actionItemTitle: '' });
   }, []);
 
-  const getStatusColor = (status: string): { bg: string; text: string } => {
-    const colors: Record<string, { bg: string; text: string }> = {
-      pending: { bg: '#FEF3C7', text: '#92400E' },
-      in_progress: { bg: '#DBEAFE', text: '#1E40AF' },
-      completed: { bg: '#D1FAE5', text: '#065F46' },
-      cancelled: { bg: '#F3F4F6', text: '#6B7280' },
-    };
-    return colors[status] ?? { bg: '#FEF3C7', text: '#92400E' };
-  };
-
   const handleCompleteRetrospective = useCallback(() => {
     if (!retrospective?.id) {
       showNotification('error', t('errors.notLoaded'));
       return;
     }
     if (updateStatusMutation.isPending) return;
+
+    // The button is disabled in this state; the check keeps the refusal explicit for a click that
+    // arrives after the Sprint's dates changed under the rendered page. The backend refuses too.
+    if (!mayCompleteRetro) {
+      showNotification('error', sprintNotEndedHint);
+      return;
+    }
 
     const errors: string[] = [];
 
@@ -951,7 +1006,15 @@ export const SprintRetrospective: React.FC = () => {
 
     setValidationErrors([]);
     setUiState((prev) => ({ ...prev, showCompleteConfirmation: true }));
-  }, [updateStatusMutation, showNotification, retrospective, teamMembers, t]);
+  }, [
+    updateStatusMutation,
+    showNotification,
+    retrospective,
+    teamMembers,
+    t,
+    mayCompleteRetro,
+    sprintNotEndedHint,
+  ]);
 
   const confirmCompleteRetrospective = useCallback(() => {
     if (validationErrors.length > 0) {
@@ -1212,711 +1275,779 @@ export const SprintRetrospective: React.FC = () => {
                 total: retrospective.attendees.length || 0,
               })}
             >
-              👥 {retrospective.attendees.filter((a: RetroAttendee) => a.attended).length || 0} /{' '}
+              <UsersIcon size={16} aria-hidden="true" />
+              {retrospective.attendees.filter((a: RetroAttendee) => a.attended).length || 0} /{' '}
               {retrospective.attendees.length || 0} {t('attendeesLabel')}
             </span>
           </div>
         </div>
 
-        <div className={styles['values-banner']}>
-          <ScrumValuesBanner />
-        </div>
+        {/* Phase 1 — the sprint being inspected, then the Values that set the tone for reflecting on
+            it. Both are context: neither asks the team to decide anything yet. */}
+        <section className={styles.phase} aria-labelledby="phase-stage">
+          <PhaseHeading phase={PHASE_STAGE} t={t} />
 
-        <details className={styles['values-reflection']}>
-          <summary className={styles['values-reflection-summary']}>
-            {t('valuesReflection.title')}
-          </summary>
-          <div className={styles['values-reflection-body']}>
-            {['COMMITMENT', 'FOCUS', 'OPENNESS', 'RESPECT', 'COURAGE'].map((value) => (
-              <div key={value} className={styles['values-reflection-item']}>
-                <span className={styles['values-reflection-name']}>
-                  {t(`valuesReflection.values.${value}.label` as never)}
-                </span>
-                <p className={styles['values-reflection-question']}>
-                  {t(`valuesReflection.values.${value}.question` as never)}
-                </p>
-              </div>
-            ))}
-          </div>
-        </details>
-
-        {/* "The Scrum Team inspects... their Definition of Done." The DoD is the one artifact the
-            Guide names for this event that free-text columns cannot carry: it has to be read
-            criterion by criterion, and the team has to be able to change it from here. */}
-        <DodInspection retrospective={retrospective} readOnly={isCompleted} />
-
-        {sprint && (
-          <section
-            className={styles['sprint-info-section']}
-            aria-label={t('ariaLabels.sprintInfoRegion')}
-          >
-            <div className={styles['sprint-info-header']}>
-              <div className={styles['sprint-info-title']}>
-                <span className={styles['sprint-icon']} aria-hidden="true">
-                  🏃
-                </span>
-                <h2>{sprint.name}</h2>
-                <span
-                  className={`${styles['sprint-status-badge']} ${styles[`status-${sprint.status.toLowerCase()}`]}`}
-                >
-                  {t(
-                    `sprintStatus.${sprint.status.toUpperCase()}` as
-                      | 'sprintStatus.ACTIVE'
-                      | 'sprintStatus.COMPLETED'
-                      | 'sprintStatus.PLANNED'
-                      | 'sprintStatus.CANCELLED'
-                  )}
-                </span>
-              </div>
-              {sprint.sprintGoal && (
-                <div className={styles['sprint-goal-inline']}>
-                  <span className={styles['goal-label']}>{t('sprintInfo.goal')}</span>
-                  <span className={styles['goal-text']}>{sprint.sprintGoal}</span>
-                </div>
-              )}
-            </div>
-
-            <div className={styles['sprint-info-grid']}>
-              <div className={styles['info-card']}>
-                <div className={styles['info-card-icon']}>📅</div>
-                <div className={styles['info-card-content']}>
-                  <span className={styles['info-card-label']}>{t('sprintInfo.duration')}</span>
-                  <span className={styles['info-card-value']}>
-                    {formatLocaleDate(sprint.startDate, locale, 'PPPP')} —{' '}
-                    {formatLocaleDate(sprint.endDate, locale, 'PPPP')}
-                  </span>
-                  <span className={styles['info-card-sub']}>
-                    {calculateDuration(sprint.startDate, sprint.endDate)}
-                  </span>
-                </div>
-              </div>
-
-              <div className={styles['info-card']}>
-                <div className={styles['info-card-icon']}>📊</div>
-                <div className={styles['info-card-content']}>
-                  <span className={styles['info-card-label']}>
-                    {t('sprintInfo.productBacklog')}
-                  </span>
-                  <span className={styles['info-card-value']}>
-                    {t('sprintInfo.itemsCount', { count: sprint.items?.length ?? 0 })}
-                  </span>
-                  <span className={styles['info-card-sub']}>
-                    {t('sprintInfo.storyPointsCount', {
-                      count: calculateStoryPoints(sprint.items),
-                    })}
-                  </span>
-                </div>
-              </div>
-
-              <div className={styles['info-card']}>
-                <div className={styles['info-card-icon']}>✅</div>
-                <div className={styles['info-card-content']}>
-                  <span className={styles['info-card-label']}>{t('sprintInfo.completion')}</span>
-                  <span className={styles['info-card-value']}>
-                    {calculateCompletion(sprint.items)}%
-                  </span>
-                  <div className={styles['progress-bar']}>
-                    <div
-                      className={styles['progress-fill']}
-                      style={{ width: `${calculateCompletion(sprint.items)}%` }}
-                      role="progressbar"
-                      aria-valuenow={calculateCompletion(sprint.items)}
-                      aria-valuemin={0}
-                      aria-valuemax={100}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className={styles['info-card']}>
-                <div className={styles['info-card-icon']}>📋</div>
-                <div className={styles['info-card-content']}>
-                  <span className={styles['info-card-label']}>{t('sprintInfo.tasks')}</span>
-                  <span className={styles['info-card-value']}>
-                    {t('sprintInfo.taskCount', { count: sprint.tasks?.length ?? 0 })}
-                  </span>
-                  <span className={styles['info-card-sub']}>
-                    {(() => {
-                      const taskCompletionParts = calculateTaskCompletion(sprint.tasks).split('/');
-                      const completedTasks = taskCompletionParts[0] ?? '0';
-                      const totalTasks = taskCompletionParts[1] ?? '0';
-                      return t('sprintInfo.taskCompletion', {
-                        completed: completedTasks,
-                        total: totalTasks,
-                      });
-                    })()}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {sprint.items && sprint.items.length > 0 && (
-              <div className={styles['user-stories-section']}>
-                <h3 className={styles['stories-title']}>
-                  <span aria-hidden="true">📖</span> {t('sprintInfo.includedPbis')}
-                </h3>
-                <div className={styles['stories-grid']}>
-                  {sprint.items.slice(0, 6).map((item, index) => (
-                    <div
-                      key={item.id}
-                      className={styles['story-card']}
-                      style={{ animationDelay: `${index * 50}ms` }}
-                    >
-                      <div className={styles['story-header']}>
-                        <span className={styles['story-priority']} data-priority={item.priority}>
-                          {t(`sprintInfo.priorityLabels.${item.priority}` as never)}
-                        </span>
-                        <span
-                          className={`${styles['story-status']} ${styles[`status-${item.status.toLowerCase().replace('_', '-')}`]}`}
-                        >
-                          {t(`sprintInfo.statusLabels.${item.status}` as never)}
-                        </span>
-                      </div>
-                      <h4 className={styles['story-title']}>{item.title}</h4>
-                      {item.storyPoints && (
-                        <div className={styles['story-points']}>
-                          <span className={styles['points-badge']}>
-                            {item.storyPoints} {t('pts')}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-                {sprint.items.length > 6 && (
-                  <p className={styles['stories-more']}>
-                    {t('sprintInfo.moreItems', { count: sprint.items.length - 6 })}
-                  </p>
-                )}
-              </div>
-            )}
-          </section>
-        )}
-
-        <div className={styles['retro-content']}>
-          <div
-            className={styles['retro-columns']}
-            role="region"
-            aria-label={t('ariaLabels.columnsRegion')}
-          >
-            {Object.values(RetrospectiveCategory).map((category) => {
-              const config = getCategoryConfig(category);
-              const items = retrospective.items.filter(
-                (item: RetrospectiveItem) => item.category === category
-              );
-
-              return (
-                <div
-                  key={category}
-                  className={styles['retro-column']}
-                  style={{ borderColor: config.color.border }}
-                  role="region"
-                  aria-labelledby={`column-${category}`}
-                >
-                  <div
-                    id={`column-${category}`}
-                    className={styles['column-header']}
-                    style={{ backgroundColor: config.color.bg, color: config.color.text }}
-                  >
-                    <span className={styles['column-icon']} aria-hidden="true">
-                      {config.icon}
+          <div className={styles['phase-body']}>
+            {sprint && (
+              <section
+                className={styles['sprint-info-section']}
+                aria-label={t('ariaLabels.sprintInfoRegion')}
+              >
+                <div className={styles['sprint-info-header']}>
+                  <div className={styles['sprint-info-title']}>
+                    <span className={styles['sprint-icon']} aria-hidden="true">
+                      <SprintIcon size={20} />
                     </span>
-                    <h3>{config.title}</h3>
+                    <h3>{sprint.name}</h3>
                     <span
-                      className={styles['item-count']}
-                      aria-label={t('columnItem.itemsInColumn', {
-                        count: items.length,
-                        title: config.title,
-                      })}
+                      className={`${styles['sprint-status-badge']} ${styles[`status-${sprint.status.toLowerCase()}`]}`}
                     >
-                      {items.length}
+                      {t(
+                        `sprintStatus.${sprint.status.toUpperCase()}` as
+                          | 'sprintStatus.ACTIVE'
+                          | 'sprintStatus.COMPLETED'
+                          | 'sprintStatus.PLANNED'
+                          | 'sprintStatus.CANCELLED'
+                      )}
                     </span>
                   </div>
+                  {sprint.sprintGoal && (
+                    <div className={styles['sprint-goal-inline']}>
+                      <span className={styles['goal-label']}>{t('sprintInfo.goal')}</span>
+                      <span className={styles['goal-text']}>{sprint.sprintGoal}</span>
+                    </div>
+                  )}
+                </div>
 
-                  <div className={styles['column-items']}>
-                    {items
-                      .sort((a: RetrospectiveItem, b: RetrospectiveItem) => b.votes - a.votes)
-                      .map((item: RetrospectiveItem) => (
-                        <div key={item.id} className={styles['retro-item']}>
-                          {editState.editingItemId === item.id ? (
-                            <div className={styles['edit-item-form']}>
-                              <textarea
-                                value={editState.editContent}
-                                onChange={(e) =>
-                                  setEditState((prev) => ({ ...prev, editContent: e.target.value }))
-                                }
-                                rows={3}
-                                autoFocus
-                              />
-                              <div className={styles['form-actions']}>
-                                <button
-                                  className={`${styles.button} ${styles['button-secondary']} ${styles.small}`}
-                                  onClick={handleCancelEdit}
-                                  disabled={updateItemMutation.isPending}
-                                >
-                                  {t('columnItem.cancel')}
-                                </button>
-                                <button
-                                  className={`${styles.button} ${styles['button-primary']} ${styles.small}`}
-                                  onClick={handleSaveEdit}
-                                  disabled={
-                                    !editState.editContent.trim() || updateItemMutation.isPending
-                                  }
-                                >
-                                  <SaveIcon className={styles['button-icon']} />
-                                  {updateItemMutation.isPending
-                                    ? t('columnItem.saving')
-                                    : t('columnItem.save')}
-                                </button>
-                              </div>
+                <div className={styles['sprint-info-grid']}>
+                  <div className={styles['info-card']}>
+                    <div className={styles['info-card-icon']} aria-hidden="true">
+                      <CalendarRangeIcon size={18} />
+                    </div>
+                    <div className={styles['info-card-content']}>
+                      <span className={styles['info-card-label']}>{t('sprintInfo.duration')}</span>
+                      <span className={styles['info-card-value']}>
+                        {formatLocaleDate(sprint.startDate, locale, 'PPPP')} —{' '}
+                        {formatLocaleDate(sprint.endDate, locale, 'PPPP')}
+                      </span>
+                      <span className={styles['info-card-sub']}>
+                        {calculateDuration(sprint.startDate, sprint.endDate)}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className={styles['info-card']}>
+                    <div className={styles['info-card-icon']} aria-hidden="true">
+                      <ChartIcon size={18} />
+                    </div>
+                    <div className={styles['info-card-content']}>
+                      <span className={styles['info-card-label']}>
+                        {t('sprintInfo.productBacklog')}
+                      </span>
+                      <span className={styles['info-card-value']}>
+                        {t('sprintInfo.itemsCount', { count: sprint.items?.length ?? 0 })}
+                      </span>
+                      <span className={styles['info-card-sub']}>
+                        {t('sprintInfo.storyPointsCount', {
+                          count: calculateStoryPoints(sprint.items),
+                        })}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className={styles['info-card']}>
+                    <div className={styles['info-card-icon']} aria-hidden="true">
+                      <CheckSquareIcon size={18} />
+                    </div>
+                    <div className={styles['info-card-content']}>
+                      <span className={styles['info-card-label']}>
+                        {t('sprintInfo.completion')}
+                      </span>
+                      <span className={styles['info-card-value']}>
+                        {calculateCompletion(sprint.items)}%
+                      </span>
+                      <div className={styles['progress-bar']}>
+                        <div
+                          className={styles['progress-fill']}
+                          style={{ width: `${calculateCompletion(sprint.items)}%` }}
+                          role="progressbar"
+                          aria-valuenow={calculateCompletion(sprint.items)}
+                          aria-valuemin={0}
+                          aria-valuemax={100}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className={styles['info-card']}>
+                    <div className={styles['info-card-icon']} aria-hidden="true">
+                      <ClipboardListIcon size={18} />
+                    </div>
+                    <div className={styles['info-card-content']}>
+                      <span className={styles['info-card-label']}>{t('sprintInfo.tasks')}</span>
+                      <span className={styles['info-card-value']}>
+                        {t('sprintInfo.taskCount', { count: sprint.tasks?.length ?? 0 })}
+                      </span>
+                      <span className={styles['info-card-sub']}>
+                        {(() => {
+                          const taskCompletionParts = calculateTaskCompletion(sprint.tasks).split(
+                            '/'
+                          );
+                          const completedTasks = taskCompletionParts[0] ?? '0';
+                          const totalTasks = taskCompletionParts[1] ?? '0';
+                          return t('sprintInfo.taskCompletion', {
+                            completed: completedTasks,
+                            total: totalTasks,
+                          });
+                        })()}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {sprint.items && sprint.items.length > 0 && (
+                  <div className={styles['user-stories-section']}>
+                    <h4 className={styles['stories-title']}>
+                      <FileTextIcon size={18} aria-hidden="true" />
+                      {t('sprintInfo.includedPbis')}
+                    </h4>
+                    <div className={styles['stories-grid']}>
+                      {sprint.items.slice(0, 6).map((item, index) => (
+                        <div
+                          key={item.id}
+                          className={styles['story-card']}
+                          style={{ animationDelay: `${index * 50}ms` }}
+                        >
+                          <div className={styles['story-header']}>
+                            <span
+                              className={styles['story-priority']}
+                              data-priority={item.priority}
+                            >
+                              {t(`sprintInfo.priorityLabels.${item.priority}` as never)}
+                            </span>
+                            <span
+                              className={`${styles['story-status']} ${styles[`status-${item.status.toLowerCase().replace('_', '-')}`]}`}
+                            >
+                              {t(`sprintInfo.statusLabels.${item.status}` as never)}
+                            </span>
+                          </div>
+                          <h4 className={styles['story-title']}>{item.title}</h4>
+                          {item.storyPoints && (
+                            <div className={styles['story-points']}>
+                              <span className={styles['points-badge']}>
+                                {item.storyPoints} {t('pts')}
+                              </span>
                             </div>
-                          ) : (
-                            <>
-                              <p className={styles['item-content']}>{item.content}</p>
-                              <div className={styles['item-footer']}>
-                                <span
-                                  className={
-                                    retrospective.isAnonymous
-                                      ? styles['item-author-anonymous']
-                                      : styles['item-author']
-                                  }
-                                >
-                                  {retrospective.isAnonymous
-                                    ? `— ${t('anonymity.authorHidden')}`
-                                    : `— ${item.authorName}`}
-                                </span>
-                                <div className={styles['item-actions']}>
-                                  {(() => {
-                                    const hasVoted = user?.id && item.votedBy?.includes(user.id);
-                                    return (
-                                      <button
-                                        className={`${styles['vote-button']} ${hasVoted ? styles['vote-button-active'] : ''}`}
-                                        onClick={() => handleVote(item.id)}
-                                        disabled={
-                                          voteMutation.isPending ||
-                                          unvoteMutation.isPending ||
-                                          isCompleted
-                                        }
-                                        aria-label={t('columnItem.voteAriaLabel', {
-                                          action: hasVoted
-                                            ? t('columnItem.removeVote')
-                                            : t('columnItem.vote'),
-                                          count: item.votes,
-                                        })}
-                                      >
-                                        <span className={styles['vote-icon']}>👍</span>
-                                        <span className={styles['vote-count']}>{item.votes}</span>
-                                      </button>
-                                    );
-                                  })()}
-                                  <button
-                                    className={styles['icon-button']}
-                                    onClick={() => handleEditItem(item.id, item.content)}
-                                    disabled={isCompleted}
-                                    aria-label={t('columnItem.editItem')}
-                                    title={t('columnItem.edit')}
-                                  >
-                                    ✏️
-                                  </button>
-                                  <button
-                                    className={`${styles['icon-button']} ${styles.delete}`}
-                                    onClick={() => handleDeleteItem(item.id, item.content)}
-                                    disabled={deleteItemMutation.isPending || isCompleted}
-                                    aria-label={t('columnItem.deleteItem')}
-                                    title={t('columnItem.delete')}
-                                  >
-                                    🗑️
-                                  </button>
-                                </div>
-                              </div>
-                            </>
                           )}
                         </div>
                       ))}
+                    </div>
+                    {sprint.items.length > 6 && (
+                      <p className={styles['stories-more']}>
+                        {t('sprintInfo.moreItems', { count: sprint.items.length - 6 })}
+                      </p>
+                    )}
+                  </div>
+                )}
+              </section>
+            )}
 
-                    <div className={styles['add-item-section']}>
-                      {uiState.showAddItem && activeCategory === category ? (
-                        <div className={styles['add-item-form']}>
-                          <textarea
-                            value={formState.newItemContent}
-                            onChange={(e) =>
-                              setFormState((prev) => ({ ...prev, newItemContent: e.target.value }))
-                            }
-                            placeholder={config.placeholder}
-                            rows={3}
-                            autoFocus
-                          />
-                          <div className={styles['form-actions']}>
-                            <button
-                              className={`${styles.button} ${styles['button-secondary']} ${styles.small}`}
-                              onClick={() =>
-                                setUiState((prev) => ({ ...prev, showAddItem: false }))
-                              }
-                            >
-                              {t('columnItem.cancel')}
-                            </button>
-                            <button
-                              className={`${styles.button} ${styles['button-primary']} ${styles.small}`}
-                              onClick={handleAddItem}
-                              disabled={
-                                !formState.newItemContent.trim() || addItemMutation.isPending
-                              }
-                            >
-                              <PlusIcon className={styles['button-icon']} />
-                              {addItemMutation.isPending
-                                ? t('columnItem.adding')
-                                : t('columnItem.add')}
-                            </button>
+            <div className={styles['values-block']}>
+              <div className={styles['values-banner']}>
+                <ScrumValuesBanner />
+              </div>
+
+              <details className={styles['values-reflection']}>
+                <summary className={styles['values-reflection-summary']}>
+                  {t('valuesReflection.title')}
+                </summary>
+                <div className={styles['values-reflection-body']}>
+                  {['COMMITMENT', 'FOCUS', 'OPENNESS', 'RESPECT', 'COURAGE'].map((value) => (
+                    <div key={value} className={styles['values-reflection-item']}>
+                      <span className={styles['values-reflection-name']}>
+                        {t(`valuesReflection.values.${value}.label` as never)}
+                      </span>
+                      <p className={styles['values-reflection-question']}>
+                        {t(`valuesReflection.values.${value}.question` as never)}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </details>
+            </div>
+          </div>
+        </section>
+
+        {/* Phase 2 — the team's own account of the Sprint, before anything is judged or changed. */}
+        <section className={styles.phase} aria-labelledby="phase-reflect">
+          <PhaseHeading phase={PHASE_REFLECT} t={t} />
+
+          <div className={styles['phase-body']}>
+            <div
+              className={styles['retro-columns']}
+              role="region"
+              aria-label={t('ariaLabels.columnsRegion')}
+            >
+              {Object.values(RetrospectiveCategory).map((category) => {
+                const config = getCategoryConfig(category);
+                const items = retrospective.items.filter(
+                  (item: RetrospectiveItem) => item.category === category
+                );
+
+                return (
+                  <div
+                    key={category}
+                    className={styles['retro-column']}
+                    data-category={category}
+                    role="region"
+                    aria-labelledby={`column-${category}`}
+                  >
+                    <div id={`column-${category}`} className={styles['column-header']}>
+                      <span className={styles['column-icon']} aria-hidden="true">
+                        {config.icon}
+                      </span>
+                      <h3>{config.title}</h3>
+                      <span
+                        className={styles['item-count']}
+                        aria-label={t('columnItem.itemsInColumn', {
+                          count: items.length,
+                          title: config.title,
+                        })}
+                      >
+                        {items.length}
+                      </span>
+                    </div>
+
+                    <div className={styles['column-items']}>
+                      {items
+                        .sort((a: RetrospectiveItem, b: RetrospectiveItem) => b.votes - a.votes)
+                        .map((item: RetrospectiveItem) => (
+                          <div key={item.id} className={styles['retro-item']}>
+                            {editState.editingItemId === item.id ? (
+                              <div className={styles['edit-item-form']}>
+                                <textarea
+                                  value={editState.editContent}
+                                  onChange={(e) =>
+                                    setEditState((prev) => ({
+                                      ...prev,
+                                      editContent: e.target.value,
+                                    }))
+                                  }
+                                  rows={3}
+                                  autoFocus
+                                />
+                                <div className={styles['form-actions']}>
+                                  <button
+                                    className={`${styles.button} ${styles['button-secondary']} ${styles.small}`}
+                                    onClick={handleCancelEdit}
+                                    disabled={updateItemMutation.isPending}
+                                  >
+                                    {t('columnItem.cancel')}
+                                  </button>
+                                  <button
+                                    className={`${styles.button} ${styles['button-primary']} ${styles.small}`}
+                                    onClick={handleSaveEdit}
+                                    disabled={
+                                      !editState.editContent.trim() || updateItemMutation.isPending
+                                    }
+                                  >
+                                    <SaveIcon className={styles['button-icon']} />
+                                    {updateItemMutation.isPending
+                                      ? t('columnItem.saving')
+                                      : t('columnItem.save')}
+                                  </button>
+                                </div>
+                              </div>
+                            ) : (
+                              <>
+                                <p className={styles['item-content']}>{item.content}</p>
+                                <div className={styles['item-footer']}>
+                                  <span
+                                    className={
+                                      retrospective.isAnonymous
+                                        ? styles['item-author-anonymous']
+                                        : styles['item-author']
+                                    }
+                                  >
+                                    {retrospective.isAnonymous
+                                      ? `— ${t('anonymity.authorHidden')}`
+                                      : `— ${item.authorName}`}
+                                  </span>
+                                  <div className={styles['item-actions']}>
+                                    {(() => {
+                                      const hasVoted = user?.id && item.votedBy?.includes(user.id);
+                                      return (
+                                        <button
+                                          className={`${styles['vote-button']} ${hasVoted ? styles['vote-button-active'] : ''}`}
+                                          onClick={() => handleVote(item.id)}
+                                          disabled={
+                                            voteMutation.isPending ||
+                                            unvoteMutation.isPending ||
+                                            isCompleted
+                                          }
+                                          aria-label={t('columnItem.voteAriaLabel', {
+                                            action: hasVoted
+                                              ? t('columnItem.removeVote')
+                                              : t('columnItem.vote'),
+                                            count: item.votes,
+                                          })}
+                                        >
+                                          <span className={styles['vote-icon']} aria-hidden="true">
+                                            <ThumbsUpIcon size={14} />
+                                          </span>
+                                          <span className={styles['vote-count']}>{item.votes}</span>
+                                        </button>
+                                      );
+                                    })()}
+                                    <button
+                                      className={styles['icon-button']}
+                                      onClick={() => handleEditItem(item.id, item.content)}
+                                      disabled={isCompleted}
+                                      aria-label={t('columnItem.editItem')}
+                                      title={t('columnItem.edit')}
+                                    >
+                                      <EditIcon size={16} aria-hidden="true" />
+                                    </button>
+                                    <button
+                                      className={`${styles['icon-button']} ${styles.delete}`}
+                                      onClick={() => handleDeleteItem(item.id, item.content)}
+                                      disabled={deleteItemMutation.isPending || isCompleted}
+                                      aria-label={t('columnItem.deleteItem')}
+                                      title={t('columnItem.delete')}
+                                    >
+                                      <TrashIcon size={16} aria-hidden="true" />
+                                    </button>
+                                  </div>
+                                </div>
+                              </>
+                            )}
                           </div>
-                        </div>
-                      ) : (
-                        <button
-                          className={styles['add-item-button']}
-                          onClick={() => {
-                            setActiveCategory(category);
-                            setUiState((prev) => ({ ...prev, showAddItem: true }));
-                            setFormState((prev) => ({ ...prev, newItemContent: '' }));
-                          }}
-                          disabled={isCompleted}
-                        >
-                          {t('columnItem.addItem')}
-                        </button>
-                      )}
+                        ))}
+
+                      <div className={styles['add-item-section']}>
+                        {uiState.showAddItem && activeCategory === category ? (
+                          <div className={styles['add-item-form']}>
+                            <textarea
+                              value={formState.newItemContent}
+                              onChange={(e) =>
+                                setFormState((prev) => ({
+                                  ...prev,
+                                  newItemContent: e.target.value,
+                                }))
+                              }
+                              placeholder={config.placeholder}
+                              rows={3}
+                              autoFocus
+                            />
+                            <div className={styles['form-actions']}>
+                              <button
+                                className={`${styles.button} ${styles['button-secondary']} ${styles.small}`}
+                                onClick={() =>
+                                  setUiState((prev) => ({ ...prev, showAddItem: false }))
+                                }
+                              >
+                                {t('columnItem.cancel')}
+                              </button>
+                              <button
+                                className={`${styles.button} ${styles['button-primary']} ${styles.small}`}
+                                onClick={handleAddItem}
+                                disabled={
+                                  !formState.newItemContent.trim() || addItemMutation.isPending
+                                }
+                              >
+                                <PlusIcon className={styles['button-icon']} />
+                                {addItemMutation.isPending
+                                  ? t('columnItem.adding')
+                                  : t('columnItem.add')}
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <button
+                            className={styles['add-item-button']}
+                            onClick={() => {
+                              setActiveCategory(category);
+                              setUiState((prev) => ({ ...prev, showAddItem: true }));
+                              setFormState((prev) => ({ ...prev, newItemContent: '' }));
+                            }}
+                            disabled={isCompleted}
+                          >
+                            {t('columnItem.addItem')}
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
-              );
-            })}
-          </div>
-
-          <div className={styles['action-items-section']}>
-            <div className={styles['section-header']}>
-              <h3>
-                <ClipboardListIcon className={styles['section-title-icon']} />
-                {t('actionItems.title')}
-              </h3>
-              <button
-                className={`${styles.button} ${styles['button-primary']}`}
-                onClick={() => setUiState((prev) => ({ ...prev, showActionForm: true }))}
-                disabled={isCompleted}
-              >
-                {t('actionItems.createActionItem')}
-              </button>
+                );
+              })}
             </div>
+          </div>
+        </section>
 
-            <div className={styles['action-items-list']}>
-              {retrospective.actionItems.length === 0 ? (
-                <div className={styles['empty-state']}>
-                  <p>{t('actionItems.empty')}</p>
-                </div>
-              ) : (
-                retrospective.actionItems.map((actionItem: RetroActionItem) => {
-                  const statusColor = getStatusColor(actionItem.status);
-                  return (
-                    <div key={actionItem.id} className={styles['action-item-card']}>
-                      <div className={styles['action-item-header']}>
-                        <h4>{actionItem.title}</h4>
-                        <div className={styles['action-item-badges']}>
-                          {actionItem.status === 'COMPLETED' || !actionItem.addedToSprintBacklog ? (
-                            <span
-                              className={styles['status-badge']}
-                              style={{ backgroundColor: statusColor.bg, color: statusColor.text }}
-                            >
-                              {t(`actionItems.status.${actionItem.status.toUpperCase()}` as never)}
-                            </span>
-                          ) : (
-                            <span className={styles['backlog-badge']}>
-                              {t('actionItems.inBacklog')}
+        {/* Phase 3 — the convergence half of the event. The Definition of Done is inspected first:
+            it is the standard everything else was measured against, so deciding on it frames the
+            improvements the team is about to commit to as action items. */}
+        <section className={styles.phase} aria-labelledby="phase-decide">
+          <PhaseHeading phase={PHASE_DECIDE} t={t} />
+
+          <div className={styles['phase-body']}>
+            {/* "The Scrum Team inspects... their Definition of Done." The DoD is the one artifact
+                the Guide names for this event that free-text columns cannot carry: it has to be
+                read criterion by criterion, and the team has to be able to change it from here. */}
+            <DodInspection retrospective={retrospective} readOnly={isCompleted} />
+
+            <div className={styles['action-items-section']}>
+              <div className={styles['section-header']}>
+                <h3 className={styles['block-title']}>
+                  <span className={styles['heading-icon']} aria-hidden="true">
+                    <ClipboardListIcon size={20} />
+                  </span>
+                  {t('actionItems.title')}
+                </h3>
+                <button
+                  className={`${styles.button} ${styles['button-primary']}`}
+                  onClick={() => setUiState((prev) => ({ ...prev, showActionForm: true }))}
+                  disabled={isCompleted}
+                >
+                  {t('actionItems.createActionItem')}
+                </button>
+              </div>
+
+              <div className={styles['action-items-list']}>
+                {retrospective.actionItems.length === 0 ? (
+                  <div className={styles['empty-state']}>
+                    <p>{t('actionItems.empty')}</p>
+                  </div>
+                ) : (
+                  retrospective.actionItems.map((actionItem: RetroActionItem) => {
+                    return (
+                      <div key={actionItem.id} className={styles['action-item-card']}>
+                        <div className={styles['action-item-header']}>
+                          <h4>{actionItem.title}</h4>
+                          <div className={styles['action-item-badges']}>
+                            {actionItem.status === 'COMPLETED' ||
+                            !actionItem.addedToSprintBacklog ? (
+                              <span
+                                className={styles['status-badge']}
+                                data-status={actionItem.status}
+                              >
+                                {t(
+                                  `actionItems.status.${actionItem.status.toUpperCase()}` as never
+                                )}
+                              </span>
+                            ) : (
+                              <span className={styles['backlog-badge']}>
+                                {t('actionItems.inBacklog')}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        {actionItem.description && (
+                          <p className={styles['action-item-description']}>
+                            {actionItem.description}
+                          </p>
+                        )}
+                        {!actionItem.addedToSprintBacklog && actionItem.status !== 'COMPLETED' && (
+                          <BacklogHint t={t} />
+                        )}
+                        <div className={styles['action-item-meta']}>
+                          <span>
+                            <UserIcon size={14} aria-hidden="true" />
+                            {actionItem.owner
+                              ? `${actionItem.owner.firstName} ${actionItem.owner.lastName}`
+                              : t('actionItems.unassigned')}
+                          </span>
+                          {actionItem.dueDate && (
+                            <span className={styles['due-date']}>
+                              {t('actionItems.due')}{' '}
+                              {formatLocaleDate(actionItem.dueDate, locale, 'PPPP')}
                             </span>
                           )}
                         </div>
+                        <div className={styles['action-item-footer']}>
+                          <button
+                            className={`${styles['icon-button']} ${styles.delete}`}
+                            onClick={() => handleDeleteActionItem(actionItem.id, actionItem.title)}
+                            disabled={deleteActionMutation.isPending || isCompleted}
+                            aria-label={t('actionItems.deleteAriaLabel')}
+                            title={t('columnItem.delete')}
+                          >
+                            <TrashIcon size={16} aria-hidden="true" />
+                          </button>
+                        </div>
                       </div>
-                      {actionItem.description && (
-                        <p className={styles['action-item-description']}>
-                          {actionItem.description}
-                        </p>
-                      )}
-                      {!actionItem.addedToSprintBacklog && actionItem.status !== 'COMPLETED' && (
-                        <BacklogHint t={t} />
-                      )}
-                      <div className={styles['action-item-meta']}>
-                        <span>
-                          👤{' '}
-                          {actionItem.owner
-                            ? `${actionItem.owner.firstName} ${actionItem.owner.lastName}`
-                            : t('actionItems.unassigned')}
-                        </span>
-                        {actionItem.dueDate && (
-                          <span className={styles['due-date']}>
-                            {t('actionItems.due')}{' '}
-                            {formatLocaleDate(actionItem.dueDate, locale, 'PPPP')}
-                          </span>
-                        )}
-                      </div>
-                      <div className={styles['action-item-footer']}>
-                        <button
-                          className={`${styles['icon-button']} ${styles.delete}`}
-                          onClick={() => handleDeleteActionItem(actionItem.id, actionItem.title)}
-                          disabled={deleteActionMutation.isPending || isCompleted}
-                          aria-label={t('actionItems.deleteAriaLabel')}
-                          title={t('columnItem.delete')}
-                        >
-                          🗑️
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })
-              )}
-            </div>
-
-            <CreateActionItemModal
-              isOpen={uiState.showActionForm}
-              formData={formState.newActionItem}
-              errors={actionFormErrors}
-              touched={actionFormTouched}
-              teamMembers={teamMembers}
-              isLoadingTeam={isLoadingTeam}
-              isPending={addActionMutation.isPending}
-              onClose={() => {
-                setUiState((prev) => ({ ...prev, showActionForm: false }));
-                setActionFormErrors({});
-                setActionFormTouched({ title: false, ownerId: false, dueDate: false });
-              }}
-              onSubmit={handleAddActionItem}
-              onFieldChange={(field, value) => {
-                setFormState((prev) => ({
-                  ...prev,
-                  newActionItem: { ...prev.newActionItem, [field]: value },
-                }));
-              }}
-              onFieldBlur={(field) => {
-                setActionFormTouched((prev) => ({ ...prev, [field]: true }));
-              }}
-              validateField={validateActionFormField}
-            />
-          </div>
-
-          <div className={styles['summary-section']}>
-            <div className={styles['summary-header']}>
-              <h3>
-                <span className={styles['summary-header-icon']} aria-hidden="true">
-                  <LightbulbIcon size={20} />
-                </span>
-                {t('summary.title')}
-              </h3>
-              {!editState.isEditingSummary && !uiState.showSummaryForm && retrospective.summary && (
-                <button
-                  className={`${styles['icon-button']} ${styles.edit}`}
-                  onClick={handleEditSummary}
-                  disabled={isCompleted}
-                  aria-label={t('summary.editAriaLabel')}
-                  title={t('summary.editSummary')}
-                >
-                  <EditIcon size={16} />
-                </button>
-              )}
-            </div>
-
-            {uiState.showSummaryForm || editState.isEditingSummary ? (
-              <div
-                className={styles['summary-form']}
-                role="form"
-                aria-label={t('summary.formAriaLabel')}
-              >
-                <div className={styles['summary-form-header']}>
-                  <div className={styles['summary-form-icon']} aria-hidden="true">
-                    <LightbulbIcon size={24} />
-                  </div>
-                  <div>
-                    <h4>
-                      {editState.isEditingSummary ? t('summary.editTitle') : t('summary.addTitle')}
-                    </h4>
-                    <p className={styles['summary-form-subtitle']}>
-                      {editState.isEditingSummary
-                        ? t('summary.editSubtitle')
-                        : t('summary.addSubtitle')}
-                    </p>
-                  </div>
-                </div>
-                <div className={styles['form-group']}>
-                  <label htmlFor="summary-input">
-                    <span>
-                      {editState.isEditingSummary
-                        ? t('summary.summaryLabel')
-                        : t('summary.takeawaysLabel')}
-                    </span>
-                    <span className={styles['required-indicator']}>*</span>
-                  </label>
-                  <textarea
-                    id="summary-input"
-                    value={formState.summaryContent}
-                    onChange={(e) =>
-                      setFormState((prev) => ({ ...prev, summaryContent: e.target.value }))
-                    }
-                    placeholder={editState.isEditingSummary ? '' : t('summary.takeawaysLabel')}
-                    rows={6}
-                    maxLength={1000}
-                    aria-label={t('ariaLabels.summaryAriaLabel')}
-                    aria-describedby="summary-help summary-counter"
-                    aria-invalid={
-                      !formState.summaryContent.trim() || formState.summaryContent.length < 10
-                    }
-                    aria-required="true"
-                    autoFocus
-                  />
-                  <div id="summary-help" className={styles['help-text']}>
-                    <InfoIcon size={16} />
-                    <span>{t('summary.charHelpText')}</span>
-                  </div>
-                  <div className={styles['form-footer']}>
-                    <span
-                      id="summary-counter"
-                      className={`${styles['char-counter']} ${
-                        formState.summaryContent.length > 900
-                          ? styles['char-counter-error']
-                          : formState.summaryContent.length > 800
-                            ? styles['char-counter-warning']
-                            : ''
-                      }`}
-                      aria-live="polite"
-                    >
-                      {t('summary.charCounter', { count: formState.summaryContent.length })}
-                    </span>
-                    {formState.summaryContent.length > 800 &&
-                      formState.summaryContent.length <= 1000 && (
-                        <span className={styles['warning-text']}>
-                          {t('summary.approachingLimit')}
-                        </span>
-                      )}
-                  </div>
-                  <div className={styles['form-actions']}>
-                    <button
-                      className={`${styles.button} ${styles['button-secondary']}`}
-                      onClick={handleCancelSummary}
-                      disabled={updateSummaryMutation.isPending}
-                      aria-label={t('summary.cancelAriaLabel')}
-                    >
-                      {t('summary.cancel')}
-                    </button>
-                    <button
-                      className={`${styles.button} ${styles['button-primary']}`}
-                      onClick={handleSaveSummary}
-                      disabled={!formState.summaryContent.trim() || updateSummaryMutation.isPending}
-                      aria-label={t('summary.saveAriaLabel')}
-                    >
-                      {updateSummaryMutation.isPending ? (
-                        <>
-                          <SaveIcon size={16} className={styles['save-button-icon']} />
-                          {t('summary.saving')}
-                        </>
-                      ) : (
-                        <>
-                          <SaveIcon size={16} className={styles['save-button-icon']} />
-                          {t('summary.save')}
-                        </>
-                      )}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <>
-                {retrospective.summary ? (
-                  <div className={styles['summary-content']}>
-                    <p className={styles['summary-content-text']}>{retrospective.summary}</p>
-                  </div>
-                ) : (
-                  <div className={styles['summary-empty-state']}>
-                    <div className={styles['summary-empty-icon']} aria-hidden="true">
-                      <LightbulbIcon size={32} />
-                    </div>
-                    <p className={styles['summary-empty-text']}>{t('summary.emptyDescription')}</p>
-                    <button
-                      className={styles['add-summary-button']}
-                      onClick={handleAddSummary}
-                      disabled={isCompleted}
-                      aria-label={t('summary.addSummaryAriaLabel')}
-                    >
-                      {t('summary.addSummary')}
-                    </button>
-                  </div>
+                    );
+                  })
                 )}
-              </>
-            )}
-          </div>
+              </div>
 
-          {userRoleInCurrentTeam?.toUpperCase() === 'SCRUM_MASTER' && retrospective.id && (
-            <div className={styles['sm-notes-section']}>
-              <SMNotes
-                value={retrospective.smNotes}
-                onSave={(notes) =>
-                  smDashboardService.updateRetrospectiveSmNotes(retrospective.id, notes)
-                }
-                disabled={isCompleted}
-                loadHistory={loadSmNotesHistory}
+              <CreateActionItemModal
+                isOpen={uiState.showActionForm}
+                formData={formState.newActionItem}
+                errors={actionFormErrors}
+                touched={actionFormTouched}
+                teamMembers={teamMembers}
+                isLoadingTeam={isLoadingTeam}
+                isPending={addActionMutation.isPending}
+                onClose={() => {
+                  setUiState((prev) => ({ ...prev, showActionForm: false }));
+                  setActionFormErrors({});
+                  setActionFormTouched({ title: false, ownerId: false, dueDate: false });
+                }}
+                onSubmit={handleAddActionItem}
+                onFieldChange={(field, value) => {
+                  setFormState((prev) => ({
+                    ...prev,
+                    newActionItem: { ...prev.newActionItem, [field]: value },
+                  }));
+                }}
+                onFieldBlur={(field) => {
+                  setActionFormTouched((prev) => ({ ...prev, [field]: true }));
+                }}
+                validateField={validateActionFormField}
               />
             </div>
-          )}
+          </div>
+        </section>
 
-          <AttendeesSection
-            entityId={retrospective.id}
-            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- sprintId is guaranteed to be defined after the guard at line 969
-            sprintId={sprintId!}
-            attendees={retrospective.attendees}
-            teamMembers={teamMembers}
-            isCompleted={retrospective.status === RetrospectiveStatus.COMPLETED}
-            apiConfig={{
-              addAttendee: (data: AttendeeFormData) =>
-                apiService.addRetroAttendee(retrospective.id, {
-                  name: data.name,
-                  email: data.email,
-                  role: data.role,
-                  attended: data.attended,
-                }),
-              updateAttendee: (id: string, data: AttendeeFormData) =>
-                apiService.updateRetroAttendee(id, {
-                  name: data.name,
-                  email: data.email,
-                  role: data.role,
-                  attended: data.attended,
-                }),
-              deleteAttendee: (id: string) => apiService.deleteRetroAttendee(id),
-            }}
-            queryKey={['retrospective', sprintId] as string[]}
-            defaultRole="stakeholder"
-            onToggleAttendance={(attendeeId, attended) => {
-              updateAttendeeMutation.mutate({ attendeeId, attended });
-            }}
-            onAddTeamMember={(member, attended) => {
-              addAttendeeMutation.mutate({
-                name: `${member.user?.firstName ?? ''} ${member.user?.lastName ?? ''}`.trim(),
-                email: member.user?.email,
-                role: mapTeamRoleToAttendeeRole(member.role),
-                attended,
-              });
-            }}
-            isAdding={addAttendeeMutation.isPending}
-            isUpdating={updateAttendeeMutation.isPending}
-          />
+        {/* Phase 4 — the record, the people, and the act that closes the event. */}
+        <section className={styles.phase} aria-labelledby="phase-close">
+          <PhaseHeading phase={PHASE_CLOSE} t={t} />
 
-          {retrospective.status !== RetrospectiveStatus.COMPLETED && (
-            <div className={styles['complete-retro-section']}>
-              <button
-                className={`${styles.button} ${styles['button-primary']} ${styles['complete-button']}`}
-                onClick={handleCompleteRetrospective}
-                disabled={updateStatusMutation.isPending}
-                aria-label={t('completeRetro.ariaLabel')}
-              >
-                <CheckCircleIcon className={styles['complete-button-icon']} />
-                {updateStatusMutation.isPending
-                  ? t('completeRetro.completing')
-                  : t('completeRetro.button')}
-              </button>
-              <p className={styles['complete-hint']}>{t('completeRetro.description')}</p>
+          <div className={styles['phase-body']}>
+            <div className={styles['summary-section']}>
+              <div className={styles['summary-header']}>
+                <h3 className={styles['block-title']}>
+                  <span className={styles['heading-icon']} aria-hidden="true">
+                    <LightbulbIcon size={20} />
+                  </span>
+                  {t('summary.title')}
+                </h3>
+                {!editState.isEditingSummary &&
+                  !uiState.showSummaryForm &&
+                  retrospective.summary && (
+                    <button
+                      className={`${styles['icon-button']} ${styles.edit}`}
+                      onClick={handleEditSummary}
+                      disabled={isCompleted}
+                      aria-label={t('summary.editAriaLabel')}
+                      title={t('summary.editSummary')}
+                    >
+                      <EditIcon size={16} />
+                    </button>
+                  )}
+              </div>
+
+              {uiState.showSummaryForm || editState.isEditingSummary ? (
+                <div
+                  className={styles['summary-form']}
+                  role="form"
+                  aria-label={t('summary.formAriaLabel')}
+                >
+                  <div className={styles['summary-form-header']}>
+                    <div className={styles['summary-form-icon']} aria-hidden="true">
+                      <LightbulbIcon size={24} />
+                    </div>
+                    <div>
+                      <h4>
+                        {editState.isEditingSummary
+                          ? t('summary.editTitle')
+                          : t('summary.addTitle')}
+                      </h4>
+                      <p className={styles['summary-form-subtitle']}>
+                        {editState.isEditingSummary
+                          ? t('summary.editSubtitle')
+                          : t('summary.addSubtitle')}
+                      </p>
+                    </div>
+                  </div>
+                  <div className={styles['form-group']}>
+                    <label htmlFor="summary-input">
+                      <span>
+                        {editState.isEditingSummary
+                          ? t('summary.summaryLabel')
+                          : t('summary.takeawaysLabel')}
+                      </span>
+                      <span className={styles['required-indicator']}>*</span>
+                    </label>
+                    <textarea
+                      id="summary-input"
+                      value={formState.summaryContent}
+                      onChange={(e) =>
+                        setFormState((prev) => ({ ...prev, summaryContent: e.target.value }))
+                      }
+                      placeholder={editState.isEditingSummary ? '' : t('summary.takeawaysLabel')}
+                      rows={6}
+                      maxLength={1000}
+                      aria-label={t('ariaLabels.summaryAriaLabel')}
+                      aria-describedby="summary-help summary-counter"
+                      aria-invalid={
+                        !formState.summaryContent.trim() || formState.summaryContent.length < 10
+                      }
+                      aria-required="true"
+                      autoFocus
+                    />
+                    <div id="summary-help" className={styles['help-text']}>
+                      <InfoIcon size={16} />
+                      <span>{t('summary.charHelpText')}</span>
+                    </div>
+                    <div className={styles['form-footer']}>
+                      <span
+                        id="summary-counter"
+                        className={`${styles['char-counter']} ${
+                          formState.summaryContent.length > 900
+                            ? styles['char-counter-error']
+                            : formState.summaryContent.length > 800
+                              ? styles['char-counter-warning']
+                              : ''
+                        }`}
+                        aria-live="polite"
+                      >
+                        {t('summary.charCounter', { count: formState.summaryContent.length })}
+                      </span>
+                      {formState.summaryContent.length > 800 &&
+                        formState.summaryContent.length <= 1000 && (
+                          <span className={styles['warning-text']}>
+                            {t('summary.approachingLimit')}
+                          </span>
+                        )}
+                    </div>
+                    <div className={styles['form-actions']}>
+                      <button
+                        className={`${styles.button} ${styles['button-secondary']}`}
+                        onClick={handleCancelSummary}
+                        disabled={updateSummaryMutation.isPending}
+                        aria-label={t('summary.cancelAriaLabel')}
+                      >
+                        {t('summary.cancel')}
+                      </button>
+                      <button
+                        className={`${styles.button} ${styles['button-primary']}`}
+                        onClick={handleSaveSummary}
+                        disabled={
+                          !formState.summaryContent.trim() || updateSummaryMutation.isPending
+                        }
+                        aria-label={t('summary.saveAriaLabel')}
+                      >
+                        {updateSummaryMutation.isPending ? (
+                          <>
+                            <SaveIcon size={16} className={styles['save-button-icon']} />
+                            {t('summary.saving')}
+                          </>
+                        ) : (
+                          <>
+                            <SaveIcon size={16} className={styles['save-button-icon']} />
+                            {t('summary.save')}
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  {retrospective.summary ? (
+                    <div className={styles['summary-content']}>
+                      <p className={styles['summary-content-text']}>{retrospective.summary}</p>
+                    </div>
+                  ) : (
+                    <div className={styles['summary-empty-state']}>
+                      <div className={styles['summary-empty-icon']} aria-hidden="true">
+                        <LightbulbIcon size={32} />
+                      </div>
+                      <p className={styles['summary-empty-text']}>
+                        {t('summary.emptyDescription')}
+                      </p>
+                      <button
+                        className={styles['add-summary-button']}
+                        onClick={handleAddSummary}
+                        disabled={isCompleted}
+                        aria-label={t('summary.addSummaryAriaLabel')}
+                      >
+                        {t('summary.addSummary')}
+                      </button>
+                    </div>
+                  )}
+                </>
+              )}
             </div>
-          )}
-        </div>
+
+            {userRoleInCurrentTeam?.toUpperCase() === 'SCRUM_MASTER' && retrospective.id && (
+              <div className={styles['sm-notes-section']}>
+                <SMNotes
+                  value={retrospective.smNotes}
+                  onSave={(notes) =>
+                    smDashboardService.updateRetrospectiveSmNotes(retrospective.id, notes)
+                  }
+                  disabled={isCompleted}
+                  loadHistory={loadSmNotesHistory}
+                />
+              </div>
+            )}
+
+            <AttendeesSection
+              entityId={retrospective.id}
+              // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- sprintId is guaranteed to be defined after the guard at line 969
+              sprintId={sprintId!}
+              attendees={retrospective.attendees}
+              teamMembers={teamMembers}
+              isCompleted={retrospective.status === RetrospectiveStatus.COMPLETED}
+              apiConfig={{
+                addAttendee: (data: AttendeeFormData) =>
+                  apiService.addRetroAttendee(retrospective.id, {
+                    name: data.name,
+                    email: data.email,
+                    role: data.role,
+                    attended: data.attended,
+                  }),
+                updateAttendee: (id: string, data: AttendeeFormData) =>
+                  apiService.updateRetroAttendee(id, {
+                    name: data.name,
+                    email: data.email,
+                    role: data.role,
+                    attended: data.attended,
+                  }),
+                deleteAttendee: (id: string) => apiService.deleteRetroAttendee(id),
+              }}
+              queryKey={['retrospective', sprintId] as string[]}
+              defaultRole="stakeholder"
+              onToggleAttendance={(attendeeId, attended) => {
+                updateAttendeeMutation.mutate({ attendeeId, attended });
+              }}
+              onAddTeamMember={(member, attended) => {
+                addAttendeeMutation.mutate({
+                  name: `${member.user?.firstName ?? ''} ${member.user?.lastName ?? ''}`.trim(),
+                  email: member.user?.email,
+                  role: mapTeamRoleToAttendeeRole(member.role),
+                  attended,
+                });
+              }}
+              isAdding={addAttendeeMutation.isPending}
+              isUpdating={updateAttendeeMutation.isPending}
+            />
+
+            {retrospective.status !== RetrospectiveStatus.COMPLETED && (
+              <div className={styles['complete-retro-section']}>
+                <button
+                  className={`${styles.button} ${styles['button-primary']} ${styles['complete-button']}`}
+                  onClick={handleCompleteRetrospective}
+                  disabled={updateStatusMutation.isPending || !mayCompleteRetro}
+                  title={mayCompleteRetro ? undefined : sprintNotEndedHint}
+                  aria-label={t('completeRetro.ariaLabel')}
+                  aria-describedby="retro-complete-hint"
+                >
+                  <CheckCircleIcon className={styles['complete-button-icon']} />
+                  {updateStatusMutation.isPending
+                    ? t('completeRetro.completing')
+                    : t('completeRetro.button')}
+                </button>
+                <p id="retro-complete-hint" className={styles['complete-hint']}>
+                  {mayCompleteRetro ? t('completeRetro.description') : sprintNotEndedHint}
+                </p>
+              </div>
+            )}
+          </div>
+        </section>
 
         {uiState.showSuccessModal && (
           <div

@@ -67,7 +67,15 @@ describe('SprintBacklogManager', () => {
     (apiService.getSprintBacklogChanges as ReturnType<typeof vi.fn>).mockResolvedValue({
       data: mockChanges,
     });
-    (apiService.addPBIToSprint as ReturnType<typeof vi.fn>).mockResolvedValue({ data: {} });
+    // A successful addition always returns the recorded change, which carries the number of ad-hoc
+    // tasks the server seeded alongside it.
+    (apiService.addPBIToSprint as ReturnType<typeof vi.fn>).mockResolvedValue({
+      data: {
+        pending: false,
+        sprintBacklogItem: { id: 'sbi-1', sprintId: 'sprint-1', pbiId: 'pbi-3' },
+        change: { id: 'change-1', taskCount: 1 },
+      },
+    });
     (apiService.removePBIFromSprint as ReturnType<typeof vi.fn>).mockResolvedValue({ data: {} });
     (apiService.createTask as ReturnType<typeof vi.fn>).mockResolvedValue({ data: {} });
   });
@@ -133,6 +141,45 @@ describe('SprintBacklogManager', () => {
       await waitFor(() => {
         expect(screen.getByText('Recent Changes')).toBeInTheDocument();
       });
+    });
+  });
+
+  describe('Deep link highlight', () => {
+    it('should emphasise the change the manager was opened on', async () => {
+      renderWithProviders(<SprintBacklogManager {...defaultProps} highlightChangeId="change-1" />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Feature A')).toBeInTheDocument();
+      });
+
+      // The Product Owner reaches the manager from a notification, so the change that was
+      // announced is marked rather than left to be found in the list.
+      expect(screen.getByText('Feature A').closest('[data-highlighted]')).toHaveAttribute(
+        'data-highlighted',
+        'true'
+      );
+    });
+
+    it('should leave every change unmarked when opened without a notification', async () => {
+      const { container } = renderWithProviders(<SprintBacklogManager {...defaultProps} />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Feature A')).toBeInTheDocument();
+      });
+
+      expect(container.querySelector('[data-highlighted]')).toBeNull();
+    });
+
+    it('should leave every change unmarked when the named change is not in the list', async () => {
+      const { container } = renderWithProviders(
+        <SprintBacklogManager {...defaultProps} highlightChangeId="change-not-listed" />
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText('Feature A')).toBeInTheDocument();
+      });
+
+      expect(container.querySelector('[data-highlighted]')).toBeNull();
     });
   });
 
@@ -1096,7 +1143,52 @@ describe('SprintBacklogManager', () => {
         );
       });
 
-      // Nothing was applied: a pending change never generates draft tasks.
+      // Nothing was applied, and the client never creates tasks itself.
+      expect(apiService.createTask).not.toHaveBeenCalled();
+    });
+
+    it('should report the tasks the server seeded when an addition is applied directly', async () => {
+      const user = userEvent.setup();
+      (apiService.addPBIToSprint as ReturnType<typeof vi.fn>).mockResolvedValue({
+        data: {
+          pending: false,
+          sprintBacklogItem: { id: 'sbi-1' },
+          change: { id: 'change-1', taskCount: 2 },
+        },
+      });
+
+      renderWithProviders(<SprintBacklogManager {...defaultProps} />);
+
+      await waitFor(() => {
+        expect(screen.getByText('+ Add Item')).toBeInTheDocument();
+      });
+
+      await user.click(screen.getByText('+ Add Item'));
+
+      await waitFor(() => {
+        expect(screen.getByText('Feature C')).toBeInTheDocument();
+      });
+
+      await user.type(
+        screen.getByPlaceholderText('Why are you adding this item?'),
+        'Supports the goal'
+      );
+      await user.click(
+        screen.getByLabelText(i18nT('sprint:sprintBacklogManager.goalImpactSupports'))
+      );
+      await user.click(screen.getAllByRole('button', { name: 'Add' })[0]);
+
+      await waitFor(() => {
+        expect(
+          screen.getByText(
+            i18nT('sprint:sprintBacklogManager.pbiAddedToSprint', {
+              taskInfo: i18nT('sprint:sprintBacklogManager.withDraftTasks', { count: 2 }),
+            })
+          )
+        ).toBeInTheDocument();
+      });
+
+      // The tasks are seeded by the server as part of applying the change, not by the client.
       expect(apiService.createTask).not.toHaveBeenCalled();
     });
 
@@ -1153,6 +1245,108 @@ describe('SprintBacklogManager', () => {
         screen.queryByRole('button', {
           name: i18nT('sprint:sprintBacklogManager.approveChange'),
         })
+      ).not.toBeInTheDocument();
+    });
+
+    it('should show who approved a decided change, when, and the recorded note', async () => {
+      (apiService.getSprintBacklogChanges as ReturnType<typeof vi.fn>).mockResolvedValue({
+        data: [
+          {
+            id: 'change-approved',
+            pbiTitle: 'Feature A',
+            changeType: 'ADDED',
+            changedByName: 'John Doe',
+            createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+            reason: 'Scope grew',
+            goalImpact: 'ENDANGERS_GOAL',
+            approvalStatus: 'APPLIED',
+            acknowledgedByName: 'Jane Smith',
+            acknowledgedAt: new Date(Date.now() - 60 * 60 * 1000).toISOString(),
+            acknowledgementNote: 'Renegotiated the goal with the team',
+          },
+        ],
+      });
+
+      renderWithProviders(<SprintBacklogManager {...defaultProps} />);
+
+      // A decided change keeps its audit trail visible: the outcome, its author and the moment.
+      expect(
+        await screen.findByText(
+          i18nT('sprint:sprintBacklogManager.approvedByName', { name: 'Jane Smith' })
+        )
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText(new RegExp(i18nT('sprint:sprintBacklogManager.hoursAgo', { count: 1 })))
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          i18nT('sprint:sprintBacklogManager.decisionNote', {
+            note: 'Renegotiated the goal with the team',
+          })
+        )
+      ).toBeInTheDocument();
+      // The decision replaces the pending state.
+      expect(
+        screen.queryByText(i18nT('sprint:sprintBacklogManager.awaitingProductOwner'))
+      ).not.toBeInTheDocument();
+    });
+
+    it('should show who rejected a decided change', async () => {
+      (apiService.getSprintBacklogChanges as ReturnType<typeof vi.fn>).mockResolvedValue({
+        data: [
+          {
+            id: 'change-rejected',
+            pbiTitle: 'Feature A',
+            changeType: 'REMOVED',
+            changedByName: 'John Doe',
+            createdAt: new Date().toISOString(),
+            goalImpact: 'ENDANGERS_GOAL',
+            approvalStatus: 'REJECTED',
+            acknowledgedByName: 'Jane Smith',
+            acknowledgedAt: new Date().toISOString(),
+          },
+        ],
+      });
+
+      renderWithProviders(<SprintBacklogManager {...defaultProps} />);
+
+      expect(
+        await screen.findByText(
+          i18nT('sprint:sprintBacklogManager.rejectedByName', { name: 'Jane Smith' })
+        )
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByText(
+          i18nT('sprint:sprintBacklogManager.approvedByName', { name: 'Jane Smith' })
+        )
+      ).not.toBeInTheDocument();
+    });
+
+    it('should mark an applied change that required no approval as applied', async () => {
+      (apiService.getSprintBacklogChanges as ReturnType<typeof vi.fn>).mockResolvedValue({
+        data: [
+          {
+            id: 'change-applied',
+            pbiTitle: 'Feature A',
+            changeType: 'ADDED',
+            changedByName: 'John Doe',
+            createdAt: new Date().toISOString(),
+            goalImpact: 'SUPPORTS_GOAL',
+            approvalStatus: 'APPLIED',
+          },
+        ],
+      });
+
+      renderWithProviders(<SprintBacklogManager {...defaultProps} />);
+
+      // No decision was required, so no approver is invented for it.
+      expect(
+        await screen.findByText(i18nT('sprint:sprintBacklogManager.appliedToBacklog'))
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByText(
+          i18nT('sprint:sprintBacklogManager.approvedByName', { name: 'Jane Smith' })
+        )
       ).not.toBeInTheDocument();
     });
 

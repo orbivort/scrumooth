@@ -74,7 +74,8 @@
     "ariaLabel": "[Màrk rétróspéctívé às cómplétéddddddddddd]",
     "button": "[Cómplété Rétróspéctívéééééééé]",
     "completing": "[Cómplétínggggg...]",
-    "description": "[Màrk thís rétróspéctívé às cómplétéd tó fínàlízé ít ànd prévént fúrthér édítsssssssssssssssssssssssss.]"
+    "description": "[Màrk thís rétróspéctívé às cómplétéd tó fínàlízé ít ànd prévént fúrthér édítsssssssssssssssssssssssss.]",
+    "sprintNotEnded": "[Thé Sprínt Révíéw ínspécts thé óútcómé óf thé Sprínt ànd thé Sprínt Rétróspéctívé cónclúdés ít. Thís Rétróspéctívé càn bé cómplétéd fróm thé Sprínt's énd dàtééééééééééééééééééééééééééééééééééééééééééééééééé ({{endDate}}).]"
   },
   "confirmationModal": {
     "cancel": "[Càncélll]",
@@ -201,6 +202,24 @@
     "viewRetrospective": "[Víéw Rétróspéctívééééééé]"
   },
   "loading": "[Lóàdíng Rétróspéctívééééééééé...]",
+  "phases": {
+    "close": {
+      "description": "[Wríté dówn whàt thé téàm décídéd, màrk whó wàs ín thé róóm, ànd cómplété thé Rétróspéctívééééééééééééééééééééééééééééé.]",
+      "title": "[Récórd ànd clóséééééé]"
+    },
+    "decide": {
+      "description": "[Ínspéct thé Défínítíón óf Dóné, thén túrn thé ímpróvéménts thé téàm àgréés ón íntó àctíón ítémssssssssssssssssssssssssssssss.]",
+      "title": "[Whàt wé chàngéééééé]"
+    },
+    "reflect": {
+      "description": "[Gàthér whàt wént wéll, whàt díd nót, ànd whàt thé téàm wànts tó ímpróvé — óné thóúght pér ítémmmmmmmmmmmmmmmmmmmmmmmmmmmmmm.]",
+      "title": "[Whàt hàppénéddddd]"
+    },
+    "stage": {
+      "description": "[Bríng thé Sprínt yóú àré àbóút tó ínspéct íntó thé róóm, àlóng wíth thé Scrúm Vàlúés thàt sét thé tónéééééééééééééééééééééééééééééééé.]",
+      "title": "[Sét thé stàgééééé]"
+    }
+  },
   "pts": "[ptss]",
   "sprintInfo": {
     "businessDay_one": "[{{count}} búsínéss dàyyyyy]",

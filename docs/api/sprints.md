@@ -852,12 +852,18 @@ following endpoints manage attendance incrementally:
 | Method   | Endpoint                                             | Access                        |
 | -------- | ---------------------------------------------------- | ----------------------------- |
 | `GET`    | `/api/v1/sprints/:id/planning-attendees`             | Any authenticated team member |
-| `POST`   | `/api/v1/sprints/:id/planning-attendees`             | Developers only (`403`)       |
-| `PUT`    | `/api/v1/sprints/:id/planning-attendees/:attendeeId` | Developers only (`403`)       |
-| `DELETE` | `/api/v1/sprints/:id/planning-attendees/:attendeeId` | Developers only (`403`)       |
+| `POST`   | `/api/v1/sprints/:id/planning-attendees`             | Any member of the Scrum Team  |
+| `PUT`    | `/api/v1/sprints/:id/planning-attendees/:attendeeId` | Any member of the Scrum Team  |
+| `DELETE` | `/api/v1/sprints/:id/planning-attendees/:attendeeId` | Any member of the Scrum Team  |
 
 Attendee body: `{ "name": string, "email"?: string, "role": "product_owner" | "scrum_master" |
 "developers" | "stakeholder", "attended": boolean }`.
+
+Sprint Planning is the Developers' event to run but the _whole Scrum Team's_ to attend, and the
+participation record is the evidence that the Sprint Backlog was "created by the collaborative work
+of the entire Scrum Team" — so every member of the team may add, correct, and remove it, exactly as
+they may record attendance at the Sprint Review and the Retrospective. Only the Sprint Backlog
+itself (its items, tasks, and capacity) is the Developers'.
 
 The `GET` response carries the derived readiness used by the start gate:
 
@@ -883,7 +889,9 @@ The `GET` response carries the derived readiness used by the start gate:
 ```
 
 Writes are refused once the Sprint is no longer being planned (`DRAFT`/`PLANNED`), and with
-`GATE_DEVELOPER_ONLY_SPRINT_BACKLOG` (`403`) for non-Developers.
+`GATE_SPRINT_TEAM_MEMBERS_ONLY` (`403`) for a caller who is not a member of the team that owns the
+Sprint. The Sprint Backlog remains Developers-only (`GATE_DEVELOPER_ONLY_SPRINT_BACKLOG`); attendance
+is deliberately not tied to it.
 
 ---
 

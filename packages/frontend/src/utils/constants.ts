@@ -14,7 +14,12 @@ export const QUERY_RETRY_DELAY = TIME.SECOND;
 
 export const TOAST_DURATION = 5 * TIME.SECOND;
 export const TOAST_SUCCESS_DURATION = 3 * TIME.SECOND;
-export const TOAST_ERROR_DURATION = 7 * TIME.SECOND;
+/**
+ * Errors carry the backend's explanation verbatim -- a gate refusal such as "Complete the Sprint
+ * Review before completing the Retrospective" is a full sentence -- so they stay up longer than a
+ * success confirmation.
+ */
+export const TOAST_ERROR_DURATION = 10 * TIME.SECOND;
 
 export const ITEMS_PER_PAGE = 20;
 export const MAX_LABELS_DISPLAY = 2;

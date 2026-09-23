@@ -8,6 +8,7 @@ import type { Notification, NotificationType } from '../../types/notification.ty
 import { ChevronRightIcon } from '../common/Icons';
 import { useI18nStore } from '../../i18n/useI18nStore';
 import { getNotificationTitle, getNotificationMessage } from '../../utils/notificationTranslation';
+import { getNotificationRoute } from '../../utils/notificationRoute';
 
 import styles from './NotificationPanel.module.css';
 
@@ -21,26 +22,9 @@ const getNotificationIcon = (type: NotificationType): string => {
     TEAM_UPDATED: '✏️',
     TEAM_DELETED: '🗑️',
     DIRECT_MESSAGE: '💬',
+    SPRINT_BACKLOG_CHANGE_PENDING: '⚠️',
   };
   return icons[type] || '📌';
-};
-
-const getNotificationRoute = (notification: Notification): string => {
-  if (notification.data?.feedbackId || notification.data?.adjustmentId) {
-    return '/backlog';
-  }
-
-  const routes: Record<NotificationType, string> = {
-    TEAM_INVITATION: '/team',
-    TEAM_REMOVAL: '/team',
-    TASK_ASSIGNMENT: '/sprint',
-    IMPEDIMENT_ASSIGNMENT: '/impediments',
-    TEAM_CREATED: '/settings/team-management',
-    TEAM_UPDATED: '/settings/team-management',
-    TEAM_DELETED: '/settings/team-management',
-    DIRECT_MESSAGE: '/team',
-  };
-  return routes[notification.type] || '/';
 };
 
 interface NotificationPanelProps {

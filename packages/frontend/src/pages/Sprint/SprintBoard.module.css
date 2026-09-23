@@ -627,6 +627,23 @@
   background: var(--color-background-page);
 }
 
+/* Count of Sprint Backlog changes awaiting the Product Owner's approval. Rendered inline
+   rather than absolutely positioned because `.button` clips its overflow. */
+.button-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 var(--space-1);
+  border-radius: var(--radius-full);
+  background: var(--color-warning-500);
+  color: var(--color-text-inverse);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  line-height: var(--line-height-none);
+}
+
 .button-complete-sprint {
   background: var(--color-success-600);
   color: var(--color-text-inverse);

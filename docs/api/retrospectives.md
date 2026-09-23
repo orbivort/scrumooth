@@ -1627,14 +1627,14 @@ flag must not contradict it.
 Gate refusals carry a stable `error.code` (see
 [docs/api/README.md](./README.md#gate-rejections)):
 
-| Gate Code                                   | HTTP Status | Rule                                                                                                                                |
-| ------------------------------------------- | ----------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| `GATE_RETROSPECTIVE_TEAM_MEMBERS_ONLY`      | 403         | The Retrospective is the Scrum Team's own event: reading or changing one requires membership of the team whose Sprint it concludes. |
-| `GATE_RETROSPECTIVE_SM_NOTES_SM_ONLY`       | 403         | The Scrum Master's notes are coaching observations: only the team's Scrum Master may read or write them.                            |
-| `GATE_RETROSPECTIVE_ACTION_ITEM_LINKED`     | 409         | An improvement carried by a linked backlog item cannot be marked as unaddressed.                                                    |
-| `GATE_RETROSPECTIVE_DOD_CHANGES_MISSING`    | 400         | Applying Definition of Done changes requires a recorded reflection.                                                                 |
-| `GATE_SPRINT_RETROSPECTIVE_REQUIRES_REVIEW` | 400         | The Retrospective cannot be completed before its Sprint Review is completed.                                                        |
-| `GATE_SPRINT_EVENT_BEFORE_END_DATE`         | 400         | Neither event can be completed before the Sprint's end date has passed.                                                             |
+| Gate Code                                   | HTTP Status | Rule                                                                                                                                               |
+| ------------------------------------------- | ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GATE_RETROSPECTIVE_TEAM_MEMBERS_ONLY`      | 403         | The Retrospective is the Scrum Team's own event: reading or changing one requires membership of the team whose Sprint it concludes.                |
+| `GATE_RETROSPECTIVE_SM_NOTES_SM_ONLY`       | 403         | The Scrum Master's notes are coaching observations: only the team's Scrum Master may read or write them.                                           |
+| `GATE_RETROSPECTIVE_ACTION_ITEM_LINKED`     | 409         | An improvement carried by a linked backlog item cannot be marked as unaddressed.                                                                   |
+| `GATE_RETROSPECTIVE_DOD_CHANGES_MISSING`    | 400         | Applying Definition of Done changes requires a recorded reflection.                                                                                |
+| `GATE_SPRINT_RETROSPECTIVE_REQUIRES_REVIEW` | 400         | The Retrospective cannot be completed before its Sprint Review is completed.                                                                       |
+| `GATE_SPRINT_EVENT_BEFORE_END_DATE`         | 400         | Neither event can be completed before the day the Sprint's end date names; a Sprint that has already concluded (cancelled or completed) is exempt. |
 
 ## Best Practices
 

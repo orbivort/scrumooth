@@ -864,6 +864,82 @@ describe('RetrospectiveService', () => {
       expect(prisma.sprintRetrospective.update).not.toHaveBeenCalled();
     });
 
+    it('should complete on the day the sprint ends, whatever time its end date stores', async () => {
+      // "The Sprint Retrospective concludes the Sprint", so it belongs to the day the end date
+      // names -- not to the instant that date happens to store.
+      const mockRetrospective = {
+        id: 'retro-1',
+        sprintId: 'sprint-1',
+        teamId: 'team-1',
+        status: 'IN_PROGRESS',
+        items: [],
+        actionItems: [],
+        attendees: [],
+      };
+      const endOfToday = new Date();
+      endOfToday.setHours(23, 59, 59, 999);
+
+      grantMembership();
+      vi.mocked(prisma.sprintRetrospective.findUnique).mockResolvedValue(
+        mockRetrospective as never
+      );
+      vi.mocked(prisma.sprint.findUnique).mockResolvedValue({
+        endDate: endOfToday,
+        status: 'ACTIVE',
+      } as never);
+      vi.mocked(prisma.sprintReview.findUnique).mockResolvedValue({
+        status: 'completed',
+      } as never);
+      vi.mocked(prisma.sprintRetrospective.update).mockResolvedValue({
+        ...mockRetrospective,
+        status: 'COMPLETED',
+      } as never);
+
+      const result = await retrospectiveService.updateRetrospective(
+        'retro-1',
+        { status: 'COMPLETED' },
+        USER_ID
+      );
+
+      expect(result.status).toBe('COMPLETED');
+    });
+
+    it('should complete a retrospective of a sprint that was cancelled before its end date', async () => {
+      const mockRetrospective = {
+        id: 'retro-1',
+        sprintId: 'sprint-1',
+        teamId: 'team-1',
+        status: 'IN_PROGRESS',
+        items: [],
+        actionItems: [],
+        attendees: [],
+      };
+
+      grantMembership();
+      vi.mocked(prisma.sprintRetrospective.findUnique).mockResolvedValue(
+        mockRetrospective as never
+      );
+      vi.mocked(prisma.sprint.findUnique).mockResolvedValue({
+        endDate: new Date(Date.now() + 86_400_000),
+        status: 'CANCELLED',
+      } as never);
+      vi.mocked(prisma.sprintReview.findUnique).mockResolvedValue({
+        status: 'completed',
+      } as never);
+      vi.mocked(prisma.sprintRetrospective.update).mockResolvedValue({
+        ...mockRetrospective,
+        status: 'COMPLETED',
+      } as never);
+
+      const result = await retrospectiveService.updateRetrospective(
+        'retro-1',
+        { status: 'COMPLETED' },
+        USER_ID
+      );
+
+      expect(result.status).toBe('COMPLETED');
+    });
+
     it('should refuse completion before the sprint review is completed', async () => {
       const mockRetrospective = {
         id: 'retro-1',

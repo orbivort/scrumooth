@@ -74,7 +74,8 @@
     "ariaLabel": "Marquer la Retrospective comme terminée",
     "button": "Terminer la Retrospective",
     "completing": "Finalisation...",
-    "description": "Marquer cette Retrospective comme terminée pour la finaliser et empêcher les modifications ultérieures."
+    "description": "Marquer cette Retrospective comme terminée pour la finaliser et empêcher les modifications ultérieures.",
+    "sprintNotEnded": "La Sprint Review inspecte le résultat du Sprint et la Retrospective le conclut. Cette Retrospective peut être terminée à partir de la date de fin du Sprint ({{endDate}})."
   },
   "confirmationModal": {
     "cancel": "Annuler",
@@ -201,6 +202,24 @@
     "viewRetrospective": "Voir la Retrospective"
   },
   "loading": "Chargement de la Retrospective...",
+  "phases": {
+    "close": {
+      "description": "Consignez ce que l'équipe a décidé, indiquez qui était présent et clôturez la Retrospective.",
+      "title": "Consigner et clôturer"
+    },
+    "decide": {
+      "description": "Inspectez la Definition of Done, puis transformez les améliorations retenues en points d'action.",
+      "title": "Ce que nous changeons"
+    },
+    "reflect": {
+      "description": "Rassemblez ce qui a bien marché, ce qui n'a pas marché et ce que l'équipe veut améliorer — une idée par élément.",
+      "title": "Ce qui s'est passé"
+    },
+    "stage": {
+      "description": "Ramenez le Sprint que vous allez inspecter, ainsi que les Valeurs Scrum qui donnent le ton.",
+      "title": "Poser le cadre"
+    }
+  },
   "pts": "pts",
   "sprintInfo": {
     "businessDay_one": "{{count}} jour de travail",

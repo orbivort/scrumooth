@@ -1,4 +1,6 @@
 // Daily Scrum Service (team-level, goal-focused)
+import type { ImpedimentPriority } from '@scrumooth/shared';
+
 import type {
   DailyScrum,
   DailyScrumCadence,
@@ -103,7 +105,8 @@ class DailyScrumService {
       title: string;
       description?: string;
       ownerId?: string;
-      priority?: string;
+      /** The API's enum member, not a display label. */
+      priority?: ImpedimentPriority;
       sprintId?: string;
     }
   ): Promise<ApiResponse<{ dailyScrum: DailyScrum; impediment: Impediment }>> {

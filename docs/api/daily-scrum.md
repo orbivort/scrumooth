@@ -618,11 +618,15 @@ POST /api/v1/daily-scrums/:id/promote-impediment
   "title": "string (required, 3-200 chars)",
   "description": "string (required, 10-2000 chars)",
   "ownerId": "string (optional, user UUID)",
-  "priority": "string (optional, one of: High, Medium, Low)",
-  "teamId": "string (required, team UUID)",
-  "sprintId": "string (optional, sprint UUID)"
+  "priority": "string (optional, one of: CRITICAL, HIGH, MEDIUM, LOW; defaults to MEDIUM)",
+  "sprintId": "string (optional, sprint UUID; defaults to the Daily Scrum's sprint)",
+  "targetDate": "string (optional, ISO date; empty value clears it)"
 }
 ```
+
+The team is derived server-side from the Daily Scrum record, so the body carries no `teamId`.
+`priority` is the API's enum member, not a display label: `"High"` is rejected with 422
+`VALIDATION_ERROR` as surely as any other unknown member.
 
 **Success Response**
 

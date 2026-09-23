@@ -68,6 +68,10 @@ export {
   SPRINT_CHANGE_APPROVAL_STATUSES,
   SPRINT_CHANGE_DECISIONS,
   toUtcDay,
+  toLocalCalendarDay,
+  hasSprintEnded,
+  SPRINT_CONCLUDED_STATUSES,
+  mayCompleteSprintEvents,
   sprintDurationDays,
   rangesOverlap,
   contiguityGapDays,
@@ -129,6 +133,14 @@ export {
   summarizeSkillCoverage,
   isStakeholderActionOpen,
 } from './smFacilitation.js';
+
+export {
+  STORY_POINTS_TO_TASKS,
+  DEFAULT_ADHOC_TASK_CONFIG,
+  generateAdHocTaskDrafts,
+  type AdHocTaskConfig,
+  type AdHocTaskDraft,
+} from './adhocTasks.js';
 
 export function isValidEmail(email: string): boolean {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;

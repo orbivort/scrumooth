@@ -13,6 +13,7 @@ import { vi, describe, it, expect, beforeEach, afterEach, beforeAll } from 'vite
 import { useTeamStore, useAuthStore } from '../../store';
 import { apiService } from '../../services';
 import { RetrospectiveCategory, RetrospectiveStatus } from '../../types';
+import { TOAST_SUCCESS_DURATION } from '../../utils/constants';
 
 import { SprintRetrospective } from './Retrospective';
 
@@ -1659,6 +1660,79 @@ describe('Retrospective Component', () => {
     });
   });
 
+  /**
+   * "The Sprint Retrospective concludes the Sprint", so it belongs to the day the Sprint's end
+   * date names. The page states that before the team fills in a form, instead of letting the
+   * backend refuse the submission afterwards.
+   */
+  describe('Sprint End Date Gate', () => {
+    const completeButton = () =>
+      screen.getByRole('button', { name: i18nT('retrospective:completeRetro.ariaLabel') });
+
+    const sprintEndingOn = (endDate: Date) => ({
+      success: true as const,
+      data: { ...mockSprintData, endDate: endDate.toISOString() },
+    });
+
+    it('should disable completion while the sprint is still running, and say why', async () => {
+      const inThreeDays = new Date();
+      inThreeDays.setDate(inThreeDays.getDate() + 3);
+      (apiService.getSprint as ReturnType<typeof vi.fn>).mockResolvedValue(
+        sprintEndingOn(inThreeDays)
+      );
+
+      renderWithProviders(<SprintRetrospective />);
+
+      await waitFor(() => {
+        expect(completeButton()).toBeInTheDocument();
+      });
+
+      expect(completeButton()).toBeDisabled();
+      expect(
+        screen.getByText(/This Retrospective can be completed from the Sprint's end date/)
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByText(i18nT('retrospective:completeRetro.description'))
+      ).not.toBeInTheDocument();
+    });
+
+    it('should allow completion on the day the sprint ends, whatever time the end date stores', async () => {
+      const endOfToday = new Date();
+      endOfToday.setHours(23, 59, 59, 999);
+      (apiService.getSprint as ReturnType<typeof vi.fn>).mockResolvedValue(
+        sprintEndingOn(endOfToday)
+      );
+
+      renderWithProviders(<SprintRetrospective />);
+
+      await waitFor(() => {
+        expect(completeButton()).toBeInTheDocument();
+      });
+
+      expect(completeButton()).toBeEnabled();
+      expect(
+        screen.queryByText(/This Retrospective can be completed from the Sprint's end date/)
+      ).not.toBeInTheDocument();
+    });
+
+    it('should allow completion of a sprint that already concluded before its end date', async () => {
+      const inThreeDays = new Date();
+      inThreeDays.setDate(inThreeDays.getDate() + 3);
+      (apiService.getSprint as ReturnType<typeof vi.fn>).mockResolvedValue({
+        success: true,
+        data: { ...mockSprintData, status: 'CANCELLED', endDate: inThreeDays.toISOString() },
+      });
+
+      renderWithProviders(<SprintRetrospective />);
+
+      await waitFor(() => {
+        expect(completeButton()).toBeInTheDocument();
+      });
+
+      expect(completeButton()).toBeEnabled();
+    });
+  });
+
   describe('Accessibility', () => {
     it('should have proper ARIA labels on interactive elements', async () => {
       renderWithProviders(<SprintRetrospective />);
@@ -1950,6 +2024,37 @@ describe('Retrospective Component', () => {
         { timeout: 4000 }
       );
     });
+
+    it('should keep an error notification visible past the success duration', async () => {
+      (apiService.addRetrospectiveItem as ReturnType<typeof vi.fn>).mockRejectedValue(
+        new Error('API Error')
+      );
+
+      renderWithProviders(<SprintRetrospective />);
+
+      await waitFor(() => {
+        expect(screen.getByText('What went well')).toBeInTheDocument();
+      });
+
+      const wentWellColumn = screen.getByText('What went well').closest('[class*="retro-column"]');
+      const addButtons = within(wentWellColumn!).getAllByRole('button', { name: /\+ Add Item/i });
+      fireEvent.click(addButtons[0]);
+
+      const textarea = screen.getByPlaceholderText('What went well during this Sprint?');
+      fireEvent.change(textarea, { target: { value: 'New item' } });
+
+      const submitButton = within(wentWellColumn!).getByRole('button', { name: /^Add$/i });
+      fireEvent.click(submitButton);
+
+      await waitFor(() => {
+        expect(screen.getByText(/Error/i)).toBeInTheDocument();
+      });
+
+      // A refusal explains a gate in a full sentence, so it outlives the success window.
+      await new Promise((resolve) => setTimeout(resolve, TOAST_SUCCESS_DURATION + 1000));
+
+      expect(screen.getByText(/Error/i)).toBeInTheDocument();
+    });
   });
 
   describe('Error Handling - HTTP Error Codes', () => {
@@ -2144,9 +2249,11 @@ describe('Retrospective Component', () => {
         expect(screen.getAllByText(/Unassigned/).length).toBeGreaterThanOrEqual(2);
       });
 
-      const ownerElement = screen.getByText(
-        (content) => content.includes('👤') && content.includes('Unassigned')
-      );
+      // The owner line pairs the icon with the label, so the icon is found as a sibling element
+      // rather than as part of the text node.
+      const ownerElement = screen
+        .getAllByText(/Unassigned/)
+        .find((element) => element.querySelector('svg') !== null);
       expect(ownerElement).toBeInTheDocument();
     });
 

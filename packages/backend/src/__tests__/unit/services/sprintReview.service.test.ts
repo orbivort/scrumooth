@@ -537,60 +537,73 @@ describe('SprintReviewService', () => {
       ).rejects.toMatchObject({ code: GATE_CODES.SPRINT_REVIEW_TEAM_MEMBERS_ONLY });
     });
 
-    it('should refuse to complete a review before the sprint has ended', async () => {
-      const reviewId = 'review-1';
-      const existingReview = {
-        id: reviewId,
-        teamId: 'team-id',
-        sprintId: 'sprint-1',
-        status: 'in_progress',
-        summary: 'Old summary',
-        attendees: [],
-        feedback: [],
-        backlogAdjustments: [],
-      };
+    const inProgressReview = {
+      id: 'review-1',
+      teamId: 'team-id',
+      sprintId: 'sprint-1',
+      status: 'in_progress',
+      summary: 'Old summary',
+      attendees: [],
+      feedback: [],
+      backlogAdjustments: [],
+    };
 
-      vi.mocked(prisma.sprintReview.findUnique).mockResolvedValue(existingReview as any);
+    /** Complete the Review with the Sprint's end date and status stubbed as given. */
+    const completeWithSprint = async (sprint: { endDate: Date; status: string }) => {
+      vi.mocked(prisma.sprintReview.findUnique).mockResolvedValue(inProgressReview as any);
+      vi.mocked(prisma.sprint.findUnique).mockResolvedValue(sprint as any);
+      vi.mocked(prisma.sprintReview.update).mockResolvedValue({} as any);
+      const mockGetById = vi.spyOn(sprintReviewService, 'getSprintReviewById');
+      mockGetById.mockResolvedValue({ id: 'review-1', status: 'completed' } as any);
+
+      await sprintReviewService.updateSprintReview('review-1', 'user-id', { status: 'completed' });
+
+      mockGetById.mockRestore();
+    };
+
+    it('should refuse to complete a review before the sprint has ended', async () => {
+      vi.mocked(prisma.sprintReview.findUnique).mockResolvedValue(inProgressReview as any);
       vi.mocked(prisma.sprint.findUnique).mockResolvedValue({
         endDate: new Date(Date.now() + 86_400_000),
+        status: 'ACTIVE',
       } as any);
 
       await expect(
-        sprintReviewService.updateSprintReview(reviewId, 'user-id', { status: 'completed' })
+        sprintReviewService.updateSprintReview('review-1', 'user-id', { status: 'completed' })
       ).rejects.toMatchObject({ code: GATE_CODES.SPRINT_EVENT_BEFORE_END_DATE });
       expect(prisma.sprintReview.update).not.toHaveBeenCalled();
     });
 
+    it('should complete a review on the day the sprint ends, whatever time its end date stores', async () => {
+      // The refusal this rule was changed for: an end date written at 23:59:59 -- the form the
+      // fixtures and the API examples use -- blocked the whole final day, while the same Sprint
+      // written at midnight allowed it. A team holds its Review on that day either way.
+      const endOfToday = new Date();
+      endOfToday.setHours(23, 59, 59, 999);
+
+      await completeWithSprint({ endDate: endOfToday, status: 'ACTIVE' });
+
+      expect(prisma.sprintReview.update).toHaveBeenCalled();
+    });
+
+    it('should complete a review of a sprint that was cancelled before its end date', async () => {
+      // A cancelled Sprint ended when it ended; holding its Review back to the original end date
+      // would leave the team no way to record what happened.
+      await completeWithSprint({
+        endDate: new Date(Date.now() + 86_400_000),
+        status: 'CANCELLED',
+      });
+
+      expect(prisma.sprintReview.update).toHaveBeenCalled();
+    });
+
     it('should complete a review once the sprint has ended', async () => {
-      const reviewId = 'review-1';
-      const existingReview = {
-        id: reviewId,
-        teamId: 'team-id',
-        sprintId: 'sprint-1',
-        status: 'in_progress',
-        summary: 'Old summary',
-        attendees: [],
-        feedback: [],
-        backlogAdjustments: [],
-      };
-
-      vi.mocked(prisma.sprintReview.findUnique).mockResolvedValue(existingReview as any);
-      vi.mocked(prisma.sprint.findUnique).mockResolvedValue({
-        endDate: new Date(Date.now() - 86_400_000),
-      } as any);
-      vi.mocked(prisma.sprintReview.update).mockResolvedValue({} as any);
-
-      const mockGetById = vi.spyOn(sprintReviewService, 'getSprintReviewById');
-      mockGetById.mockResolvedValue({ id: reviewId, status: 'completed' } as any);
-
-      await sprintReviewService.updateSprintReview(reviewId, 'user-id', { status: 'completed' });
+      await completeWithSprint({ endDate: new Date(Date.now() - 86_400_000), status: 'ACTIVE' });
 
       expect(prisma.sprint.findUnique).toHaveBeenCalledWith({
         where: { id: 'sprint-1' },
-        select: { endDate: true },
+        select: { endDate: true, status: true },
       });
-
-      mockGetById.mockRestore();
     });
 
     it('should handle empty attendees array', async () => {

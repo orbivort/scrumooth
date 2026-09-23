@@ -33,6 +33,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   that mapped every historical Sprint to the currently `DONE` items has been removed.
 - The capacity card and the Start Sprint dialog align their over-commitment state with the
   server tolerance: over capacity within the tolerance is a caution, beyond it is a refusal.
+- **Sprint Planning attendance may be recorded by the whole Scrum Team, not only the Developers.**
+  The participation record is the evidence that the Sprint Backlog was "created by the collaborative
+  work of the entire Scrum Team", so the Product Owner and the Scrum Master may now add, correct,
+  and remove it — matching the Sprint Review and the Retrospective, whose attendance was already
+  open to every member of the team. Writes are refused with `GATE_SPRINT_TEAM_MEMBERS_ONLY` (403)
+  for a caller outside the team, replacing the misapplied `GATE_DEVELOPER_ONLY_SPRINT_BACKLOG`. The
+  Sprint Backlog and its capacity remain Developers-only, and the planning page's participation
+  panel is now gated on the Sprint still being planned rather than on the caller's role.
 
 ## [3.0.2] - 2026-09-13
 

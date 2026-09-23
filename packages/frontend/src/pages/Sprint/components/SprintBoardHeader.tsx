@@ -28,6 +28,12 @@ export interface SprintBoardHeaderProps {
   canMutate: boolean;
   /** Whether the current user is the Product Owner (may cancel the Sprint). */
   isProductOwner: boolean;
+  /**
+   * Sprint Backlog changes declared as endangering the Sprint Goal that are awaiting the
+   * Product Owner's acknowledgement. Surfaced on the entry point so the approval gate is a
+   * signal the Product Owner sees, not a screen they have to stumble upon.
+   */
+  pendingApprovalCount: number;
 }
 
 export const SprintBoardHeader: React.FC<SprintBoardHeaderProps> = ({
@@ -41,9 +47,12 @@ export const SprintBoardHeader: React.FC<SprintBoardHeaderProps> = ({
   showBurndown,
   canMutate,
   isProductOwner,
+  pendingApprovalCount,
 }) => {
   const { t } = useTranslation('sprint');
   const { locale } = useI18nStore();
+  // Only the Product Owner can decide a pending change, so only they are told there is one.
+  const hasPendingApprovals = isProductOwner && pendingApprovalCount > 0;
 
   return (
     <header className={styles['sprint-board-header']}>
@@ -70,13 +79,22 @@ export const SprintBoardHeader: React.FC<SprintBoardHeaderProps> = ({
         >
           <ChartIcon size={16} aria-hidden="true" /> {t('boardHeader.burndown')}
         </button>
-        {canMutate && (
+        {(canMutate || isProductOwner) && (
           <button
             className={`${styles.button} ${styles['button-secondary']}`}
             onClick={onOpenBacklogManager}
-            aria-label={t('boardHeader.manageBacklog')}
+            aria-label={
+              hasPendingApprovals
+                ? t('boardHeader.manageBacklogPending', { count: pendingApprovalCount })
+                : t('boardHeader.manageBacklog')
+            }
           >
             <ClipboardListIcon size={16} aria-hidden="true" /> {t('boardHeader.manageBacklog')}
+            {hasPendingApprovals && (
+              <span className={styles['button-badge']} aria-hidden="true">
+                {pendingApprovalCount}
+              </span>
+            )}
           </button>
         )}
         {canMutate && (

@@ -74,7 +74,8 @@
     "ariaLabel": "Retrospective als abgeschlossen markieren",
     "button": "Retrospective abschließen",
     "completing": "Abschließen...",
-    "description": "Markieren Sie diese Retrospective als abgeschlossen, um sie zu finalisieren und weitere Änderungen zu verhindern."
+    "description": "Markieren Sie diese Retrospective als abgeschlossen, um sie zu finalisieren und weitere Änderungen zu verhindern.",
+    "sprintNotEnded": "Das Sprint Review untersucht das Ergebnis des Sprints, und die Retrospective schließt den Sprint ab. Diese Retrospective kann ab dem Enddatum des Sprints ({{endDate}}) abgeschlossen werden."
   },
   "confirmationModal": {
     "cancel": "Abbrechen",
@@ -201,6 +202,24 @@
     "viewRetrospective": "Retrospective anzeigen"
   },
   "loading": "Retrospective wird geladen...",
+  "phases": {
+    "close": {
+      "description": "Halte fest, was das Team entschieden hat, markiere, wer dabei war, und schließe die Retrospective ab.",
+      "title": "Festhalten und abschließen"
+    },
+    "decide": {
+      "description": "Überprüfe die Definition of Done und mache aus den vereinbarten Verbesserungen Aktionspunkte.",
+      "title": "Was wir ändern"
+    },
+    "reflect": {
+      "description": "Sammle, was gut lief, was nicht, und was das Team verbessern möchte – ein Gedanke pro Eintrag.",
+      "title": "Was passiert ist"
+    },
+    "stage": {
+      "description": "Hole den Sprint, den du überprüfen willst, in den Raum – zusammen mit den Scrum-Werten, die den Ton angeben.",
+      "title": "Den Rahmen setzen"
+    }
+  },
   "pts": "pts",
   "sprintInfo": {
     "businessDay_one": "{{count}} Arbeitstag",

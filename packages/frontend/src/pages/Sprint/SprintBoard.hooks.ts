@@ -81,6 +81,9 @@ export interface UseSprintBoardDataReturn {
   sprintRetrospective: SprintRetrospective | null;
   isRetrospectiveCompleted: boolean;
 
+  /** Sprint Backlog changes awaiting the Product Owner's acknowledgement. */
+  pendingBacklogChangeCount: number;
+
   // Loading states
   isLoading: boolean;
   sprintLoading: boolean;
@@ -166,6 +169,15 @@ export const useSprintBoardData = (
     enabled: !!sprint?.id,
   });
 
+  // Fetch recent Sprint Backlog changes so a pending, goal-endangering change can be surfaced to
+  // the Product Owner on the board header. Shares the Sprint Backlog Manager's query key, so an
+  // acknowledgement there refreshes this count too.
+  const { data: backlogChangesData } = useQuery({
+    queryKey: queryKeys.sprintBacklogChanges.bySprint(sprint?.id ?? ''),
+    queryFn: () => apiService.getSprintBacklogChanges(sprint?.id ?? '', 20),
+    enabled: !!sprint?.id,
+  });
+
   // ============================================
   // Extract Raw Data
   // ============================================
@@ -182,6 +194,12 @@ export const useSprintBoardData = (
   const isReviewCompleted = sprintReview?.status === 'completed';
   const sprintRetrospective: SprintRetrospective | null = retrospectiveData?.data ?? null;
   const isRetrospectiveCompleted = sprintRetrospective?.status === 'COMPLETED';
+
+  // `PENDING` means the change was declared as endangering the Sprint Goal and is deliberately
+  // not applied until the Product Owner acknowledges it.
+  const pendingBacklogChangeCount = (backlogChangesData?.data ?? []).filter(
+    (change) => change.approvalStatus === 'PENDING'
+  ).length;
 
   // ============================================
   // Derived Computations
@@ -410,6 +428,9 @@ export const useSprintBoardData = (
     isReviewCompleted,
     sprintRetrospective,
     isRetrospectiveCompleted,
+
+    // Sprint Backlog changes awaiting the Product Owner's decision
+    pendingBacklogChangeCount,
 
     // Loading states
     isLoading,

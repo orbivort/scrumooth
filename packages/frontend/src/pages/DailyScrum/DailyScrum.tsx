@@ -4,10 +4,13 @@ import { Link, useNavigate } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import {
   DAILY_SCRUM_ADJUSTMENT_ACTIONS,
+  DEFAULT_IMPEDIMENT_PRIORITY,
   formatLocaleDate,
   formatDateRange,
   formatStartMinute,
+  IMPEDIMENT_PRIORITIES,
   SCRUM_EVENTS,
+  type ImpedimentPriority,
 } from '@scrumooth/shared';
 
 import { apiService } from '../../services';
@@ -67,6 +70,18 @@ const FOCUS_MODES = [
 ] as const;
 
 type FocusMode = (typeof FOCUS_MODES)[number]['id'];
+
+/**
+ * Literal label keys for the impediment priority scale, so the translation lookup stays
+ * type-checked against the locale file. The values are the API's enum members: sending a
+ * display-cased label is rejected by request validation.
+ */
+const PRIORITY_LABEL_KEY = {
+  CRITICAL: 'promoteModal.priorityCritical',
+  HIGH: 'promoteModal.priorityHigh',
+  MEDIUM: 'promoteModal.priorityMedium',
+  LOW: 'promoteModal.priorityLow',
+} as const;
 
 interface FocusSelectorProps {
   onSelect: (mode: FocusMode) => void;
@@ -157,7 +172,7 @@ export const DailyScrum: React.FC = () => {
     title: '',
     description: '',
     ownerId: '',
-    priority: 'Medium' as 'High' | 'Medium' | 'Low',
+    priority: DEFAULT_IMPEDIMENT_PRIORITY as ImpedimentPriority,
   });
   const [promoteFormErrors, setPromoteFormErrors] = useState<Record<string, string>>({});
   const hasAutoOpenedRef = useRef(false);
@@ -193,7 +208,7 @@ export const DailyScrum: React.FC = () => {
       promoteFormData.title.trim().length > 0 ||
       promoteFormData.description.trim().length > 0 ||
       promoteFormData.ownerId !== '' ||
-      promoteFormData.priority !== 'Medium'
+      promoteFormData.priority !== DEFAULT_IMPEDIMENT_PRIORITY
     );
   }, [promoteFormData]);
 
@@ -202,7 +217,12 @@ export const DailyScrum: React.FC = () => {
       setShowUnsavedModal(true);
     } else {
       setShowPromoteModal(false);
-      setPromoteFormData({ title: '', description: '', ownerId: '', priority: 'Medium' });
+      setPromoteFormData({
+        title: '',
+        description: '',
+        ownerId: '',
+        priority: DEFAULT_IMPEDIMENT_PRIORITY,
+      });
       setPromoteFormErrors({});
     }
   }, [hasPromoteUnsavedChanges]);
@@ -210,7 +230,12 @@ export const DailyScrum: React.FC = () => {
   const handleUnsavedConfirm = useCallback(() => {
     setShowUnsavedModal(false);
     setShowPromoteModal(false);
-    setPromoteFormData({ title: '', description: '', ownerId: '', priority: 'Medium' });
+    setPromoteFormData({
+      title: '',
+      description: '',
+      ownerId: '',
+      priority: DEFAULT_IMPEDIMENT_PRIORITY,
+    });
     setPromoteFormErrors({});
   }, []);
 
@@ -434,7 +459,12 @@ export const DailyScrum: React.FC = () => {
       invalidateScrum();
       void queryClient.invalidateQueries({ queryKey: queryKeys.impediment.all });
       setShowPromoteModal(false);
-      setPromoteFormData({ title: '', description: '', ownerId: '', priority: 'Medium' });
+      setPromoteFormData({
+        title: '',
+        description: '',
+        ownerId: '',
+        priority: DEFAULT_IMPEDIMENT_PRIORITY,
+      });
       setPromoteFormErrors({});
       showSuccessToast(t('toast.impedimentCreated'), 3000);
     },
@@ -1515,14 +1545,16 @@ export const DailyScrum: React.FC = () => {
                         onChange={(e) =>
                           setPromoteFormData({
                             ...promoteFormData,
-                            priority: e.target.value as 'High' | 'Medium' | 'Low',
+                            priority: e.target.value as ImpedimentPriority,
                           })
                         }
                         disabled={promoteImpedimentMutation.isPending}
                       >
-                        <option value="High">{t('promoteModal.priorityHigh')}</option>
-                        <option value="Medium">{t('promoteModal.priorityMedium')}</option>
-                        <option value="Low">{t('promoteModal.priorityLow')}</option>
+                        {IMPEDIMENT_PRIORITIES.map((priority) => (
+                          <option key={priority} value={priority}>
+                            {t(PRIORITY_LABEL_KEY[priority])}
+                          </option>
+                        ))}
                       </select>
                     </div>
                   </div>

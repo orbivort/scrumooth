@@ -2,7 +2,13 @@ import prisma from '../utils/prisma';
 import { NotFoundError, BadRequestError, ForbiddenError, localizedError } from '../utils/errors';
 import { generateUUIDv7 } from '../utils/uuid';
 import { logger } from '../utils/logger';
-import { GATE_CODES, type GateCode, type SprintGoalOutcome } from '@scrumooth/shared';
+import {
+  GATE_CODES,
+  mayCompleteSprintEvents,
+  toLocalCalendarDay,
+  type GateCode,
+  type SprintGoalOutcome,
+} from '@scrumooth/shared';
 import { NotificationService } from './notification.service';
 import { productBacklogService } from './backlog.service';
 import { reportsService } from './reports.service';
@@ -153,30 +159,42 @@ export const sprintReviewService = {
   },
 
   /**
-   * Assert that a Sprint has reached its end date.
+   * Assert that the closing events of a Sprint may be completed.
    *
-   * The Review inspects the outcome of the Sprint and the Retrospective concludes it, so neither
-   * can be completed while the Sprint is still running. Without this, a team could close a Sprint
-   * that never ran its course by recording both events early.
+   * "The purpose of the Sprint Review is to inspect the outcome of the Sprint" and "The Sprint
+   * Retrospective concludes the Sprint", so neither event can be completed while the Sprint is
+   * still running. Without this, a team could close a Sprint that never ran its course by
+   * recording both events early.
+   *
+   * The rule itself lives in `@scrumooth/shared` (`mayCompleteSprintEvents`) for two reasons: the
+   * interface has to be able to state the same refusal before the team fills in a form, and the
+   * Retrospective asks this method rather than repeating the check, so the two events cannot drift
+   * into two definitions of "the Sprint has ended". Concretely, that rule is day-granular -- an end
+   * date names a day, so the time of day one happens to store (midnight vs. 23:59:59) must not
+   * decide whether a team may hold its own Review on the Sprint's last day -- and it exempts a
+   * Sprint that has already concluded (cancelled or completed), which ended when it ended rather
+   * than when its dates said it would.
    */
   async assertSprintEnded(sprintId: string): Promise<void> {
     const sprint = await prisma.sprint.findUnique({
       where: { id: sprintId },
-      select: { endDate: true },
+      select: { endDate: true, status: true },
     });
 
     if (!sprint) {
       throw new NotFoundError('Sprint');
     }
 
-    if (new Date() < sprint.endDate) {
-      throw localizedError(
-        'errors:sprintReview.eventBeforeEndDate',
-        { endDate: sprint.endDate.toISOString().slice(0, 10) },
-        400,
-        GATE_CODES.SPRINT_EVENT_BEFORE_END_DATE
-      );
+    if (mayCompleteSprintEvents(sprint)) {
+      return;
     }
+
+    throw localizedError(
+      'errors:sprintReview.eventBeforeEndDate',
+      { endDate: toLocalCalendarDay(sprint.endDate) ?? sprint.endDate.toISOString().slice(0, 10) },
+      400,
+      GATE_CODES.SPRINT_EVENT_BEFORE_END_DATE
+    );
   },
 
   /**

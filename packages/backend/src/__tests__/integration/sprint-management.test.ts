@@ -761,6 +761,74 @@ describe('Sprint Management Integration Tests', () => {
       expect(participation.body.data.isReadyToStart).toBe(false);
     });
 
+    it('lets any Scrum Team role record planning attendance', async () => {
+      const { team, sprint } = await setupPlanningSprint();
+
+      // A second person on the same team, holding the Product Owner accountability, checks
+      // themselves in and then records the Developer who was in the room with them.
+      const poEmail = `planning-po-${uniqueId()}@example.com`;
+      testEmails.push(poEmail);
+      const po = await createTestUserInDb(poEmail, 'TestPassword123!', 'Pat', 'Owner');
+      await addTeamMember(team.id, po.id, 'PRODUCT_OWNER');
+
+      const poCookies = await loginAndGetCookies(poEmail);
+      const { csrfToken: poCsrf } = extractCsrfFromCookies(poCookies);
+
+      await request(app)
+        .post(`/api/v1/sprints/${sprint.id}/planning-attendees`)
+        .set('Cookie', poCookies)
+        .set(CSRF_CONSTANTS.HEADER_NAME, poCsrf)
+        .send({ name: 'Pat Owner', role: 'product_owner', attended: true })
+        .expect(201);
+
+      const addDeveloper = await request(app)
+        .post(`/api/v1/sprints/${sprint.id}/planning-attendees`)
+        .set('Cookie', poCookies)
+        .set(CSRF_CONSTANTS.HEADER_NAME, poCsrf)
+        .send({ name: 'Grace Hopper', role: 'developers', attended: true })
+        .expect(201);
+
+      // The Product Owner may also correct a record, whoever added it.
+      await request(app)
+        .put(`/api/v1/sprints/${sprint.id}/planning-attendees/${addDeveloper.body.data.id}`)
+        .set('Cookie', poCookies)
+        .set(CSRF_CONSTANTS.HEADER_NAME, poCsrf)
+        .send({ attended: false })
+        .expect(200);
+
+      const participation = await request(app)
+        .get(`/api/v1/sprints/${sprint.id}/planning-attendees`)
+        .set('Cookie', poCookies)
+        .expect(200);
+
+      expect(participation.body.data.attendees).toHaveLength(2);
+      expect(participation.body.data.hasProductOwner).toBe(true);
+      // The Developer was recorded present and then corrected to absent, so no Developer counts
+      // as present and the participation gate treats the record as not ready to start.
+      expect(participation.body.data.developerCount).toBe(0);
+      expect(participation.body.data.isReadyToStart).toBe(false);
+    });
+
+    it('refuses planning attendance from someone outside the team', async () => {
+      const { sprint } = await setupPlanningSprint();
+
+      const outsiderEmail = `planning-outsider-${uniqueId()}@example.com`;
+      testEmails.push(outsiderEmail);
+      await createTestUserInDb(outsiderEmail);
+
+      const outsiderCookies = await loginAndGetCookies(outsiderEmail);
+      const { csrfToken: outsiderCsrf } = extractCsrfFromCookies(outsiderCookies);
+
+      const response = await request(app)
+        .post(`/api/v1/sprints/${sprint.id}/planning-attendees`)
+        .set('Cookie', outsiderCookies)
+        .set(CSRF_CONSTANTS.HEADER_NAME, outsiderCsrf)
+        .send({ name: 'Ada', role: 'developers', attended: true })
+        .expect(403);
+
+      expect(response.body.error.code).toBe('GATE_SPRINT_TEAM_MEMBERS_ONLY');
+    });
+
     it('refuses to start without recorded planning participation', async () => {
       const { sprint, user, cookies, csrfToken } = await setupPlanningSprint();
       // The team's two agreements are seeded so the participation rule is what refuses, not an

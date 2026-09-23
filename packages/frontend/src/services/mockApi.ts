@@ -3,6 +3,7 @@
 
 import i18n from 'i18next';
 import {
+  DEFAULT_IMPEDIMENT_PRIORITY,
   isWorkingDay,
   listWorkingDays,
   normalizeWorkingDays,
@@ -35,6 +36,7 @@ import {
   type Sprint,
   type Task,
   type Impediment,
+  type ImpedimentPriority,
   type DailyScrum,
   type DailyScrumCadence,
   type DailyScrumParticipant,
@@ -1922,7 +1924,8 @@ class MockApiService {
       title: string;
       description?: string;
       ownerId?: string;
-      priority?: string;
+      /** The API's enum member, not a display label. */
+      priority?: ImpedimentPriority;
       sprintId?: string;
     }
   ): Promise<ApiResponse<{ dailyScrum: DailyScrum; impediment: Impediment }>> {
@@ -1963,7 +1966,8 @@ class MockApiService {
       reportedById: currentUser.id,
       ownerId: impedimentData.ownerId,
       status: ImpedimentStatus.OPEN,
-      priority: 'MEDIUM',
+      // Mirrors the API default: an impediment reported without a priority is Medium.
+      priority: impedimentData.priority ?? DEFAULT_IMPEDIMENT_PRIORITY,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       reportedBy: currentUser,
@@ -4912,6 +4916,8 @@ class MockApiService {
           reason: _reason,
           goalImpact: _goalImpact,
           approvalStatus: pending ? ('PENDING' as const) : ('APPLIED' as const),
+          // A pending change applies nothing, so it seeds no tasks.
+          taskCount: pending ? 0 : 1,
           changedBy: 'mock-user',
           changedAt: new Date().toISOString(),
         },

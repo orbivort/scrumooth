@@ -517,6 +517,13 @@ export const SprintPlanning: React.FC = () => {
   // `assertDeveloperRole` guard for saving the backlog.
   const canModifyBacklog = isDeveloper && !lockedSprint;
 
+  // Attendance is a different artifact from the plan. Planning is the Developers' event to run
+  // but the *whole Scrum Team's* to attend, and the participation record is the evidence that the
+  // Sprint Backlog was "created by the collaborative work of the entire Scrum Team" -- so every
+  // role may add and correct it, exactly as at the Sprint Review and the Retrospective. It is
+  // therefore keyed on the Sprint still being planned, not on `canModifyBacklog`.
+  const isPlanningRecordOpen = !lockedSprint;
+
   const categorizedSprints = useMemo(() => {
     const current: SprintWithCategory[] = [];
     const future: SprintWithCategory[] = [];
@@ -1807,7 +1814,7 @@ export const SprintPlanning: React.FC = () => {
                 sprintId={selectedSprintId}
                 attendees={attendeeSectionItems}
                 teamMembers={teamMembersData?.data?.members ?? []}
-                isCompleted={!canModifyBacklog}
+                isCompleted={!isPlanningRecordOpen}
                 apiConfig={{
                   addAttendee: (data: AttendeeFormData) =>
                     apiService.addPlanningAttendee(selectedSprintId, {

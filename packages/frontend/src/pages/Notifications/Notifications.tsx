@@ -22,6 +22,7 @@ import {
 } from '../../components/common/Icons';
 import { useI18nStore } from '../../i18n/useI18nStore';
 import { getNotificationTitle, getNotificationMessage } from '../../utils/notificationTranslation';
+import { getNotificationRoute } from '../../utils/notificationRoute';
 
 import styles from './Notifications.module.css';
 
@@ -43,23 +44,11 @@ const getNotificationIcon = (type: NotificationType | string): React.ReactNode =
       return <TrashIcon size={20} />;
     case NotificationType.DIRECT_MESSAGE:
       return <MessageSquareIcon size={20} />;
+    case NotificationType.SPRINT_BACKLOG_CHANGE_PENDING:
+      return <AlertTriangleIcon size={20} />;
     default:
       return <UsersIcon size={20} />;
   }
-};
-
-const getNotificationRoute = (notification: Notification): string => {
-  const routes: Record<string, string> = {
-    TEAM_INVITATION: '/team',
-    TEAM_REMOVAL: '/team',
-    TASK_ASSIGNMENT: '/sprint',
-    IMPEDIMENT_ASSIGNMENT: '/impediments',
-    TEAM_CREATED: '/settings/team-management',
-    TEAM_UPDATED: '/settings/team-management',
-    TEAM_DELETED: '/settings/team-management',
-    DIRECT_MESSAGE: '/team',
-  };
-  return routes[notification.type] ?? '/';
 };
 
 type FilterType = 'all' | 'unread' | NotificationType;
@@ -75,6 +64,10 @@ const getFilterOptions = (t: any): { value: FilterType; label: string }[] => [
   { value: NotificationType.TEAM_UPDATED, label: t('filters.teamUpdated') },
   { value: NotificationType.TEAM_DELETED, label: t('filters.teamDeleted') },
   { value: NotificationType.DIRECT_MESSAGE, label: t('filters.directMessages') },
+  {
+    value: NotificationType.SPRINT_BACKLOG_CHANGE_PENDING,
+    label: t('filters.sprintBacklogChanges'),
+  },
 ];
 
 interface GroupedNotifications {

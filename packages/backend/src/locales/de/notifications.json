@@ -29,6 +29,8 @@
   "remindersNone": "Keine Erinnerungen gesendet",
   "remindersSent": "Erinnerungen an {{count}} Teammitglied gesendet",
   "remindersSent_plural": "Erinnerungen an {{count}} Teammitglieder gesendet",
+  "sprintBacklogChangePendingMessage": "{{changedByName}} hat erklärt, dass die Änderung von \"{{pbiTitle}}\" das Sprint-Ziel von \"{{sprintName}}\" gefährdet. Stimme dem neu verhandelten Sprint-Ziel zu oder lehne die Änderung ab.",
+  "sprintBacklogChangePendingTitle": "Änderung am Sprint Backlog wartet auf deine Entscheidung",
   "sprintEnded": "Sprint \"{{sprintName}}\" ist beendet",
   "sprintStarted": "Sprint \"{{sprintName}}\" hat begonnen",
   "taskAssigned": "Aufgabe \"{{taskTitle}}\" wurde Ihnen zugewiesen",

@@ -62,6 +62,7 @@
     "descriptionLabel": "Description",
     "descriptionPlaceholder": "Detailed description of the impediment",
     "priority": "Priority",
+    "priorityCritical": "Critical",
     "priorityHigh": "High",
     "priorityLow": "Low",
     "priorityMedium": "Medium",

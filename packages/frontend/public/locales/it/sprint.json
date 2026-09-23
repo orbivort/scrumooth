@@ -83,7 +83,10 @@
     "burndown": "Burndown",
     "cancelSprint": "Annulla Sprint",
     "completeSprint": "Completa Sprint",
-    "manageBacklog": "Gestisci Backlog"
+    "manageBacklog": "Gestisci Backlog",
+    "manageBacklogPending": "Gestisci Backlog — {{count}} modifiche attendono la tua approvazione",
+    "manageBacklogPending_one": "Gestisci Backlog — {{count}} modifica attende la tua approvazione",
+    "manageBacklogPending_other": "Gestisci Backlog — {{count}} modifiche attendono la tua approvazione"
   },
   "burndownChart": {
     "actualHours": "Ore Attuali",
@@ -249,7 +252,9 @@
     "addItem": "+ Aggiungi Elemento",
     "addItemToSprint": "Aggiungi Elemento al Sprint",
     "allTasksDeleted": "Tutti i task associati a questo PBI saranno permanentemente eliminati",
+    "appliedToBacklog": "Applicato allo Sprint Backlog",
     "approveChange": "Approva",
+    "approvedByName": "Approvato da {{name}}",
     "awaitingProductOwner": "In attesa dell'approvazione del Product Owner",
     "byName": "da {{name}}",
     "cancel": "Annulla",
@@ -259,6 +264,7 @@
     "currentSprintBacklog": "Sprint Backlog Attuale",
     "daysAgo_one": "{{count}} giorno",
     "daysAgo_other": "{{count}} giorni",
+    "decisionNote": "Nota: {{note}}",
     "doneCount": "{{done}}/{{total}} completato",
     "endangersGoal": "Mette in pericolo l'obiettivo dello sprint",
     "failedToAddPbi": "Aggiunta PBI allo sprint non riuscita",
@@ -293,6 +299,7 @@
     "reasonRequired": "Motivo (obbligatorio)",
     "recentChanges": "Modifiche Recenti",
     "rejectChange": "Rifiuta",
+    "rejectedByName": "Rifiutato da {{name}}",
     "remaining": "Rimanente",
     "removeFromSprint": "Rimuovi dallo sprint",
     "renegotiatedGoalHint": "Approvare una modifica che mette in pericolo l'obiettivo dello sprint registra l'impegno rinegoziato.",

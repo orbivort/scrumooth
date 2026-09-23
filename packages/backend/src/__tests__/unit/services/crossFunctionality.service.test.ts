@@ -10,6 +10,9 @@ vi.mock('../../../utils/prisma', () => ({
     teamMember: {
       findFirst: vi.fn(),
     },
+    user: {
+      findMany: vi.fn(),
+    },
   },
 }));
 
@@ -38,6 +41,10 @@ const callerIsScrumMaster = () =>
 const callerIsDeveloper = () =>
   asMock(prisma.teamMember.findFirst).mockResolvedValue({ role: 'DEVELOPERS' });
 const callerIsNotAMember = () => asMock(prisma.teamMember.findFirst).mockResolvedValue(null);
+const authorIsResolvable = () =>
+  asMock(prisma.user.findMany).mockResolvedValue([
+    { id: 'sm-1', firstName: 'Grace', lastName: 'Hopper' },
+  ]);
 
 const assessment = {
   id: 'assessment-1',
@@ -52,13 +59,13 @@ const assessment = {
     { id: 'skill-2', name: 'React', coverage: 'COVERED', note: null },
     { id: 'skill-3', name: 'Accessibility testing', coverage: 'PARTIAL', note: 'One person.' },
   ],
-  creator: { id: 'sm-1', firstName: 'Grace', lastName: 'Hopper' },
 };
 
 describe('CrossFunctionalityService', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     callerIsScrumMaster();
+    authorIsResolvable();
   });
 
   afterEach(() => {
@@ -87,6 +94,18 @@ describe('CrossFunctionalityService', () => {
       expect(result.latest?.createdByName).toBe('Grace Hopper');
       expect(result.history).toHaveLength(1);
       expect(result.history[0]).toMatchObject({ id: 'assessment-0' });
+      // The names for the whole page come from one lookup, not one per assessment.
+      expect(prisma.user.findMany).toHaveBeenCalledTimes(1);
+    });
+
+    it('should leave the author unnamed when the account no longer exists', async () => {
+      asMock(prisma.crossFunctionalityAssessment.findMany).mockResolvedValue([assessment]);
+      asMock(prisma.user.findMany).mockResolvedValue([]);
+
+      const result = await crossFunctionalityService.getCrossFunctionality('team-1', 'dev-1');
+
+      expect(result.latest?.createdByName).toBeNull();
+      expect(result.latest?.createdBy).toBe('sm-1');
     });
 
     it('should report no assessment as null rather than as an empty one', async () => {
@@ -126,6 +145,7 @@ describe('CrossFunctionalityService', () => {
 
       expect(result.skills).toHaveLength(3);
       expect(result.coverage.gaps).toBe(1);
+      expect(result.createdByName).toBe('Grace Hopper');
     });
   });
 

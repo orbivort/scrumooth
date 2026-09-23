@@ -1464,6 +1464,19 @@
   border-style: dashed;
 }
 
+/* The change the Product Owner was notified about: reached from a notification, it is scrolled
+   into view and emphasised so the decision is visible without hunting for it. */
+.sbm-change-item-highlighted {
+  border-color: var(--color-primary-500);
+  box-shadow: var(--shadow-md);
+  background: linear-gradient(135deg, var(--color-primary-50) 0%, var(--color-primary-100) 100%);
+}
+
+.sbm-change-item-highlighted:focus-visible {
+  outline: var(--border-width-2) solid var(--color-primary-600);
+  outline-offset: var(--space-1);
+}
+
 .sbm-change-pending {
   display: inline-flex;
   align-items: center;
@@ -1479,6 +1492,45 @@
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-semibold);
   color: var(--color-error-600);
+}
+
+/* The Product Owner's recorded decision on a change that endangers the Sprint Goal. */
+.sbm-change-decision {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  margin-top: var(--space-1);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+}
+
+.sbm-change-decision-approved {
+  color: var(--color-success-600);
+}
+
+.sbm-change-decision-rejected {
+  color: var(--color-error-600);
+}
+
+/* Applied without a decision: the change supported the Sprint Goal, so no approval was needed. */
+.sbm-change-decision-applied {
+  color: var(--color-text-tertiary);
+}
+
+.sbm-change-decision-time {
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-tertiary);
+}
+
+.sbm-change-note {
+  margin-top: var(--space-1);
+  padding: var(--space-2);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  background: var(--color-background-card);
+  border-radius: var(--radius-md);
+  border-left: var(--border-width-3) solid var(--color-primary-300);
 }
 
 .sbm-change-actions {

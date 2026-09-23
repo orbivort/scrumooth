@@ -29,6 +29,8 @@
   "remindersNone": "Aucun rappel envoyé",
   "remindersSent": "Rappels envoyés à {{count}} membre de l'équipe",
   "remindersSent_plural": "Rappels envoyés à {{count}} membres de l'équipe",
+  "sprintBacklogChangePendingMessage": "{{changedByName}} a déclaré que la modification de « {{pbiTitle}} » met en danger l'objectif de sprint de « {{sprintName}} ». Approuvez l'objectif de sprint renégocié ou rejetez la modification.",
+  "sprintBacklogChangePendingTitle": "Une modification du Sprint Backlog attend votre décision",
   "sprintEnded": "Le Sprint « {{sprintName}} » est terminé",
   "sprintStarted": "Le Sprint « {{sprintName}} » a démarré",
   "taskAssigned": "La tâche « {{taskTitle}} » vous a été assignée",

@@ -7,6 +7,7 @@ export enum NotificationType {
   TEAM_UPDATED = 'TEAM_UPDATED',
   TEAM_DELETED = 'TEAM_DELETED',
   DIRECT_MESSAGE = 'DIRECT_MESSAGE',
+  SPRINT_BACKLOG_CHANGE_PENDING = 'SPRINT_BACKLOG_CHANGE_PENDING',
 }
 
 export interface Notification {

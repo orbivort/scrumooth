@@ -9,6 +9,7 @@ import type { DodReflection, DodReflectionDecision, SprintRetrospective } from '
 import {
   AlertTriangleIcon,
   CheckIcon,
+  FileCheckIcon,
   InfoIcon,
   PlusIcon,
   RefreshIcon,
@@ -208,8 +209,19 @@ export const DodInspection: React.FC<DodInspectionProps> = ({ retrospective, rea
   const retired = rows.filter((row) => row.decision === 'RETIRE' && row.dodItemId);
   const changed = rows.filter((row) => row.decision === 'CHANGE');
   const added = rows.filter((row) => row.dodItemId === null);
+  const kept = rows.filter((row) => row.decision === 'KEEP');
   const hasDecisions = rows.length > 0;
   const changeIsIncomplete = changed.some((row) => !row.proposedDescription.trim());
+
+  // The tally is the team's running answer to "what are we about to do to our Definition of Done?"
+  // It reads off the decisions already made, so the shape of the change is visible without
+  // scrolling the list back.
+  const tally = [
+    { key: 'keep', label: t('dodInspection.decisions.KEEP') as string, count: kept.length },
+    { key: 'change', label: t('dodInspection.decisions.CHANGE') as string, count: changed.length },
+    { key: 'retire', label: t('dodInspection.decisions.RETIRE') as string, count: retired.length },
+    { key: 'new', label: t('dodInspection.arriving') as string, count: added.length },
+  ];
 
   if (isLoadingDod) {
     return (
@@ -223,8 +235,13 @@ export const DodInspection: React.FC<DodInspectionProps> = ({ retrospective, rea
     <section className={styles.section} aria-label={t('dodInspection.title') as string}>
       <header className={styles['section-header']}>
         <div className={styles['title-wrap']}>
-          <h2 className={styles['section-title']}>{t('dodInspection.title') as string}</h2>
-          <p className={styles['section-subtitle']}>{t('dodInspection.subtitle') as string}</p>
+          <span className={styles['section-icon']} aria-hidden="true">
+            <FileCheckIcon size={20} />
+          </span>
+          <div className={styles['title-text']}>
+            <h3 className={styles['section-title']}>{t('dodInspection.title') as string}</h3>
+            <p className={styles['section-subtitle']}>{t('dodInspection.subtitle') as string}</p>
+          </div>
         </div>
         <div className={styles['header-chips']}>
           {dodVersion !== null && (
@@ -245,6 +262,22 @@ export const DodInspection: React.FC<DodInspectionProps> = ({ retrospective, rea
         </div>
       </header>
 
+      {hasDecisions && (
+        <ul className={styles.tally}>
+          {tally.map((item) => (
+            <li
+              key={item.key}
+              className={styles['tally-item']}
+              data-tally={item.key}
+              data-empty={item.count === 0}
+            >
+              <span className={styles['tally-count']}>{item.count}</span>
+              <span className={styles['tally-label']}>{item.label}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+
       {!hasDecisions && (
         <div className={styles['empty-state']}>
           <InfoIcon size={16} aria-hidden="true" />
@@ -259,56 +292,59 @@ export const DodInspection: React.FC<DodInspectionProps> = ({ retrospective, rea
             className={`${styles['criterion-row']} ${
               row.decision === 'RETIRE' ? styles['criterion-row-retired'] : ''
             }`}
+            data-decision={row.decision}
           >
-            <p className={styles['criterion-text']}>{row.description}</p>
+            <div className={styles['criterion-row-main']}>
+              <p className={styles['criterion-text']}>{row.description}</p>
 
-            {!readOnly && (
-              <div
-                className={styles['decision-group']}
-                role="radiogroup"
-                aria-label={
-                  t('dodInspection.decisionLabel', { criterion: row.description }) as string
-                }
-                onKeyDown={(event) => {
-                  if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') {
-                    return;
+              {!readOnly && (
+                <div
+                  className={styles['decision-group']}
+                  role="radiogroup"
+                  aria-label={
+                    t('dodInspection.decisionLabel', { criterion: row.description }) as string
                   }
-                  event.preventDefault();
-                  const currentIndex = DECISIONS.indexOf(row.decision);
-                  const offset = event.key === 'ArrowRight' ? 1 : -1;
-                  const nextIndex = (currentIndex + offset + DECISIONS.length) % DECISIONS.length;
-                  const next = DECISIONS[nextIndex];
-                  if (next) {
-                    setDecision(index, next);
-                  }
-                }}
-              >
-                {DECISIONS.map((decision) => (
-                  <button
-                    key={decision}
-                    type="button"
-                    role="radio"
-                    aria-checked={row.decision === decision}
-                    tabIndex={row.decision === decision ? 0 : -1}
-                    className={`${styles['decision-option']} ${
-                      row.decision === decision
-                        ? (styles[`decision-${decision.toLowerCase()}`] ?? '')
-                        : ''
-                    }`}
-                    onClick={() => setDecision(index, decision)}
-                  >
-                    {DECISION_ICON[decision]}
-                    {t(`dodInspection.decisions.${decision}`) as string}
-                  </button>
-                ))}
-              </div>
-            )}
+                  onKeyDown={(event) => {
+                    if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') {
+                      return;
+                    }
+                    event.preventDefault();
+                    const currentIndex = DECISIONS.indexOf(row.decision);
+                    const offset = event.key === 'ArrowRight' ? 1 : -1;
+                    const nextIndex = (currentIndex + offset + DECISIONS.length) % DECISIONS.length;
+                    const next = DECISIONS[nextIndex];
+                    if (next) {
+                      setDecision(index, next);
+                    }
+                  }}
+                >
+                  {DECISIONS.map((decision) => (
+                    <button
+                      key={decision}
+                      type="button"
+                      role="radio"
+                      aria-checked={row.decision === decision}
+                      tabIndex={row.decision === decision ? 0 : -1}
+                      className={`${styles['decision-option']} ${
+                        row.decision === decision
+                          ? (styles[`decision-${decision.toLowerCase()}`] ?? '')
+                          : ''
+                      }`}
+                      onClick={() => setDecision(index, decision)}
+                    >
+                      {DECISION_ICON[decision]}
+                      {t(`dodInspection.decisions.${decision}`) as string}
+                    </button>
+                  ))}
+                </div>
+              )}
 
-            {readOnly && (
-              <span className={styles['readonly-decision']}>
-                {t(`dodInspection.decisions.${row.decision}`) as string}
-              </span>
-            )}
+              {readOnly && (
+                <span className={styles['readonly-decision']}>
+                  {t(`dodInspection.decisions.${row.decision}`) as string}
+                </span>
+              )}
+            </div>
 
             {(row.decision === 'CHANGE' || row.decision === 'RETIRE') && !readOnly && (
               <div className={styles['decision-detail']}>

@@ -46,19 +46,16 @@ interface SkillInput {
   note?: string | null;
 }
 
-const formatSkill = (skill: {
+/** One stored skill row, as the formatter reads it. */
+interface AssessmentSkillRow {
   id: string;
   name: string;
   coverage: SkillCoverage;
   note: string | null;
-}) => ({
-  id: skill.id,
-  name: skill.name,
-  coverage: skill.coverage,
-  note: skill.note,
-});
+}
 
-const formatAssessment = (assessment: {
+/** One stored assessment row, as the formatter reads it. */
+interface AssessmentRow {
   id: string;
   teamId: string;
   assessedAt: Date;
@@ -66,9 +63,18 @@ const formatAssessment = (assessment: {
   createdBy: string | null;
   createdAt: Date;
   updatedAt: Date;
-  skills: { id: string; name: string; coverage: SkillCoverage; note: string | null }[];
-  creator?: { id: string; firstName: string; lastName: string } | null;
-}) => ({
+  skills: AssessmentSkillRow[];
+}
+
+const formatSkill = (skill: AssessmentSkillRow) => ({
+  id: skill.id,
+  name: skill.name,
+  coverage: skill.coverage,
+  note: skill.note,
+});
+
+/** Serialize one assessment against an already-resolved name map. */
+const formatAssessment = (assessment: AssessmentRow, nameById: Map<string, string>) => ({
   id: assessment.id,
   teamId: assessment.teamId,
   assessedAt: assessment.assessedAt.toISOString(),
@@ -76,14 +82,35 @@ const formatAssessment = (assessment: {
   skills: assessment.skills.map(formatSkill),
   coverage: summarizeSkillCoverage(assessment.skills),
   createdBy: assessment.createdBy,
-  createdByName: assessment.creator
-    ? `${assessment.creator.firstName} ${assessment.creator.lastName}`.trim()
-    : null,
+  createdByName: assessment.createdBy ? (nameById.get(assessment.createdBy) ?? null) : null,
   createdAt: assessment.createdAt.toISOString(),
   updatedAt: assessment.updatedAt.toISOString(),
 });
 
 class CrossFunctionalityService {
+  /**
+   * The names behind the authorship column, in one query for the whole page rather than one per row.
+   *
+   * The assessment carries its author's id but no relation to the user: the author is recorded, not
+   * owned, so the name is resolved here instead of joined.
+   */
+  private async buildNameMap(rows: AssessmentRow[]): Promise<Map<string, string>> {
+    const authorIds = [
+      ...new Set(rows.map((row) => row.createdBy).filter((id): id is string => !!id)),
+    ];
+
+    const authors = authorIds.length
+      ? await prisma.user.findMany({
+          where: { id: { in: authorIds } },
+          select: { id: true, firstName: true, lastName: true },
+        })
+      : [];
+
+    return new Map(
+      authors.map((author) => [author.id, `${author.firstName} ${author.lastName}`.trim()])
+    );
+  }
+
   /**
    * The team's current assessment and its history.
    *
@@ -99,14 +126,14 @@ class CrossFunctionalityService {
       take: MAX_HISTORY,
       include: {
         skills: { orderBy: { name: 'asc' } },
-        creator: { select: { id: true, firstName: true, lastName: true } },
       },
     });
 
+    const nameById = await this.buildNameMap(assessments);
     const [latest, ...history] = assessments;
 
     return {
-      latest: latest ? formatAssessment(latest) : null,
+      latest: latest ? formatAssessment(latest, nameById) : null,
       history: history.map((assessment) => ({
         id: assessment.id,
         assessedAt: assessment.assessedAt.toISOString(),
@@ -121,7 +148,6 @@ class CrossFunctionalityService {
       where: { id },
       include: {
         skills: { orderBy: { name: 'asc' } },
-        creator: { select: { id: true, firstName: true, lastName: true } },
       },
     });
 
@@ -131,7 +157,7 @@ class CrossFunctionalityService {
 
     await assertTeamMembership(assessment.teamId, actorUserId, ASSESSMENT_TEAM_REFUSAL);
 
-    return formatAssessment(assessment);
+    return formatAssessment(assessment, await this.buildNameMap([assessment]));
   }
 
   /**
@@ -172,7 +198,6 @@ class CrossFunctionalityService {
       },
       include: {
         skills: { orderBy: { name: 'asc' } },
-        creator: { select: { id: true, firstName: true, lastName: true } },
       },
     });
 
@@ -188,7 +213,7 @@ class CrossFunctionalityService {
       }
     );
 
-    return formatAssessment(assessment);
+    return formatAssessment(assessment, await this.buildNameMap([assessment]));
   }
 }
 

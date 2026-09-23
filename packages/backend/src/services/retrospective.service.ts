@@ -11,6 +11,7 @@ import {
 } from './retrospectiveAccess';
 import { definitionOfDoneService } from './dod.service';
 import { productBacklogService } from './backlog.service';
+import { sprintReviewService } from './sprintReview.service';
 import { logger } from '../utils/logger';
 import {
   auditResourceEvent,
@@ -1030,26 +1031,12 @@ class RetrospectiveService {
 
     // "The Sprint Review is the second-to-last event of the Sprint and the Sprint Retrospective
     // concludes the Sprint." Completing the Retrospective is therefore gated twice: the Sprint
-    // Review must already be completed (the ordering the Guide prescribes), and the Sprint must
-    // have reached its end date (the Retrospective concludes it, it does not pre-empt it).
+    // must have reached the day its end date names (the Retrospective concludes it, it does not
+    // pre-empt it), and the Sprint Review must already be completed (the ordering the Guide
+    // prescribes). The end-date rule is asked of the Review service, which owns it for both
+    // events, so the two cannot drift into two definitions of "the Sprint has ended".
     if (data.status === 'COMPLETED' && retrospective.status !== 'COMPLETED') {
-      const sprint = await prisma.sprint.findUnique({
-        where: { id: retrospective.sprintId },
-        select: { endDate: true },
-      });
-
-      if (!sprint) {
-        throw new NotFoundError('Sprint');
-      }
-
-      if (new Date() < sprint.endDate) {
-        throw localizedError(
-          'errors:sprintReview.eventBeforeEndDate',
-          { endDate: sprint.endDate.toISOString().slice(0, 10) },
-          400,
-          GATE_CODES.SPRINT_EVENT_BEFORE_END_DATE
-        );
-      }
+      await sprintReviewService.assertSprintEnded(retrospective.sprintId);
 
       const sprintReview = await prisma.sprintReview.findUnique({
         where: { sprintId: retrospective.sprintId },

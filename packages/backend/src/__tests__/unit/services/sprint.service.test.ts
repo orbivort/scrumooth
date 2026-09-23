@@ -195,6 +195,7 @@ vi.mock('../../../utils/dbTransaction', () => ({
         updateMany: vi.fn(),
       },
       task: {
+        create: vi.fn().mockResolvedValue({ id: 'generated-task' }),
         createMany: vi.fn(),
         deleteMany: vi.fn(),
       },
@@ -1728,11 +1729,14 @@ describe('SprintBacklogManagerService', () => {
         },
       };
 
+      const createdTasks = vi.fn().mockResolvedValue({ id: 'seeded-task' });
+
       (withTransaction as any).mockImplementation(async (callback: any) => {
         return callback({
           sprintBacklogItem: {
             create: vi.fn().mockResolvedValue(mockResult.sprintBacklogItem),
           },
+          task: { create: createdTasks },
           sprintBacklogChange: {
             create: vi.fn().mockResolvedValue({
               id: 'change-1',
@@ -1769,6 +1773,19 @@ describe('SprintBacklogManagerService', () => {
       // The commitment in force at the time of the change is recorded verbatim.
       expect(result.change.sprintGoalAtChange).toBe('Ship the checkout flow');
       expect(result.change.reason).toBe('Urgent customer fix');
+      // The ad-hoc decomposition is seeded as part of applying the change, so the item never lands
+      // in the Sprint Backlog without the tasks the Developers work from.
+      expect(createdTasks).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            sprintId: 'sprint-1',
+            pbiId: 'pbi-1',
+            title: 'Adhoc: Test PBI - Task',
+            status: 'TODO',
+          }),
+        })
+      );
+      expect(result.change.taskCount).toBe(1);
     });
 
     it('should throw NotFoundError when sprint not found', async () => {
@@ -3708,23 +3725,113 @@ describe('SprintService - Additional Coverage', () => {
       expect(result.id).toBe('attendee-1');
     });
 
-    it('refuses planning attendance writes from a Product Owner', async () => {
+    it('records an attendee for the Product Owner', async () => {
       (prisma.sprint.findUnique as any).mockResolvedValue({
         id: 'sprint-1',
         teamId: 'team-1',
         status: 'DRAFT',
       });
       (prisma.teamMember.findFirst as any).mockResolvedValue({ role: 'PRODUCT_OWNER' });
+      (prisma.sprintPlanningAttendee.create as any).mockResolvedValue({
+        id: 'attendee-1',
+        name: 'Dev 1',
+        email: null,
+        role: 'developers',
+        attended: true,
+      });
+
+      // Planning is the whole Scrum Team's to attend, so the Product Owner records participation
+      // just as the Developers do.
+      const result = await sprintService.addPlanningAttendee('sprint-1', 'po-1', {
+        name: 'Dev 1',
+        role: 'developers',
+        attended: true,
+      });
+
+      expect(result.id).toBe('attendee-1');
+    });
+
+    it('records an attendee for the Scrum Master', async () => {
+      (prisma.sprint.findUnique as any).mockResolvedValue({
+        id: 'sprint-1',
+        teamId: 'team-1',
+        status: 'DRAFT',
+      });
+      (prisma.teamMember.findFirst as any).mockResolvedValue({ role: 'SCRUM_MASTER' });
+      (prisma.sprintPlanningAttendee.create as any).mockResolvedValue({
+        id: 'attendee-1',
+        name: 'Ada',
+        email: null,
+        role: 'stakeholder',
+        attended: true,
+      });
+
+      const result = await sprintService.addPlanningAttendee('sprint-1', 'sm-1', {
+        name: 'Ada',
+        role: 'stakeholder',
+        attended: true,
+      });
+
+      expect(result.id).toBe('attendee-1');
+    });
+
+    it('refuses planning attendance writes from outside the team', async () => {
+      (prisma.sprint.findUnique as any).mockResolvedValue({
+        id: 'sprint-1',
+        teamId: 'team-1',
+        status: 'DRAFT',
+      });
+      (prisma.teamMember.findFirst as any).mockResolvedValue(null);
 
       await expect(
-        sprintService.addPlanningAttendee('sprint-1', 'user-1', {
+        sprintService.addPlanningAttendee('sprint-1', 'outsider-1', {
           name: 'Ada',
-          role: 'product_owner',
+          role: 'developers',
           attended: true,
         })
       ).rejects.toMatchObject({
         statusCode: 403,
-        code: GATE_CODES.DEVELOPER_ONLY_SPRINT_BACKLOG,
+        code: GATE_CODES.SPRINT_TEAM_MEMBERS_ONLY,
+      });
+    });
+
+    it('lets the Scrum Master update a record somebody else added', async () => {
+      (prisma.sprint.findUnique as any).mockResolvedValue({
+        id: 'sprint-1',
+        teamId: 'team-1',
+        status: 'DRAFT',
+      });
+      (prisma.teamMember.findFirst as any).mockResolvedValue({ role: 'SCRUM_MASTER' });
+      (prisma.sprintPlanningAttendee.findFirst as any).mockResolvedValue({ id: 'attendee-1' });
+      (prisma.sprintPlanningAttendee.update as any).mockResolvedValue({
+        id: 'attendee-1',
+        name: 'Dev 1',
+        email: null,
+        role: 'developers',
+        attended: false,
+      });
+
+      const result = await sprintService.updatePlanningAttendee('sprint-1', 'attendee-1', 'sm-1', {
+        attended: false,
+      });
+
+      expect(result.attended).toBe(false);
+    });
+
+    it('lets the Product Owner remove a record', async () => {
+      (prisma.sprint.findUnique as any).mockResolvedValue({
+        id: 'sprint-1',
+        teamId: 'team-1',
+        status: 'DRAFT',
+      });
+      (prisma.teamMember.findFirst as any).mockResolvedValue({ role: 'PRODUCT_OWNER' });
+      (prisma.sprintPlanningAttendee.findFirst as any).mockResolvedValue({ id: 'attendee-1' });
+      (prisma.sprintPlanningAttendee.delete as any).mockResolvedValue({ id: 'attendee-1' });
+
+      await sprintService.deletePlanningAttendee('sprint-1', 'attendee-1', 'po-1');
+
+      expect(prisma.sprintPlanningAttendee.delete).toHaveBeenCalledWith({
+        where: { id: 'attendee-1' },
       });
     });
 
@@ -4417,6 +4524,13 @@ describe('Active Sprint Guide gates', () => {
   });
 
   describe('mid-Sprint change goal protection', () => {
+    beforeEach(() => {
+      // A pending change is announced to the team's Product Owner, so the announcement path
+      // resolves them by role.
+      (prisma.teamMember.findMany as any).mockResolvedValue([{ userId: 'po-1' }]);
+      (prisma.notification.create as any).mockResolvedValue({ id: 'notif-1' });
+    });
+
     it('records an endangering addition as pending and applies nothing', async () => {
       (prisma.sprint.findUnique as any).mockResolvedValue(activeSprint());
       (prisma.productBacklogItem.findUnique as any).mockResolvedValue(readyPbi);
@@ -4437,6 +4551,89 @@ describe('Active Sprint Guide gates', () => {
       expect(prisma.sprintBacklogItem.create).not.toHaveBeenCalled();
       expect(prisma.productBacklogItem.update).not.toHaveBeenCalled();
       expect(prisma.burndownData.findMany).not.toHaveBeenCalled();
+    });
+
+    it('announces a pending addition to the team Product Owner', async () => {
+      (prisma.sprint.findUnique as any).mockResolvedValue(activeSprint());
+      (prisma.productBacklogItem.findUnique as any).mockResolvedValue(readyPbi);
+      (prisma.sprintBacklogChange.create as any).mockResolvedValue(changeRecord());
+
+      await sprintBacklogManagerService.addPBIToActiveSprint('sprint-1', 'user-1', {
+        pbiId: 'pbi-1',
+        reason: 'Scope grew',
+        goalImpact: 'ENDANGERS_GOAL',
+      });
+
+      // The Product Owner is the only role that can decide the change, so only they are told.
+      expect(prisma.teamMember.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ teamId: 'team-1', role: 'PRODUCT_OWNER' }),
+        })
+      );
+      expect(prisma.notification.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            userId: 'po-1',
+            type: 'SPRINT_BACKLOG_CHANGE_PENDING',
+            // The notification is also a route back to the decision: the interface reads these
+            // identifiers to open the Sprint Backlog Manager on the change it is announcing.
+            data: expect.objectContaining({
+              sprintId: 'sprint-1',
+              teamId: 'team-1',
+              changeId: 'change-1',
+              pbiTitle: 'Test PBI',
+            }),
+          }),
+        })
+      );
+    });
+
+    it('announces a pending removal to every Product Owner on the team', async () => {
+      (prisma.teamMember.findMany as any).mockResolvedValue([
+        { userId: 'po-1' },
+        { userId: 'po-2' },
+      ]);
+      (prisma.sprint.findUnique as any).mockResolvedValue(
+        activeSprint({ sprintBacklogItems: [{ id: 'sbi-1', pbiId: 'pbi-1' }] })
+      );
+      (prisma.productBacklogItem.findUnique as any).mockResolvedValue(readyPbi);
+      (prisma.sprintBacklogChange.create as any).mockResolvedValue(changeRecord());
+      (prisma.task.findMany as any).mockResolvedValue([]);
+
+      await sprintBacklogManagerService.removePBIFromActiveSprint('sprint-1', 'pbi-1', 'user-1', {
+        taskAction: 'delete',
+        reason: 'Cut scope',
+        goalImpact: 'ENDANGERS_GOAL',
+      });
+
+      expect(prisma.notification.create).toHaveBeenCalledTimes(2);
+      expect(prisma.notification.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ userId: 'po-1', type: 'SPRINT_BACKLOG_CHANGE_PENDING' }),
+        })
+      );
+      expect(prisma.notification.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ userId: 'po-2', type: 'SPRINT_BACKLOG_CHANGE_PENDING' }),
+        })
+      );
+    });
+
+    it('still records the pending change when the Product Owner notification fails', async () => {
+      (prisma.notification.create as any).mockRejectedValue(new Error('delivery failed'));
+      (prisma.sprint.findUnique as any).mockResolvedValue(activeSprint());
+      (prisma.productBacklogItem.findUnique as any).mockResolvedValue(readyPbi);
+      (prisma.sprintBacklogChange.create as any).mockResolvedValue(changeRecord());
+
+      const result = await sprintBacklogManagerService.addPBIToActiveSprint('sprint-1', 'user-1', {
+        pbiId: 'pbi-1',
+        reason: 'Scope grew',
+        goalImpact: 'ENDANGERS_GOAL',
+      });
+
+      // A notification must never turn a recorded change into a failed request.
+      expect(result.pending).toBe(true);
+      expect(result.change.approvalStatus).toBe('PENDING');
     });
 
     it('refuses a second pending change for the same item', async () => {
@@ -4547,7 +4744,11 @@ describe('Active Sprint Guide gates', () => {
       });
       (prisma.teamMember.findFirst as any).mockResolvedValue({ role: 'PRODUCT_OWNER' });
 
-      const applyItem = vi.fn().mockResolvedValue({ id: 'sbi-new', pbi: readyPbi });
+      // A 5-point item: the seeded decomposition is two tasks of eight hours.
+      const applyItem = vi
+        .fn()
+        .mockResolvedValue({ id: 'sbi-new', pbi: { ...readyPbi, storyPoints: 5 } });
+      const seedTask = vi.fn().mockResolvedValue({ id: 'seeded-task' });
       const updateSprintGoal = vi
         .fn()
         .mockResolvedValue({ id: 'sprint-1', sprintGoal: 'Renegotiated goal' });
@@ -4573,7 +4774,7 @@ describe('Active Sprint Guide gates', () => {
             create: applyItem,
             delete: vi.fn(),
           },
-          task: { deleteMany: vi.fn() },
+          task: { create: seedTask, deleteMany: vi.fn() },
           workflow: { findFirst: vi.fn().mockResolvedValue(null) },
           workflowState: { findMany: vi.fn().mockResolvedValue([]) },
           statusChangeHistory: { create: vi.fn() },
@@ -4596,6 +4797,26 @@ describe('Active Sprint Guide gates', () => {
       expect(result.sprint?.sprintGoal).toBe('Renegotiated goal');
       expect(updateSprintGoal).toHaveBeenCalled();
       expect(updateGeneratedSprint).toHaveBeenCalled();
+
+      // Approving an addition seeds the same ad-hoc decomposition a direct add would have.
+      expect(seedTask).toHaveBeenCalledTimes(2);
+      expect(seedTask).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            sprintId: 'sprint-1',
+            pbiId: 'pbi-1',
+            title: 'Adhoc: Test PBI - Task 1',
+            estimatedHours: 8,
+            remainingHours: 8,
+            status: 'TODO',
+          }),
+        })
+      );
+      expect(acknowledgeChange).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ taskCount: 2, approvalStatus: 'APPLIED' }),
+        })
+      );
     });
 
     it('refuses a stale approval when the item is no longer READY', async () => {

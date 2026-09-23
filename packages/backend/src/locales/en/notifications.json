@@ -29,6 +29,8 @@
   "remindersNone": "No reminders sent",
   "remindersSent": "Reminders sent to {{count}} team member",
   "remindersSent_plural": "Reminders sent to {{count}} team members",
+  "sprintBacklogChangePendingMessage": "{{changedByName}} declared that changing \"{{pbiTitle}}\" endangers the Sprint Goal of \"{{sprintName}}\". Approve the renegotiated Sprint Goal or reject the change.",
+  "sprintBacklogChangePendingTitle": "Sprint Backlog change awaits your decision",
   "sprintEnded": "Sprint \"{{sprintName}}\" has ended",
   "sprintStarted": "Sprint \"{{sprintName}}\" has started",
   "taskAssigned": "Task \"{{taskTitle}}\" was assigned to you",

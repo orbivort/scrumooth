@@ -938,6 +938,16 @@
   font-weight: var(--font-weight-medium);
 }
 
+/* Why the Review cannot be concluded yet: present only while the Sprint is still running. */
+.review-action-hint {
+  flex: 1 1 auto;
+  margin: 0;
+  text-align: end;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-tertiary);
+  line-height: var(--line-height-relaxed);
+}
+
 .empty-state-container {
   display: flex;
   justify-content: center;

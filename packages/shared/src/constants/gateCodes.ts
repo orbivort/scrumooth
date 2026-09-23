@@ -207,9 +207,16 @@ export const GATE_CODES = {
    */
   SPRINT_RETROSPECTIVE_REQUIRES_REVIEW: 'GATE_SPRINT_RETROSPECTIVE_REQUIRES_REVIEW',
   /**
-   * The Review inspects the outcome of the Sprint and the Retrospective concludes it, so neither
-   * event can be completed before the Sprint's end date has passed. Completing them early would
-   * close a Sprint that never ran its course.
+   * "The purpose of the Sprint Review is to inspect the outcome of the Sprint" and "The Sprint
+   * Retrospective concludes the Sprint", so neither event can be completed before the Sprint has
+   * reached the day its end date names -- completing them early would close a fixed-length
+   * container that never ran its course. The rule is an inference from those two sentences rather
+   * than a sentence of its own: the Guide orders the events *within* the Sprint, it does not name
+   * a calendar date for them.
+   *
+   * The comparison is day-granular, so the time of day an end date happens to store cannot decide
+   * whether a team may hold its own Review on the Sprint's last day, and a Sprint that has already
+   * concluded (cancelled or completed) is not held back to dates that no longer describe it.
    */
   SPRINT_EVENT_BEFORE_END_DATE: 'GATE_SPRINT_EVENT_BEFORE_END_DATE',
   /**

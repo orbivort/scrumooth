@@ -88,8 +88,9 @@ const saveSprintBacklogSchema = z.object({
     .optional(),
 });
 
-// Sprint Planning attendance (Developers-only writes). Roles mirror the Sprint Review /
-// Retrospective attendee contract so all three events record participation identically.
+// Sprint Planning attendance (any member of the owning Scrum Team may write). Roles mirror the
+// Sprint Review / Retrospective attendee contract so all three events record participation
+// identically.
 const planningAttendeeRoleSchema = z.enum(
   ['product_owner', 'scrum_master', 'developers', 'stakeholder'],
   { error: 'Invalid role selected' }
@@ -305,8 +306,8 @@ router.get(
 
 /**
  * @route   POST /api/v1/sprints/:id/planning-attendees
- * @desc    Record a Sprint Planning attendee (Developers-only)
- * @access  Private (Developers)
+ * @desc    Record a Sprint Planning attendee (any member of the Scrum Team)
+ * @access  Private (Scrum Team members)
  */
 router.post(
   '/:id/planning-attendees',
@@ -317,8 +318,8 @@ router.post(
 
 /**
  * @route   PUT /api/v1/sprints/:id/planning-attendees/:attendeeId
- * @desc    Update a recorded Sprint Planning attendee (Developers-only)
- * @access  Private (Developers)
+ * @desc    Update a recorded Sprint Planning attendee (any member of the Scrum Team)
+ * @access  Private (Scrum Team members)
  */
 router.put(
   '/:id/planning-attendees/:attendeeId',
@@ -329,8 +330,8 @@ router.put(
 
 /**
  * @route   DELETE /api/v1/sprints/:id/planning-attendees/:attendeeId
- * @desc    Remove a recorded Sprint Planning attendee (Developers-only)
- * @access  Private (Developers)
+ * @desc    Remove a recorded Sprint Planning attendee (any member of the Scrum Team)
+ * @access  Private (Scrum Team members)
  */
 router.delete(
   '/:id/planning-attendees/:attendeeId',

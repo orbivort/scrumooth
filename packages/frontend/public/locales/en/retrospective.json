@@ -74,7 +74,8 @@
     "ariaLabel": "Mark retrospective as completed",
     "button": "Complete Retrospective",
     "completing": "Completing...",
-    "description": "Mark this retrospective as completed to finalize it and prevent further edits."
+    "description": "Mark this retrospective as completed to finalize it and prevent further edits.",
+    "sprintNotEnded": "The Sprint Review inspects the outcome of the Sprint and the Sprint Retrospective concludes it. This Retrospective can be completed from the Sprint's end date ({{endDate}})."
   },
   "confirmationModal": {
     "cancel": "Cancel",
@@ -201,6 +202,24 @@
     "viewRetrospective": "View Retrospective"
   },
   "loading": "Loading Retrospective...",
+  "phases": {
+    "close": {
+      "description": "Write down what the team decided, mark who was in the room, and complete the Retrospective.",
+      "title": "Record and close"
+    },
+    "decide": {
+      "description": "Inspect the Definition of Done, then turn the improvements the team agrees on into action items.",
+      "title": "What we change"
+    },
+    "reflect": {
+      "description": "Gather what went well, what did not, and what the team wants to improve — one thought per item.",
+      "title": "What happened"
+    },
+    "stage": {
+      "description": "Bring the Sprint you are about to inspect into the room, along with the Scrum Values that set the tone.",
+      "title": "Set the stage"
+    }
+  },
   "pts": "pts",
   "sprintInfo": {
     "businessDay_one": "{{count}} business day",

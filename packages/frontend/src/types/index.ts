@@ -318,6 +318,8 @@ export interface BacklogChange {
   acknowledgedByName?: string;
   acknowledgedAt?: string;
   acknowledgementNote?: string;
+  /** Tasks the change created (`ADDED`) or removed (`REMOVED`) in the Sprint Backlog. */
+  taskCount?: number;
   changedBy: string;
   changedByName?: string;
   changedAt: string;

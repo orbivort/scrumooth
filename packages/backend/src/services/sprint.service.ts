@@ -9,6 +9,7 @@ import {
   SPRINT_GOAL_IMPACTS,
   SPRINT_MAX_DURATION_DAYS,
   contiguityGapDays,
+  generateAdHocTaskDrafts,
   isSprintChangeApprovalStatus,
   isSprintGoalImpact,
   rangesOverlap,
@@ -29,6 +30,7 @@ import {
 import {
   NotificationType,
   ImpedimentStatus,
+  UserRole,
   type Sprint,
   type Task,
   type TaskStatus,
@@ -49,6 +51,7 @@ import { PRODUCT_BACKLOG_ORDER } from '../config/backlogOrder';
 import { t as requestT } from '../i18n/requestT.js';
 import { redactSmNotesForCaller } from './smNotesAccess';
 import { getActiveDoDItemIds, getDoRShortfall } from './incrementAccess';
+import { assertTeamMembership } from './teamRoleAccess';
 
 // Sprint with relations (optimized for API responses)
 export type SprintWithRelations = Omit<Sprint, 'createdBy' | 'updatedBy'> & {
@@ -1224,10 +1227,12 @@ class SprintService {
   }
 
   /**
-   * Record one attendance entry for a planning session. Planning is the Developers' event to
-   * run but the whole Scrum Team's to attend, so writes are Developers-only and the record is
-   * the evidence that the Sprint Backlog was created collaboratively. The Sprint is materialised
-   * as `DRAFT` on the first write, exactly as a first draft save is.
+   * Record one attendance entry for a planning session. Planning is the Developers' event to run
+   * but the whole Scrum Team's to attend, and the record is the evidence that the Sprint Backlog
+   * was created collaboratively -- so every member of the team may write it, exactly as they may
+   * record attendance at the Sprint Review and the Retrospective. Only the Sprint Backlog itself
+   * (its items, tasks, and capacity) is the Developers'. The Sprint is materialised as `DRAFT` on
+   * the first write, exactly as a first draft save is.
    */
   async addPlanningAttendee(
     sprintId: string,
@@ -1242,10 +1247,7 @@ class SprintService {
     }
 
     this.assertPlanningIsEditable(sprint.status);
-    await this.assertDeveloperRole(sprint.teamId, userId, {
-      messageKey: 'errors:sprintBacklog.developersOnly',
-      gateCode: GATE_CODES.DEVELOPER_ONLY_SPRINT_BACKLOG,
-    });
+    await this.assertPlanningTeamMember(sprint.teamId, userId);
 
     return prisma.sprintPlanningAttendee.create({
       data: {
@@ -1281,10 +1283,7 @@ class SprintService {
     }
 
     this.assertPlanningIsEditable(sprint.status);
-    await this.assertDeveloperRole(sprint.teamId, userId, {
-      messageKey: 'errors:sprintBacklog.developersOnly',
-      gateCode: GATE_CODES.DEVELOPER_ONLY_SPRINT_BACKLOG,
-    });
+    await this.assertPlanningTeamMember(sprint.teamId, userId);
 
     await this.assertAttendeeBelongsToSprint(sprint.id, attendeeId);
 
@@ -1301,7 +1300,7 @@ class SprintService {
     });
   }
 
-  /** Remove one attendance entry (Developers-only, planning Sprint only). */
+  /** Remove one attendance entry (any team member, planning Sprint only). */
   async deletePlanningAttendee(
     sprintId: string,
     attendeeId: string,
@@ -1313,10 +1312,7 @@ class SprintService {
     }
 
     this.assertPlanningIsEditable(sprint.status);
-    await this.assertDeveloperRole(sprint.teamId, userId, {
-      messageKey: 'errors:sprintBacklog.developersOnly',
-      gateCode: GATE_CODES.DEVELOPER_ONLY_SPRINT_BACKLOG,
-    });
+    await this.assertPlanningTeamMember(sprint.teamId, userId);
 
     await this.assertAttendeeBelongsToSprint(sprint.id, attendeeId);
     await prisma.sprintPlanningAttendee.delete({ where: { id: attendeeId } });
@@ -1350,6 +1346,23 @@ class SprintService {
     if (status !== 'DRAFT' && status !== 'PLANNED') {
       throw new BadRequestError(requestT('errors:sprint.notPlanned'));
     }
+  }
+
+  /**
+   * Assert that the caller belongs to the Scrum Team that owns the Sprint.
+   *
+   * Recording who attended Sprint Planning is the Scrum Team's own act, not a Developers-only
+   * write: the Sprint Backlog is "created by the collaborative work of the entire Scrum Team", and
+   * the participation record *is* the evidence of that collaboration -- so the Product Owner and
+   * the Scrum Master may add and correct it just as the Developers may. This mirrors the Sprint
+   * Review and the Retrospective, whose attendance is likewise open to every member of the team.
+   * The Sprint Backlog itself (items, tasks, capacity) remains Developers-only.
+   */
+  private async assertPlanningTeamMember(teamId: string, userId: string): Promise<void> {
+    await assertTeamMembership(teamId, userId, {
+      messageKey: 'errors:sprint.teamMembersOnly',
+      gateCode: GATE_CODES.SPRINT_TEAM_MEMBERS_ONLY,
+    });
   }
 
   /** Defense-in-depth role validation (the route schema validates too). */
@@ -3029,6 +3042,8 @@ export interface SprintBacklogChange {
   acknowledgedByName?: string;
   acknowledgedAt?: Date;
   acknowledgementNote?: string;
+  /** Tasks the change created (`ADDED`) or removed (`REMOVED`) in the Sprint Backlog. */
+  taskCount?: number;
   changedBy: string;
   changedByName: string;
   createdAt: Date;
@@ -3179,6 +3194,8 @@ class SprintBacklogManagerService {
     if (data.goalImpact === SPRINT_GOAL_IMPACTS.ENDANGERS_GOAL) {
       return this.recordPendingBacklogChange({
         sprintId,
+        teamId: sprint.teamId,
+        sprintName: sprint.name,
         pbiId: data.pbiId,
         userId,
         changeType: 'ADDED',
@@ -3196,6 +3213,10 @@ class SprintBacklogManagerService {
       select: { firstName: true, lastName: true },
     });
 
+    // Captured from the transaction so the seeded tasks' audit trail is written once the change,
+    // and therefore the tasks, is committed.
+    let adHocTaskIds: string[] = [];
+
     const result = await withTransaction(
       async (tx) => {
         const sprintBacklogItem = await tx.sprintBacklogItem.create({
@@ -3208,6 +3229,16 @@ class SprintBacklogManagerService {
           include: {
             pbi: true,
           },
+        });
+
+        // The item's ad-hoc decomposition is part of applying the change rather than a follow-up
+        // the client performs, so the item and its tasks enter the Sprint together.
+        adHocTaskIds = await this.createAdHocTasks(tx, {
+          sprintId,
+          pbiId: data.pbiId,
+          pbiTitle: sprintBacklogItem.pbi.title,
+          storyPoints: sprintBacklogItem.pbi.storyPoints,
+          userId,
         });
 
         await tx.productBacklogItem.update({
@@ -3262,7 +3293,7 @@ class SprintBacklogManagerService {
             // The commitment in force at the time of the change, so a later goal edit cannot
             // retroactively rewrite what the team inspected.
             sprintGoalAtChange: sprint.sprintGoal ?? null,
-            taskCount: 0,
+            taskCount: adHocTaskIds.length,
             createdBy: userId,
           },
           include: {
@@ -3281,6 +3312,7 @@ class SprintBacklogManagerService {
           goalImpact: data.goalImpact,
           approvalStatus: SPRINT_CHANGE_APPROVAL_STATUSES.APPLIED,
           sprintGoalAtChange: sprint.sprintGoal ?? undefined,
+          taskCount: adHocTaskIds.length,
           changedBy: userId,
           changedByName: changeRecord.creator
             ? `${changeRecord.creator.firstName} ${changeRecord.creator.lastName}`.trim()
@@ -3294,6 +3326,13 @@ class SprintBacklogManagerService {
       },
       { ...TRANSACTION_CONFIG.DEFAULT, operationName: 'addPBIToActiveSprint' }
     );
+
+    await this.recordAdHocTaskCreation(adHocTaskIds, {
+      teamId: sprint.teamId,
+      sprintId,
+      pbiId: data.pbiId,
+      userId,
+    });
 
     await this.updateBurndownData(sprintId);
 
@@ -3357,6 +3396,8 @@ class SprintBacklogManagerService {
 
       return this.recordPendingBacklogChange({
         sprintId,
+        teamId: sprint.teamId,
+        sprintName: sprint.name,
         pbiId,
         userId,
         changeType: 'REMOVED',
@@ -3463,6 +3504,7 @@ class SprintBacklogManagerService {
           goalImpact: data.goalImpact,
           approvalStatus: SPRINT_CHANGE_APPROVAL_STATUSES.APPLIED,
           sprintGoalAtChange: sprint.sprintGoal ?? undefined,
+          taskCount: tasks.length,
           changedBy: userId,
           changedByName: changeRecord.creator
             ? `${changeRecord.creator.firstName} ${changeRecord.creator.lastName}`.trim()
@@ -3501,6 +3543,7 @@ class SprintBacklogManagerService {
       acknowledgedBy: string | null;
       acknowledgedAt: Date | null;
       acknowledgementNote: string | null;
+      taskCount: number;
       createdBy: string | null;
       createdAt: Date;
       pbi?: { title: string } | null;
@@ -3527,12 +3570,110 @@ class SprintBacklogManagerService {
         : undefined,
       acknowledgedAt: record.acknowledgedAt ?? undefined,
       acknowledgementNote: record.acknowledgementNote ?? undefined,
+      taskCount: record.taskCount,
       changedBy: record.createdBy ?? 'system',
       changedByName: record.creator
         ? `${record.creator.firstName} ${record.creator.lastName}`.trim()
         : 'System',
       createdAt: record.createdAt,
     };
+  }
+
+  /**
+   * Create the ad-hoc decomposition tasks for an item that has just entered the Sprint Backlog.
+   *
+   * An item yields the same tasks whether it entered the Sprint directly (it supported the Sprint
+   * Goal) or later, when the Product Owner acknowledged a change that endangered the goal: the plan
+   * the Developers inspect must not depend on which gate the item passed. The tasks are written
+   * inside the caller's transaction, so an item can never land in the Sprint Backlog without them.
+   *
+   * The acting user's role is deliberately NOT re-asserted here. The caller has already authorised
+   * the addition — as a Developer for a direct add, as the Product Owner for an acknowledgement —
+   * and while the Product Owner must not be able to create tasks on their own, their approval of an
+   * addition is precisely what brings the item and its tasks into the Sprint.
+   */
+  private async createAdHocTasks(
+    tx: Prisma.TransactionClient,
+    input: {
+      sprintId: string;
+      pbiId: string;
+      pbiTitle: string;
+      storyPoints: number | null;
+      userId: string;
+    }
+  ): Promise<string[]> {
+    const drafts = generateAdHocTaskDrafts(input.pbiTitle, input.storyPoints);
+    const taskIds: string[] = [];
+
+    for (const draft of drafts) {
+      const task = await tx.task.create({
+        data: {
+          id: generateUUIDv7(),
+          sprintId: input.sprintId,
+          pbiId: input.pbiId,
+          title: draft.title,
+          estimatedHours: draft.estimatedHours,
+          remainingHours: draft.remainingHours,
+          status: 'TODO',
+          createdBy: input.userId,
+        },
+        select: { id: true },
+      });
+
+      taskIds.push(task.id);
+    }
+
+    return taskIds;
+  }
+
+  /**
+   * Record the initial workflow status of freshly seeded ad-hoc tasks, so a system-created task
+   * leaves the same trail as one a Developer created by hand.
+   *
+   * Best-effort by design, mirroring `createTask`: the tasks are already part of the Sprint, so a
+   * missing audit row must not fail the change that produced them. The creation transition (no
+   * previous status → the workflow's default status) is not role-restricted, so this behaves
+   * identically for a Developer's add and for a Product Owner's acknowledgement.
+   */
+  private async recordAdHocTaskCreation(
+    taskIds: string[],
+    input: { teamId: string; sprintId: string; pbiId: string; userId: string }
+  ): Promise<void> {
+    if (taskIds.length === 0) {
+      return;
+    }
+
+    try {
+      const teamMember = await prisma.teamMember.findFirst({
+        where: { teamId: input.teamId, userId: input.userId },
+        select: { role: true },
+      });
+
+      await Promise.all(
+        taskIds.map((taskId) =>
+          workflowService.executeStatusChange({
+            entityType: 'Task',
+            entityId: taskId,
+            fromStatus: null,
+            toStatus: 'TODO',
+            userId: input.userId,
+            userRoles: teamMember ? [teamMember.role] : [],
+            changeReason: 'Initial task creation',
+            metadata: {
+              sprintId: input.sprintId,
+              pbiId: input.pbiId,
+              source: 'sprint_backlog_addition',
+            },
+          })
+        )
+      );
+    } catch (error) {
+      logger.error('Failed to record initial status change history for ad-hoc tasks', {
+        error,
+        sprintId: input.sprintId,
+        pbiId: input.pbiId,
+      });
+    }
   }
 
   /**
@@ -3546,6 +3687,8 @@ class SprintBacklogManagerService {
    */
   private async recordPendingBacklogChange(input: {
     sprintId: string;
+    teamId: string;
+    sprintName: string;
     pbiId: string;
     userId: string;
     changeType: 'ADDED' | 'REMOVED';
@@ -3606,18 +3749,97 @@ class SprintBacklogManagerService {
       }),
     ]);
 
+    const changedByName = record.creator
+      ? `${record.creator.firstName} ${record.creator.lastName}`.trim()
+      : user
+        ? `${user.firstName} ${user.lastName}`.trim()
+        : 'Unknown';
+
+    // The change is recorded; now the accountable role is told about it. Delivery must not turn
+    // a recorded change into a failed request, so the notification is best-effort.
+    await this.notifyPendingBacklogChange({
+      teamId: input.teamId,
+      sprintId: input.sprintId,
+      changeId: record.id,
+      sprintName: input.sprintName,
+      pbiTitle: record.pbi.title,
+      changedByName,
+      createdBy: input.userId,
+    });
+
     return {
       sprintBacklogItem: null,
       pending: true,
       change: {
         ...this.toBacklogChangeView(record, record.pbi.title),
-        changedByName: record.creator
-          ? `${record.creator.firstName} ${record.creator.lastName}`.trim()
-          : user
-            ? `${user.firstName} ${user.lastName}`.trim()
-            : 'Unknown',
+        changedByName,
       },
     };
+  }
+
+  /**
+   * Tell the team's Product Owner that a goal-endangering Sprint Backlog change is waiting for
+   * their acknowledgement.
+   *
+   * The Product Owner is the only role that can decide it, so only they are notified: the
+   * notification is the signal that turns the gate into something the accountable person is
+   * told about, rather than something they have to go looking for. A failure to deliver is
+   * logged, never thrown, because the pending change is already persisted and remains decidable
+   * from the Sprint Backlog Manager regardless.
+   *
+   * `changeId` is carried in `data` so the notification is not just a signal but a route back to
+   * the decision: the interface opens the Sprint Backlog Manager for that Sprint and highlights
+   * the change the Product Owner was told about.
+   */
+  private async notifyPendingBacklogChange(input: {
+    teamId: string;
+    sprintId: string;
+    changeId: string;
+    sprintName: string;
+    pbiTitle: string;
+    changedByName: string;
+    createdBy: string;
+  }): Promise<void> {
+    try {
+      const productOwners = await prisma.teamMember.findMany({
+        where: { teamId: input.teamId, role: UserRole.PRODUCT_OWNER },
+        select: { userId: true },
+      });
+
+      if (productOwners.length === 0) {
+        return;
+      }
+
+      await Promise.all(
+        productOwners.map((member) =>
+          notificationService.createLocalized({
+            userId: member.userId,
+            type: NotificationType.SPRINT_BACKLOG_CHANGE_PENDING,
+            titleKey: 'sprintBacklogChangePendingTitle',
+            messageKey: 'sprintBacklogChangePendingMessage',
+            messageParams: {
+              pbiTitle: input.pbiTitle,
+              sprintName: input.sprintName,
+              changedByName: input.changedByName,
+            },
+            data: {
+              sprintId: input.sprintId,
+              teamId: input.teamId,
+              changeId: input.changeId,
+              pbiTitle: input.pbiTitle,
+            },
+            createdBy: input.createdBy,
+          })
+        )
+      );
+    } catch (error) {
+      logger.error('Failed to notify the Product Owner of a pending Sprint Backlog change', {
+        error,
+        sprintId: input.sprintId,
+        teamId: input.teamId,
+        changeId: input.changeId,
+      });
+    }
   }
 
   /**
@@ -3696,6 +3918,10 @@ class SprintBacklogManagerService {
       throw new BadRequestError(requestT('errors:sprint.scopeGoalRenegotiationRequired'));
     }
 
+    // Seeded only when the approved change adds an item; a removal seeds nothing. Declared outside
+    // the transaction so the seeded tasks' audit trail can be written once the change is committed.
+    let adHocTaskIds: string[] = [];
+
     const applied = await withTransaction(
       async (tx) => {
         let sprintBacklogItemId: string | null = null;
@@ -3742,6 +3968,16 @@ class SprintBacklogManagerService {
 
           sprintBacklogItemId = created.id;
           newItemStatus = 'IN_PROGRESS';
+
+          // The same seeding as a direct add: approving an addition must give the Developers the
+          // plan they would have had if the item had never needed approval.
+          adHocTaskIds = await this.createAdHocTasks(tx, {
+            sprintId,
+            pbiId: change.pbiId,
+            pbiTitle: created.pbi.title,
+            storyPoints: created.pbi.storyPoints,
+            userId,
+          });
         } else {
           const sprintBacklogItem = await tx.sprintBacklogItem.findFirst({
             where: { sprintId, pbiId: change.pbiId },
@@ -3796,6 +4032,9 @@ class SprintBacklogManagerService {
             sprintBacklogItemId,
             previousStatus: change.pbi.status,
             newStatus: newItemStatus,
+            // An approved addition now carries the tasks it seeded; an approved removal keeps the
+            // count recorded when the removal was requested.
+            ...(change.changeType === 'ADDED' ? { taskCount: adHocTaskIds.length } : {}),
           },
           include: {
             pbi: { select: { title: true } },
@@ -3808,6 +4047,13 @@ class SprintBacklogManagerService {
       },
       { ...TRANSACTION_CONFIG.DEFAULT, operationName: 'acknowledgeSprintBacklogChange' }
     );
+
+    await this.recordAdHocTaskCreation(adHocTaskIds, {
+      teamId: change.sprint.teamId,
+      sprintId,
+      pbiId: change.pbiId,
+      userId,
+    });
 
     await this.updateBurndownData(sprintId);
 

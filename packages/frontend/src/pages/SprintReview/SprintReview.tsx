@@ -2,7 +2,7 @@ import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useParams, useNavigate, useSearchParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
-import { formatLocaleDate, SCRUM_EVENTS } from '@scrumooth/shared';
+import { formatLocaleDate, mayCompleteSprintEvents, SCRUM_EVENTS } from '@scrumooth/shared';
 
 import {
   IncrementStatus,
@@ -316,6 +316,17 @@ export const SprintReview: React.FC = () => {
   const sprintGoalForReview =
     review?.sprintGoal ?? sprint?.sprintGoal ?? review?.sprint?.sprintGoal ?? '';
   const hasSprintGoal = sprintGoalForReview.trim().length > 0;
+
+  /**
+   * "The purpose of the Sprint Review is to inspect the outcome of the Sprint", so the Review
+   * cannot be completed while the Sprint is still running. The rule is the shared one the backend
+   * enforces -- including its exemption for a Sprint that has already concluded -- so the button
+   * and the gate cannot disagree about when this Review may be completed.
+   */
+  const mayCompleteReview = mayCompleteSprintEvents(sprint);
+  const sprintNotEndedHint = t('completeReview.sprintNotEnded', {
+    endDate: sprint?.endDate ? formatLocaleDate(sprint.endDate, locale, 'PPPP') : '',
+  });
 
   const { data: productGoalData } = useQuery({
     queryKey: ['sprint-review-product-goal', review?.id],
@@ -718,6 +729,14 @@ export const SprintReview: React.FC = () => {
 
     const errors: string[] = [];
 
+    // "The purpose of the Sprint Review is to inspect the outcome of the Sprint": a Review whose
+    // Sprint has not reached the day its end date names would inspect an outcome that is not final
+    // yet. Surfacing it through the existing "cannot complete" list keeps the refusal inside the
+    // flow the team already sees; the backend refuses the same way.
+    if (!mayCompleteReview) {
+      errors.push(sprintNotEndedHint);
+    }
+
     const attendeesList = review.attendees;
     if (attendeesList.length === 0) {
       errors.push(t('completeReview.confirmationModal.validationAttendees'));
@@ -773,7 +792,16 @@ export const SprintReview: React.FC = () => {
 
     setValidationErrors([]);
     setShowCompleteConfirmation(true);
-  }, [review, teamMembers, updateReviewMutation.isPending, hasSprintGoal, sprintGoalOutcome, t]);
+  }, [
+    review,
+    teamMembers,
+    updateReviewMutation.isPending,
+    hasSprintGoal,
+    sprintGoalOutcome,
+    t,
+    mayCompleteReview,
+    sprintNotEndedHint,
+  ]);
 
   const confirmCompleteReview = useCallback(() => {
     if (validationErrors.length > 0) {
@@ -1759,11 +1787,15 @@ export const SprintReview: React.FC = () => {
 
       <div className={styles['review-actions']}>
         <button
-          className={`${styles.button} ${styles['button-primary']} ${updateReviewMutation.isPending || review.status === 'completed' || isReviewCompleted ? styles['button-disabled'] : ''}`}
+          className={`${styles.button} ${styles['button-primary']} ${updateReviewMutation.isPending || review.status === 'completed' || isReviewCompleted || !mayCompleteReview ? styles['button-disabled'] : ''}`}
           onClick={handleCompleteReview}
           disabled={
-            updateReviewMutation.isPending || review.status === 'completed' || isReviewCompleted
+            updateReviewMutation.isPending ||
+            review.status === 'completed' ||
+            isReviewCompleted ||
+            !mayCompleteReview
           }
+          title={mayCompleteReview ? undefined : sprintNotEndedHint}
           type="button"
         >
           {review.status === 'completed' || isReviewCompleted ? (
@@ -1778,6 +1810,9 @@ export const SprintReview: React.FC = () => {
             </>
           )}
         </button>
+        {!mayCompleteReview && review.status !== 'completed' && !isReviewCompleted && (
+          <p className={styles['review-action-hint']}>{sprintNotEndedHint}</p>
+        )}
         {updateReviewMutation.isError && (
           <div className={styles['review-action-error']}>
             {t('completeReview.failed')}

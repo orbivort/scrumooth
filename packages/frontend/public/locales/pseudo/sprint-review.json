@@ -110,6 +110,7 @@
     },
     "defaultSummary": "[Sprínt Révíéw cómplétéddddddddd.]",
     "failed": "[Fàíléd tó cómplété révíéw. Pléàsé try àgàínnnnnnnnnnnnnnn.]",
+    "sprintNotEnded": "[Thé Sprínt Révíéw ínspécts thé óútcómé óf thé Sprínt. Thís Révíéw càn bé cómplétéd fróm thé Sprínt's énd dàtééééééééééééééééééééééééééééééééééé ({{endDate}}).]",
     "successModal": {
       "close": "[Clósééé]",
       "message": "[Sprínt Révíéw cómplétéd súccéssfúllyyyyyyyyyyyyy!]",

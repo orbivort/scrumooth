@@ -1,11 +1,10 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { SPRINT_GOAL_IMPACTS } from '@scrumooth/shared';
 
 import { apiService } from '../../services';
 import { useTeamStore } from '../../store';
-import { logger } from '../../utils/logger';
 import { canCancelSprint } from '../../utils/roleUtils';
 import {
   MoSCoWPriority,
@@ -28,57 +27,16 @@ import {
 
 import styles from './SprintBacklogManager.module.css';
 
-interface TaskGenerationConfig {
-  taskCount: number;
-  estimatedHours: number;
-}
-
-const STORY_POINTS_TO_TASKS: Record<number, TaskGenerationConfig> = {
-  1: { taskCount: 1, estimatedHours: 2 },
-  2: { taskCount: 1, estimatedHours: 4 },
-  3: { taskCount: 1, estimatedHours: 8 },
-  5: { taskCount: 2, estimatedHours: 8 },
-  8: { taskCount: 3, estimatedHours: 8 },
-  13: { taskCount: 5, estimatedHours: 8 },
-};
-
-const generateDraftTaskData = (
-  pbiId: string,
-  pbiTitle: string,
-  storyPoints: number
-): Array<{
-  pbiId: string;
-  title: string;
-  estimatedHours: number;
-  remainingHours: number;
-}> => {
-  const config = STORY_POINTS_TO_TASKS[storyPoints] ?? { taskCount: 1, estimatedHours: 8 };
-  const tasks: Array<{
-    pbiId: string;
-    title: string;
-    estimatedHours: number;
-    remainingHours: number;
-  }> = [];
-
-  for (let i = 0; i < config.taskCount; i++) {
-    const taskTitle =
-      config.taskCount === 1 ? `Adhoc: ${pbiTitle} - Task` : `Adhoc: ${pbiTitle} - Task ${i + 1}`;
-
-    tasks.push({
-      pbiId,
-      title: taskTitle,
-      estimatedHours: config.estimatedHours,
-      remainingHours: config.estimatedHours,
-    });
-  }
-
-  return tasks;
-};
-
 interface SprintBacklogManagerProps {
   sprintId: string;
   sprintName: string;
   sprintGoal?: string;
+  /**
+   * A Sprint Backlog change the manager was opened on — set when the manager is reached from the
+   * Product Owner's notification. The change is scrolled into view and highlighted so the
+   * notification lands on the decision rather than on the screen that contains it.
+   */
+  highlightChangeId?: string;
   onClose: () => void;
 }
 
@@ -162,6 +120,7 @@ export const SprintBacklogManager: React.FC<SprintBacklogManagerProps> = ({
   sprintId,
   sprintName,
   sprintGoal,
+  highlightChangeId,
   onClose,
 }) => {
   const { t } = useTranslation('sprint');
@@ -169,7 +128,7 @@ export const SprintBacklogManager: React.FC<SprintBacklogManagerProps> = ({
   const queryClient = useQueryClient();
   const teamId = currentTeam?.id;
 
-  const { toasts, success, info, error: showError, warning, removeToast } = useToast();
+  const { toasts, success, info, error: showError, removeToast } = useToast();
   const [searchQuery, setSearchQuery] = useState('');
   const [showRemoveModal, setShowRemoveModal] = useState(false);
   const [selectedItemForRemoval, setSelectedItemForRemoval] = useState<RemoveItemData | null>(null);
@@ -215,7 +174,9 @@ export const SprintBacklogManager: React.FC<SprintBacklogManagerProps> = ({
 
   const { data: changesData } = useQuery({
     queryKey: ['sprintBacklogChanges', sprintId],
-    queryFn: () => apiService.getSprintBacklogChanges(sprintId, 10),
+    // Opened on a specific change, the manager has to look far enough back to find it. The board
+    // reads the same query key, so a wider window costs nothing extra.
+    queryFn: () => apiService.getSprintBacklogChanges(sprintId, highlightChangeId ? 20 : 10),
     enabled: !!sprintId,
   });
 
@@ -228,7 +189,27 @@ export const SprintBacklogManager: React.FC<SprintBacklogManagerProps> = ({
     () => availablePBIsData?.data ?? [],
     [availablePBIsData]
   );
-  const recentChanges = changesData?.data ?? [];
+  const recentChanges = useMemo(() => changesData?.data ?? [], [changesData]);
+
+  // Reached from the Product Owner's notification, the manager opens on the change that was
+  // announced. Scrolling and focusing it means the notification delivers the Product Owner to the
+  // decision, not merely to the screen that holds it.
+  const highlightedChangeRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (!highlightChangeId) {
+      return;
+    }
+    const element = highlightedChangeRef.current;
+    if (!element) {
+      return;
+    }
+    // jsdom, which the component tests run on, does not implement scrollIntoView; the highlight
+    // must not depend on an environment that can scroll.
+    if (typeof element.scrollIntoView === 'function') {
+      element.scrollIntoView({ block: 'nearest' });
+    }
+    element.focus({ preventScroll: true });
+  }, [highlightChangeId, recentChanges]);
 
   const sprintBacklogItems: SprintBacklogItem[] = useMemo(() => {
     return sprintItems.map((item) => ({
@@ -278,16 +259,16 @@ export const SprintBacklogManager: React.FC<SprintBacklogManagerProps> = ({
       );
       return { ...result, pbiId };
     },
-    onSuccess: async (response) => {
+    onSuccess: (response) => {
       const pbiId = response.pbiId;
-      const pbi = availablePBIs.find((item) => item.id === pbiId);
 
       // A change declared as endangering the Sprint Goal is recorded as pending and deliberately
-      // NOT applied: the Sprint Backlog is untouched, so no draft tasks are generated either.
+      // NOT applied: neither the item nor its ad-hoc tasks enter the Sprint until the Product Owner
+      // acknowledges it.
       if (response.data?.pending) {
         info(
           t('sprintBacklogManager.changePendingApproval', {
-            item: pbi?.title ?? '',
+            item: availablePBIs.find((item) => item.id === pbiId)?.title ?? '',
           })
         );
         void queryClient.invalidateQueries({ queryKey: queryKeys.sprintBacklogChanges.all });
@@ -297,33 +278,14 @@ export const SprintBacklogManager: React.FC<SprintBacklogManagerProps> = ({
         return;
       }
 
-      if (pbi) {
-        const draftTasks = generateDraftTaskData(pbiId, pbi.title, pbi.storyPoints ?? 0);
-
-        try {
-          const createTaskPromises = draftTasks.map((taskData) =>
-            apiService.createTask(sprintId, {
-              pbiId: taskData.pbiId,
-              title: taskData.title,
-              estimatedHours: taskData.estimatedHours,
-              remainingHours: taskData.remainingHours,
-            })
-          );
-
-          await Promise.all(createTaskPromises);
-
-          const taskInfo =
-            draftTasks.length > 0
-              ? t('sprintBacklogManager.withDraftTasks', { count: draftTasks.length })
-              : '';
-          success(t('sprintBacklogManager.pbiAddedToSprint', { taskInfo }));
-        } catch (taskError: unknown) {
-          logger.error('Failed to create draft tasks', undefined, { error: taskError });
-          warning(t('sprintBacklogManager.pbiAddedButTasksFailed'));
-        }
-      } else {
-        success(t('sprintBacklogManager.pbiAddedSuccessfully'));
-      }
+      // The server seeds the item's ad-hoc tasks as part of applying the change, so the count comes
+      // back with it instead of being generated (and created) here.
+      const draftTaskCount = response.data?.change.taskCount ?? 0;
+      const taskInfo =
+        draftTaskCount > 0
+          ? t('sprintBacklogManager.withDraftTasks', { count: draftTaskCount })
+          : '';
+      success(t('sprintBacklogManager.pbiAddedToSprint', { taskInfo }));
 
       void queryClient.invalidateQueries({ queryKey: queryKeys.sprint.all });
       void queryClient.invalidateQueries({ queryKey: queryKeys.sprintTasks.all });
@@ -661,10 +623,19 @@ export const SprintBacklogManager: React.FC<SprintBacklogManagerProps> = ({
                 ) : (
                   recentChanges.map((change) => {
                     const isPending = change.approvalStatus === 'PENDING';
+                    const isRejected = change.approvalStatus === 'REJECTED';
+                    // A decided change carries the acknowledger and the moment of the decision. A
+                    // change that supported the Sprint Goal was applied without needing a
+                    // decision, so a missing acknowledger means "no approval was required".
+                    const wasDecided = !isPending && change.acknowledgedAt !== undefined;
+                    const isHighlighted = change.id === highlightChangeId;
                     return (
                       <div
                         key={change.id}
-                        className={`${styles['sbm-change-item']} ${isPending ? styles['sbm-change-item-pending'] : ''}`}
+                        ref={isHighlighted ? highlightedChangeRef : undefined}
+                        tabIndex={isHighlighted ? -1 : undefined}
+                        data-highlighted={isHighlighted ? 'true' : undefined}
+                        className={`${styles['sbm-change-item']} ${isPending ? styles['sbm-change-item-pending'] : ''} ${isHighlighted ? styles['sbm-change-item-highlighted'] : ''}`}
                       >
                         <span
                           className={`${styles['sbm-change-type']} ${styles[`sbm-change-${change.changeType.toLowerCase()}`]}`}
@@ -684,6 +655,44 @@ export const SprintBacklogManager: React.FC<SprintBacklogManagerProps> = ({
                             <span className={styles['sbm-change-pending']}>
                               <InfoIcon size={12} />
                               {t('sprintBacklogManager.awaitingProductOwner')}
+                            </span>
+                          )}
+                          {wasDecided && (
+                            <span
+                              className={`${styles['sbm-change-decision']} ${
+                                isRejected
+                                  ? styles['sbm-change-decision-rejected']
+                                  : styles['sbm-change-decision-approved']
+                              }`}
+                            >
+                              {isRejected ? <ThumbsDownIcon size={12} /> : <CheckIcon size={12} />}
+                              {isRejected
+                                ? t('sprintBacklogManager.rejectedByName', {
+                                    name: change.acknowledgedByName ?? '',
+                                  })
+                                : t('sprintBacklogManager.approvedByName', {
+                                    name: change.acknowledgedByName ?? '',
+                                  })}
+                              {change.acknowledgedAt && (
+                                <span className={styles['sbm-change-decision-time']}>
+                                  • {formatTimeAgo(change.acknowledgedAt)}
+                                </span>
+                              )}
+                            </span>
+                          )}
+                          {!isPending && !wasDecided && (
+                            <span
+                              className={`${styles['sbm-change-decision']} ${styles['sbm-change-decision-applied']}`}
+                            >
+                              <InfoIcon size={12} />
+                              {t('sprintBacklogManager.appliedToBacklog')}
+                            </span>
+                          )}
+                          {wasDecided && change.acknowledgementNote && (
+                            <span className={styles['sbm-change-note']}>
+                              {t('sprintBacklogManager.decisionNote', {
+                                note: change.acknowledgementNote,
+                              })}
                             </span>
                           )}
                           {change.goalImpact === 'ENDANGERS_GOAL' && (
