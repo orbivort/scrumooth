@@ -20,8 +20,13 @@ import {
 import { Button } from '../../../components/common/Button';
 import { CrossFunctionalitySummary } from '../../../components/CrossFunctionalitySummary/CrossFunctionalitySummary';
 import type { CrossFunctionalityRecord } from '../../../services/domain/crossFunctionality.service';
-import type { CrossFunctionalityAssessmentValues } from '../WorkingAgreements';
 import styles from '../WorkingAgreements.module.css';
+
+/** What a recording session sends: a narrative summary plus one row per skill the team needs. */
+export interface CrossFunctionalityAssessmentValues {
+  summary: string;
+  skills: Array<{ name: string; coverage: SkillCoverage; note?: string | null }>;
+}
 
 interface CrossFunctionalityPanelProps {
   record: CrossFunctionalityRecord | null;

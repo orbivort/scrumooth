@@ -476,8 +476,7 @@
     "settingsLabel": "Configuración",
     "sprintPlanning": "Sprint Planning",
     "sprintReview": "Sprint Review",
-    "team": "Equipo",
-    "workingAgreements": "Acuerdos de trabajo"
+    "team": "Equipo"
   },
   "networkErrors": {
     "networkError": "Error de red. Por favor verifique su conexión e intente de nuevo.",

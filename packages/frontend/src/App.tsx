@@ -38,7 +38,6 @@ import {
   LazyTeamManagementPage as TeamManagementPage,
   LazyReports as Reports,
   LazySmDashboard as SmDashboard,
-  LazyWorkingAgreements as WorkingAgreements,
   LazyIncrementList as IncrementList,
   LazyIncrementDetail as IncrementDetail,
   LazyIncrementCreate as IncrementCreate,
@@ -375,15 +374,12 @@ function App() {
                           path="/organizational-barriers"
                           element={<Navigate to="/impediments?tab=barriers" replace />}
                         />
+                        {/* The working agreements are the third tab of the Team module; the address
+                            they used to live at is kept, so links and bookmarks still land on
+                            them. */}
                         <Route
                           path="/working-agreements"
-                          element={
-                            <ProtectedRoute>
-                              <LazyRoute fallbackMessage="Loading working agreements...">
-                                <WorkingAgreements />
-                              </LazyRoute>
-                            </ProtectedRoute>
-                          }
+                          element={<Navigate to="/team?tab=agreements" replace />}
                         />
                         <Route
                           path="/settings/sprint-configuration"

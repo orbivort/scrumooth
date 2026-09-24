@@ -65,9 +65,5 @@
     "editTitle": "Arbeitsvereinbarung bearbeiten",
     "title": "Vereinbarung",
     "titleRequired": "Gib der Vereinbarung einen Titel mit mindestens drei Zeichen."
-  },
-  "page": {
-    "subtitle": "Wie dieses Team arbeitet – und ob es die nötigen Fähigkeiten gemeinsam abdeckt.",
-    "title": "Arbeitsvereinbarungen"
   }
 }

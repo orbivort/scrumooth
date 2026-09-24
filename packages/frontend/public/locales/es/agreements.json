@@ -65,9 +65,5 @@
     "editTitle": "Editar acuerdo de trabajo",
     "title": "Acuerdo",
     "titleRequired": "Pon al acuerdo un título de al menos tres caracteres."
-  },
-  "page": {
-    "subtitle": "Cómo trabaja este equipo y si cubre colectivamente las habilidades que necesita.",
-    "title": "Acuerdos de trabajo"
   }
 }

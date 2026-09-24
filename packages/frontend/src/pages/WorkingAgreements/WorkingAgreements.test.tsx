@@ -1,44 +1,31 @@
 /**
- * Working agreements and cross-functionality tests.
+ * The working agreements panel, as the Team module's third tab.
  *
- * Coverage: the team's agreements are listed with their authorship, retirement keeps them visible,
- * the cross-functionality coverage is summarised with its gaps, and recording an assessment is
- * offered only to the team's Scrum Master. On top of the reading, the writing is covered too: any
- * member can add, edit or retire an agreement, the Scrum Master records the assessment, and a
- * failed write reports itself instead of dropping the change.
+ * Coverage: the team's agreements are listed with their authorship, retiring one keeps it visible
+ * rather than deleting it, and the panel reads the agreements of the current team only. On top of
+ * the reading, the writing is covered too: any member can add, edit, retire or reactivate an
+ * agreement, and a failed write reports itself instead of dropping the change.
+ *
+ * The cross-functionality assessment used to sit beside this list. It is recorded for the team's
+ * health, so it moved to the Scrum Health tab and its tests live in
+ * pages/Team/components/ScrumHealthPanel.test.tsx.
  */
 import React from 'react';
 import userEvent from '@testing-library/user-event';
 import { screen, waitFor, renderWithProviders, initTestI18n } from '../../test-utils';
 import { vi, beforeAll, beforeEach, describe, it, expect } from 'vitest';
-import { SkillCoverage, WorkingAgreementStatus } from '@scrumooth/shared';
+import { WorkingAgreementStatus } from '@scrumooth/shared';
 
 import { WorkingAgreements } from './WorkingAgreements';
-import { crossFunctionalityService, workingAgreementsService } from '../../services';
-import { useTeamStore } from '../../store';
-import { mockCrossFunctionality, mockWorkingAgreements } from '../../services/mockFacilitationData';
+import { workingAgreementsService } from '../../services';
+import { mockWorkingAgreements } from '../../services/mockFacilitationData';
 
 vi.mock('../../services');
-vi.mock('../../store', () => ({
-  useTeamStore: vi.fn(),
-}));
-
 vi.mock('./WorkingAgreements.module.css', () => ({
   default: new Proxy({}, { get: (_target, key) => String(key) }),
 }));
 
-const mockTeam = {
-  id: 'team-1',
-  name: 'Test Team',
-  members: [{ userId: 'user-1', role: 'DEVELOPERS' }],
-};
-
-const mockStore = (role: string) => {
-  (useTeamStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
-    currentTeam: mockTeam,
-    userRoleInCurrentTeam: role,
-  });
-};
+const TEAM_ID = 'team-1';
 
 /** The agreement form is the only place an agreement is written, so both tests use it. */
 const fillAgreementForm = async (
@@ -57,15 +44,10 @@ describe('WorkingAgreements', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    mockStore('DEVELOPERS');
 
     vi.mocked(workingAgreementsService.getAgreements).mockResolvedValue({
       success: true,
       data: mockWorkingAgreements,
-    });
-    vi.mocked(crossFunctionalityService.getRecord).mockResolvedValue({
-      success: true,
-      data: mockCrossFunctionality,
     });
     vi.mocked(workingAgreementsService.createAgreement).mockResolvedValue({
       success: true,
@@ -75,18 +57,17 @@ describe('WorkingAgreements', () => {
       success: true,
       data: mockWorkingAgreements[0],
     });
-    vi.mocked(crossFunctionalityService.createAssessment).mockResolvedValue({ success: true });
   });
 
   it('lists the team agreements with who added them', async () => {
-    renderWithProviders(<WorkingAgreements />);
+    renderWithProviders(<WorkingAgreements teamId={TEAM_ID} />);
 
     expect(await screen.findByText('No meetings before 10:00')).toBeInTheDocument();
     expect(screen.getAllByText(/Added by: Ada Lovelace/).length).toBeGreaterThan(0);
   });
 
   it('keeps a retired agreement visible instead of deleting it', async () => {
-    renderWithProviders(<WorkingAgreements />);
+    renderWithProviders(<WorkingAgreements teamId={TEAM_ID} />);
 
     await screen.findByText('No meetings before 10:00');
 
@@ -95,37 +76,12 @@ describe('WorkingAgreements', () => {
     expect(screen.getByRole('button', { name: 'Reactivate' })).toBeInTheDocument();
   });
 
-  it('summarises the cross-functionality coverage and its gaps', async () => {
-    renderWithProviders(<WorkingAgreements />);
-
-    expect(await screen.findByText('1 covered · 1 partial · 1 not covered')).toBeInTheDocument();
-    expect(screen.getByText('Database migrations')).toBeInTheDocument();
-    expect(screen.getByText('Not covered')).toBeInTheDocument();
-    expect(screen.getByText('Partially covered')).toBeInTheDocument();
-  });
-
   it('lets any team member add an agreement', async () => {
-    renderWithProviders(<WorkingAgreements />);
+    renderWithProviders(<WorkingAgreements teamId={TEAM_ID} />);
 
     await screen.findByText('No meetings before 10:00');
 
     expect(screen.getByRole('button', { name: 'Add agreement' })).toBeInTheDocument();
-  });
-
-  it('offers the cross-functionality assessment only to the Scrum Master', async () => {
-    renderWithProviders(<WorkingAgreements />);
-    await screen.findByText('No meetings before 10:00');
-
-    expect(screen.queryByRole('button', { name: 'Record an assessment' })).not.toBeInTheDocument();
-  });
-
-  it('offers the cross-functionality assessment to the Scrum Master', async () => {
-    mockStore('SCRUM_MASTER');
-    renderWithProviders(<WorkingAgreements />);
-
-    await screen.findByText('No meetings before 10:00');
-
-    expect(screen.getByRole('button', { name: 'Record an assessment' })).toBeInTheDocument();
   });
 
   it('reports an honest empty state when nothing has been recorded', async () => {
@@ -133,43 +89,31 @@ describe('WorkingAgreements', () => {
       success: true,
       data: [],
     });
-    vi.mocked(crossFunctionalityService.getRecord).mockResolvedValue({
-      success: true,
-      data: { latest: null, history: [] },
-    });
 
-    renderWithProviders(<WorkingAgreements />);
+    renderWithProviders(<WorkingAgreements teamId={TEAM_ID} />);
 
     expect(await screen.findByText('No working agreement recorded yet.')).toBeInTheDocument();
-    expect(screen.getByText('No cross-functionality assessment recorded yet.')).toBeInTheDocument();
   });
 
   it('asks for a team before reading anything', () => {
-    (useTeamStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
-      currentTeam: null,
-      userRoleInCurrentTeam: null,
-    });
-
-    renderWithProviders(<WorkingAgreements />);
+    renderWithProviders(<WorkingAgreements teamId={undefined} />);
 
     expect(screen.getByTestId('empty-state')).toBeInTheDocument();
     expect(workingAgreementsService.getAgreements).not.toHaveBeenCalled();
-    expect(crossFunctionalityService.getRecord).not.toHaveBeenCalled();
   });
 
   it('reads the agreements from the current team only', async () => {
-    renderWithProviders(<WorkingAgreements />);
+    renderWithProviders(<WorkingAgreements teamId={TEAM_ID} />);
 
     await screen.findByText('No meetings before 10:00');
 
-    expect(workingAgreementsService.getAgreements).toHaveBeenCalledWith('team-1');
-    expect(crossFunctionalityService.getRecord).toHaveBeenCalledWith('team-1');
+    expect(workingAgreementsService.getAgreements).toHaveBeenCalledWith(TEAM_ID);
   });
 
   it('adds an agreement from the form and confirms it', async () => {
     const user = userEvent.setup();
 
-    renderWithProviders(<WorkingAgreements />);
+    renderWithProviders(<WorkingAgreements teamId={TEAM_ID} />);
     await screen.findByText('No meetings before 10:00');
 
     await user.click(screen.getByRole('button', { name: 'Add agreement' }));
@@ -184,7 +128,7 @@ describe('WorkingAgreements', () => {
 
     await waitFor(() =>
       expect(workingAgreementsService.createAgreement).toHaveBeenCalledWith({
-        teamId: 'team-1',
+        teamId: TEAM_ID,
         title: 'Reviews end on time',
         description: 'The review stops when its timebox is over.',
       })
@@ -199,7 +143,7 @@ describe('WorkingAgreements', () => {
     const user = userEvent.setup();
     vi.mocked(workingAgreementsService.createAgreement).mockRejectedValue(new Error('boom'));
 
-    renderWithProviders(<WorkingAgreements />);
+    renderWithProviders(<WorkingAgreements teamId={TEAM_ID} />);
     await screen.findByText('No meetings before 10:00');
 
     await user.click(screen.getByRole('button', { name: 'Add agreement' }));
@@ -214,7 +158,7 @@ describe('WorkingAgreements', () => {
     const user = userEvent.setup();
     vi.mocked(workingAgreementsService.updateAgreement).mockRejectedValue(new Error('boom'));
 
-    renderWithProviders(<WorkingAgreements />);
+    renderWithProviders(<WorkingAgreements teamId={TEAM_ID} />);
     await screen.findByText('No meetings before 10:00');
 
     await user.click(screen.getByRole('button', { name: 'Edit' }));
@@ -230,7 +174,7 @@ describe('WorkingAgreements', () => {
   it('closes a new, still empty agreement form without adding anything', async () => {
     const user = userEvent.setup();
 
-    renderWithProviders(<WorkingAgreements />);
+    renderWithProviders(<WorkingAgreements teamId={TEAM_ID} />);
     await screen.findByText('No meetings before 10:00');
 
     await user.click(screen.getByRole('button', { name: 'Add agreement' }));
@@ -247,7 +191,7 @@ describe('WorkingAgreements', () => {
   it('edits an agreement and confirms the update', async () => {
     const user = userEvent.setup();
 
-    renderWithProviders(<WorkingAgreements />);
+    renderWithProviders(<WorkingAgreements teamId={TEAM_ID} />);
     await screen.findByText('No meetings before 10:00');
 
     await user.click(screen.getByRole('button', { name: 'Edit' }));
@@ -273,13 +217,13 @@ describe('WorkingAgreements', () => {
     );
   });
 
-  // The page's own wiring for leaving an edit. The form additionally submits itself when cancelled
+  // The panel's own wiring for leaving an edit. The form additionally submits itself when cancelled
   // (the Cancel button is a submit button -- see the `it.fails` case in
   // components/WorkingAgreementForm.test.tsx), so this test asserts only that the edit closes.
   it('closes the edit form when the member cancels', async () => {
     const user = userEvent.setup();
 
-    renderWithProviders(<WorkingAgreements />);
+    renderWithProviders(<WorkingAgreements teamId={TEAM_ID} />);
     await screen.findByText('No meetings before 10:00');
 
     await user.click(screen.getByRole('button', { name: 'Edit' }));
@@ -295,7 +239,7 @@ describe('WorkingAgreements', () => {
   it('retires an active agreement instead of deleting it', async () => {
     const user = userEvent.setup();
 
-    renderWithProviders(<WorkingAgreements />);
+    renderWithProviders(<WorkingAgreements teamId={TEAM_ID} />);
     await screen.findByText('No meetings before 10:00');
 
     await user.click(screen.getByRole('button', { name: 'Retire' }));
@@ -310,7 +254,7 @@ describe('WorkingAgreements', () => {
   it('reactivates a retired agreement', async () => {
     const user = userEvent.setup();
 
-    renderWithProviders(<WorkingAgreements />);
+    renderWithProviders(<WorkingAgreements teamId={TEAM_ID} />);
     await screen.findByText('No meetings before 10:00');
 
     await user.click(screen.getByRole('button', { name: 'Reactivate' }));
@@ -326,49 +270,11 @@ describe('WorkingAgreements', () => {
     const user = userEvent.setup();
     vi.mocked(workingAgreementsService.updateAgreement).mockRejectedValue(new Error('boom'));
 
-    renderWithProviders(<WorkingAgreements />);
+    renderWithProviders(<WorkingAgreements teamId={TEAM_ID} />);
     await screen.findByText('No meetings before 10:00');
 
     await user.click(screen.getByRole('button', { name: 'Retire' }));
 
     expect(await screen.findByText('The change could not be saved.')).toBeInTheDocument();
-  });
-
-  it('records the cross-functionality assessment as the Scrum Master', async () => {
-    const user = userEvent.setup();
-    mockStore('SCRUM_MASTER');
-
-    renderWithProviders(<WorkingAgreements />);
-    await screen.findByText('No meetings before 10:00');
-
-    await user.click(screen.getByRole('button', { name: 'Record an assessment' }));
-    await user.type(screen.getByLabelText('Skill'), 'Database migrations');
-    await user.selectOptions(screen.getByLabelText('Coverage'), SkillCoverage.PARTIAL);
-    await user.type(screen.getByLabelText('What the team concluded'), 'We need to spread it.');
-    await user.click(screen.getByRole('button', { name: 'Save assessment' }));
-
-    await waitFor(() =>
-      expect(crossFunctionalityService.createAssessment).toHaveBeenCalledWith({
-        teamId: 'team-1',
-        summary: 'We need to spread it.',
-        skills: [{ name: 'Database migrations', coverage: SkillCoverage.PARTIAL, note: null }],
-      })
-    );
-    expect(await screen.findByText('Assessment recorded')).toBeInTheDocument();
-  });
-
-  it('reports a failed assessment instead of letting it pass silently', async () => {
-    const user = userEvent.setup();
-    mockStore('SCRUM_MASTER');
-    vi.mocked(crossFunctionalityService.createAssessment).mockRejectedValue(new Error('boom'));
-
-    renderWithProviders(<WorkingAgreements />);
-    await screen.findByText('No meetings before 10:00');
-
-    await user.click(screen.getByRole('button', { name: 'Record an assessment' }));
-    await user.type(screen.getByLabelText('Skill'), 'Database migrations');
-    await user.click(screen.getByRole('button', { name: 'Save assessment' }));
-
-    expect(await screen.findByText('The assessment could not be recorded.')).toBeInTheDocument();
   });
 });

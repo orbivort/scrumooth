@@ -17,7 +17,7 @@ import { useTeamStore, useAuthStore } from '../../store';
 import { apiService, healthCheckService } from '../../services';
 import type { ApiResponse } from '../../types';
 
-import { TeamManagement } from './Team';
+import { TeamManagement, type TeamTab } from './Team';
 
 const mockUseAuthStore = useAuthStore as unknown as vi.Mock;
 
@@ -32,6 +32,21 @@ vi.mock('../../services', () => ({
   },
   healthCheckService: {
     getLatest: vi.fn(),
+  },
+  crossFunctionalityService: {
+    getRecord: vi.fn(),
+    createAssessment: vi.fn(),
+  },
+  teamGroupService: {
+    listGroups: vi.fn(),
+    getSharedDefinitionOfDone: vi.fn(),
+    joinGroup: vi.fn(),
+    leaveGroup: vi.fn(),
+  },
+  workingAgreementsService: {
+    getAgreements: vi.fn(),
+    createAgreement: vi.fn(),
+    updateAgreement: vi.fn(),
   },
   sessionManager: {
     startSession: vi.fn(),
@@ -50,6 +65,19 @@ vi.mock('../../services', () => ({
   },
 }));
 vi.mock('../../store');
+
+type RenderModuleOptions = NonNullable<Parameters<typeof renderWithProviders>[1]>;
+
+/**
+ * Renders the module with one of its tabs open, the way a user reaches it: the tab lives in the
+ * URL, so the address is what selects the panel. A test that exercises a panel has to open its tab
+ * rather than assume the panel is on screen.
+ */
+const renderModule = (tab: TeamTab = 'overview', options: RenderModuleOptions = {}) =>
+  renderWithProviders(<TeamManagement />, {
+    initialRoute: tab === 'overview' ? '/team' : `/team?tab=${tab}`,
+    ...options,
+  });
 
 describe('TeamManagement - Multiple Teams', () => {
   const mockSetCurrentTeam = vi.fn();
@@ -105,7 +133,7 @@ describe('TeamManagement - Multiple Teams', () => {
     it('should show loading state when fetching teams', () => {
       (apiService.getMyTeams as unknown as vi.Mock).mockImplementation(() => new Promise(() => {}));
 
-      renderWithProviders(<TeamManagement />);
+      renderModule('overview');
 
       expect(screen.getByText('Loading team information...')).toBeInTheDocument();
     });
@@ -172,7 +200,7 @@ describe('TeamManagement - Multiple Teams', () => {
         setUserRoleInCurrentTeam: mockSetUserRoleInCurrentTeam,
       });
 
-      renderWithProviders(<TeamManagement />);
+      renderModule('overview');
 
       await waitFor(() => {
         expect(screen.getByRole('heading', { name: 'Alpha Team' })).toBeInTheDocument();
@@ -275,13 +303,16 @@ describe('TeamManagement - Multiple Teams', () => {
 
       mockSwitchTeam.mockResolvedValue(undefined);
 
-      renderWithProviders(<TeamManagement />);
+      renderModule('overview');
 
       await waitFor(() => {
         expect(screen.getByRole('heading', { name: 'Alpha Team' })).toBeInTheDocument();
       });
 
-      expect(screen.getByText('John Doe')).toBeInTheDocument();
+      // Membership is its own tab now, so the roster is read there rather than beside the identity
+      // card.
+      fireEvent.click(screen.getByRole('tab', { name: i18nT('team:tabs.members') }));
+      expect(await screen.findByText('John Doe')).toBeInTheDocument();
 
       const teamSwitcher = screen.getByRole('button', { name: /switch team/i });
       fireEvent.click(teamSwitcher);
@@ -318,7 +349,7 @@ describe('TeamManagement - Multiple Teams', () => {
         setUserRoleInCurrentTeam: mockSetUserRoleInCurrentTeam,
       });
 
-      renderWithProviders(<TeamManagement />);
+      renderModule('overview');
 
       await waitFor(() => {
         expect(screen.getByText(/Welcome to Scrumooth/i)).toBeInTheDocument();
@@ -340,7 +371,7 @@ describe('TeamManagement - Multiple Teams', () => {
         setUserRoleInCurrentTeam: mockSetUserRoleInCurrentTeam,
       });
 
-      renderWithProviders(<TeamManagement />);
+      renderModule('overview');
 
       await waitFor(() => {
         expect(screen.getByText(/Welcome to Scrumooth/i)).toBeInTheDocument();
@@ -398,7 +429,7 @@ describe('TeamManagement - Multiple Teams', () => {
         setUserRoleInCurrentTeam: mockSetUserRoleInCurrentTeam,
       });
 
-      renderWithProviders(<TeamManagement />);
+      renderModule('overview');
 
       // Wait for the component to render
       await waitFor(() => {
@@ -467,7 +498,7 @@ describe('TeamManagement - Multiple Teams', () => {
         setUserRoleInCurrentTeam: mockSetUserRoleInCurrentTeam,
       });
 
-      renderWithProviders(<TeamManagement />);
+      renderModule('overview');
 
       await waitFor(() => {
         expect(screen.getByRole('heading', { name: 'Team 1' })).toBeInTheDocument();
@@ -515,7 +546,7 @@ describe('TeamManagement - Multiple Teams', () => {
         setUserRoleInCurrentTeam: mockSetUserRoleInCurrentTeam,
       });
 
-      renderWithProviders(<TeamManagement />);
+      renderModule('overview');
 
       await waitFor(() => {
         expect(screen.getByText(/team not found/i)).toBeInTheDocument();
@@ -577,7 +608,7 @@ describe('TeamManagement - Multiple Teams', () => {
 
       mockSwitchTeam.mockResolvedValue(undefined);
 
-      renderWithProviders(<TeamManagement />);
+      renderModule('overview');
 
       await waitFor(() => {
         expect(screen.getByRole('heading', { name: 'Alpha Team' })).toBeInTheDocument();
@@ -663,10 +694,10 @@ describe('TeamManagement - Multiple Teams', () => {
         setUserRoleInCurrentTeam: mockSetUserRoleInCurrentTeam,
       });
 
-      renderWithProviders(<TeamManagement />);
+      renderModule('members');
 
       await waitFor(() => {
-        expect(screen.getByRole('heading', { name: 'Alpha Team' })).toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: 'Team Members' })).toBeInTheDocument();
       });
 
       // Component renders team page with member count
@@ -715,10 +746,10 @@ describe('TeamManagement - Multiple Teams', () => {
         setUserRoleInCurrentTeam: mockSetUserRoleInCurrentTeam,
       });
 
-      renderWithProviders(<TeamManagement />);
+      renderModule('members');
 
       await waitFor(() => {
-        expect(screen.getByRole('heading', { name: 'Alpha Team' })).toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: 'Team Members' })).toBeInTheDocument();
       });
 
       // Component shows "Invite Member" button for product owners
@@ -784,7 +815,7 @@ describe('TeamManagement - Multiple Teams', () => {
         setUserRoleInCurrentTeam: mockSetUserRoleInCurrentTeam,
       });
 
-      renderWithProviders(<TeamManagement />);
+      renderModule('overview');
 
       await waitFor(() => {
         expect(screen.getByRole('heading', { name: 'Alpha Team' })).toBeInTheDocument();
@@ -852,10 +883,10 @@ describe('TeamManagement - Multiple Teams', () => {
         setUserRoleInCurrentTeam: mockSetUserRoleInCurrentTeam,
       });
 
-      renderWithProviders(<TeamManagement />);
+      renderModule('members');
 
       await waitFor(() => {
-        expect(screen.getByRole('heading', { name: 'Alpha Team' })).toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: 'Team Members' })).toBeInTheDocument();
       });
 
       // The invite button is present but disabled at capacity
@@ -916,10 +947,10 @@ describe('TeamManagement - Multiple Teams', () => {
         setUserRoleInCurrentTeam: mockSetUserRoleInCurrentTeam,
       });
 
-      renderWithProviders(<TeamManagement />);
+      renderModule('members');
 
       await waitFor(() => {
-        expect(screen.getByRole('heading', { name: 'Alpha Team' })).toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: 'Team Members' })).toBeInTheDocument();
       });
 
       // Component renders team page with members section
@@ -985,7 +1016,7 @@ describe('TeamManagement - Multiple Teams', () => {
         setUserRoleInCurrentTeam: mockSetUserRoleInCurrentTeam,
       });
 
-      renderWithProviders(<TeamManagement />);
+      renderModule('overview');
 
       await waitFor(() => {
         expect(screen.getByRole('heading', { name: 'Alpha Team' })).toBeInTheDocument();
@@ -1051,7 +1082,7 @@ describe('TeamManagement - Multiple Teams', () => {
         setUserRoleInCurrentTeam: mockSetUserRoleInCurrentTeam,
       });
 
-      renderWithProviders(<TeamManagement />);
+      renderModule('overview');
 
       await waitFor(() => {
         expect(screen.getByRole('heading', { name: 'Alpha Team' })).toBeInTheDocument();
@@ -1105,7 +1136,7 @@ describe('TeamManagement - Multiple Teams', () => {
         setUserRoleInCurrentTeam: mockSetUserRoleInCurrentTeam,
       });
 
-      renderWithProviders(<TeamManagement />);
+      renderModule('overview');
 
       await waitFor(() => {
         expect(screen.getByRole('heading', { name: 'Alpha Team' })).toBeInTheDocument();
@@ -1159,7 +1190,7 @@ describe('TeamManagement - Multiple Teams', () => {
         setUserRoleInCurrentTeam: mockSetUserRoleInCurrentTeam,
       });
 
-      renderWithProviders(<TeamManagement />);
+      renderModule('overview');
 
       await waitFor(() => {
         expect(screen.getByRole('heading', { name: 'Alpha Team' })).toBeInTheDocument();
@@ -1211,7 +1242,7 @@ describe('TeamManagement - Multiple Teams', () => {
         setUserRoleInCurrentTeam: mockSetUserRoleInCurrentTeam,
       });
 
-      renderWithProviders(<TeamManagement />);
+      renderModule('overview');
 
       await waitFor(() => {
         expect(screen.getByRole('heading', { name: 'Alpha Team' })).toBeInTheDocument();
@@ -1265,7 +1296,7 @@ describe('TeamManagement - Multiple Teams', () => {
         setUserRoleInCurrentTeam: mockSetUserRoleInCurrentTeam,
       });
 
-      renderWithProviders(<TeamManagement />);
+      renderModule('overview');
 
       await waitFor(() => {
         expect(screen.getByRole('heading', { name: 'Alpha Team' })).toBeInTheDocument();
@@ -1316,7 +1347,7 @@ describe('TeamManagement - Multiple Teams', () => {
         setUserRoleInCurrentTeam: mockSetUserRoleInCurrentTeam,
       });
 
-      renderWithProviders(<TeamManagement />);
+      renderModule('overview');
 
       await waitFor(() => {
         expect(screen.getByRole('heading', { name: 'Alpha Team' })).toBeInTheDocument();
@@ -1367,7 +1398,7 @@ describe('TeamManagement - Multiple Teams', () => {
         setUserRoleInCurrentTeam: mockSetUserRoleInCurrentTeam,
       });
 
-      renderWithProviders(<TeamManagement />);
+      renderModule('overview');
 
       await waitFor(() => {
         expect(screen.getByRole('heading', { name: 'Alpha Team' })).toBeInTheDocument();
@@ -1418,7 +1449,7 @@ describe('TeamManagement - Multiple Teams', () => {
         setUserRoleInCurrentTeam: mockSetUserRoleInCurrentTeam,
       });
 
-      renderWithProviders(<TeamManagement />);
+      renderModule('overview');
 
       await waitFor(() => {
         expect(screen.getByRole('heading', { name: 'Alpha Team' })).toBeInTheDocument();
@@ -1484,10 +1515,10 @@ describe('TeamManagement - Multiple Teams', () => {
         setUserRoleInCurrentTeam: mockSetUserRoleInCurrentTeam,
       });
 
-      renderWithProviders(<TeamManagement />);
+      renderModule('members');
 
       await waitFor(() => {
-        expect(screen.getByRole('heading', { name: 'Alpha Team' })).toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: 'Team Members' })).toBeInTheDocument();
       });
 
       // Component renders team page with members section
@@ -1538,10 +1569,10 @@ describe('TeamManagement - Multiple Teams', () => {
         setUserRoleInCurrentTeam: mockSetUserRoleInCurrentTeam,
       });
 
-      renderWithProviders(<TeamManagement />);
+      renderModule('members');
 
       await waitFor(() => {
-        expect(screen.getByRole('heading', { name: 'Alpha Team' })).toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: 'Team Members' })).toBeInTheDocument();
       });
 
       expect(screen.getByText(/0\s+member/i)).toBeInTheDocument();
@@ -1578,7 +1609,7 @@ describe('TeamManagement - Multiple Teams', () => {
         setUserRoleInCurrentTeam: mockSetUserRoleInCurrentTeam,
       });
 
-      renderWithProviders(<TeamManagement />);
+      renderModule('overview');
 
       // Component shows welcome view when loading/no team
       expect(screen.getByText(/welcome to scrumooth/i)).toBeInTheDocument();
@@ -1617,7 +1648,7 @@ describe('TeamManagement - Multiple Teams', () => {
         setUserRoleInCurrentTeam: mockSetUserRoleInCurrentTeam,
       });
 
-      renderWithProviders(<TeamManagement />);
+      renderModule('overview');
 
       // Component shows welcome view when there's an error
       await waitFor(() => {
@@ -1656,7 +1687,7 @@ describe('TeamManagement - Multiple Teams', () => {
         setUserRoleInCurrentTeam: mockSetUserRoleInCurrentTeam,
       });
 
-      renderWithProviders(<TeamManagement />);
+      renderModule('overview');
 
       // Component renders - check for welcome message when no team/error state
       await waitFor(() => {
@@ -1723,10 +1754,10 @@ describe('TeamManagement - Multiple Teams', () => {
         setUserRoleInCurrentTeam: mockSetUserRoleInCurrentTeam,
       });
 
-      renderWithProviders(<TeamManagement />);
+      renderModule('members');
 
       await waitFor(() => {
-        expect(screen.getByRole('heading', { name: 'Alpha Team' })).toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: 'Team Members' })).toBeInTheDocument();
       });
 
       const searchInput = screen.getByPlaceholderText(i18nT('team:members.searchPlaceholder'));
@@ -1793,10 +1824,10 @@ describe('TeamManagement - Multiple Teams', () => {
         setUserRoleInCurrentTeam: mockSetUserRoleInCurrentTeam,
       });
 
-      renderWithProviders(<TeamManagement />);
+      renderModule('members');
 
       await waitFor(() => {
-        expect(screen.getByRole('heading', { name: 'Alpha Team' })).toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: 'Team Members' })).toBeInTheDocument();
       });
 
       const searchInput = screen.getByPlaceholderText(i18nT('team:members.searchPlaceholder'));
@@ -1868,10 +1899,10 @@ describe('TeamManagement - Multiple Teams', () => {
         setUserRoleInCurrentTeam: mockSetUserRoleInCurrentTeam,
       });
 
-      renderWithProviders(<TeamManagement />);
+      renderModule('members');
 
       await waitFor(() => {
-        expect(screen.getByRole('heading', { name: 'Alpha Team' })).toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: 'Team Members' })).toBeInTheDocument();
       });
 
       // Sort is a combobox/select, not a button
@@ -1940,10 +1971,10 @@ describe('TeamManagement - Multiple Teams', () => {
         setUserRoleInCurrentTeam: mockSetUserRoleInCurrentTeam,
       });
 
-      renderWithProviders(<TeamManagement />);
+      renderModule('members');
 
       await waitFor(() => {
-        expect(screen.getByRole('heading', { name: 'Alpha Team' })).toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: 'Team Members' })).toBeInTheDocument();
       });
 
       // Sort is a combobox/select, not a button
@@ -1998,7 +2029,7 @@ describe('TeamManagement - Multiple Teams', () => {
         setUserRoleInCurrentTeam: mockSetUserRoleInCurrentTeam,
       });
 
-      renderWithProviders(<TeamManagement />);
+      renderModule('overview');
 
       await waitFor(() => {
         expect(screen.getByRole('heading', { name: 'Alpha Team' })).toBeInTheDocument();
@@ -2047,7 +2078,7 @@ describe('TeamManagement - Multiple Teams', () => {
         setUserRoleInCurrentTeam: mockSetUserRoleInCurrentTeam,
       });
 
-      renderWithProviders(<TeamManagement />);
+      renderModule('overview');
 
       await waitFor(() => {
         expect(screen.getByRole('heading', { name: 'Alpha Team' })).toBeInTheDocument();
@@ -2106,10 +2137,10 @@ describe('TeamManagement - Multiple Teams', () => {
         setUserRoleInCurrentTeam: mockSetUserRoleInCurrentTeam,
       });
 
-      renderWithProviders(<TeamManagement />);
+      renderModule('members');
 
       await waitFor(() => {
-        expect(screen.getByRole('heading', { name: 'Alpha Team' })).toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: 'Team Members' })).toBeInTheDocument();
       });
 
       // Component renders team page successfully
@@ -2199,10 +2230,10 @@ describe('TeamManagement - Multiple Teams', () => {
       ];
       setupDefaultMocks(members);
 
-      renderWithProviders(<TeamManagement />);
+      renderModule('members');
 
       await waitFor(() => {
-        expect(screen.getByRole('heading', { name: 'Alpha Team' })).toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: 'Team Members' })).toBeInTheDocument();
       });
 
       const listViewButton = screen.getByLabelText('List view');
@@ -2226,10 +2257,10 @@ describe('TeamManagement - Multiple Teams', () => {
       ];
       setupDefaultMocks(members);
 
-      renderWithProviders(<TeamManagement />);
+      renderModule('members');
 
       await waitFor(() => {
-        expect(screen.getByRole('heading', { name: 'Alpha Team' })).toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: 'Team Members' })).toBeInTheDocument();
       });
 
       const searchInput = screen.getByPlaceholderText(i18nT('team:members.searchPlaceholder'));
@@ -2250,10 +2281,10 @@ describe('TeamManagement - Multiple Teams', () => {
       ];
       setupDefaultMocks(members);
 
-      renderWithProviders(<TeamManagement />);
+      renderModule('members');
 
       await waitFor(() => {
-        expect(screen.getByRole('heading', { name: 'Alpha Team' })).toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: 'Team Members' })).toBeInTheDocument();
       });
 
       const searchInput = screen.getByPlaceholderText(i18nT('team:members.searchPlaceholder'));
@@ -2273,10 +2304,10 @@ describe('TeamManagement - Multiple Teams', () => {
       ];
       setupDefaultMocks(members);
 
-      renderWithProviders(<TeamManagement />);
+      renderModule('members');
 
       await waitFor(() => {
-        expect(screen.getByRole('heading', { name: 'Alpha Team' })).toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: 'Team Members' })).toBeInTheDocument();
       });
 
       const searchInput = screen.getByPlaceholderText(i18nT('team:members.searchPlaceholder'));
@@ -2314,10 +2345,10 @@ describe('TeamManagement - Multiple Teams', () => {
       ];
       setupDefaultMocks(members);
 
-      renderWithProviders(<TeamManagement />);
+      renderModule('members');
 
       await waitFor(() => {
-        expect(screen.getByRole('heading', { name: 'Alpha Team' })).toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: 'Team Members' })).toBeInTheDocument();
       });
 
       const sortSelect = screen.getByLabelText(/sort members by/i);
@@ -2334,10 +2365,10 @@ describe('TeamManagement - Multiple Teams', () => {
       ];
       setupDefaultMocks(members);
 
-      renderWithProviders(<TeamManagement />);
+      renderModule('members');
 
       await waitFor(() => {
-        expect(screen.getByRole('heading', { name: 'Alpha Team' })).toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: 'Team Members' })).toBeInTheDocument();
       });
 
       const filterSelect = screen.getByLabelText(i18nT('team:members.filterByRoleAriaLabel'));
@@ -2351,10 +2382,10 @@ describe('TeamManagement - Multiple Teams', () => {
       const members: Array<Record<string, unknown>> = [];
       setupDefaultMocks(members, 'product_owner');
 
-      renderWithProviders(<TeamManagement />);
+      renderModule('members');
 
       await waitFor(() => {
-        expect(screen.getByRole('heading', { name: 'Alpha Team' })).toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: 'Team Members' })).toBeInTheDocument();
       });
 
       const inviteButton = screen.getByRole('button', { name: /invite member/i });
@@ -2376,10 +2407,10 @@ describe('TeamManagement - Multiple Teams', () => {
       const members: Array<Record<string, unknown>> = [];
       setupDefaultMocks(members, 'product_owner');
 
-      renderWithProviders(<TeamManagement />);
+      renderModule('members');
 
       await waitFor(() => {
-        expect(screen.getByRole('heading', { name: 'Alpha Team' })).toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: 'Team Members' })).toBeInTheDocument();
       });
 
       const inviteButton = screen.getByRole('button', { name: /invite member/i });
@@ -2413,10 +2444,10 @@ describe('TeamManagement - Multiple Teams', () => {
       ];
       setupDefaultMocks(members, 'product_owner');
 
-      renderWithProviders(<TeamManagement />);
+      renderModule('members');
 
       await waitFor(() => {
-        expect(screen.getByRole('heading', { name: 'Alpha Team' })).toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: 'Team Members' })).toBeInTheDocument();
       });
 
       const inviteButton = screen.getByRole('button', { name: /invite member/i });
@@ -2444,10 +2475,10 @@ describe('TeamManagement - Multiple Teams', () => {
       ];
       setupDefaultMocks(members, 'product_owner');
 
-      renderWithProviders(<TeamManagement />);
+      renderModule('members');
 
       await waitFor(() => {
-        expect(screen.getByRole('heading', { name: 'Alpha Team' })).toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: 'Team Members' })).toBeInTheDocument();
       });
 
       const removeButton = screen.getByLabelText(/remove jane smith from team/i);
@@ -2479,10 +2510,10 @@ describe('TeamManagement - Multiple Teams', () => {
       const members: Array<Record<string, unknown>> = [];
       setupDefaultMocks(members, 'product_owner');
 
-      renderWithProviders(<TeamManagement />);
+      renderModule('members');
 
       await waitFor(() => {
-        expect(screen.getByRole('heading', { name: 'Alpha Team' })).toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: 'Team Members' })).toBeInTheDocument();
       });
 
       const inviteButton = screen.getByRole('button', { name: /invite member/i });
@@ -2520,10 +2551,10 @@ describe('TeamManagement - Multiple Teams', () => {
         user: { id: 'user-1', name: 'Test User', email: 'test@example.com' },
       });
 
-      renderWithProviders(<TeamManagement />);
+      renderModule('members');
 
       await waitFor(() => {
-        expect(screen.getByRole('heading', { name: 'Alpha Team' })).toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: 'Team Members' })).toBeInTheDocument();
       });
 
       expect(screen.queryByLabelText(/remove test user from team/i)).not.toBeInTheDocument();
@@ -2547,7 +2578,7 @@ describe('TeamManagement - Multiple Teams', () => {
         setUserRoleInCurrentTeam: mockSetUserRoleInCurrentTeam,
       });
 
-      renderWithProviders(<TeamManagement />);
+      renderModule('overview');
 
       await waitFor(() => {
         expect(screen.getByText(/welcome to scrumooth/i)).toBeInTheDocument();
@@ -2572,7 +2603,7 @@ describe('TeamManagement - Multiple Teams', () => {
         setUserRoleInCurrentTeam: mockSetUserRoleInCurrentTeam,
       });
 
-      renderWithProviders(<TeamManagement />);
+      renderModule('overview');
 
       await waitFor(() => {
         expect(screen.getByText(/access denied/i)).toBeInTheDocument();
@@ -2593,10 +2624,10 @@ describe('TeamManagement - Multiple Teams', () => {
         data: undefined,
       });
 
-      renderWithProviders(<TeamManagement />);
+      renderModule('members');
 
       await waitFor(() => {
-        expect(screen.getByRole('heading', { name: 'Alpha Team' })).toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: 'Team Members' })).toBeInTheDocument();
       });
 
       const removeButton = screen.getByLabelText(/remove jane smith from team/i);
@@ -2622,10 +2653,10 @@ describe('TeamManagement - Multiple Teams', () => {
         new Error('404 User not found')
       );
 
-      renderWithProviders(<TeamManagement />);
+      renderModule('members');
 
       await waitFor(() => {
-        expect(screen.getByRole('heading', { name: 'Alpha Team' })).toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: 'Team Members' })).toBeInTheDocument();
       });
 
       const inviteButton = screen.getByRole('button', { name: /invite member/i });
@@ -2664,10 +2695,10 @@ describe('TeamManagement - Multiple Teams', () => {
         new Error('409 Conflict - User already in team')
       );
 
-      renderWithProviders(<TeamManagement />);
+      renderModule('members');
 
       await waitFor(() => {
-        expect(screen.getByRole('heading', { name: 'Alpha Team' })).toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: 'Team Members' })).toBeInTheDocument();
       });
 
       const inviteButton = screen.getByRole('button', { name: /invite member/i });
@@ -2696,10 +2727,10 @@ describe('TeamManagement - Multiple Teams', () => {
         new Error('403 Forbidden')
       );
 
-      renderWithProviders(<TeamManagement />);
+      renderModule('members');
 
       await waitFor(() => {
-        expect(screen.getByRole('heading', { name: 'Alpha Team' })).toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: 'Team Members' })).toBeInTheDocument();
       });
 
       const inviteButton = screen.getByRole('button', { name: /invite member/i });
@@ -2731,10 +2762,10 @@ describe('TeamManagement - Multiple Teams', () => {
         new Error('404 Member not found')
       );
 
-      renderWithProviders(<TeamManagement />);
+      renderModule('members');
 
       await waitFor(() => {
-        expect(screen.getByRole('heading', { name: 'Alpha Team' })).toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: 'Team Members' })).toBeInTheDocument();
       });
 
       const removeButton = screen.getByLabelText(/remove jane smith from team/i);
@@ -2762,10 +2793,10 @@ describe('TeamManagement - Multiple Teams', () => {
         new Error('Network error occurred')
       );
 
-      renderWithProviders(<TeamManagement />);
+      renderModule('members');
 
       await waitFor(() => {
-        expect(screen.getByRole('heading', { name: 'Alpha Team' })).toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: 'Team Members' })).toBeInTheDocument();
       });
 
       const removeButton = screen.getByLabelText(/remove jane smith from team/i);
@@ -2815,7 +2846,7 @@ describe('TeamManagement - Multiple Teams', () => {
         setUserRoleInCurrentTeam: mockSetUserRoleInCurrentTeam,
       });
 
-      renderWithProviders(<TeamManagement />);
+      renderModule('overview');
 
       await waitFor(() => {
         expect(screen.getByText(/failed to load team data/i)).toBeInTheDocument();
@@ -2830,10 +2861,10 @@ describe('TeamManagement - Multiple Teams', () => {
       const members: Array<Record<string, unknown>> = [];
       setupDefaultMocks(members, 'product_owner');
 
-      renderWithProviders(<TeamManagement />);
+      renderModule('members');
 
       await waitFor(() => {
-        expect(screen.getByRole('heading', { name: 'Alpha Team' })).toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: 'Team Members' })).toBeInTheDocument();
       });
 
       const inviteButton = screen.getByRole('button', { name: /invite member/i });
@@ -2868,10 +2899,10 @@ describe('TeamManagement - Multiple Teams', () => {
       ];
       setupDefaultMocks(members, 'product_owner');
 
-      renderWithProviders(<TeamManagement />);
+      renderModule('members');
 
       await waitFor(() => {
-        expect(screen.getByRole('heading', { name: 'Alpha Team' })).toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: 'Team Members' })).toBeInTheDocument();
       });
 
       const inviteButton = screen.getByRole('button', { name: /invite member/i });
@@ -2905,10 +2936,10 @@ describe('TeamManagement - Multiple Teams', () => {
       ];
       setupDefaultMocks(members, 'product_owner');
 
-      renderWithProviders(<TeamManagement />);
+      renderModule('members');
 
       await waitFor(() => {
-        expect(screen.getByRole('heading', { name: 'Alpha Team' })).toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: 'Team Members' })).toBeInTheDocument();
       });
 
       const inviteButton = screen.getByRole('button', { name: /invite member/i });
@@ -2974,10 +3005,10 @@ describe('TeamManagement - Multiple Teams', () => {
         setUserRoleInCurrentTeam: mockSetUserRoleInCurrentTeam,
       });
 
-      renderWithProviders(<TeamManagement />, { queryClient });
+      renderModule('members', { queryClient });
 
       await waitFor(() => {
-        expect(screen.getByRole('heading', { name: 'Alpha Team' })).toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: 'Team Members' })).toBeInTheDocument();
       });
 
       const inviteButton = screen.getByRole('button', { name: /invite member/i });
@@ -3022,10 +3053,10 @@ describe('TeamManagement - Multiple Teams', () => {
       } as AxiosResponse<ApiResponse<never>>;
       (apiService.addTeamMember as unknown as vi.Mock).mockRejectedValue(roleTakenError);
 
-      renderWithProviders(<TeamManagement />);
+      renderModule('members');
 
       await waitFor(() => {
-        expect(screen.getByRole('heading', { name: 'Alpha Team' })).toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: 'Team Members' })).toBeInTheDocument();
       });
 
       const inviteButton = screen.getByRole('button', { name: /invite member/i });
@@ -3124,7 +3155,7 @@ describe('TeamManagement - Scrum Values Health Check Survey', () => {
       },
     });
 
-    renderWithProviders(<TeamManagement />);
+    renderModule('health');
 
     await waitFor(() => {
       expect(screen.getByText(i18nT('team:healthCheck.sectionTitle'))).toBeInTheDocument();
@@ -3153,11 +3184,140 @@ describe('TeamManagement - Scrum Values Health Check Survey', () => {
       data: null,
     });
 
-    renderWithProviders(<TeamManagement />);
+    renderModule('health');
 
+    // Waiting for the panel that only the health tab mounts, rather than for the identity card the
+    // overview carries, proves the health check has been read before its absence is asserted.
+    expect(
+      await screen.findByText(i18nT('agreements:crossFunctionality.title'))
+    ).toBeInTheDocument();
     await waitFor(() => {
-      expect(screen.getByRole('heading', { name: 'Alpha Team' })).toBeInTheDocument();
+      expect(healthCheckService.getLatest).toHaveBeenCalled();
     });
     expect(screen.queryByText(i18nT('team:healthCheck.sectionTitle'))).not.toBeInTheDocument();
+  });
+});
+
+describe('TeamManagement - module tabs', () => {
+  const teamId = '123e4567-e89b-12d3-a456-426614174001';
+
+  beforeAll(async () => {
+    await initTestI18n();
+  });
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+
+    (useTeamStore as unknown as vi.Mock).mockReturnValue({
+      currentTeam: { id: teamId, name: 'Alpha Team' },
+      userTeamsWithRoles: [{ id: teamId, name: 'Alpha Team', userRole: 'developers' }],
+      setCurrentTeam: vi.fn(),
+      switchTeam: vi.fn(),
+      setUserTeamsWithRoles: vi.fn(),
+      setUserRoleInCurrentTeam: vi.fn(),
+    });
+    mockUseAuthStore.mockReturnValue({
+      user: { id: 'user-1', firstName: 'Test', lastName: 'User', email: 'test@example.com' },
+    });
+
+    (apiService.getMyTeams as unknown as vi.Mock).mockResolvedValue({
+      success: true,
+      data: [{ id: teamId, name: 'Alpha Team', userRole: 'developers' }],
+    });
+    (apiService.getTeam as unknown as vi.Mock).mockResolvedValue({
+      success: true,
+      data: {
+        id: teamId,
+        name: 'Alpha Team',
+        members: [],
+        createdAt: '2024-01-01T00:00:00Z',
+        updatedAt: '2024-06-01T00:00:00Z',
+      },
+    });
+    (apiService.getTeamMetrics as unknown as vi.Mock).mockResolvedValue({
+      success: true,
+      data: {},
+    });
+    (apiService.getSprintHistory as unknown as vi.Mock).mockResolvedValue({
+      success: true,
+      data: [],
+    });
+    (healthCheckService.getLatest as unknown as vi.Mock).mockResolvedValue({
+      success: true,
+      data: null,
+    });
+  });
+
+  // The module is one destination with four sections, so the rail has to name all four and say which
+  // one is showing -- the tab's own label is what a screen reader announces for the panel.
+  it('offers one tab per section, with the overview open by default', async () => {
+    renderModule();
+
+    const tabs = await screen.findAllByRole('tab');
+
+    expect(tabs.map((tab) => tab.textContent)).toEqual([
+      i18nT('team:tabs.overview'),
+      i18nT('team:tabs.members'),
+      i18nT('team:tabs.agreements'),
+      i18nT('team:tabs.health'),
+    ]);
+    expect(screen.getByRole('tab', { name: i18nT('team:tabs.overview') })).toHaveAttribute(
+      'aria-selected',
+      'true'
+    );
+    expect(screen.getByRole('tabpanel')).toHaveAccessibleName(i18nT('team:tabs.overview'));
+  });
+
+  // The address is the module's single source of truth, so a link can point at a section and a
+  // refresh comes back to it.
+  it('opens the section the address names', async () => {
+    renderWithProviders(<TeamManagement />, { initialRoute: '/team?tab=agreements' });
+
+    expect(await screen.findByRole('tab', { name: i18nT('team:tabs.agreements') })).toHaveAttribute(
+      'aria-selected',
+      'true'
+    );
+    expect(screen.getByTestId('working-agreements')).toBeInTheDocument();
+  });
+
+  // A tab strip is one tab stop that moves with the arrow keys, rather than four stops a keyboard
+  // user has to walk through.
+  it('moves the selection with the arrow keys, keeping a single tab stop', async () => {
+    const user = userEvent.setup();
+
+    renderModule();
+
+    const overviewTab = await screen.findByRole('tab', { name: i18nT('team:tabs.overview') });
+    expect(overviewTab).toHaveAttribute('tabindex', '0');
+    expect(screen.getByRole('tab', { name: i18nT('team:tabs.members') })).toHaveAttribute(
+      'tabindex',
+      '-1'
+    );
+
+    overviewTab.focus();
+    await user.keyboard('{ArrowRight}');
+
+    await waitFor(() =>
+      expect(screen.getByRole('tab', { name: i18nT('team:tabs.members') })).toHaveAttribute(
+        'aria-selected',
+        'true'
+      )
+    );
+    expect(screen.getByRole('tab', { name: i18nT('team:tabs.members') })).toHaveFocus();
+  });
+
+  it('renders no tab rail without a team', () => {
+    (useTeamStore as unknown as vi.Mock).mockReturnValue({
+      currentTeam: null,
+      userTeamsWithRoles: [],
+      setCurrentTeam: vi.fn(),
+      switchTeam: vi.fn(),
+      setUserTeamsWithRoles: vi.fn(),
+      setUserRoleInCurrentTeam: vi.fn(),
+    });
+
+    renderModule();
+
+    expect(screen.queryByRole('tablist')).not.toBeInTheDocument();
   });
 });

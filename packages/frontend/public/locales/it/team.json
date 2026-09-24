@@ -155,6 +155,9 @@
     }
   },
   "noTeam": "Nessun team",
+  "overview": {
+    "metricsTitle": "A colpo d’occhio"
+  },
   "selectTeam": "Seleziona un team",
   "sendMessageModal": {
     "cancel": "Annulla",
@@ -180,6 +183,13 @@
     }
   },
   "subtitle": "Gestire membri del team e standard del team",
+  "tabs": {
+    "agreements": "Accordi di lavoro",
+    "ariaLabel": "Sezioni del team",
+    "health": "Salute Scrum",
+    "members": "Membri",
+    "overview": "Panoramica"
+  },
   "teamGroup": {
     "adopt": "Unisciti e adotta la versione {{version}}",
     "adopted": "Versione {{version}} adottata il {{date}}.",
@@ -217,7 +227,8 @@
   "welcome": {
     "selectRole": "Seleziona il tuo ruolo per continuare",
     "subtitle": "Il tuo viaggio agile inizia qui...",
-    "title": "Benvenuto in Scrumooth, {{name}}!"
+    "title": "Benvenuto in Scrumooth, {{name}}!",
+    "titleAnonymous": "Benvenuto in Scrumooth!"
   },
   "yourTeams": "I tuoi team"
 }

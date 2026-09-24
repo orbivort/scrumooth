@@ -7,15 +7,14 @@
 // Team page and the one on the facilitation page are the same signal, and two renderings of it
 // would eventually disagree about what the team covers.
 //
-// It is deliberately read-only. Recording is the Scrum Master's act and lives where the assessment
-// is written; this component points there instead of offering a second editor.
+// It is deliberately read-only. Recording is the Scrum Master's act and lives beside this reading,
+// in `CrossFunctionalityPanel`, so the summary never offers a second editor.
 //
 // It renders in the `agreements` namespace because that is the feature the copy belongs to
 // (cross-functionality is a facilitation record), and it is the namespace that already carries the
 // translated strings for it.
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router';
 import type {
   SkillCoverage,
   CrossFunctionalityAssessment,
@@ -44,23 +43,11 @@ const EMPTY_COVERAGE: SkillCoverageSummary = { total: 0, covered: 0, partial: 0,
 interface CrossFunctionalitySummaryProps {
   /** The team's assessments, newest first, or null while they are still being read. */
   record: CrossFunctionalityRecord | null;
-  /**
-   * Where the assessment is recorded, when the surface showing the summary is not that place.
-   * Omitted, the summary simply reports what is known.
-   */
-  recordHref?: string;
-  /**
-   * Whether the summary supplies its own heading. The facilitation page already titles the panel,
-   * so it does not; a surface that shows the signal on its own does.
-   */
-  showHeading?: boolean;
   className?: string;
 }
 
 export const CrossFunctionalitySummary: React.FC<CrossFunctionalitySummaryProps> = ({
   record,
-  recordHref,
-  showHeading = false,
   className,
 }) => {
   const { t } = useTranslation('agreements');
@@ -70,8 +57,6 @@ export const CrossFunctionalitySummary: React.FC<CrossFunctionalitySummaryProps>
 
   return (
     <div className={className ? `${styles.summary} ${className}` : styles.summary}>
-      {showHeading && <h3 className={styles['heading']}>{t('crossFunctionality.title')}</h3>}
-
       {assessment ? (
         <>
           <p className={styles['coverage-summary']}>
@@ -132,14 +117,6 @@ export const CrossFunctionalitySummary: React.FC<CrossFunctionalitySummaryProps>
         </>
       ) : (
         <p className={styles.muted}>{t('crossFunctionality.empty')}</p>
-      )}
-
-      {recordHref && (
-        <p className={styles.muted}>
-          <Link to={recordHref} className={styles.link}>
-            {t('crossFunctionality.openFacilitation')}
-          </Link>
-        </p>
       )}
     </div>
   );

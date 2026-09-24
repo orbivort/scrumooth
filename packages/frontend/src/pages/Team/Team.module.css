@@ -735,19 +735,22 @@
 
 .team-header {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   align-items: flex-start;
-  margin-bottom: var(--space-8);
+  gap: var(--space-4);
+  margin-bottom: var(--space-6);
   padding: var(--space-6);
   background: linear-gradient(
     135deg,
     var(--color-background-card) 0%,
     var(--color-background-page) 100%
   );
-  border-radius: var(--radius-2xl);
+  border-radius: var(--radius-xl);
   border: var(--border-width-1) solid var(--color-border-default);
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--shadow-sm);
   position: relative;
+  overflow: hidden;
 }
 
 .team-header::before {
@@ -786,7 +789,13 @@
 .page-title-icon {
   display: inline-flex;
   align-items: center;
-  color: var(--color-primary-500);
+  justify-content: center;
+  width: var(--space-10);
+  height: var(--space-10);
+  border-radius: var(--radius-lg);
+  background: linear-gradient(135deg, var(--color-primary-50) 0%, var(--color-primary-100) 100%);
+  color: var(--color-primary-600);
+  box-shadow: var(--shadow-inset-primary);
 }
 
 .page-subtitle {
@@ -817,18 +826,138 @@
 }
 
 /* ========================================
+   MODULE TABS (Overview | Members | Working agreements | Scrum health)
+   ======================================== */
+
+.tabs {
+  display: flex;
+  align-items: stretch;
+  gap: var(--space-1);
+  margin-bottom: var(--space-6);
+  border-bottom: var(--border-width-2) solid var(--color-border-default);
+  position: relative;
+  z-index: var(--z-base);
+}
+
+/* The negative bottom margin pulls the tab's own rule down onto the strip's baseline, so the
+   selected tab reads as one continuous line into the panel below. Gray-600 rather than the lighter
+   `--color-text-secondary` keeps an unselected label above 4.5:1 on the page background. */
+.tab {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-5);
+  margin-bottom: calc(var(--border-width-2) * -1);
+  background: transparent;
+  border: var(--border-width-0) solid transparent;
+  border-bottom: var(--border-width-4) solid transparent;
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+  font-family: inherit;
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-gray-600);
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    color var(--duration-fast) var(--ease-out),
+    background-color var(--duration-fast) var(--ease-out),
+    border-color var(--duration-fast) var(--ease-out);
+}
+
+.tab:hover {
+  color: var(--color-gray-900);
+  background: var(--color-gray-50);
+}
+
+.tab:active {
+  transform: translateY(var(--border-width-1));
+}
+
+/* Negative offset keeps the ring inside the button, so the scroll container on narrow screens
+   cannot clip it. */
+.tab:focus-visible {
+  outline: var(--border-width-2) solid var(--color-primary-500);
+  outline-offset: calc(var(--border-width-2) * -1);
+}
+
+.tab-active {
+  color: var(--color-primary-700);
+  font-weight: var(--font-weight-semibold);
+  border-bottom-color: var(--color-primary-500);
+  background: linear-gradient(180deg, var(--color-primary-50) 0%, transparent 100%);
+}
+
+.tab-active:hover {
+  color: var(--color-primary-700);
+  background: linear-gradient(180deg, var(--color-primary-100) 0%, transparent 100%);
+}
+
+/* The icons inherit the tab's own colour, so the selected state carries through to them. */
+.tab-icon {
+  width: var(--space-5);
+  height: var(--space-5);
+  flex-shrink: 0;
+}
+
+/* The selected tab's content area. Only one panel is mounted at a time. */
+.panel {
+  position: relative;
+  z-index: var(--z-base);
+  animation: panel-reveal var(--duration-slow) var(--ease-out);
+}
+
+.panel:focus-visible {
+  outline: var(--border-width-2) solid var(--color-primary-500);
+  outline-offset: calc(var(--border-width-2) * -1);
+  border-radius: var(--radius-lg);
+}
+
+@keyframes panel-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(var(--space-2));
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ========================================
+   PANEL LAYOUT
+   The shell owns the page padding, background and the module header, so a panel only stacks its own
+   sections -- one vertical rhythm, shared by every tab.
+   ======================================== */
+
+.overview-panel,
+.members-panel,
+.health-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+/* A panel's own section heading, above whatever the section shows. */
+.section-heading {
+  margin: 0 0 var(--space-4);
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+}
+
+/* ========================================
    TEAM INFO CARD
    ======================================== */
 
 .team-info-card {
   background: linear-gradient(135deg, var(--color-brand-start) 0%, var(--color-brand-end) 100%);
-  border-radius: var(--radius-2xl);
+  border-radius: var(--radius-xl);
   padding: var(--space-8);
-  margin-bottom: var(--space-8);
   color: var(--color-text-inverse);
   position: relative;
   overflow: hidden;
-  box-shadow: var(--shadow-xl);
+  box-shadow: var(--shadow-lg);
 }
 
 .team-info-card::before {
@@ -904,25 +1033,24 @@
    ======================================== */
 
 .team-members {
-  margin-bottom: var(--space-8);
-  background: linear-gradient(135deg, var(--color-background-card) 0%, var(--color-gray-50) 100%);
-  border-radius: var(--radius-2xl);
+  background: var(--color-background-card);
+  border-radius: var(--radius-xl);
   padding: var(--space-6);
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--shadow-sm);
   border: var(--border-width-1) solid var(--color-border-default);
 }
 
 .members-header {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: var(--space-6);
-  padding-bottom: var(--space-4);
-  border-bottom: var(--border-width-1) solid var(--color-border-default);
+  gap: var(--space-4);
+  margin-bottom: var(--space-5);
 }
 
-.members-header h3 {
-  font-size: var(--font-size-xl);
+.members-header h2 {
+  font-size: var(--font-size-lg);
   font-weight: var(--font-weight-semibold);
   color: var(--color-text-primary);
   margin: 0;
@@ -1345,18 +1473,6 @@
   color: var(--color-error-600);
 }
 
-/* The composition signal: what the team can do, beside who is in it. */
-.team-composition {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-  padding: var(--space-4);
-  border: var(--border-width-1) solid var(--color-border-default);
-  border-radius: var(--radius-lg);
-  background: var(--color-background-card);
-  box-shadow: var(--shadow-sm);
-}
-
 .role-default {
   background: linear-gradient(135deg, var(--color-gray-100) 0%, var(--color-gray-200) 100%);
   color: var(--color-gray-700);
@@ -1489,29 +1605,34 @@
    ======================================== */
 
 .team-stats {
+  display: block;
+}
+
+.stats-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: var(--space-5);
-  margin-bottom: var(--space-8);
 }
 
 .stat-card {
-  background: linear-gradient(135deg, var(--color-background-card) 0%, var(--color-gray-50) 100%);
+  background: var(--color-background-card);
   border-radius: var(--radius-xl);
   padding: var(--space-6);
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--shadow-sm);
   border: var(--border-width-1) solid var(--color-border-default);
   display: flex;
   align-items: flex-start;
   gap: var(--space-4);
   transition:
     transform var(--transition-slow) var(--ease-out),
-    box-shadow var(--transition-slow) var(--ease-out);
+    box-shadow var(--transition-slow) var(--ease-out),
+    border-color var(--transition-slow) var(--ease-out);
 }
 
 .stat-card:hover {
   transform: translateY(calc(var(--space-1) * -1));
   box-shadow: var(--shadow-lg);
+  border-color: var(--color-primary-200);
 }
 
 .stat-icon {
@@ -2188,11 +2309,10 @@
    ======================================== */
 
 .health-check {
-  margin-bottom: var(--space-8);
-  background: linear-gradient(135deg, var(--color-background-card) 0%, var(--color-gray-50) 100%);
-  border-radius: var(--radius-2xl);
+  background: var(--color-background-card);
+  border-radius: var(--radius-xl);
   padding: var(--space-6);
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--shadow-sm);
   border: var(--border-width-1) solid var(--color-border-default);
 }
 
@@ -2207,7 +2327,7 @@
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  font-size: var(--font-size-xl);
+  font-size: var(--font-size-lg);
   font-weight: var(--font-weight-semibold);
   color: var(--color-text-primary);
   margin: 0;
@@ -2251,5 +2371,55 @@
     flex-direction: column;
     align-items: flex-start;
     gap: var(--space-3);
+  }
+}
+
+/* ========================================
+   MODULE RAIL & PANEL RESPONSIVE
+   ======================================== */
+
+/* Four labels do not fit a phone side by side, so the rail scrolls horizontally rather than
+   wrapping: a strip that changes height between tabs moves the panel under the user's thumb. */
+@media (width <= 640px) {
+  .tabs {
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  .tab {
+    padding: var(--space-3) var(--space-4);
+    font-size: var(--font-size-sm);
+  }
+}
+
+@media (width <= 768px) {
+  .stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (width <= 480px) {
+  .stats-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* The panel reveal is decoration: a user who asked for less motion gets the content without it. */
+@media (prefers-reduced-motion: reduce) {
+  .panel {
+    animation: none;
+  }
+
+  .tab,
+  .stat-card {
+    transition: none;
+  }
+
+  .stat-card:hover {
+    transform: none;
   }
 }

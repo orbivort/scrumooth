@@ -65,9 +65,5 @@
     "editTitle": "Modifier l'accord de travail",
     "title": "Accord",
     "titleRequired": "Donnez à l’accord un titre d’au moins trois caractères."
-  },
-  "page": {
-    "subtitle": "Comment cette équipe fonctionne, et si elle réunit collectivement les compétences nécessaires.",
-    "title": "Accords de travail"
   }
 }

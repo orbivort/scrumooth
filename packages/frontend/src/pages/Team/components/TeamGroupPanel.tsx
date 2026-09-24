@@ -127,7 +127,7 @@ export const TeamGroupPanel: React.FC<TeamGroupPanelProps> = ({
 
   return (
     <section className={styles['team-group']} aria-label={t('teamGroup.title')}>
-      <h3 className={styles['team-group-title']}>{t('teamGroup.title')}</h3>
+      <h2 className={styles['team-group-title']}>{t('teamGroup.title')}</h2>
       <p className={styles['team-group-hint']}>{t('teamGroup.hint')}</p>
 
       {group ? (

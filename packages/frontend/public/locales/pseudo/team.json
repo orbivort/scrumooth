@@ -155,6 +155,9 @@
     }
   },
   "noTeam": "[NNóó TTééààm]",
+  "overview": {
+    "metricsTitle": "[Àt à glàncééééé]"
+  },
   "selectTeam": "[Séléct à Téàmmmmm]",
   "sendMessageModal": {
     "cancel": "[Càncélll]",
@@ -180,6 +183,13 @@
     }
   },
   "subtitle": "[Mànàgé téàm mémbérs ànd téàm stàndàrdsssssssssssss]",
+  "tabs": {
+    "agreements": "[Wórkíng Àgrééméntsssssss]",
+    "ariaLabel": "[Téàm séctíónsssss]",
+    "health": "[Scrúm Héàlthhhhh]",
+    "members": "[Mémbérssss]",
+    "overview": "[Óvérvíéwwww]"
+  },
   "teamGroup": {
     "adopt": "[Jóín ànd àdópt vérsíónnnnnnnn {{version}}]",
     "adopted": "[Àdóptéd vérsíónnnnnn {{version}} óónn {{date}}.]",
@@ -217,7 +227,8 @@
   "welcome": {
     "selectRole": "[Séléct Yóúr Rólé tó Cóntínúéééééééééé]",
     "subtitle": "[Yóúr àgílé jóúrnéy stàrts hérééééééééééé...]",
-    "title": "[Wélcómé tó Scrúmóóthhhhhhhh, {{name}}!]"
+    "title": "[Wélcómé tó Scrúmóóthhhhhhhh, {{name}}!]",
+    "titleAnonymous": "[Wélcómé tó Scrúmóóthhhhhhhh!]"
   },
   "yourTeams": "[Yóúr Téàmssss]"
 }

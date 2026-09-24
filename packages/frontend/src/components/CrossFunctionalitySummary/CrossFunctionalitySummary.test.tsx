@@ -3,8 +3,9 @@
  *
  * Coverage: the team's own judgement of the skills it needs is reported with its gaps, the
  * assessment's author and date are named, earlier assessments stay visible, and a team that has
- * never been assessed is told so rather than implied to be cross-functional. The summary points at
- * where an assessment is recorded instead of offering a second editor.
+ * never been assessed is told so rather than implied to be cross-functional. The summary stays
+ * read-only -- recording sits beside it in the panel that owns the assessment, which is why the
+ * component offers no control of its own.
  */
 import React from 'react';
 import { screen, renderWithProviders, initTestI18n } from '../../test-utils';
@@ -72,13 +73,10 @@ describe('CrossFunctionalitySummary', () => {
     expect(screen.getByText('No cross-functionality assessment recorded yet.')).toBeInTheDocument();
   });
 
-  it('points at where an assessment is recorded instead of offering a second editor', () => {
-    renderWithProviders(
-      <CrossFunctionalitySummary record={record} recordHref="/working-agreements" />
-    );
+  it('offers no control of its own, so recording stays where the assessment is written', () => {
+    renderWithProviders(<CrossFunctionalitySummary record={record} />);
 
-    const link = screen.getByRole('link', { name: 'Record or review the assessment' });
-    expect(link).toHaveAttribute('href', '/working-agreements');
     expect(screen.queryByRole('button')).not.toBeInTheDocument();
+    expect(screen.queryByRole('link')).not.toBeInTheDocument();
   });
 });

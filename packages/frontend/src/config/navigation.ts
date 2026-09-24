@@ -39,7 +39,6 @@ import {
   SettingsIcon,
   DownloadIcon,
   ShieldIcon,
-  ClipboardListIcon,
 } from '../components/common/Icons';
 
 export const NAV_ITEMS: NavItem[] = [
@@ -60,11 +59,10 @@ export const NAV_ITEMS: NavItem[] = [
     labelKey: 'nav.scrumMaster',
     roles: ['SCRUM_MASTER'],
   },
-  // The working agreements are the team's own, readable by every member -- only the assessment
-  // behind them is recorded by the Scrum Master -- so the item carries no role gate. The barrier
-  // register is no longer a destination of its own: it is the second tab of the Impediments
-  // module, reached there rather than from the sidebar.
-  { path: '/working-agreements', icon: ClipboardListIcon, labelKey: 'nav.workingAgreements' },
+  // Two registers that once had destinations of their own are tabs now, reached where their subject
+  // is rather than from the sidebar: the barriers are the second tab of the Impediments module, and
+  // the working agreements -- the team's own, readable by every member, with only the assessment
+  // behind them recorded by the Scrum Master -- are the third tab of the Team module.
   { path: '/team', icon: UsersIcon, labelKey: 'nav.team' },
 ];
 

@@ -65,9 +65,5 @@
     "editTitle": "Edit working agreement",
     "title": "Agreement",
     "titleRequired": "Give the agreement a title of at least three characters."
-  },
-  "page": {
-    "subtitle": "How this team works, and whether it collectively holds the skills it needs.",
-    "title": "Working agreements"
   }
 }
