@@ -1,7 +1,12 @@
-// Scrum Master Facilitation Dashboard
-// Aggregates Scrum event compliance, impediment health, DoD adherence, Sprint
-// Goal achievement, retrospective action items, and Scrum Values health.
-import React, { useState } from 'react';
+// Facilitation -- the Scrum Master's lens on the team's process.
+//
+// This is the second tab of the Dashboard module rather than a page of its own: it aggregates facts
+// that stay readable at their own subjects (the Definition of Done on the Team module, the Sprint
+// Goal on the Sprint board, Daily Scrum cadence, impediments, retrospective action items), so it
+// carries no landmark and no heading of its own -- the module shell owns the `main` region, the
+// header and the rail. What is genuinely the Scrum Master's alone stays here and stays gated: the
+// coaching log and the private Sprint notes.
+import React, { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
@@ -14,12 +19,12 @@ import {
 } from '../../services';
 import { LoadingState } from '../../components/common/Loading';
 import { ScrumValuesBanner } from '../../components/common/ScrumValuesBanner';
-import { ShieldIcon } from '../../components/common/Icons';
 import { Button } from '../../components/common/Button';
 import {
   EscalateImpedimentDialog,
   type EscalationSource,
 } from '../../components/EscalateImpedimentDialog/EscalateImpedimentDialog';
+import type { DashboardPanelProps } from '../Dashboard/constants';
 
 import { CoachingLog } from './components/CoachingLog';
 import { DoDTrendChart } from './DoDTrendChart';
@@ -27,7 +32,7 @@ import { ScrumValuesRadar } from './ScrumValuesRadar';
 import { HealthCheckTrendChart } from './HealthCheckTrendChart';
 import styles from './SmDashboard.module.css';
 
-const SmDashboardContent: React.FC = () => {
+export const FacilitationPanel: React.FC<DashboardPanelProps> = ({ registerRefresh }) => {
   const { t } = useTranslation(['scrum-master-dashboard', 'common']);
   const { currentTeam } = useTeamContext();
   const queryClient = useQueryClient();
@@ -85,6 +90,25 @@ const SmDashboardContent: React.FC = () => {
     },
   });
 
+  // The refresh the header control calls while this lens is showing: the four reads this panel is
+  // built on, and nothing of the overview's.
+  const handlePanelRefresh = useCallback(async () => {
+    const teamId = currentTeam?.id;
+
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['sm-dashboard', teamId] }),
+      queryClient.invalidateQueries({ queryKey: ['health-check-trend', teamId] }),
+      queryClient.invalidateQueries({ queryKey: ['sm-dashboard-barriers', teamId] }),
+      queryClient.invalidateQueries({ queryKey: ['sm-dashboard-barrier-list', teamId] }),
+    ]);
+  }, [queryClient, currentTeam?.id]);
+
+  // Every panel registers the refresh for whichever one is mounted. Only one ever is.
+  useEffect(() => {
+    registerRefresh(handlePanelRefresh);
+    return () => registerRefresh(null);
+  }, [registerRefresh, handlePanelRefresh]);
+
   if (isLoading) {
     return <LoadingState variant="page" label={t('common:loading')} />;
   }
@@ -106,7 +130,11 @@ const SmDashboardContent: React.FC = () => {
   const dashboard = data.data;
 
   return (
-    <div className={styles.container}>
+    <div className={styles.container} data-testid="facilitation-panel">
+      {/* The lens's own framing. It says what the surface is for -- facilitation, not reporting on
+          the team -- in the voice the module header cannot: the header belongs to the whole module. */}
+      <p className={styles['panel-lead']}>{t('smDashboard.subtitle')}</p>
+
       <ScrumValuesBanner />
 
       <div className={styles.section} data-testid="event-compliance">
@@ -407,29 +435,4 @@ const SmDashboardContent: React.FC = () => {
   );
 };
 
-export const SmDashboard: React.FC = () => {
-  const { t } = useTranslation(['scrum-master-dashboard', 'common']);
-  return (
-    <div className={styles.page}>
-      <a href="#main-content" className={styles['skip-link']}>
-        {t('common:loading')}
-      </a>
-      <header className={styles['page-header']} data-testid="sm-dashboard-header">
-        <div className={styles['header-content']}>
-          <h1 className={styles['page-title']}>
-            <span className={styles['page-title-icon']}>
-              <ShieldIcon size={24} aria-hidden="true" />
-            </span>
-            {t('smDashboard.title')}
-          </h1>
-          <p className={styles['page-subtitle']}>{t('smDashboard.subtitle')}</p>
-        </div>
-      </header>
-      <main id="main-content" className={styles.main} tabIndex={-1}>
-        <SmDashboardContent />
-      </main>
-    </div>
-  );
-};
-
-export default SmDashboard;
+export default FacilitationPanel;

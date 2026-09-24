@@ -1,9 +1,13 @@
 /**
- * Scrum Master Facilitation Dashboard Tests
+ * Facilitation Panel Tests
+ *
+ * The panel is the second tab of the Dashboard module, so it is rendered here directly rather than
+ * through the module shell: what the shell owns (the header, the rail, the address) is covered by the
+ * Dashboard module's own tests.
  *
  * Test Coverage:
  * - Loading state while fetching dashboard data
- * - Dashboard title and subtitle rendering
+ * - Panel lead line and section rendering
  * - Event compliance table rendering
  * - Impediment metrics display
  * - Sprint goal achievement display
@@ -12,6 +16,7 @@
  * - Empty state when no data
  * - Error handling
  * - Health check creation flow
+ * - The refresh it registers with the module shell
  */
 
 import React from 'react';
@@ -24,7 +29,7 @@ import {
   i18nT,
 } from '../../test-utils';
 import { vi, beforeAll, beforeEach } from 'vitest';
-import { SmDashboard } from './SmDashboard';
+import { FacilitationPanel } from './FacilitationPanel';
 import { smDashboardService, healthCheckService } from '../../services';
 import { useTeamContext } from '../../contexts/TeamContext';
 import { mockSmDashboardData } from '../../services/mockSmDashboardData';
@@ -55,7 +60,9 @@ const mockTeam = {
   name: 'Test Team',
 };
 
-describe('SmDashboard', () => {
+describe('FacilitationPanel', () => {
+  const registerRefresh = vi.fn();
+
   beforeAll(async () => {
     await initTestI18n();
   });
@@ -80,7 +87,7 @@ describe('SmDashboard', () => {
   });
 
   const renderComponent = () => {
-    return renderWithProviders(<SmDashboard />);
+    return renderWithProviders(<FacilitationPanel registerRefresh={registerRefresh} />);
   };
 
   describe('Loading State', () => {
@@ -93,8 +100,8 @@ describe('SmDashboard', () => {
     });
   });
 
-  describe('Page Header', () => {
-    it('should display page title and subtitle', async () => {
+  describe('Panel Lead', () => {
+    it('should frame the panel as facilitation rather than reporting', async () => {
       (smDashboardService.getDashboard as vi.Mock).mockResolvedValue(mockDashboardResponse());
       (healthCheckService.getTrend as vi.Mock).mockResolvedValue({
         success: true as const,
@@ -105,13 +112,25 @@ describe('SmDashboard', () => {
 
       await waitFor(() => {
         expect(
-          screen.getByText(i18nT('scrum-master-dashboard:smDashboard.title'))
+          screen.getByText(i18nT('scrum-master-dashboard:smDashboard.subtitle'))
         ).toBeInTheDocument();
       });
+    });
 
-      expect(
-        screen.getByText(i18nT('scrum-master-dashboard:smDashboard.subtitle'))
-      ).toBeInTheDocument();
+    it('should not repeat the module heading: the shell owns the only h1', async () => {
+      (smDashboardService.getDashboard as vi.Mock).mockResolvedValue(mockDashboardResponse());
+      (healthCheckService.getTrend as vi.Mock).mockResolvedValue({
+        success: true as const,
+        data: [],
+      });
+
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('facilitation-panel')).toBeInTheDocument();
+      });
+
+      expect(screen.queryByRole('heading', { level: 1 })).not.toBeInTheDocument();
     });
   });
 
@@ -323,7 +342,7 @@ describe('SmDashboard', () => {
       });
     });
 
-    it('should not render the survey on the dashboard (it lives on the Team page)', async () => {
+    it('should not render the survey on the facilitation panel (it lives on the Team page)', async () => {
       (smDashboardService.getDashboard as vi.Mock).mockResolvedValue(mockDashboardResponse());
       (healthCheckService.getTrend as vi.Mock).mockResolvedValue({
         success: true as const,
@@ -402,6 +421,40 @@ describe('SmDashboard', () => {
       renderComponent();
 
       expect(smDashboardService.getDashboard).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('Refresh Registration', () => {
+    it('should hand the module shell the refresh for this panel', async () => {
+      (smDashboardService.getDashboard as vi.Mock).mockResolvedValue(mockDashboardResponse());
+      (healthCheckService.getTrend as vi.Mock).mockResolvedValue({
+        success: true as const,
+        data: [],
+      });
+
+      renderComponent();
+
+      await waitFor(() => {
+        expect(registerRefresh).toHaveBeenCalledWith(expect.any(Function));
+      });
+    });
+
+    it('should release the refresh slot when it unmounts', async () => {
+      (smDashboardService.getDashboard as vi.Mock).mockResolvedValue(mockDashboardResponse());
+      (healthCheckService.getTrend as vi.Mock).mockResolvedValue({
+        success: true as const,
+        data: [],
+      });
+
+      const { unmount } = renderComponent();
+
+      await waitFor(() => {
+        expect(registerRefresh).toHaveBeenCalledWith(expect.any(Function));
+      });
+
+      unmount();
+
+      expect(registerRefresh).toHaveBeenLastCalledWith(null);
     });
   });
 });

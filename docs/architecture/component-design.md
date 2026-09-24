@@ -243,8 +243,12 @@ pages/                               # Page-scoped feature components
 │   └── components/                  # AddTaskModal, StartSprintModal, etc.
 ├── SprintReview/
 │   └── AddFeedbackModal, CreateSprintReviewModal, etc.
-├── Dashboard/
+├── Dashboard/                       # The dashboard module: one header, one rail, one URL
+│   ├── Dashboard.tsx                # The shell: guards, header, rail, refresh, panel mount
+│   ├── DashboardOverviewPanel.tsx   # Tab one: the operational page every role reads
 │   └── components/                  # BurndownChart, TaskList, ImpedimentList
+├── SmDashboard/                     # Tab two: the Scrum Master's facilitation lens
+│   └── FacilitationPanel.tsx        # No page shell, no landmark, no heading of its own
 ├── Settings/
 │   ├── TeamManagement/              # Team CRUD components
 │   ├── TeamGroups/                  # Group administration: create, rename, delete, roster
@@ -636,7 +640,8 @@ Scrumooth uses React Router v6 with lazy-loaded route components and protected r
 │  └── /reset-password/:token    → ResetPasswordPage          │
 │                                                             │
 │  Protected Routes (authentication required)                 │
-│  ├── /dashboard                → Dashboard                  │
+│  ├── /dashboard                → Dashboard (Overview|Facilitation)│
+│  ├── /scrum-master-dashboard   → Redirect to /dashboard?tab=facilitation│
 │  ├── /backlog                  → ProductBacklog             │
 │  ├── /product-goals            → ProductGoalsPage           │
 │  ├── /sprint-planning          → SprintPlanning             │
@@ -662,6 +667,32 @@ Scrumooth uses React Router v6 with lazy-loaded route components and protected r
 │      └── /settings/definition-of-done → Redirect to /team?tab=definition│
 └─────────────────────────────────────────────────────────────┘
 ```
+
+### Module Tabs
+
+Three surfaces that once had destinations of their own are tabs of the module whose subject they
+share, reached where that subject is rather than from a sidebar row of their own: the barrier register
+is the second tab of Impediments, the working agreements are a section of the Team module's Definition
+tab, and the Scrum Master's facilitation overview is the second tab of the Dashboard.
+
+The pattern is the same in each case, and it is the shape `Impediments.tsx` and `Dashboard.tsx` both
+implement:
+
+- **One module, one header, one URL.** The module owns the `main` landmark, the `h1` and the language
+  switcher's anchor target; a panel never repeats a heading of its own. The tab that is the default is
+  the one the address stays silent about (`/dashboard` is the overview, `/dashboard?tab=facilitation`
+  is the lens), and `?tab=` is the single source of truth, so back/forward and shared links need no
+  second copy to keep in sync.
+- **Only the selected panel mounts.** Neither surface runs the other's queries, and one failing cannot
+  blank the other. The wrapper is the only element between rail and panel and carries `role="tabpanel"`
+  plus `tabIndex={-1}` for the focus hand-off.
+- **A rail is rendered only when there is a choice to make.** A one-tab `tablist` is an affordance
+  without a decision, so a member who has only the overview sees the page with no rail at all — as does
+  anyone who lacks the role a second tab is gated on. The rail is a single tab stop with a roving
+  tabindex; arrow keys move and select, Home/End jump to the ends, and only a module-initiated switch
+  moves focus into the revealed panel.
+- **Retired addresses keep working.** `/organizational-barriers` and `/scrum-master-dashboard` redirect
+  to the tab that replaced them, so a bookmark or a shared link is never a dead end.
 
 ### Lazy Loading Pattern
 

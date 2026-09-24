@@ -37,7 +37,6 @@ import {
   LazyTeamManagement as TeamManagement,
   LazyTeamManagementPage as TeamManagementPage,
   LazyReports as Reports,
-  LazySmDashboard as SmDashboard,
   LazyIncrementList as IncrementList,
   LazyIncrementDetail as IncrementDetail,
   LazyIncrementCreate as IncrementCreate,
@@ -368,15 +367,12 @@ function App() {
                             </ProtectedRoute>
                           }
                         />
+                        {/* The facilitation lens is the second tab of the Dashboard module; the
+                            address it used to live at is kept, so bookmarks and shared links still
+                            land on it. */}
                         <Route
                           path="/scrum-master-dashboard"
-                          element={
-                            <ProtectedRoute>
-                              <LazyRoute fallbackMessage="Loading Scrum Master dashboard...">
-                                <SmDashboard />
-                              </LazyRoute>
-                            </ProtectedRoute>
-                          }
+                          element={<Navigate to="/dashboard?tab=facilitation" replace />}
                         />
                         {/* The barrier register is the second tab of the Impediments module; the
                             address it used to live at is kept, so links and bookmarks still land

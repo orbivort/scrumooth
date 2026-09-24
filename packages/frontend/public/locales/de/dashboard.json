@@ -195,6 +195,11 @@
   "submitDailyScrum": "Daily Scrum einreichen",
   "submitDailyScrumUpdate": "Daily Scrum-Update einreichen",
   "submitted": "Eingereicht",
+  "tabs": {
+    "ariaLabel": "Dashboard-Bereiche",
+    "facilitation": "Moderation",
+    "overview": "Übersicht"
+  },
   "taskList": {
     "ariaLabel": "Aufgaben der Entwickler",
     "noTasks": "Noch keine Aufgaben der Entwickler",

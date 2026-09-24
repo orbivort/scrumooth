@@ -14,6 +14,7 @@ import {
   screen,
   act,
   initTestI18n,
+  i18nT,
   createTestQueryClient,
 } from '../../test-utils';
 import type { QueryClient } from '@tanstack/react-query';
@@ -162,6 +163,17 @@ describe('Dashboard - Loading State Tests', () => {
 
       renderDashboard();
 
+      expect(screen.getByRole('status', { name: /Loading dashboard/i })).toBeInTheDocument();
+    });
+
+    it('should keep the module header visible while the overview panel loads', () => {
+      mockApiService.getActiveSprint.mockImplementation(() => new Promise(() => {}));
+
+      renderDashboard();
+
+      // The shell answers as soon as the team is known; only the panel's own content is pending,
+      // so the header no longer disappears with it.
+      expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(i18nT('dashboard:title'));
       expect(screen.getByRole('status', { name: /Loading dashboard/i })).toBeInTheDocument();
     });
   });

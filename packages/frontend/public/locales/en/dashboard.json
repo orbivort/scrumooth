@@ -195,6 +195,11 @@
   "submitDailyScrum": "Submit Daily Scrum",
   "submitDailyScrumUpdate": "Submit your daily scrum update",
   "submitted": "Submitted",
+  "tabs": {
+    "ariaLabel": "Dashboard sections",
+    "facilitation": "Facilitation",
+    "overview": "Overview"
+  },
   "taskList": {
     "ariaLabel": "Developers' tasks",
     "noTasks": "No Developers' tasks yet",

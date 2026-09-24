@@ -184,6 +184,106 @@
 }
 
 /* ============================================
+   MODULE TABS (Dashboard | Facilitation)
+   One module, one header, one URL. The rail is rendered only when the user
+   actually has a second tab, so the page a Developer sees has no rail at all.
+   ============================================ */
+
+.tabs {
+  display: flex;
+  align-items: stretch;
+  gap: var(--space-1);
+  margin-bottom: var(--space-6);
+  border-bottom: var(--border-width-2) solid var(--color-border-default);
+  position: relative;
+  z-index: var(--z-base);
+}
+
+/* The negative bottom margin pulls the tab's own rule down onto the strip's baseline, so the
+   selected tab reads as one continuous line into the panel below. Gray-600 rather than the lighter
+   `--color-text-secondary` keeps an unselected label above 4.5:1 on the page background. */
+.tab {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-5);
+  margin-bottom: calc(var(--border-width-2) * -1);
+  background: transparent;
+  border: var(--border-width-0) solid transparent;
+  border-bottom: var(--border-width-4) solid transparent;
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+  font-family: inherit;
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-gray-600);
+  cursor: pointer;
+  transition:
+    color var(--duration-fast) var(--ease-out),
+    background-color var(--duration-fast) var(--ease-out),
+    border-color var(--duration-fast) var(--ease-out);
+}
+
+.tab:hover {
+  color: var(--color-gray-900);
+  background: var(--color-gray-50);
+}
+
+.tab:active {
+  transform: translateY(var(--border-width-1));
+}
+
+/* Negative offset keeps the ring inside the button, so the scroll container on narrow screens
+   cannot clip it and the 4px underline cannot hide it. */
+.tab:focus-visible {
+  outline: var(--border-width-2) solid var(--color-primary-500);
+  outline-offset: calc(var(--border-width-2) * -1);
+}
+
+.tab-active {
+  color: var(--color-primary-700);
+  font-weight: var(--font-weight-semibold);
+  border-bottom-color: var(--color-primary-500);
+  background: linear-gradient(180deg, var(--color-primary-50) 0%, transparent 100%);
+}
+
+.tab-active:hover {
+  color: var(--color-primary-700);
+  background: linear-gradient(180deg, var(--color-primary-100) 0%, transparent 100%);
+}
+
+/* The icons inherit the tab's own colour, so the selected state carries through to them. */
+.tab-icon {
+  width: var(--space-5);
+  height: var(--space-5);
+  flex-shrink: 0;
+}
+
+/* The selected tab's content area. Only one panel is mounted at a time. */
+.panel {
+  position: relative;
+  z-index: var(--z-base);
+  animation: panel-reveal var(--duration-slow) var(--ease-out);
+}
+
+.panel:focus-visible {
+  outline: var(--border-width-2) solid var(--color-primary-500);
+  outline-offset: calc(var(--border-width-2) * -1);
+  border-radius: var(--radius-lg);
+}
+
+@keyframes panel-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(var(--space-2));
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ============================================
    SPRINT SUMMARY GRID
    ============================================ */
 
@@ -1440,6 +1540,26 @@
   .chart-container {
     border-radius: var(--radius-xl);
   }
+
+  /* The rail becomes a one-line scroll strip rather than wrapping into a menu. */
+  .tabs {
+    overflow-x: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* A scroll container would clip the 2px the underline overhangs, so on narrow screens the rule
+     sits directly beneath the tab instead of under it. */
+  .tab {
+    flex-shrink: 0;
+    margin-bottom: 0;
+    padding: var(--space-2) var(--space-4);
+    font-size: var(--font-size-sm);
+  }
 }
 
 /* Small Mobile (<= 640px) */
@@ -1515,6 +1635,17 @@
     animation: none;
     opacity: 1;
   }
+
+  /* The panel still mounts, it just arrives without motion. */
+  .panel,
+  .tab {
+    animation: none;
+    transition: none;
+  }
+
+  .tab:active {
+    transform: none;
+  }
 }
 
 /* High Contrast Mode */
@@ -1535,6 +1666,18 @@
   .task-item:focus-visible,
   .impediment-item:focus-visible,
   .refresh-button:focus-visible {
+    outline: var(--border-width-2) solid var(--color-primary-500);
+    outline-offset: var(--space-0-5);
+  }
+
+  /* Selection must not rest on hue alone: the selected tab keeps an underline heavier than the
+     strip's own rule. */
+  .tab-active {
+    border-bottom-width: var(--border-width-4);
+  }
+
+  .tab:focus-visible,
+  .panel:focus-visible {
     outline: var(--border-width-2) solid var(--color-primary-500);
     outline-offset: var(--space-0-5);
   }

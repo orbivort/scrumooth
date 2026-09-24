@@ -195,6 +195,11 @@
   "submitDailyScrum": "[Súbmít Dàíly Scrúmmmmmmm]",
   "submitDailyScrumUpdate": "[Súbmít yóúr dàíly scrúm úpdàtéééééééééé]",
   "submitted": "[Súbmíttédddd]",
+  "tabs": {
+    "ariaLabel": "[Dàshbóàrd séctíónsssssss]",
+    "facilitation": "[Fàcílítàtíónnnnn]",
+    "overview": "[Óvérvíéwwww]"
+  },
   "taskList": {
     "ariaLabel": "[Dévélópérs' tàsksssssss]",
     "noTasks": "[Nó Dévélópérs' tàsks yéttttttttt]",

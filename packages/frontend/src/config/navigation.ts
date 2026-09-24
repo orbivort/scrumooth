@@ -37,7 +37,6 @@ import {
   BuildingIcon,
   SettingsIcon,
   DownloadIcon,
-  ShieldIcon,
 } from '../components/common/Icons';
 
 export const NAV_ITEMS: NavItem[] = [
@@ -52,16 +51,14 @@ export const NAV_ITEMS: NavItem[] = [
   { path: '/sprint-review', icon: MessageCircleIcon, labelKey: 'nav.sprintReview' },
   { path: '/retrospectives', icon: SearchIcon, labelKey: 'nav.retrospectives' },
   { path: '/reports', icon: TrendingUpIcon, labelKey: 'nav.reports' },
-  {
-    path: '/scrum-master-dashboard',
-    icon: ShieldIcon,
-    labelKey: 'nav.scrumMaster',
-    roles: ['SCRUM_MASTER'],
-  },
-  // Two registers that once had destinations of their own are tabs now, reached where their subject
-  // is rather than from the sidebar: the barriers are the second tab of the Impediments module, and
-  // the working agreements -- the team's own, readable by every member, with only the assessment
-  // behind them recorded by the Scrum Master -- are the third tab of the Team module.
+  // Three surfaces that once had destinations of their own are tabs now, reached where their subject
+  // is rather than from the sidebar: the barriers are the second tab of the Impediments module, the
+  // working agreements -- the team's own, readable by every member, with only the assessment behind
+  // them recorded by the Scrum Master -- are the third tab of the Team module, and the Scrum
+  // Master's facilitation overview is the second tab of the Dashboard. A role-labelled peer row
+  // would frame the Scrum Master as a separate stakeholder inspecting the team rather than a member
+  // serving it, and two destinations both named "Dashboard" would force everyone to learn which of
+  // the two holds which facts.
   { path: '/team', icon: UsersIcon, labelKey: 'nav.team' },
 ];
 

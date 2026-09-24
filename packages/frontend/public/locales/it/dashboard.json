@@ -195,6 +195,11 @@
   "submitDailyScrum": "Invia Daily Scrum",
   "submitDailyScrumUpdate": "Invia il tuo aggiornamento daily scrum",
   "submitted": "Inviato",
+  "tabs": {
+    "ariaLabel": "Sezioni della dashboard",
+    "facilitation": "Facilitazione",
+    "overview": "Panoramica"
+  },
   "taskList": {
     "ariaLabel": "Compiti dei Developers",
     "noTasks": "Nessun compito dei Developers",

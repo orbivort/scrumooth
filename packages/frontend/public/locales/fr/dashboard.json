@@ -195,6 +195,11 @@
   "submitDailyScrum": "Soumettre le Daily Scrum",
   "submitDailyScrumUpdate": "Soumettre votre mise à jour du Daily Scrum",
   "submitted": "Soumis",
+  "tabs": {
+    "ariaLabel": "Sections du tableau de bord",
+    "facilitation": "Facilitation",
+    "overview": "Vue d'ensemble"
+  },
   "taskList": {
     "ariaLabel": "Tâches des Developers",
     "noTasks": "Aucune tâche des Developers",
