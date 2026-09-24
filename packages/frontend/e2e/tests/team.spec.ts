@@ -1,6 +1,6 @@
 import { test, expect } from '../fixtures';
 
-test.describe('Team Management Page', () => {
+test.describe('My Team Page', () => {
   test.beforeEach(async ({ loginPage, page, mockApi }) => {
     const timestamp = Date.now();
     const testUser = {
@@ -67,7 +67,7 @@ test.describe('Team Management Page', () => {
   });
 });
 
-test.describe('Team Management - Responsive Design', () => {
+test.describe('My Team - Responsive Design', () => {
   test.beforeEach(async ({ loginPage, page, mockApi }) => {
     const timestamp = Date.now();
     const testUser = {

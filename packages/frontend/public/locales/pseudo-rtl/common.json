@@ -1,4 +1,9 @@
 {
+  "accessDenied": {
+    "action": "Go to My Team",
+    "description": "This page belongs to the Product Owner or Scrum Master of a team. If you need something changed here, ask the team's leadership.",
+    "title": "You do not have access to this page"
+  },
   "actions": "Actions",
   "add": "Add",
   "all": "All",
@@ -367,13 +372,13 @@
       "data": "Data",
       "privacyData": "Privacy & Data",
       "sprintConfiguration": "Sprint Configuration",
-      "team": "Team",
-      "teamManagement": "Team Management"
+      "team": "Organization",
+      "teamManagement": "All Teams"
     },
     "settingsLabel": "Settings",
     "sprintPlanning": "Sprint Planning",
     "sprintReview": "Sprint Review",
-    "team": "Team"
+    "team": "My Team"
   },
   "next": "Next",
   "no": "No",

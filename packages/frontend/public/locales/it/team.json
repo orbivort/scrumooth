@@ -182,7 +182,7 @@
       "maxLength": "Il messaggio deve avere meno di {{limit}} caratteri."
     }
   },
-  "subtitle": "Gestire membri del team e standard del team",
+  "subtitle": "I membri, gli accordi e la salute Scrum del tuo team",
   "tabs": {
     "ariaLabel": "Sezioni del team",
     "definition": "Definizione",
@@ -207,7 +207,7 @@
     "sprintCompletionRate": "Tasso di completamento del Sprint Backlog",
     "storyPointsCompleted": "Story Points Completati"
   },
-  "title": "Team",
+  "title": "Il mio team",
   "welcome": {
     "selectRole": "Seleziona il tuo ruolo per continuare",
     "subtitle": "Il tuo viaggio agile inizia qui...",

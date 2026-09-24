@@ -177,7 +177,7 @@
     "leaveMessage": "Cette équipe conserve la Définition de Fini qu'elle respectait et pourra ensuite la modifier elle-même.",
     "leaveTitle": "Quitter {{name}} ?",
     "manageDisclosure": "Examiner ou quitter",
-    "manageLink": "Gérer le groupe",
+    "manageLink": "Gérer ce groupe dans les paramètres",
     "mutualBody": "Les équipes définissent mutuellement cet engagement en adoptant une version nommée lors de leur adhésion. Une modification ultérieure s'affiche ici jusqu'à ce que cette équipe adopte la nouvelle version.",
     "mutualTitle": "Définie mutuellement",
     "readOnlyNote": "Tenue à jour par le Product Owner ou le Scrum Master d'une équipe de {{name}}.",
@@ -571,7 +571,7 @@
     "selectPrompt": "Choisissez un groupe pour voir les équipes qui respectent sa Définition de Fini.",
     "sharedDoD": {
       "delegated": "Chaque équipe de ce groupe consulte et modifie cette Définition de Fini dans son propre onglet de définition, où tous ses critères sont affichés.",
-      "openAction": "Ouvrir l'onglet de définition",
+      "openAction": "Le lire et le modifier dans Mon équipe",
       "title": "Définition de Fini",
       "updated": "Mise à jour le {{date}}"
     },
@@ -641,11 +641,11 @@
       "deleteTeam": "Vous n'avez pas les permissions pour supprimer cette équipe.",
       "editTeam": "Vous n'avez pas les permissions pour modifier cette équipe."
     },
-    "subtitle": "Créer et gérer des équipes dans l'organisation",
+    "subtitle": "Toutes les équipes de l'organisation. Tout le monde peut les consulter et créer une équipe ; seul son Product Owner ou Scrum Master peut la modifier ou la supprimer.",
     "teamCount": "{{count}} équipe",
     "teamCount_one": "{{count}} équipe",
     "teamCount_other": "{{count}} équipes",
-    "title": "Gestion des équipes",
+    "title": "Toutes les équipes",
     "toast": {
       "cannotDeleteWithGoals": "Impossible de supprimer une équipe avec des objectifs de produit existants",
       "teamCreateFailed": "Échec de la création de l'équipe",

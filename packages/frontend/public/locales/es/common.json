@@ -1,4 +1,9 @@
 {
+  "accessDenied": {
+    "action": "Ir a Mi equipo",
+    "description": "Esta página pertenece al Product Owner o al Scrum Master de un equipo. Si necesita cambiar algo aquí, pídaselo al liderazgo del equipo.",
+    "title": "No tiene acceso a esta página"
+  },
   "accountDeletion": {
     "cancelFailed": "Error al cancelar la eliminación. Por favor intente de nuevo.",
     "deleteFailed": "Error al eliminar la cuenta. Por favor intente de nuevo.",
@@ -473,14 +478,14 @@
       "data": "Datos",
       "privacyData": "Privacidad y datos",
       "sprintConfiguration": "Configuración de Sprint",
-      "team": "Equipo",
+      "team": "Organización",
       "teamGroups": "Grupos de equipos",
-      "teamManagement": "Gestión de equipo"
+      "teamManagement": "Todos los equipos"
     },
     "settingsLabel": "Configuración",
     "sprintPlanning": "Sprint Planning",
     "sprintReview": "Sprint Review",
-    "team": "Equipo"
+    "team": "Mi equipo"
   },
   "networkErrors": {
     "networkError": "Error de red. Por favor verifique su conexión e intente de nuevo.",

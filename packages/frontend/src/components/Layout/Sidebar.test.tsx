@@ -316,10 +316,47 @@ describe('Layout Component', () => {
         expect(screen.getByText(i18nT(key))).toBeInTheDocument();
       });
 
-      const teamNavItem = screen
-        .getAllByText(i18nT('nav.team'))
-        .find((el) => el.classList.contains('nav-label'));
-      expect(teamNavItem).toBeInTheDocument();
+      // Found by its text alone now: the label used to be "Team", which the settings section header
+      // also read, so this lookup needed a class check to pick the destination out of the duplicates.
+      expect(screen.getByText(i18nT('nav.team'))).toBeInTheDocument();
+    });
+
+    it('gives every destination a label no other destination uses', () => {
+      renderWithProviders(<Layout>Content</Layout>, {
+        teamContext: createMockTeamContext({ userRole: 'PRODUCT_OWNER' }),
+      });
+
+      const labels = Array.from(document.querySelectorAll('.nav-label')).map(
+        (element) => element.textContent
+      );
+      const groupLabels = Array.from(document.querySelectorAll('.nav-group-label')).map(
+        (element) => element.textContent
+      );
+
+      expect(labels.length).toBeGreaterThan(0);
+      expect(new Set(labels).size).toBe(labels.length);
+      // A settings section header repeating a destination's label is the collision this change
+      // removed: the reader had to open something to learn which "Team" the header meant.
+      groupLabels.forEach((groupLabel) => {
+        expect(labels).not.toContain(groupLabel);
+      });
+    });
+
+    it('names the destinations that lose their labels when the sidebar is collapsed', () => {
+      renderWithProviders(<Layout>Content</Layout>, {
+        uiStore: createMockUIStore({ sidebarCollapsed: true }),
+      });
+
+      // No label is mounted in this state, so a name can only come from the link itself.
+      expect(document.querySelectorAll('.nav-label')).toHaveLength(0);
+
+      const navLinks = Array.from(document.querySelectorAll('a.nav-item'));
+      expect(navLinks.length).toBeGreaterThan(0);
+      navLinks.forEach((link) => {
+        expect(link.getAttribute('aria-label')).toBeTruthy();
+      });
+
+      expect(screen.getByRole('link', { name: i18nT('nav.team') })).toBeInTheDocument();
     });
 
     it('renders user information in topbar', () => {
@@ -766,8 +803,9 @@ describe('Layout Component', () => {
 
       expect(screen.getByText(i18nT('nav.settingsLabel'))).toBeInTheDocument();
       expect(screen.getByText(i18nT('nav.settings.data'))).toBeInTheDocument();
-      const teamLabels = screen.getAllByText(i18nT('nav.settings.team'));
-      expect(teamLabels.length).toBeGreaterThan(0);
+      // The section header reads "Organization", so like every other settings label it is unique in
+      // the sidebar and needs no `getAllByText` workaround.
+      expect(screen.getByText(i18nT('nav.settings.team'))).toBeInTheDocument();
     });
 
     it('filters settings items based on user role', () => {
@@ -1145,10 +1183,9 @@ describe('Layout Component', () => {
     it('groups settings with correct ARIA attributes', () => {
       renderWithProviders(<Layout>Content</Layout>);
 
-      const teamGroups = screen.getAllByText(i18nT('nav.settings.team'));
-      const settingsGroupLabel = teamGroups.find((el) => el.classList.contains('nav-group-label'));
-      const teamGroup = settingsGroupLabel?.closest('[role="group"]');
-      expect(teamGroup).toHaveAttribute('aria-label', i18nT('nav.settings.team'));
+      const settingsGroupLabel = screen.getByText(i18nT('nav.settings.team'));
+      const settingsGroup = settingsGroupLabel.closest('[role="group"]');
+      expect(settingsGroup).toHaveAttribute('aria-label', i18nT('nav.settings.team'));
     });
   });
 });

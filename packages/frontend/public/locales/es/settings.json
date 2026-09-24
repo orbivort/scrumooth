@@ -177,7 +177,7 @@
     "leaveMessage": "Este equipo conserva la Definición de Terminado que venía cumpliendo y podrá cambiarla por su cuenta.",
     "leaveTitle": "¿Salir de {{name}}?",
     "manageDisclosure": "Revisar o salir",
-    "manageLink": "Gestionar el grupo",
+    "manageLink": "Gestionar este grupo en la configuración",
     "mutualBody": "Los equipos definen mutuamente este compromiso adoptando una versión concreta al unirse. Si después cambia, el cambio se muestra aquí hasta que este equipo adopte la nueva versión.",
     "mutualTitle": "Definida mutuamente",
     "readOnlyNote": "La mantiene el Product Owner o el Scrum Master de un equipo de {{name}}.",
@@ -571,7 +571,7 @@
     "selectPrompt": "Elige un grupo para ver los equipos que cumplen su Definición de Terminado.",
     "sharedDoD": {
       "delegated": "Cada equipo de este grupo lee y cambia esta Definición de Terminado en su propia pestaña de definición, donde se muestran todos sus criterios.",
-      "openAction": "Abrir la pestaña de definición",
+      "openAction": "Leerlo y cambiarlo en Mi equipo",
       "title": "Definición de Terminado",
       "updated": "Actualizada el {{date}}"
     },
@@ -641,11 +641,11 @@
       "deleteTeam": "No tiene permiso para eliminar este equipo.",
       "editTeam": "No tiene permiso para editar este equipo."
     },
-    "subtitle": "Crear y gestionar equipos en la organización",
+    "subtitle": "Todos los equipos de la organización. Cualquiera puede consultarlos y crear uno; solo su Product Owner o Scrum Master puede modificarlo o eliminarlo.",
     "teamCount": "{{count}} equipo",
     "teamCount_one": "{{count}} equipo",
     "teamCount_other": "{{count}} equipos",
-    "title": "Gestión de Equipos",
+    "title": "Todos los equipos",
     "toast": {
       "cannotDeleteWithGoals": "No se puede eliminar equipo con Product Goals existentes",
       "teamCreateFailed": "Falló la creación del equipo",

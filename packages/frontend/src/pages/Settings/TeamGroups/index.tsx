@@ -43,7 +43,7 @@ import {
 import { GroupDetailPanel, GroupList, GroupFormModal } from './components';
 import styles from './TeamGroups.module.css';
 
-import { AlertTriangleIcon, PlusIcon, UsersIcon } from '@/components/common/Icons';
+import { AlertTriangleIcon, FolderIcon, PlusIcon, UsersIcon } from '@/components/common/Icons';
 
 type FormMode = 'create' | 'edit';
 
@@ -307,7 +307,7 @@ export function TeamGroupsPage(): React.JSX.Element {
         <div className={styles['header-content']}>
           <h1 className={styles.title}>
             <span className={styles['title-icon']}>
-              <UsersIcon size={24} />
+              <FolderIcon size={24} />
             </span>
             {t('teamGroups.title')}
             {groups.length > 0 && (

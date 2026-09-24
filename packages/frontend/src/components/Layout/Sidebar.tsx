@@ -215,6 +215,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
               <Link
                 key={item.path}
                 to={item.path}
+                aria-label={t(item.labelKey as never)}
                 className={`${styles['nav-item']} ${location.pathname === item.path ? styles.active : ''}`}
                 onClick={handleNavItemClick}
                 data-testid={`nav-${item.labelKey.split('.').pop()}`}
@@ -248,6 +249,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
                   <Link
                     key={item.path}
                     to={item.path}
+                    aria-label={t(item.labelKey as never)}
                     className={`${styles['nav-item']} ${location.pathname === item.path ? styles.active : ''}`}
                     onClick={handleNavItemClick}
                     prefetch="intent"

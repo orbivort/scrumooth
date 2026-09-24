@@ -177,7 +177,7 @@
     "leaveMessage": "[Thís téàm kééps thé Défínítíón óf Dóné ít hàs béén cómplyíng wíth ànd càn thén chàngé ít ón íts ównnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn.]",
     "leaveTitle": "[Léàvééé {{name}}?]",
     "manageDisclosure": "[Révíéw ór léàvéééééé]",
-    "manageLink": "[Mànàgé thé gróúpppppp]",
+    "manageLink": "[Mànàgé thís gróúp ín séttíngssssssssss]",
     "mutualBody": "[Thé téàms mútúàlly défíné thís cómmítmént by àdóptíng à nàméd vérsíón whén théy jóín. À chàngé màdé àftérwàrds ís shówn héré úntíl thís téàm àdópts thé néw vérsíónnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn.]",
     "mutualTitle": "[Mútúàlly défínédddddd]",
     "readOnlyNote": "[Màíntàínéd by thé Pródúct Ównér ór Scrúm Màstér óf à téàm ínnnnnnnnnnnnnnnnnnnn {{name}}.]",
@@ -571,7 +571,7 @@
     "selectPrompt": "[Chóósé à gróúp tó séé thé téàms thàt cómply wíth íts Défínítíón óf Dónééééééééééééééééééééééé.]",
     "sharedDoD": {
       "delegated": "[Évéry téàm ín thís gróúp réàds ànd chàngés thís Défínítíón óf Dóné ón íts ówn Défínítíón tàb, whéré àll óf íts crítéríà àré shównnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn.]",
-      "openAction": "[Ópén thé Défínítíón tàbbbbbbbb]",
+      "openAction": "[Réàd ànd chàngé ít ón My Téàmmmmmmmmmm]",
       "title": "[Défínítíón óf Dónééééééé]",
       "updated": "[Úpdàtédddd {{date}}]"
     },
@@ -641,11 +641,11 @@
       "deleteTeam": "[Yóú dó nót hàvé pérmíssíón tó délété thís téàmmmmmmmmmmmmmmmm.]",
       "editTeam": "[Yóú dó nót hàvé pérmíssíón tó édít thís téàmmmmmmmmmmmmmmm.]"
     },
-    "subtitle": "[Créàté ànd mànàgé téàms àcróss thé órgànízàtíónnnnnnnnnnnnnnnn]",
+    "subtitle": "[Évéry téàm ín thé órgànízàtíón. Ànyóné càn lóók ànd créàté óné; ónly íts Pródúct Ównér ór Scrúm Màstér càn chàngé ór rémóvé ítttttttttttttttttttttttttttttttttttttttt.]",
     "teamCount": "[{{count}} ttééààm]",
     "teamCount_one": "[{{count}} ttééààm]",
     "teamCount_other": "[{{count}} téàmsss]",
-    "title": "[Téàm Mànàgéméntttttt]",
+    "title": "[Àll Téàmssss]",
     "toast": {
       "cannotDeleteWithGoals": "[Cànnót délété téàm wíth éxístíng pródúct góàlsssssssssssssss]",
       "teamCreateFailed": "[Fàíléd tó créàté téàmmmmmmmm]",

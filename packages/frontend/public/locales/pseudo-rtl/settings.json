@@ -403,9 +403,9 @@
       "deleteTeam": "You do not have permission to delete this team.",
       "editTeam": "You do not have permission to edit this team."
     },
-    "subtitle": "Create and manage teams across the organization",
+    "subtitle": "Every team in the organization. Anyone can look and create one; only its Product Owner or Scrum Master can change or remove it.",
     "teamCount": "{{count}} team",
-    "title": "Team Management",
+    "title": "All Teams",
     "toast": {
       "cannotDeleteWithGoals": "Cannot delete team with existing product goals",
       "teamCreateFailed": "Failed to create team",

@@ -5,7 +5,6 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 
-import { Layout } from './components/Layout/Sidebar';
 import { ErrorBoundary, PageErrorBoundary } from './components/ErrorBoundary';
 import { SessionWarningModal } from './components/SessionWarning/SessionWarningModal';
 import { PageLoader } from './components/common/Page/PageLoader';
@@ -20,6 +19,8 @@ import { TeamProvider, TeamInitializer } from './contexts/TeamContext';
 import { apiService } from './services';
 import { logger } from './utils/logger';
 import { getRouterBasename } from './utils/navigation';
+import { TEAM_LEADERSHIP_ROLES } from './config/navigation';
+import { ProtectedRoute } from './routes/ProtectedRoute';
 import { I18nProvider } from './i18n/I18nProvider';
 import { initI18n } from './i18n/config';
 import loadingStyles from './components/common/Loading/LoadingState.module.css';
@@ -86,40 +87,6 @@ const queryClient = new QueryClient({
     },
   },
 });
-
-// Protected Route Component
-const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { t } = useTranslation('common');
-  const { isAuthenticated, isLoading } = useAuthStore();
-  const [loadingTimeout, setLoadingTimeout] = useState(false);
-
-  // Prevent infinite loading - timeout after 5 seconds
-  useEffect(() => {
-    if (isLoading) {
-      const timer = setTimeout(() => {
-        setLoadingTimeout(true);
-      }, 5000);
-      return () => clearTimeout(timer);
-    }
-    return undefined;
-  }, [isLoading]);
-
-  // Show loading state while checking authentication (with timeout protection)
-  if (isLoading && !loadingTimeout) {
-    return (
-      <div className={loadingStyles['loading-screen']}>
-        <div className={loadingStyles['loading-spinner']} />
-        <p>{t('loading')}</p>
-      </div>
-    );
-  }
-
-  if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
-  }
-
-  return <Layout>{children}</Layout>;
-};
 
 // Auth Callback Initializer Component
 const AuthInitializer: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -333,10 +300,14 @@ function App() {
                             </ProtectedRoute>
                           }
                         />
+                        {/* Group administration is offered to team leadership in the sidebar, so it
+                            is guarded by the same roles here: a hidden entry that a bookmark could
+                            still open would refuse the reader only after the page's own reads came
+                            back 403. The guard spares that trip; the API remains the boundary. */}
                         <Route
                           path="/settings/team-groups"
                           element={
-                            <ProtectedRoute>
+                            <ProtectedRoute roles={TEAM_LEADERSHIP_ROLES}>
                               <PageErrorBoundary pageName="Team Groups">
                                 <LazyRoute fallbackMessage="Loading team groups...">
                                   <TeamGroupsPage />

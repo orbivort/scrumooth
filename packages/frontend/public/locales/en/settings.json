@@ -177,7 +177,7 @@
     "leaveMessage": "This team keeps the Definition of Done it has been complying with and can then change it on its own.",
     "leaveTitle": "Leave {{name}}?",
     "manageDisclosure": "Review or leave",
-    "manageLink": "Manage the group",
+    "manageLink": "Manage this group in settings",
     "mutualBody": "The teams mutually define this commitment by adopting a named version when they join. A change made afterwards is shown here until this team adopts the new version.",
     "mutualTitle": "Mutually defined",
     "readOnlyNote": "Maintained by the Product Owner or Scrum Master of a team in {{name}}.",
@@ -571,7 +571,7 @@
     "selectPrompt": "Choose a group to see the teams that comply with its Definition of Done.",
     "sharedDoD": {
       "delegated": "Every team in this group reads and changes this Definition of Done on its own Definition tab, where all of its criteria are shown.",
-      "openAction": "Open the Definition tab",
+      "openAction": "Read and change it on My Team",
       "title": "Definition of Done",
       "updated": "Updated {{date}}"
     },
@@ -641,11 +641,11 @@
       "deleteTeam": "You do not have permission to delete this team.",
       "editTeam": "You do not have permission to edit this team."
     },
-    "subtitle": "Create and manage teams across the organization",
+    "subtitle": "Every team in the organization. Anyone can look and create one; only its Product Owner or Scrum Master can change or remove it.",
     "teamCount": "{{count}} team",
     "teamCount_one": "{{count}} team",
     "teamCount_other": "{{count}} teams",
-    "title": "Team Management",
+    "title": "All Teams",
     "toast": {
       "cannotDeleteWithGoals": "Cannot delete team with existing product goals",
       "teamCreateFailed": "Failed to create team",

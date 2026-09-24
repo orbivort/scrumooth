@@ -177,7 +177,7 @@
     "leaveMessage": "Questo team mantiene la Definizione di Fatto che rispettava e potrà poi modificarla da solo.",
     "leaveTitle": "Uscire da {{name}}?",
     "manageDisclosure": "Esaminare o abbandonare",
-    "manageLink": "Gestisci il gruppo",
+    "manageLink": "Gestisci questo gruppo nelle impostazioni",
     "mutualBody": "I team definiscono reciprocamente questo impegno adottando una versione precisa quando entrano nel gruppo. Una modifica successiva compare qui finché questo team non adotta la nuova versione.",
     "mutualTitle": "Definita reciprocamente",
     "readOnlyNote": "Mantenuta dal Product Owner o dallo Scrum Master di un team di {{name}}.",
@@ -571,7 +571,7 @@
     "selectPrompt": "Scegli un gruppo per vedere i team che rispettano la sua Definizione di Fatto.",
     "sharedDoD": {
       "delegated": "Ogni team di questo gruppo legge e modifica questa Definizione di Fatto nella propria scheda di definizione, dove sono mostrati tutti i criteri.",
-      "openAction": "Apri la scheda di definizione",
+      "openAction": "Leggilo e modificalo in Il mio team",
       "title": "Definizione di Fatto",
       "updated": "Aggiornata il {{date}}"
     },
@@ -641,11 +641,11 @@
       "deleteTeam": "Non hai i permessi per eliminare questo team.",
       "editTeam": "Non hai i permessi per modificare questo team."
     },
-    "subtitle": "Crea e gestisci team nell'organizzazione",
+    "subtitle": "Tutti i team dell'organizzazione. Chiunque può consultarli e crearne uno; solo il suo Product Owner o Scrum Master può modificarlo o eliminarlo.",
     "teamCount": "{{count}} team",
     "teamCount_one": "{{count}} team",
     "teamCount_other": "{{count}} team",
-    "title": "Gestione Team",
+    "title": "Tutti i team",
     "toast": {
       "cannotDeleteWithGoals": "Impossibile eliminare team con Product Goals esistenti",
       "teamCreateFailed": "Fallita creazione del team",

@@ -1,4 +1,9 @@
 {
+  "accessDenied": {
+    "action": "[Gó tó My Téàmmmmm]",
+    "description": "[Thís pàgé bélóngs tó thé Pródúct Ównér ór Scrúm Màstér óf à téàm. Íf yóú nééd sóméthíng chàngéd héré, àsk thé téàm's léàdérshípppppppppppppppppppppppppppppppppppppppp.]",
+    "title": "[Yóú dó nót hàvé àccéss tó thís pàgéééééééééééé]"
+  },
   "accountDeletion": {
     "cancelFailed": "[Fàíléd tó càncél délétíón. Pléàsé try àgàínnnnnnnnnnnnnnn.]",
     "deleteFailed": "[Fàíléd tó délété àccóúnt. Pléàsé try àgàínnnnnnnnnnnnnn.]",
@@ -473,14 +478,14 @@
       "data": "[DDààttà]",
       "privacyData": "[Prívàcy & Dàtàààààà]",
       "sprintConfiguration": "[Sprínt Cónfígúràtíónnnnnnn]",
-      "team": "[TTééààm]",
+      "team": "[Órgànízàtíónnnnn]",
       "teamGroups": "[Téàm Gróúpsssss]",
-      "teamManagement": "[Téàm Mànàgéméntttttt]"
+      "teamManagement": "[Àll Téàmssss]"
     },
     "settingsLabel": "[Séttíngssss]",
     "sprintPlanning": "[Sprínt Plànníngggggg]",
     "sprintReview": "[Sprínt Révíéwwwww]",
-    "team": "[TTééààm]"
+    "team": "[MMyy TTééààm]"
   },
   "networkErrors": {
     "networkError": "[Nétwórk érrór. Pléàsé chéck yóúr cónnéctíón ànd try àgàínnnnnnnnnnnnnnnnnnn.]",

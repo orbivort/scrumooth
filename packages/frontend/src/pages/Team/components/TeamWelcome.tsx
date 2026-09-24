@@ -59,7 +59,7 @@ export const TeamWelcome: React.FC<TeamWelcomeProps> = ({ userName, onNavigate }
           <div className={styles['role-actions']}>
             <button
               className={styles['cta-button-primary']}
-              onClick={() => onNavigate('/settings/team-management')}
+              onClick={() => onNavigate('/settings/team-management?create=1')}
               type="button"
             >
               <BriefcaseIcon size={24} />

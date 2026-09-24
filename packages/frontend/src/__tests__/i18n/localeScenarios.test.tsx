@@ -67,6 +67,11 @@ describe('i18n Locale-Specific Tests', () => {
       'common:nav.retrospective',
       'common:nav.reports',
       'common:nav.team',
+      'common:nav.settings.team',
+      'common:nav.settings.teamManagement',
+      'common:accessDenied.title',
+      'common:accessDenied.description',
+      'common:accessDenied.action',
       'common:nav.settingsLabel',
     ];
 

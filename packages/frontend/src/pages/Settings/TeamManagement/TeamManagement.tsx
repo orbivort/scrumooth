@@ -23,12 +23,14 @@ import type {
 } from '@/types/teamManagement.types';
 import { ToastContainer } from '@/components/common/ToastContainer';
 import { ErrorBoundary } from '@/components/ErrorBoundary/ErrorBoundary';
+import { TEAM_LEADERSHIP_ROLES } from '@/config/navigation';
 
-const EDIT_DELETE_ROLES = ['PRODUCT_OWNER', 'SCRUM_MASTER'];
+/** Query flag that opens the create-team form on arrival; consumed on load, never rendered. */
+const CREATE_PARAM = 'create';
 
 const canModifyTeam = (team: Team, userRole: string | null | undefined): boolean => {
   if (!userRole) return false;
-  if (!EDIT_DELETE_ROLES.includes(userRole)) return false;
+  if (!TEAM_LEADERSHIP_ROLES.includes(userRole)) return false;
   return team.userRole === userRole;
 };
 
@@ -37,6 +39,7 @@ export const TeamManagement: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const search = searchParams.get('q') ?? '';
   const page = parseInt(searchParams.get('page') ?? '1', 10);
+  const shouldOpenCreate = searchParams.get(CREATE_PARAM) === '1';
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [createTeamDefaultName, setCreateTeamDefaultName] = useState('');
   const [selectedTeam, setSelectedTeam] = useState<Team | null>(null);
@@ -55,6 +58,25 @@ export const TeamManagement: React.FC = () => {
   React.useEffect(() => {
     setSearchInput(search);
   }, [search]);
+
+  // A reader who arrives from "Create New Team" on the team welcome screen means to start a team, not
+  // to read a directory. The intent travels as a query flag and is consumed on arrival, so the form
+  // opens once and the address bar is left describing the page rather than the act -- a refresh does
+  // not reopen a form the reader has dismissed.
+  React.useEffect(() => {
+    if (!shouldOpenCreate) {
+      return;
+    }
+    setIsCreateModalOpen(true);
+    setSearchParams(
+      (current) => {
+        const next = new URLSearchParams(current);
+        next.delete(CREATE_PARAM);
+        return next;
+      },
+      { replace: true }
+    );
+  }, [shouldOpenCreate, setSearchParams]);
 
   const {
     data: teamsData,
@@ -78,8 +100,8 @@ export const TeamManagement: React.FC = () => {
   };
 
   // Edit/Delete permissions are based on role and team membership
-  const canUpdateTeam = EDIT_DELETE_ROLES.includes(currentUserRole ?? '');
-  const canDeleteTeam = EDIT_DELETE_ROLES.includes(currentUserRole ?? '');
+  const canUpdateTeam = TEAM_LEADERSHIP_ROLES.includes(currentUserRole ?? '');
+  const canDeleteTeam = TEAM_LEADERSHIP_ROLES.includes(currentUserRole ?? '');
 
   // Check if user can modify a specific team
   const canEditTeam = useCallback(

@@ -322,7 +322,7 @@ describe('DefinitionOfDoneSection', () => {
       // link cannot live inside the trigger, because the trigger is a button.
       fireEvent.click(screen.getByRole('button', { name: /Review or leave/ }));
 
-      expect(screen.getByRole('link', { name: 'Manage the group' })).toHaveAttribute(
+      expect(screen.getByRole('link', { name: 'Manage this group in settings' })).toHaveAttribute(
         'href',
         '/settings/team-groups?group=group-1'
       );

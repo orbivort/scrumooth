@@ -35,10 +35,36 @@ import {
   TrendingUpIcon,
   UsersIcon,
   BuildingIcon,
+  FolderIcon,
   SettingsIcon,
   DownloadIcon,
 } from '../components/common/Icons';
 
+/**
+ * The roles that lead a team. They administer the organization's teams and groups, so they are the
+ * only roles the navigation and the route guards admit to those destinations.
+ *
+ * Declared once and read by both: a route that admits someone the sidebar hides would be two answers
+ * to the same question, and the reader would meet whichever one their address bar reached first.
+ */
+export const TEAM_LEADERSHIP_ROLES = ['PRODUCT_OWNER', 'SCRUM_MASTER'];
+
+/** Whether a role may reach an entry guarded by `roles`. An entry without roles is open to members. */
+export function hasAnyRole(userRole: string | null, roles?: string[]): boolean {
+  if (!roles || roles.length === 0) {
+    return true;
+  }
+  const normalizedUserRole = userRole?.toUpperCase() ?? null;
+  return (
+    normalizedUserRole !== null && roles.some((role) => role.toUpperCase() === normalizedUserRole)
+  );
+}
+
+// Labels state their object and their scope. The sidebar carries two team-shaped surfaces that
+// differ only in reach: "My Team" is the one the signed-in user belongs to, while the settings
+// section holds what spans teams -- the directory of every Team, and the Team Groups that share one
+// Definition of Done. A label that does not say which of the two it is leaves the reader to open the
+// destination to find out, so "Team" is never used on its own.
 export const NAV_ITEMS: NavItem[] = [
   { path: '/dashboard', icon: DashboardIcon, labelKey: 'nav.dashboard' },
   { path: '/product-goals', icon: TargetIcon, labelKey: 'nav.productGoals' },
@@ -87,11 +113,13 @@ export const SETTINGS_GROUPS: SettingsGroup[] = [
       // keep. Only group administration, which is a leadership act, is configured here.
       {
         path: '/settings/team-groups',
-        icon: UsersIcon,
+        // A container of teams, not a second roster: the people icon belongs to My Team, and reusing
+        // it here would make two different destinations look like the same one.
+        icon: FolderIcon,
         labelKey: 'nav.settings.teamGroups',
         // The group is created and its shared Definition of Done replaced by the Product Owner or
         // Scrum Master of one of its teams, so the entry belongs to the roles that can act on it.
-        roles: ['PRODUCT_OWNER', 'SCRUM_MASTER'],
+        roles: TEAM_LEADERSHIP_ROLES,
       },
       {
         path: '/settings/team-management',
@@ -117,25 +145,14 @@ export function getFilteredSettingsGroups(
   groups: SettingsGroup[],
   userRole: string | null
 ): SettingsGroup[] {
-  const normalizedUserRole = userRole?.toUpperCase() ?? null;
   return groups
     .map((group) => ({
       ...group,
-      items: group.items.filter(
-        (item) =>
-          !item.roles ||
-          (normalizedUserRole &&
-            item.roles.some((role) => role.toUpperCase() === normalizedUserRole))
-      ),
+      items: group.items.filter((item) => hasAnyRole(userRole, item.roles)),
     }))
     .filter((group) => group.items.length > 0);
 }
 
 export function getFilteredNavItems(items: NavItem[], userRole: string | null): NavItem[] {
-  const normalizedUserRole = userRole?.toUpperCase() ?? null;
-  return items.filter(
-    (item) =>
-      !item.roles ||
-      (normalizedUserRole && item.roles.some((role) => role.toUpperCase() === normalizedUserRole))
-  );
+  return items.filter((item) => hasAnyRole(userRole, item.roles));
 }

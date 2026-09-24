@@ -2,7 +2,7 @@ import React from 'react';
 import { screen, within, initTestI18n } from '../../../test-utils';
 import { render } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { MemoryRouter, Routes, Route } from 'react-router';
+import { MemoryRouter, Routes, Route, useSearchParams } from 'react-router';
 import { I18nextProvider } from 'react-i18next';
 import { vi } from 'vitest';
 import userEvent from '@testing-library/user-event';
@@ -106,6 +106,42 @@ const createWrapper = () => {
         <MemoryRouter initialEntries={['/settings/team-management']}>
           <Routes>
             <Route path="/settings/team-management" element={children} />
+          </Routes>
+        </MemoryRouter>
+      </QueryClientProvider>
+    </I18nextProvider>
+  );
+  return Wrapper;
+};
+
+/**
+ * The same wrapper, entered at an address of the caller's choosing, with a probe that reports the
+ * search string the page currently sits on -- the only way to see, in a memory router, that a
+ * consumed query flag has really left the address.
+ */
+const createDeepLinkWrapper = (initialEntry: string) => {
+  const queryClient = createMockQueryClient();
+  const i18n = getTestI18nInstance();
+
+  const SearchProbe: React.FC = () => {
+    const [params] = useSearchParams();
+    return <span data-testid="search-params">{params.toString()}</span>;
+  };
+
+  const Wrapper: React.FC<WrapperProps> = ({ children }) => (
+    <I18nextProvider i18n={i18n}>
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter initialEntries={[initialEntry]}>
+          <Routes>
+            <Route
+              path="/settings/team-management"
+              element={
+                <>
+                  {children}
+                  <SearchProbe />
+                </>
+              }
+            />
           </Routes>
         </MemoryRouter>
       </QueryClientProvider>
@@ -1100,13 +1136,42 @@ describe('TeamManagement', () => {
     it('should display page title', () => {
       render(<TeamManagement />, { wrapper: createWrapper() });
 
-      expect(screen.getByRole('heading', { name: /team management/i })).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: /all teams/i })).toBeInTheDocument();
     });
 
     it('should display page subtitle', () => {
       render(<TeamManagement />, { wrapper: createWrapper() });
 
-      expect(screen.getByText(/create and manage teams/i)).toBeInTheDocument();
+      // The sub-heading states who may look and who may change a team, so it is part of the page's
+      // contract rather than decoration.
+      expect(screen.getByText(/anyone can look and create one/i)).toBeInTheDocument();
+    });
+  });
+
+  describe('Create deep link', () => {
+    it('opens the create form when the reader arrives from the team welcome screen', () => {
+      render(<TeamManagement />, {
+        wrapper: createDeepLinkWrapper('/settings/team-management?create=1'),
+      });
+
+      // Straight into the form: the reader asked to start a team, not to read the directory first.
+      expect(screen.getByRole('dialog', { name: /create new team/i })).toBeInTheDocument();
+    });
+
+    it('leaves the form closed on an ordinary visit', () => {
+      render(<TeamManagement />, {
+        wrapper: createDeepLinkWrapper('/settings/team-management'),
+      });
+
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+
+    it('consumes the flag, so a reload does not reopen the form', () => {
+      render(<TeamManagement />, {
+        wrapper: createDeepLinkWrapper('/settings/team-management?create=1'),
+      });
+
+      expect(screen.getByTestId('search-params')).not.toHaveTextContent('create');
     });
   });
 

@@ -319,7 +319,7 @@ describe('DefinitionScopeSwitch', () => {
 
       // A link cannot live inside the trigger -- the trigger is a button -- so administration moved into
       // the decisions, where the rest of the governing is.
-      expect(screen.getByRole('link', { name: 'Manage the group' })).toHaveAttribute(
+      expect(screen.getByRole('link', { name: 'Manage this group in settings' })).toHaveAttribute(
         'href',
         '/settings/team-groups?group=group-1'
       );
