@@ -3,7 +3,10 @@ import React, { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { Button } from '../../../components/common/Button';
+import buttonStyles from '../../Team/Definition/DefinitionButton.module.css';
 import styles from '../WorkingAgreements.module.css';
+
+import { SaveIcon } from '@/components/common/Icons';
 
 export interface WorkingAgreementFormValues {
   title: string;
@@ -97,11 +100,24 @@ export const WorkingAgreementForm: React.FC<WorkingAgreementFormProps> = ({
       )}
 
       <div className={styles['form-actions']}>
-        <Button variant="link" onClick={onCancel} disabled={submitting}>
+        <Button
+          variant="link"
+          className={`${buttonStyles.button} ${buttonStyles['button-link']}`}
+          onClick={onCancel}
+          disabled={submitting}
+        >
           {t('agreements.cancel')}
         </Button>
-        <Button type="submit" loading={submitting}>
-          {t('agreements.save')}
+        <Button
+          type="submit"
+          loading={submitting}
+          className={`${buttonStyles.button} ${buttonStyles['button-primary']}`}
+        >
+          <span className={buttonStyles['button-content']}>
+            {/* The primitive's own spinner stands in for the icon while the agreement is being saved. */}
+            {!submitting && <SaveIcon size={16} />}
+            {t('agreements.save')}
+          </span>
         </Button>
       </div>
     </form>

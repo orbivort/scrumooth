@@ -366,9 +366,11 @@ class DefinitionOfDoneService {
    *    actually removed loses its verifications, and the snapshot records what it said.
    *
    * A retained criterion keeps its `defaultKey`: the update never writes the column, so a client
-   * cannot relabel an existing criterion as a built-in one, and a team that rewords a seeded
-   * criterion does not lose its translation. A newly inserted criterion takes a key only from a
-   * `SeededDoDItemInput` the service itself constructed.
+   * cannot relabel an existing criterion as a built-in one, and a reworded criterion still records
+   * which seeded one it descends from. The key is what the interface translates *while the row still
+   * says what the product seeded*; once the team rewords it, the sentence it wrote is the commitment
+   * and is shown as written. A newly inserted criterion takes a key only from a `SeededDoDItemInput`
+   * the service itself constructed.
    *
    * @throws AppError (400, `GATE_DOD_REQUIRED`) when the resulting Definition of Done would hold
    * no active item.

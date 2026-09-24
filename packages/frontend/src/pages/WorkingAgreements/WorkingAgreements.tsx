@@ -30,9 +30,12 @@ import { Disclosure } from '../../components/common/Disclosure';
 import { EmptyState } from '../../components/EmptyState';
 import { workingAgreementsService } from '../../services';
 import { usePublishSectionCount } from '../Team/Definition/SectionCountsContext';
+import buttonStyles from '../Team/Definition/DefinitionButton.module.css';
 
 import { WorkingAgreementForm } from './components/WorkingAgreementForm';
 import styles from './WorkingAgreements.module.css';
+
+import { PlusIcon } from '@/components/common/Icons';
 
 interface WorkingAgreementsProps {
   /** The team whose agreements these are, already resolved by the module shell. */
@@ -124,7 +127,7 @@ export const WorkingAgreements: React.FC<WorkingAgreementsProps> = ({ teamId, is
       {/* The third section of the Definition tab, in the module's card language. The heading is a
           deep-link target, so it is focusable without joining the tab order. */}
       <section
-        className={styles.panel}
+        className={`${styles.panel} ${buttonStyles.scope}`}
         aria-labelledby="working-agreements"
         data-testid="working-agreements"
         data-active={isActive}
@@ -136,13 +139,16 @@ export const WorkingAgreements: React.FC<WorkingAgreementsProps> = ({ teamId, is
           </h2>
           {formMode !== 'create' && (
             <Button
-              className={styles['primary-action']}
+              className={`${buttonStyles.button} ${buttonStyles['button-primary']} ${buttonStyles['primary-action']}`}
               onClick={() => {
                 setEditing(null);
                 setFormMode('create');
               }}
             >
-              {t('agreements.add')}
+              <span className={buttonStyles['button-content']}>
+                <PlusIcon size={16} />
+                {t('agreements.add')}
+              </span>
             </Button>
           )}
         </div>
@@ -254,11 +260,21 @@ const AgreementCard: React.FC<AgreementCardProps> = ({ agreement, onEdit, onTogg
       </div>
       <div className={styles.actions}>
         {isActive && (
-          <Button variant="link" size="sm" onClick={onEdit}>
+          <Button
+            variant="link"
+            size="sm"
+            className={`${buttonStyles.button} ${buttonStyles['button-link']}`}
+            onClick={onEdit}
+          >
             {t('agreements.edit')}
           </Button>
         )}
-        <Button variant="secondary" size="sm" onClick={onToggleStatus}>
+        <Button
+          variant="secondary"
+          size="sm"
+          className={`${buttonStyles.button} ${buttonStyles['button-secondary']}`}
+          onClick={onToggleStatus}
+        >
           {isActive ? t('agreements.retire') : t('agreements.reactivate')}
         </Button>
       </div>

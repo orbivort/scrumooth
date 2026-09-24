@@ -286,7 +286,7 @@ of them was visible to the Developers the Guide says must conform to it.
 | `DefinitionOfReadySection` | The readiness practice, its own history, and its pill                                                  |
 | `VersionHistoryPopover`    | One badge's history, fetched only when it is opened                                                    |
 | `DefinitionEditor`         | Add, reword, reorder, deactivate, remove — shared by every scope and both agreements                   |
-| `criterionLabel`           | One criterion's wording, resolved from its `defaultKey`                                                |
+| `criterionLabel`           | One criterion's wording: the seed translated from its `defaultKey`, or the team's own sentence         |
 
 The three agreements are reached by an in-page navigation rather than by tabs, and that is a decision
 rather than an omission: the anchors are the identity the deep links already publish, the three are read

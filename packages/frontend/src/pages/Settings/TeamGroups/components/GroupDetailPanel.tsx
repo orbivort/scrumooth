@@ -17,7 +17,6 @@ import { Link } from 'react-router';
 import { formatLocaleDate } from '@scrumooth/shared';
 import type { SharedDefinitionOfDone, TeamGroupMember, TeamGroupSummary } from '@scrumooth/shared';
 
-import { Button } from '../../../../components/common/Button/Button';
 import styles from '../TeamGroups.module.css';
 
 import { useI18nStore } from '@/i18n/useI18nStore';
@@ -97,20 +96,24 @@ export const GroupDetailPanel: React.FC<GroupDetailPanelProps> = ({
           {canManage && (
             <div className={styles['detail-actions']}>
               <div className={styles['detail-actions-row']}>
-                <Button variant="secondary" size="sm" onClick={onRename}>
+                <button
+                  type="button"
+                  className={`${styles['group-action']} ${styles['group-action-edit']}`}
+                  onClick={onRename}
+                >
                   <EditIcon size={16} />
                   {t('teamGroups.detail.rename')}
-                </Button>
-                <Button
-                  variant="danger"
-                  size="sm"
+                </button>
+                <button
+                  type="button"
+                  className={`${styles['group-action']} ${styles['group-action-delete']}`}
                   onClick={onDelete}
                   disabled={!canDelete}
                   aria-describedby={canDelete ? undefined : 'group-delete-blocked'}
                 >
                   <TrashIcon size={16} />
                   {t('teamGroups.detail.delete')}
-                </Button>
+                </button>
               </div>
 
               {!canDelete && (

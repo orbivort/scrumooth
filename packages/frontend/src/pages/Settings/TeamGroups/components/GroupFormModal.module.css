@@ -255,6 +255,17 @@
   flex-wrap: wrap;
 }
 
+/* Sits inside the shared `Button`, whose children are wrapped in a plain inline span -- so the gap
+   between the icon and its label is the icon's own trailing margin, and the box is aligned to the
+   text by its middle rather than its baseline. */
+.save-icon {
+  width: 1rem;
+  height: 1rem;
+  margin-inline-end: var(--space-1);
+  vertical-align: middle;
+  flex-shrink: 0;
+}
+
 @media (width <= 600px) {
   .header,
   .body {

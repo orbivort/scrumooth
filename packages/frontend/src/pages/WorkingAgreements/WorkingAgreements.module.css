@@ -92,20 +92,10 @@
   gap: var(--space-2);
 }
 
-/* The page carries one primary action: the one belonging to the section the reader is in. Adding an
-   agreement is a different verb from editing a definition, but it is still the action this page would
-   have the reader take, so it steps back with the others rather than competing with them. A demoted
-   action keeps its place, its label and its reachability -- only its emphasis changes. */
-.panel:not([data-active='true']) .primary-action {
-  background: var(--color-background-card);
-  color: var(--color-gray-700);
-  border-color: var(--color-gray-300);
-}
-
-.panel:not([data-active='true']) .primary-action:hover:not(:disabled) {
-  background: var(--color-gray-50);
-  border-color: var(--color-gray-400);
-}
+/* The buttons inside this panel do not wear this file's recipe. They are `Button` primitives, and the
+   Definition page states the appearance they take there instead -- the Definition of Done section's own
+   -- in `Team/Definition/DefinitionButton.module.css`, which is also where the rule that keeps the page's
+   single primary action in the section the reader is in now lives. */
 
 .badge {
   display: inline-flex;

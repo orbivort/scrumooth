@@ -169,8 +169,10 @@ class DefinitionOfReadyService {
    * the payload still carries, insert the ones it adds, delete the ones it dropped, and renumber
    * densely.
    *
-   * A retained criterion keeps its `defaultKey`: the update never writes the column, so reworking a
-   * seeded criterion's wording does not cost it its translation in the other four languages.
+   * A retained criterion keeps its `defaultKey`: the update never writes the column, so the row still
+   * records which seeded criterion it descends from, and the interface resolves the seeded wording
+   * from that key while the row still says what the product seeded. Once the team rewords it, the
+   * sentence it wrote is the agreement and is shown as written in every language.
    */
   private async writeDefinitionOfReady(
     dorId: string,

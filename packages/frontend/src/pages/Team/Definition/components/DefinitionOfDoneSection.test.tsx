@@ -223,17 +223,42 @@ describe('DefinitionOfDoneSection', () => {
     expect(await screen.findByText('Your team owns this agreement.')).toBeInTheDocument();
   });
 
-  it('should resolve a seeded criterion from its key, not from its stored sentence', async () => {
+  it('should show a seeded criterion the team reworded as the team wrote it', async () => {
     (definitionService.getDefinitionOfDone as vi.Mock).mockResolvedValue({
       success: true,
       data: withItems({
         items: [
           {
             id: 'item-1',
-            // Reworded by the team. The key is what decides the wording, and English is where this
-            // test runs, so the seeded sentence is what comes back -- proving the key was used and
-            // the stored text was not.
+            // Reworded by the team, and the key survives the edit: the row still records which seeded
+            // criterion it descends from. The sentence the team wrote is the agreement, so it is what
+            // the list shows -- the seeded wording would hide a save that already succeeded.
             description: 'Wir prüfen jeden Pull Request',
+            category: 'review',
+            isActive: true,
+            order: 0,
+            defaultKey: 'codeReviewed',
+          },
+        ],
+      }),
+    });
+
+    renderWithProviders(
+      <DefinitionOfDoneSection teamId={TEAM_ID} team={teamWith(null)} isActive />
+    );
+
+    expect(await screen.findByText('Wir prüfen jeden Pull Request')).toBeInTheDocument();
+    expect(screen.queryByText('Code is peer-reviewed and approved')).not.toBeInTheDocument();
+  });
+
+  it('should stand behind the seeded wording of a criterion the team left alone', async () => {
+    (definitionService.getDefinitionOfDone as vi.Mock).mockResolvedValue({
+      success: true,
+      data: withItems({
+        items: [
+          {
+            id: 'item-1',
+            description: 'Code is peer-reviewed and approved',
             category: 'review',
             isActive: true,
             order: 0,

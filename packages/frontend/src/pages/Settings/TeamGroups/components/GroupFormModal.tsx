@@ -16,7 +16,7 @@ import styles from './GroupFormModal.module.css';
 
 import { useModalFocus } from '@/hooks/useModalFocus';
 import { useBeforeUnload } from '@/hooks/useBeforeUnload';
-import { AlertTriangleIcon, UsersIcon, XIcon } from '@/components/common/Icons';
+import { AlertTriangleIcon, SaveIcon, UsersIcon, XIcon } from '@/components/common/Icons';
 
 const NAME_MAX_LENGTH = 100;
 const DESCRIPTION_MAX_LENGTH = 500;
@@ -298,6 +298,11 @@ export const GroupFormModal: React.FC<GroupFormModalProps> = ({
                 that silently refuses to do anything.
               */}
               <Button type="submit" variant="primary" loading={isSubmitting}>
+                {/* The icon marks the write, and steps aside while the Spinner in `Button` shows the
+                    write is in flight, so the button never carries two icons at once. */}
+                {isEdit && !isSubmitting && (
+                  <SaveIcon size={16} className={styles['save-icon']} aria-hidden="true" />
+                )}
                 {isEdit ? t('teamGroups.form.save') : t('teamGroups.form.create')}
               </Button>
             </div>

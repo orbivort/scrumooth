@@ -25,7 +25,6 @@ import { GATE_CODES } from '@scrumooth/shared';
 import type { SharedDefinitionOfDone } from '@scrumooth/shared';
 
 import { EmptyState } from '../../../components/EmptyState';
-import { Button } from '../../../components/common/Button/Button';
 import { LoadingState } from '../../../components/common/Loading';
 import { ToastContainer } from '../../../components/common/ToastContainer';
 import { ConfirmDialog } from '../../../components/ConfirmDialog/ConfirmDialog';
@@ -115,6 +114,11 @@ export function TeamGroupsPage(): React.JSX.Element {
   const createMutation = useCreateTeamGroup();
   const updateMutation = useUpdateTeamGroup();
   const deleteMutation = useDeleteTeamGroup();
+
+  // The header CTA is held during any of them, so a second group cannot be started from a form that
+  // is still being submitted.
+  const isAnyMutationPending =
+    createMutation.isPending || updateMutation.isPending || deleteMutation.isPending;
 
   const handleSelectGroup = useCallback(
     (groupId: string) => {
@@ -293,6 +297,10 @@ export function TeamGroupsPage(): React.JSX.Element {
 
   return (
     <div className={styles.page} data-testid="team-groups-page">
+      <a href="#main-content" className={styles['skip-link']}>
+        {t('skipToMainContent')}
+      </a>
+
       <ToastContainer toasts={toasts} onClose={removeToast} />
 
       <header className={styles.header}>
@@ -302,15 +310,27 @@ export function TeamGroupsPage(): React.JSX.Element {
               <UsersIcon size={24} />
             </span>
             {t('teamGroups.title')}
+            {groups.length > 0 && (
+              <span className={styles['item-count']}>
+                {t('teamGroups.teamCount', { count: groups.length })}
+              </span>
+            )}
           </h1>
           <p className={styles.subtitle}>{t('teamGroups.subtitle')}</p>
         </div>
 
         <div className={styles['header-actions']}>
-          <Button variant="primary" onClick={handleOpenCreate}>
-            <PlusIcon size={16} />
+          <button
+            className={styles['create-button']}
+            onClick={handleOpenCreate}
+            disabled={isAnyMutationPending}
+            type="button"
+          >
+            <span className={styles['create-button-icon']}>
+              <PlusIcon size={16} />
+            </span>
             {t('teamGroups.newGroup')}
-          </Button>
+          </button>
         </div>
       </header>
 

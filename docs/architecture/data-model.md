@@ -443,6 +443,12 @@ migration that backfilled existing rows, and the interface all read. The column 
 service: a write payload never carries it, an edit preserves whatever the row holds, and only the
 internal "carry the group's criteria onto a leaving team" path sets it on an insert.
 
+The key decides the wording only while the stored `description` still equals the seed's canonical
+sentence. Once a team rewords a criterion, that sentence is the agreement: the interface shows it as
+written, in every locale, and the key survives only as the record of which seed the row descends from.
+Reading the key first regardless — which is what `criterionLabel` used to do — made a saved reword
+render as the seeded wording, so a successful edit looked like one that never landed.
+
 **Version snapshots**:
 
 | Table                   | What it preserves                                            |

@@ -35,6 +35,7 @@ import {
   useTeamGroupSharedDoD,
   useTeamGroups,
 } from '../../../../hooks';
+import buttonStyles from '../DefinitionButton.module.css';
 
 import { criterionLabel } from './criterionLabel';
 import styles from './DefinitionScopeSwitch.module.css';
@@ -252,6 +253,7 @@ export const DefinitionScopeSwitch: React.FC<DefinitionScopeSwitchProps> = ({
           <Button
             variant="secondary"
             size="sm"
+            className={`${buttonStyles.button} ${buttonStyles['button-secondary']}`}
             disabled={!selectedGroupId}
             onClick={() => handleReview(selectedGroupId)}
           >
@@ -265,13 +267,19 @@ export const DefinitionScopeSwitch: React.FC<DefinitionScopeSwitchProps> = ({
           {renderAgreement()}
 
           <div className={styles.actions}>
-            <Button variant="link" size="sm" onClick={handleCancelReview}>
+            <Button
+              variant="link"
+              size="sm"
+              className={`${buttonStyles.button} ${buttonStyles['button-link']}`}
+              onClick={handleCancelReview}
+            >
               {t('definitionScope.hideReviewLink')}
             </Button>
             {reviewedVersion !== null && selectedGroupId && (
               <Button
                 size="sm"
                 loading={joinMutation.isPending}
+                className={`${buttonStyles.button} ${buttonStyles['button-primary']}`}
                 onClick={() => handleAdopt(selectedGroupId, reviewedVersion)}
               >
                 {t('definitionScope.adoptAction', { version: reviewedVersion })}
@@ -348,7 +356,12 @@ export const DefinitionScopeSwitch: React.FC<DefinitionScopeSwitchProps> = ({
         {/* Reading the shared agreement in full and leaving it are the two things a team in a group can
             do about it, and the group's own screen is where it is administered rather than here. */}
         <div className={styles.actions}>
-          <Button variant="link" size="sm" onClick={() => setIsReviewing((open) => !open)}>
+          <Button
+            variant="link"
+            size="sm"
+            className={`${buttonStyles.button} ${buttonStyles['button-link']}`}
+            onClick={() => setIsReviewing((open) => !open)}
+          >
             {isReviewing ? t('definitionScope.hideReviewLink') : t('definitionScope.reviewLink')}
           </Button>
 
@@ -357,7 +370,12 @@ export const DefinitionScopeSwitch: React.FC<DefinitionScopeSwitchProps> = ({
           </Link>
 
           {canDecide && (
-            <Button variant="warning" size="sm" onClick={() => setIsLeaving(true)}>
+            <Button
+              variant="warning"
+              size="sm"
+              className={`${buttonStyles.button} ${buttonStyles['button-warning']}`}
+              onClick={() => setIsLeaving(true)}
+            >
               {t('definitionScope.leave')}
             </Button>
           )}
@@ -379,7 +397,7 @@ export const DefinitionScopeSwitch: React.FC<DefinitionScopeSwitchProps> = ({
   const hasGovernanceDecisions = group !== null || canDecide;
 
   return (
-    <div className={styles.switch}>
+    <div className={`${styles.switch} ${buttonStyles.scope}`}>
       {hasGovernanceDecisions ? (
         <Disclosure
           tone={group ? 'primary' : 'neutral'}
@@ -415,6 +433,7 @@ export const DefinitionScopeSwitch: React.FC<DefinitionScopeSwitchProps> = ({
             <Button
               variant="secondary"
               size="sm"
+              className={`${buttonStyles.button} ${buttonStyles['button-secondary']}`}
               loading={joinMutation.isPending}
               onClick={() => void handleAdoptRefreshed()}
             >

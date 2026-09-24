@@ -124,14 +124,42 @@ describe('DefinitionOfReadySection', () => {
     expect(screen.getByTestId('version-history')).toHaveTextContent('v1');
   });
 
-  it('should resolve a seeded readiness criterion from its key, not from its stored sentence', async () => {
+  // The save writes the team's sentence; the list has to show it. Resolving the built-in key instead
+  // made a reworded criterion read as the seeded one, so a successful edit looked like a save that had
+  // not happened -- the failure this surface was reported for.
+  it('should show a seeded criterion the team reworded as the team wrote it', async () => {
     (definitionService.getDefinitionOfReady as vi.Mock).mockResolvedValue({
       success: true,
       data: withItems({
         items: [
           {
             id: 'item-1',
-            description: 'Titel und Beschreibung sind klar',
+            description: 'Titel und Beschreibung mit dem Product Owner abgestimmt',
+            category: 'acceptance',
+            isActive: true,
+            order: 0,
+            defaultKey: 'clearTitle',
+          },
+        ],
+      }),
+    });
+
+    renderWithProviders(<DefinitionOfReadySection teamId={TEAM_ID} isActive />);
+
+    expect(
+      await screen.findByText('Titel und Beschreibung mit dem Product Owner abgestimmt')
+    ).toBeInTheDocument();
+    expect(screen.queryByText('Clear title and description provided')).not.toBeInTheDocument();
+  });
+
+  it('should show a seeded criterion the team left alone in the seeded wording', async () => {
+    (definitionService.getDefinitionOfReady as vi.Mock).mockResolvedValue({
+      success: true,
+      data: withItems({
+        items: [
+          {
+            id: 'item-1',
+            description: 'Clear title and description provided',
             category: 'acceptance',
             isActive: true,
             order: 0,
