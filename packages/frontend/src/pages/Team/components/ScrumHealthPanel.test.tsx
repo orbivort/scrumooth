@@ -1,11 +1,15 @@
 /**
  * The Scrum Health tab: what the tool can observe about a team's health.
  *
- * Three readings share the tab, and each is checked here for the two things that matter -- that it
+ * Two readings share the tab, and each is checked here for the two things that matter -- that it
  * shows what the team actually recorded, and that it says nothing it does not know. The
  * cross-functionality summary is tested for its gaps rather than its totals, because a team that
  * "covers" everything it never assessed is the failure the signal exists to prevent; recording is
  * tested for the role that may write it and for reporting a failed write instead of dropping it.
+ *
+ * Which Definition of Done governs the team is deliberately *not* here: it is a governance fact
+ * about a commitment rather than a reading of the team's health, and it moved to the Definition tab
+ * beside the commitment it decides.
  */
 import React from 'react';
 import userEvent from '@testing-library/user-event';
@@ -15,38 +19,24 @@ import { SkillCoverage } from '@scrumooth/shared';
 
 import { ScrumHealthPanel } from './ScrumHealthPanel';
 import { crossFunctionalityService, healthCheckService } from '../../../services';
-import { useAuthStore, useTeamStore } from '../../../store';
+import { useTeamStore } from '../../../store';
 import { mockCrossFunctionality } from '../../../services/mockFacilitationData';
-import type { Team } from '../../../types';
 
 vi.mock('../../../services');
 vi.mock('../../../store', () => ({
   useTeamStore: vi.fn(),
-  useAuthStore: vi.fn(),
 }));
 
 const TEAM_ID = 'team-1';
-
-const buildTeam = (role: string): Team =>
-  ({
-    id: TEAM_ID,
-    name: 'Test Team',
-    members: [{ userId: 'user-1', role }],
-  }) as unknown as Team;
 
 const mockStores = (role: string) => {
   (useTeamStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
     userRoleInCurrentTeam: role,
   });
-  (useAuthStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
-    user: { id: 'user-1', firstName: 'Test', lastName: 'User', email: 'test@example.com' },
-  });
 };
 
 const renderPanel = () =>
-  renderWithProviders(
-    <ScrumHealthPanel teamId={TEAM_ID} team={buildTeam('developers')} isUninvitedUser={false} />
-  );
+  renderWithProviders(<ScrumHealthPanel teamId={TEAM_ID} isUninvitedUser={false} />);
 
 describe('ScrumHealthPanel', () => {
   beforeAll(async () => {
@@ -175,11 +165,14 @@ describe('ScrumHealthPanel', () => {
     expect(screen.queryByText(i18nT('team:healthCheck.sectionTitle'))).not.toBeInTheDocument();
   });
 
-  it('names the group whose Definition of Done governs the team', async () => {
+  it('leaves the governing Definition of Done to the Definition tab', async () => {
     renderPanel();
 
     await screen.findByText('1 covered · 1 partial · 1 not covered');
 
-    expect(screen.getByText(i18nT('team:teamGroup.title'))).toBeInTheDocument();
+    // The tab reads the team's health. Which commitment governs it is decided, and read, where the
+    // commitment is -- so this tab must not carry a second answer to it.
+    expect(screen.queryByText('Shared Definition of Done')).not.toBeInTheDocument();
+    expect(screen.queryByText('Definition of Done')).not.toBeInTheDocument();
   });
 });

@@ -57,6 +57,7 @@ const SHARED_DOD: SharedDefinitionOfDone = {
       description: 'Code is peer-reviewed',
       category: 'review',
       isActive: true,
+      defaultKey: 'codeReviewed',
       order: 0,
     },
     {
@@ -293,44 +294,42 @@ describe('TeamGroupsPage', () => {
   });
 
   describe('the shared Definition of Done', () => {
-    it('should replace it with the criteria the editor sends, keeping the ones that survive', async () => {
+    it('should state which commitment governs the group and delegate it to the Definition tab', async () => {
       renderPage(selectPayments);
 
-      await userEvent.click(
-        await screen.findByRole('button', { name: i18nT('settings:teamGroups.sharedDoD.edit') })
-      );
+      // The commitment is stated with the version in force...
+      expect(
+        await screen.findByText(i18nT('settings:teamGroups.sharedDoD.title'))
+      ).toBeInTheDocument();
 
-      const [firstCriterion] = screen.getAllByLabelText(
-        i18nT('settings:definitionEditor.ariaLabels.itemDescription')
-      );
-      await userEvent.clear(firstCriterion as HTMLElement);
-      await userEvent.type(firstCriterion as HTMLElement, 'Code is peer-reviewed and approved');
-      await userEvent.click(
-        screen.getByRole('button', { name: i18nT('settings:definitionEditor.saveChanges') })
-      );
-
-      await waitFor(() => {
-        expect(teamGroupService.updateSharedDefinitionOfDone).toHaveBeenCalledWith(PAYMENTS.id, {
-          items: [
-            {
-              id: 'item-1',
-              description: 'Code is peer-reviewed and approved',
-              category: 'review',
-              isActive: true,
-              order: 0,
-            },
-            {
-              id: 'item-2',
-              description: 'Retired criterion',
-              // The API models "no category" as null and the editor as absent; the mapping is what
-              // keeps an uncategorised criterion from silently acquiring a category on save.
-              category: undefined,
-              isActive: false,
-              order: 1,
-            },
-          ],
-        });
+      const commitment = screen.getByRole('region', {
+        name: i18nT('settings:teamGroups.sharedDoD.title'),
       });
+      expect(within(commitment).getByText('v3')).toBeInTheDocument();
+      expect(
+        within(commitment).getByText(i18nT('settings:teamGroups.sharedDoD.delegated'))
+      ).toBeInTheDocument();
+
+      // ...and the change is made where the criteria and the Sprint they gate are in view.
+      expect(
+        screen.getByRole('link', { name: i18nT('settings:teamGroups.sharedDoD.openAction') })
+      ).toHaveAttribute('href', '/team?tab=definition#definition-of-done');
+    });
+
+    it('should not offer a second editor for a commitment authored on the Definition tab', async () => {
+      renderPage(selectPayments);
+
+      await screen.findByText(i18nT('settings:teamGroups.sharedDoD.title'));
+
+      // A second editor here would be a second answer to "where do I change our Definition of Done?",
+      // and the only one a reader would find by looking under Settings.
+      expect(
+        screen.queryByRole('button', { name: i18nT('settings:teamGroups.sharedDoD.edit') })
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByLabelText(i18nT('settings:definitionEditor.ariaLabels.itemDescription'))
+      ).not.toBeInTheDocument();
+      expect(teamGroupService.updateSharedDefinitionOfDone).not.toHaveBeenCalled();
     });
 
     it('should be readable but not editable by someone who leads none of the teams', async () => {
@@ -343,12 +342,12 @@ describe('TeamGroupsPage', () => {
       expect(
         await screen.findByText(i18nT('settings:teamGroups.detail.readOnlyNotice'))
       ).toBeInTheDocument();
-      expect(screen.getByText(i18nT('settings:teamGroups.sharedDoD.readOnly'))).toBeInTheDocument();
-      expect(screen.getByText('Code is peer-reviewed')).toBeInTheDocument();
+      // The commitment is still readable -- the refusal is of the roster, not of the agreement.
+      const commitment = screen.getByRole('region', {
+        name: i18nT('settings:teamGroups.sharedDoD.title'),
+      });
+      expect(within(commitment).getByText('v3')).toBeInTheDocument();
 
-      expect(
-        screen.queryByRole('button', { name: i18nT('settings:teamGroups.sharedDoD.edit') })
-      ).not.toBeInTheDocument();
       expect(
         screen.queryByRole('button', { name: i18nT('settings:teamGroups.detail.rename') })
       ).not.toBeInTheDocument();

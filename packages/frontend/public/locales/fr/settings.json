@@ -129,16 +129,60 @@
       "technical": "Technique",
       "value": "Valeur"
     },
-    "dorInfo": "La Definition of Ready est une liste de critères qu'une user story doit respecter avant de pouvoir être prise dans un sprint. Elle garantit que l'équipe dispose de suffisamment d'informations pour mener à bien le travail.",
+    "dorInfo": "La Définition de Prêt est une pratique déclarée par cette équipe, et non un artefact du Guide Scrum : le Guide nomme trois artefacts et aucun n'est une liste de vérification de préparation. Le Scrum Master de l'équipe la tient à jour, et Scrumooth l'applique à la frontière du Sprint.",
     "editTitle": "Modifier {{label}}",
     "empty": "Aucun élément {{shortLabel}} pour le moment. Ajoutez votre premier critère ci-dessus.",
     "inactive": "{{count}} inactifs",
     "inactive_one": "{{count}} inactif",
     "inactive_other": "{{count}} inactifs",
     "newItemPlaceholder": "Entrez un nouveau critère {{shortLabel}}...",
+    "noActiveWarning": "Une définition doit conserver au moins un critère actif. Réactivez-en un ou ajoutez-en un nouveau avant d'enregistrer.",
     "saveChanges": "Enregistrer les modifications",
     "saving": "Enregistrement...",
     "unsavedWarning": "Vous avez des modifications non enregistrées"
+  },
+  "definitionHistory": {
+    "authorUnknown": "Auteur non enregistré",
+    "changedBy": "Modifiée par {{name}}",
+    "close": "Fermer",
+    "current": "En vigueur",
+    "empty": "Aucune version de cet accord n'a encore été enregistrée.",
+    "error": "L'historique des versions n'a pas pu être chargé.",
+    "loading": "Chargement de l'historique des versions…",
+    "noActiveCriteria": "Cette version ne comportait aucun critère actif.",
+    "retry": "Réessayer",
+    "title": "Historique des versions",
+    "versionLabel": "v{{version}}"
+  },
+  "definitionScope": {
+    "adoptAction": "Adopter la v{{version}}",
+    "adoptHint": "Si plusieurs équipes Scrum travaillent sur un même produit, elles doivent définir et respecter la même Définition de Fini.",
+    "adoptTitle": "Adopter une Définition de Fini partagée",
+    "adoptedAt": "v{{version}} adoptée le {{date}}.",
+    "chooseLabel": "Groupe d'équipes",
+    "drift": "Cette équipe a adopté la v{{adopted}} ; la v{{current}} est en vigueur.",
+    "groupHint": "Cette équipe travaille sur un même produit avec les autres équipes de {{name}} : elle respecte donc la Définition de Fini qu’elles partagent.",
+    "groupTitle": "Partagée avec {{name}} · {{count}} équipes.",
+    "hideReviewLink": "Masquer l'accord partagé",
+    "joinFailed": "Le groupe n'a pas pu être adopté.",
+    "leave": "Quitter le groupe",
+    "leaveFailed": "Impossible de quitter le groupe.",
+    "leaveMessage": "Cette équipe conserve la Définition de Fini qu'elle respectait et pourra ensuite la modifier elle-même.",
+    "leaveTitle": "Quitter {{name}} ?",
+    "manageLink": "Gérer le groupe",
+    "mutualBody": "Les équipes définissent mutuellement cet engagement en adoptant une version nommée lors de leur adhésion. Une modification ultérieure s'affiche ici jusqu'à ce que cette équipe adopte la nouvelle version.",
+    "mutualTitle": "Définie mutuellement",
+    "readOnlyNote": "Tenue à jour par le Product Owner ou le Scrum Master d'une équipe de {{name}}.",
+    "reviewAction": "Consulter",
+    "reviewCurrentAction": "Consulter la version en vigueur",
+    "reviewLabel": "La Définition de Fini que respecte chaque équipe de {{name}}",
+    "reviewLink": "Consulter l'accord partagé",
+    "teamHint": "Tout membre de l'équipe peut le modifier.",
+    "teamTitle": "Cet accord appartient à votre équipe."
+  },
+  "definitionStates": {
+    "inactiveMessage": "Tous les critères sont actuellement désactivés. Réactivez-en un ou ajoutez-en un nouveau avant d'enregistrer.",
+    "inactiveTitle": "Aucun critère actif"
   },
   "deleteTeamModal": {
     "awaitingConfirmation": "En attente de confirmation",
@@ -209,14 +253,15 @@
     "editButton": "Modifier DoD",
     "empty": {
       "configureButton": "Configurer DoD",
-      "message": "Configurez les critères de Definition of Done de votre équipe.",
-      "title": "Aucun élément DoD actif"
+      "message": "Un Sprint Backlog ne peut être engagé, et un Sprint ne peut démarrer, sans au moins un critère ; et aucun élément ne peut être marqué Done tant que chaque critère actif n'est pas vérifié.",
+      "title": "Pas encore de Definition of Done"
     },
     "error": {
-      "message": "Impossible de charger la Definition of Done. Utilisation des éléments par défaut.",
+      "message": "Impossible de charger la Definition of Done.",
       "retry": "Réessayer",
       "title": "Erreur de chargement"
     },
+    "groupEditBanner": "Chaque équipe de {{name}} respecte cette Définition de Fini. Enregistrer applique la modification aux {{count}} équipes à la fois et incrémente la version partagée.",
     "inactive": "{{count}} inactifs",
     "inactive_one": "{{count}} inactif",
     "inactive_other": "{{count}} inactifs",
@@ -229,15 +274,6 @@
     },
     "lastUpdated": "Dernière mise à jour :",
     "loading": "Chargement de la Definition of Done...",
-    "noTeam": {
-      "message": "Veuillez sélectionner une équipe pour voir et gérer la Definition of Done.",
-      "title": "Aucune équipe sélectionnée"
-    },
-    "sharedDoD": {
-      "manageLink": "La gérer dans Groupes d'équipes",
-      "message": "Cette équipe travaille dans {{name}} avec d'autres équipes Scrum sur un même produit et respecte donc leur Definition of Done commune. Les modifications se font là-bas.",
-      "title": "Definition of Done commune."
-    },
     "shortLabel": "DoD",
     "title": "Definition of Done",
     "toast": {
@@ -255,7 +291,7 @@
       "configureButton": "Configurer DoR",
       "description": "La Definition of Ready est une liste de critères qu'une user story doit respecter avant d'être prise dans un sprint.",
       "message": "Aucune Definition of Ready configurée pour cette équipe.",
-      "title": "Définition de Ready"
+      "title": "Definition of Ready"
     },
     "error": "Erreur lors du chargement de la Definition of Ready",
     "inactive": "{{count}} inactifs",
@@ -263,21 +299,16 @@
     "inactive_other": "{{count}} inactifs",
     "item": {
       "acceptanceCriteria": "Critères d'acceptation définis et acceptés",
-      "acceptanceCriteriaDefined": "Critères d'acceptation définis",
       "businessValue": "Valeur métier attribuée",
       "clearTitle": "Titre et description clairs fournis",
       "dependencies": "Dépendances identifiées et documentées",
-      "dependenciesIdentified": "Dépendances identifiées",
       "noBlockers": "Aucun blocage ni obstacle",
-      "storyPointsEstimated": "Story points estimés par l'équipe",
-      "storyPointsEstimatedOld": "Story points estimés",
-      "userStoryWritten": "User story clairement écrite"
+      "storyPointsEstimated": "Story points estimés par l'équipe"
     },
     "lastUpdated": "Dernière mise à jour :",
     "loading": "Chargement de la Definition of Ready...",
-    "noTeam": "Veuillez sélectionner une équipe pour voir la Definition of Ready.",
     "practice": {
-      "message": "Elle n'est pas l'un des trois artefacts du Guide Scrum 2020 — le Product Backlog, le Sprint Backlog et l'Increment — Scrumooth la présente donc comme une pratique complémentaire. Elle est néanmoins appliquée comme accord propre à l'équipe : un Sprint Backlog ne peut être engagé, et un Sprint ne peut démarrer, tant qu'un élément sélectionné a un critère non vérifié. L'équipe enregistre les vérifications, le Scrum Master tient l'accord à jour.",
+      "message": "Elle n'est pas l'un des trois artefacts du Guide Scrum 2020 — le Product Backlog, le Sprint Backlog et l'Increment — Scrumooth la présente donc comme une pratique complémentaire. Elle est néanmoins appliquée : un Sprint Backlog ne peut être engagé, et un Sprint ne peut démarrer, tant qu'un élément sélectionné a un critère non vérifié. L'équipe enregistre les vérifications ; le Scrum Master de l'équipe tient cet accord à jour.",
       "scrumMasterOnly": "Le Scrum Master de l'équipe tient cet accord à jour.",
       "title": "Pratique complémentaire, pas un artefact du Guide."
     },
@@ -468,17 +499,6 @@
     "COMPLETED": "Terminé",
     "PLANNED": "Planifié"
   },
-  "teamDefinitions": {
-    "ariaLabels": {
-      "definitionTabs": "Onglets de définition"
-    },
-    "subtitle": "Configurer la Definition of Ready et la Definition of Done de votre équipe",
-    "tabs": {
-      "definitionOfDone": "Definition of Done",
-      "definitionOfReady": "Definition of Ready"
-    },
-    "title": "Définitions d'équipe"
-  },
   "teamGroups": {
     "delete": {
       "message": "Le groupe, sa liste d'équipes et sa Definition of Done commune sont supprimés. Cette action est irréversible.",
@@ -487,7 +507,7 @@
     "detail": {
       "delete": "Supprimer le groupe",
       "deleteBlocked": "Un groupe ne peut pas être supprimé tant que des équipes respectent sa Definition of Done : cela leur retirerait leur engagement au lieu de les conduire vers un autre. Chaque équipe doit d'abord le quitter.",
-      "readOnlyNotice": "Vous pouvez lire cet engagement, mais vous ne dirigez aucune équipe de ce groupe : seuls les Product Owners et les Scrum Masters de ses équipes peuvent le modifier.",
+      "readOnlyNotice": "Vous pouvez consulter cet engagement, mais vous ne dirigez aucune équipe de ce groupe. Ses équipes le tiennent à jour depuis leur onglet de définition.",
       "rename": "Renommer"
     },
     "directoryAriaLabel": "Groupes d'équipes",
@@ -537,19 +557,11 @@
       "title": "Équipes",
       "unknown": "—"
     },
-    "selectPrompt": "Choisissez un groupe pour voir les équipes qui respectent sa Definition of Done et pour modifier cet engagement.",
+    "selectPrompt": "Choisissez un groupe pour voir les équipes qui respectent sa Définition de Fini.",
     "sharedDoD": {
-      "activeCount": "{{count}} critères actifs",
-      "activeCount_one": "{{count}} critère actif",
-      "activeCount_other": "{{count}} critères actifs",
-      "banner": "Toutes les équipes de ce groupe respectent cette Definition of Done. Enregistrer une modification l'applique à toutes d'un coup et incrémente la version commune.",
-      "edit": "Modifier la Definition of Done commune",
-      "empty": "La Definition of Done de ce groupe ne contient aucun critère actif. Ajoutez-en un pour que ses équipes aient un engagement à respecter.",
-      "inactiveCount": "{{count}} inactifs",
-      "inactiveCount_one": "{{count}} inactif",
-      "inactiveCount_other": "{{count}} inactifs",
-      "readOnly": "Vous pouvez lire cet engagement, mais vous ne dirigez aucune équipe de ce groupe : seuls les Product Owners et les Scrum Masters de ses équipes peuvent le modifier.",
-      "title": "Definition of Done commune",
+      "delegated": "Chaque équipe de ce groupe consulte et modifie cette Définition de Fini dans son propre onglet de définition, où tous ses critères sont affichés.",
+      "openAction": "Ouvrir l'onglet de définition",
+      "title": "Définition de Fini",
       "updated": "Mise à jour le {{date}}"
     },
     "subtitle": "Les équipes Scrum qui travaillent sur un même produit, et l'unique Definition of Done qu'elles respectent toutes.",
@@ -560,7 +572,6 @@
     "toast": {
       "created": "Le groupe d'équipes a été créé.",
       "deleted": "Le groupe d'équipes a été supprimé.",
-      "sharedDoDUpdated": "La Definition of Done commune a été mise à jour. Toutes les équipes du groupe respectent la nouvelle version.",
       "updated": "Le groupe d'équipes a été mis à jour."
     },
     "versionShort": "v{{version}}"

@@ -4,9 +4,13 @@
 // The 2020 Scrum Guide: *"If there are multiple Scrum Teams working together on a product, they must
 // mutually define and comply with the same Definition of Done."* The server makes that structural --
 // a group owns the only Definition of Done its teams read, and a grouped team cannot replace its own
-// row. This screen manages the group and that commitment; the Team page is where a team decides to
-// join or leave one. The two are linked rather than merged, because one is product-scoped and the
-// other is a team's own decision.
+// row.
+//
+// This screen administers the group: it is created, renamed and deleted here, and its roster is read
+// here. The commitment itself is authored on a team's Definition tab, where the criteria and the
+// Sprint they gate are both in view; this screen states which version governs the group's teams and
+// links to it. A second editor here would be a second answer to "where do I change our Definition of
+// Done?", and the only one a reader would find by looking under Settings.
 //
 // Permission is deliberately not resolved from the caller's global role. It is the leadership they
 // hold in one of the group's teams, plus a creator fallback that only applies while no team has
@@ -18,7 +22,7 @@ import React, { useCallback, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { GATE_CODES } from '@scrumooth/shared';
-import type { SharedDefinitionOfDone, UpdateSharedDoDInput } from '@scrumooth/shared';
+import type { SharedDefinitionOfDone } from '@scrumooth/shared';
 
 import { EmptyState } from '../../../components/EmptyState';
 import { Button } from '../../../components/common/Button/Button';
@@ -33,7 +37,6 @@ import {
   useTeamGroupSharedDoD,
   useTeamGroups,
   useToast,
-  useUpdateSharedDoD,
   useUpdateTeamGroup,
   type GroupFormInput,
 } from '../../../hooks';
@@ -112,7 +115,6 @@ export function TeamGroupsPage(): React.JSX.Element {
   const createMutation = useCreateTeamGroup();
   const updateMutation = useUpdateTeamGroup();
   const deleteMutation = useDeleteTeamGroup();
-  const sharedDoDMutation = useUpdateSharedDoD();
 
   const handleSelectGroup = useCallback(
     (groupId: string) => {
@@ -207,25 +209,6 @@ export function TeamGroupsPage(): React.JSX.Element {
     })();
   }, [selectedGroupId, deleteMutation, setSearchParams, success, showError, handleError, t]);
 
-  const handleSaveSharedDoD = useCallback(
-    async (input: UpdateSharedDoDInput): Promise<void> => {
-      if (!selectedGroupId) {
-        return;
-      }
-
-      try {
-        await sharedDoDMutation.mutateAsync({ groupId: selectedGroupId, data: input });
-        success(t('teamGroups.toast.sharedDoDUpdated'));
-      } catch (error) {
-        // Rethrown so the editor stays open on its unsaved criteria: closing it would discard the
-        // very change the refusal was about.
-        showError(handleError(error));
-        throw error;
-      }
-    },
-    [selectedGroupId, sharedDoDMutation, success, showError, handleError, t]
-  );
-
   const renderWorkspace = (): React.ReactElement => {
     if (directoryQuery.isLoading) {
       return <LoadingState variant="spinner" size="lg" label={t('teamGroups.loading')} />;
@@ -299,10 +282,8 @@ export function TeamGroupsPage(): React.JSX.Element {
               sharedDoD={sharedDoD}
               canManage={canManage}
               isRosterRestricted={isRosterRestricted}
-              isSavingSharedDoD={sharedDoDMutation.isPending}
               onRename={handleOpenEdit}
               onDelete={handleOpenDelete}
-              onSaveSharedDoD={handleSaveSharedDoD}
             />
           )}
         </div>

@@ -386,7 +386,7 @@ starts deciding.
 
 ### What Applying Does
 
-- The Definition of Done is updated through the same machinery as Team Definitions: the version is
+- The Definition of Done is updated through the same machinery as **Team → Definition**: the version is
   incremented and the superseded version is kept in the version history.
 - An **Adopted vN** chip then appears on the Retrospective, recording which version this event
   produced. That chip is the evidence that the inspection led somewhere.

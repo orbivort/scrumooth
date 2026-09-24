@@ -18,6 +18,7 @@ import type enScrumMasterDashboard from '../../public/locales/en/scrum-master-da
 import type enTimebox from '../../public/locales/en/timebox.json';
 import type enBarriers from '../../public/locales/en/barriers.json';
 import type enAgreements from '../../public/locales/en/agreements.json';
+import type enGate from '../../public/locales/en/gate.json';
 
 declare module 'i18next' {
   interface CustomTypeOptions {
@@ -43,6 +44,8 @@ declare module 'i18next' {
       timebox: typeof enTimebox;
       barriers: typeof enBarriers;
       agreements: typeof enAgreements;
+      // The Scrum Guide rule behind each gate refusal, keyed by `GATE_DEFINITIONS[*].i18nKey`.
+      gate: typeof enGate;
     };
   }
 }

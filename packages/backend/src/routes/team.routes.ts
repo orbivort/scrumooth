@@ -9,6 +9,7 @@ import { authenticate, requireRoles } from '../middleware/auth.middleware';
 import { createRequireTeamContext } from '../middleware/teamContext.middleware';
 import { validateBody, validateParams } from '../middleware/validation.middleware';
 import { GATE_CODES, UserRole } from '@scrumooth/shared';
+import { definitionItemsSchema } from '../validations/definitionItem.validation';
 import { joinTeamGroupSchema } from '../validations/teamGroup.validation';
 import { z } from 'zod';
 
@@ -67,24 +68,12 @@ const memberIdSchema = z.object({
   memberId: z.string().uuid('Invalid member ID'),
 });
 
-// `id` is the identity of a criterion that already exists: naming one updates that row in place, so
-// the verifications recorded against it survive the edit. It must be a UUID, because an id that
-// cannot name a row would otherwise be silently treated as a new criterion.
-const definitionItemSchema = z.object({
-  id: z.string().uuid('Invalid item ID').optional(),
-  description: z.string().min(1, 'Description is required'),
-  category: z.string().optional(),
-  isActive: z.boolean(),
-  order: z.number(),
-});
+// The team's Definition of Done and its Definition of Ready are replaced by the same payload shape,
+// and that shape is shared with the group's Definition of Done: one criterion contract, validated in
+// one place, so the three surfaces cannot disagree about what a criterion is.
+const updateDoDSchema = definitionItemsSchema();
 
-const updateDoDSchema = z.object({
-  items: z.array(definitionItemSchema),
-});
-
-const updateDoRSchema = z.object({
-  items: z.array(definitionItemSchema),
-});
+const updateDoRSchema = definitionItemsSchema();
 
 /**
  * @route   GET /api/v1/teams

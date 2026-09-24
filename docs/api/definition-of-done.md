@@ -378,7 +378,15 @@ Content-Type: application/json
           "description": "Code has been peer-reviewed by at least one team member",
           "category": "review",
           "isActive": true,
-          "order": 0
+          "order": 0,
+          "defaultKey": null
+        },
+        {
+          "description": "Code is properly documented",
+          "category": "documentation",
+          "isActive": true,
+          "order": 1,
+          "defaultKey": "documentation"
         }
       ],
       "createdAt": "2026-09-22T09:00:00.000Z",
@@ -395,7 +403,8 @@ Content-Type: application/json
           "description": "Unit tests pass with at least 80% coverage",
           "category": "testing",
           "isActive": true,
-          "order": 0
+          "order": 0,
+          "defaultKey": null
         }
       ],
       "createdAt": "2026-08-01T09:00:00.000Z",
@@ -406,6 +415,12 @@ Content-Type: application/json
   ]
 }
 ```
+
+`defaultKey` names the built-in criterion a criterion descends from, so a version stays readable in
+the reader's language after the team rewords it; `null` means the team wrote it itself. It is owned by
+the service: the write payload has no such field, and an edit preserves whatever the row already
+carries. Snapshots written before the field existed report `null`, and the reader falls back to
+matching the sentence.
 
 **Error Responses**
 

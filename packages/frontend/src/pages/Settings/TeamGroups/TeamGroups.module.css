@@ -1,6 +1,6 @@
 /* Team Groups - Modern Design System */
 
-/* Aligned with Team Management / Team Definitions visual patterns. */
+/* Aligned with Team Management / Team module visual patterns. */
 
 /* ========================================
    PAGE CONTAINER
@@ -425,6 +425,68 @@
   color: var(--color-text-secondary);
   font-size: var(--font-size-sm);
   line-height: var(--line-height-normal);
+}
+
+/* The commitment, stated and delegated. It is deliberately the quietest thing on this screen: the
+   screen administers a group, and the Definition of Done is authored where the teams work. */
+.commitment {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  border: var(--border-width-1) solid var(--color-border-default);
+  border-left: var(--border-width-4) solid var(--color-primary-400);
+  border-radius: var(--radius-lg);
+  background: var(--color-background-page);
+}
+
+.commitment-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.commitment-title {
+  margin: 0;
+  color: var(--color-text-primary);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-semibold);
+}
+
+.commitment-updated {
+  color: var(--color-text-tertiary);
+  font-size: var(--font-size-xs);
+}
+
+.commitment-body {
+  margin: 0;
+  max-width: 72ch;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-normal);
+}
+
+.commitment-action {
+  margin: 0;
+}
+
+.commitment-link {
+  color: var(--color-primary-600);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.commitment-link:hover {
+  color: var(--color-primary-700);
+}
+
+.commitment-link:focus-visible {
+  outline: none;
+  border-radius: var(--radius-sm);
+  box-shadow: var(--focus-ring);
 }
 
 .select-prompt {

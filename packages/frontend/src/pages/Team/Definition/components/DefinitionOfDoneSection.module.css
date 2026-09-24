@@ -1,0 +1,272 @@
+/* The Definition of Done section.
+   The card shape is the Team module's own (`WorkingAgreements.module.css`): one border, one radius,
+   one shadow. What distinguishes this section is the semantic accent on its leading edge -- it is the
+   commitment of the Increment, so it leads the page -- and the numbered clauses inside it. */
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-6);
+  border: var(--border-width-1) solid var(--color-border-default);
+  border-left: var(--border-width-4) solid var(--color-success-500);
+  border-radius: var(--radius-xl);
+  background: var(--color-background-card);
+  box-shadow: var(--shadow-sm);
+}
+
+.header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.header-left {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+/* The section heading is also the deep-link target, so it must be focusable without adding a tab
+   stop to the reading order. */
+.section-title {
+  margin: 0;
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+  letter-spacing: var(--letter-spacing-tight);
+  scroll-margin-top: var(--space-6);
+}
+
+.section-title:focus-visible {
+  outline: none;
+  border-radius: var(--radius-sm);
+  box-shadow: var(--focus-ring);
+}
+
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+/* The version badge is the history control's own (`VersionHistoryPopover.module.css`): the same
+   badge has to look the same on both agreements, and it has to look like something that opens. */
+
+.updated-at {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+/* The consequence of editing a shared agreement, stated before the editor rather than after the
+   save: one change here applies to every team in the group at once. */
+.group-banner {
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border: var(--border-width-1) solid var(--color-warning-200);
+  border-radius: var(--radius-lg);
+  background: var(--color-warning-50);
+  color: var(--color-warning-800);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-normal);
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  max-inline-size: 72ch;
+}
+
+.item {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border: var(--border-width-1) solid var(--color-border-default);
+  border-radius: var(--radius-lg);
+  background: var(--color-background-page);
+  transition: border-color var(--transition-fast) var(--ease-out);
+}
+
+.item:hover {
+  border-color: var(--color-success-200);
+}
+
+.item-number {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  min-inline-size: 28px;
+  block-size: 28px;
+  border-radius: var(--radius-full);
+  background: var(--color-success-500);
+  color: var(--color-text-inverse);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+}
+
+.item-category {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  padding: var(--space-0-5) var(--space-2);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-base);
+}
+
+.item-text {
+  flex: 1;
+  min-inline-size: 0;
+  color: var(--color-text-primary);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-normal);
+}
+
+.footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-4);
+  padding-top: var(--space-3);
+  border-top: var(--border-width-1) solid var(--color-border-default);
+}
+
+.active-count {
+  color: var(--color-success-700);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+}
+
+.inactive-count {
+  color: var(--color-text-tertiary);
+  font-size: var(--font-size-sm);
+}
+
+/* Empty and error states share one shape: they are the honest answer to a read that carried no
+   agreement, not a failure dressed up as content. */
+.empty,
+.error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-8) var(--space-6);
+  border: var(--border-width-1) dashed var(--color-border-default);
+  border-radius: var(--radius-lg);
+  background: var(--color-background-page);
+  text-align: center;
+}
+
+.state-title {
+  margin: 0;
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+}
+
+.state-text {
+  margin: 0;
+  max-inline-size: 56ch;
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-normal);
+  color: var(--color-text-secondary);
+}
+
+.error .state-title {
+  color: var(--color-error-600);
+}
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  border: var(--border-width-1) solid transparent;
+  border-radius: var(--radius-lg);
+  font-family: var(--font-family-sans);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+  transition: background-color var(--transition-fast) var(--ease-out);
+}
+
+.button:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.button:disabled {
+  opacity: var(--opacity-50);
+  cursor: not-allowed;
+}
+
+.button-primary {
+  background: var(--color-primary-600);
+  color: var(--color-text-inverse);
+}
+
+.button-primary:hover:not(:disabled) {
+  background: var(--color-primary-700);
+}
+
+.button-secondary {
+  background: var(--color-background-card);
+  color: var(--color-gray-700);
+  border-color: var(--color-gray-300);
+}
+
+.button-secondary:hover:not(:disabled) {
+  background: var(--color-gray-50);
+  border-color: var(--color-gray-400);
+}
+
+@media (width <= 768px) {
+  .section {
+    gap: var(--space-3);
+    padding: var(--space-4);
+    border-left-width: var(--border-width-2);
+  }
+
+  .header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .header-right .button {
+    inline-size: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .item,
+  .button {
+    transition: none;
+  }
+}
+
+@media (prefers-contrast: high) {
+  .section {
+    border-left-width: var(--border-width-4);
+  }
+
+  .item {
+    border-width: var(--border-width-2);
+  }
+}

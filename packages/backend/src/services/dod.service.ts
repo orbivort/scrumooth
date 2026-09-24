@@ -15,7 +15,7 @@ import {
   resolveDoDScope,
   type DoDScope,
 } from './dodScope';
-import { GATE_CODES } from '@scrumooth/shared';
+import { DOD_DEFAULTS, GATE_CODES } from '@scrumooth/shared';
 import type { DoDVersionItem, DoDVersionSnapshot } from '@scrumooth/shared';
 import type { DoDItem, DoDChecklistVerification, Prisma } from '../generated/prisma/client';
 
@@ -47,6 +47,9 @@ function parseSnapshotItems(value: Prisma.JsonValue): DoDVersionItem[] {
         category: typeof record.category === 'string' ? record.category : null,
         isActive: record.isActive === true,
         order: typeof record.order === 'number' ? record.order : 0,
+        // Snapshots written before the column existed carry no key, which reads as null: the
+        // interface then resolves the criterion's wording from its sentence, as it did then.
+        defaultKey: typeof record.defaultKey === 'string' ? record.defaultKey : null,
       },
     ];
   });
@@ -100,6 +103,37 @@ export interface DoDItemInput {
    * position of the criterion in the list, which is what the editor sends.
    */
   order?: number;
+}
+
+/**
+ * A criterion as an internal caller passes it, which may also name the built-in criterion it
+ * descends from.
+ *
+ * The public write path deliberately cannot do that. A seeded key is what makes a criterion show in
+ * the reader's language, so a client able to mint one could label its own sentence with the
+ * product's built-in wording -- the row would still hold the sentence the team typed while the
+ * interface showed a different one. {@link sanitizeItemPayload} therefore drops the field from
+ * anything that arrived over the wire, and only a caller inside this service may supply one.
+ */
+export interface SeededDoDItemInput extends DoDItemInput {
+  defaultKey?: string;
+}
+
+/**
+ * Reduce an untrusted payload to the fields this service is willing to write.
+ *
+ * Named explicitly rather than relying on the route's schema: `validateBody` stores the parsed body
+ * beside `req.body` instead of replacing it, so a stripped-by-Zod field would still reach the
+ * service here.
+ */
+export function sanitizeItemPayload(items: DoDItemInput[]): SeededDoDItemInput[] {
+  return items.map(({ id, description, category, isActive, order }) => ({
+    id,
+    description,
+    category,
+    isActive,
+    order,
+  }));
 }
 
 interface DoDVerificationInput {
@@ -223,38 +257,6 @@ class DefinitionOfDoneService {
     userId?: string
   ): Promise<DefinitionOfDoneWithItems> {
     const dodId = generateUUIDv7();
-    const defaultItems: DoDItemInput[] = [
-      {
-        description: 'Code is peer-reviewed and approved',
-        category: 'review',
-        isActive: true,
-        order: 0,
-      },
-      {
-        description: 'Unit tests written and passing (minimum 80% coverage)',
-        category: 'testing',
-        isActive: true,
-        order: 1,
-      },
-      {
-        description: 'Integration tests passing',
-        category: 'testing',
-        isActive: true,
-        order: 2,
-      },
-      {
-        description: 'Code is properly documented',
-        category: 'documentation',
-        isActive: true,
-        order: 3,
-      },
-      {
-        description: 'No critical or high-severity bugs',
-        category: 'quality',
-        isActive: true,
-        order: 4,
-      },
-    ];
 
     const dod = await prisma.definitionOfDone.create({
       data: {
@@ -263,11 +265,14 @@ class DefinitionOfDoneService {
         version: 1,
         createdBy: userId,
         items: {
-          create: defaultItems.map((item, index) => ({
+          // Seeded from the shared canonical list, so every built-in criterion carries the key that
+          // keeps it translatable after a team rewords it.
+          create: DOD_DEFAULTS.map((item, index) => ({
             id: generateUUIDv7(),
             description: item.description,
             category: item.category ?? 'quality',
-            isActive: item.isActive,
+            defaultKey: item.key,
+            isActive: true,
             order: index,
             createdBy: userId,
           })),
@@ -305,7 +310,7 @@ class DefinitionOfDoneService {
       throw sharedDoDRefusal();
     }
 
-    const dod = await this.writeDefinitionOfDone(scope, items, userId);
+    const dod = await this.writeDefinitionOfDone(scope, sanitizeItemPayload(items), userId);
 
     return withRequestingTeam(dod, teamId);
   }
@@ -321,7 +326,7 @@ class DefinitionOfDoneService {
     items: DoDItemInput[],
     userId?: string
   ): Promise<DefinitionOfDoneWithItems> {
-    return this.writeDefinitionOfDone(groupDoDScope(groupId), items, userId);
+    return this.writeDefinitionOfDone(groupDoDScope(groupId), sanitizeItemPayload(items), userId);
   }
 
   /**
@@ -332,10 +337,14 @@ class DefinitionOfDoneService {
    * -- correctly -- refuse it: this is the one write that is *supposed* to happen behind the
    * `GATE_DOD_GROUP_GOVERNED` gate, and it is what keeps a leaving team from being left with
    * nothing, or with whatever inert row it happened to keep.
+   *
+   * Takes {@link SeededDoDItemInput} rather than {@link DoDItemInput}: the criteria being carried
+   * over are the group's, and their built-in keys travel with them so the team keeps the wording in
+   * its own language once it holds the agreement itself.
    */
   async adoptDefinitionOfDoneAsOwn(
     teamId: string,
-    items: DoDItemInput[],
+    items: SeededDoDItemInput[],
     userId?: string
   ): Promise<DefinitionOfDoneWithItems> {
     return this.writeDefinitionOfDone({ kind: 'TEAM', teamId }, items, userId);
@@ -356,12 +365,17 @@ class DefinitionOfDoneService {
    *    must not erase the evidence that an item satisfied the others. Only a criterion the team
    *    actually removed loses its verifications, and the snapshot records what it said.
    *
+   * A retained criterion keeps its `defaultKey`: the update never writes the column, so a client
+   * cannot relabel an existing criterion as a built-in one, and a team that rewords a seeded
+   * criterion does not lose its translation. A newly inserted criterion takes a key only from a
+   * `SeededDoDItemInput` the service itself constructed.
+   *
    * @throws AppError (400, `GATE_DOD_REQUIRED`) when the resulting Definition of Done would hold
    * no active item.
    */
   private async writeDefinitionOfDone(
     scope: DoDScope,
-    items: DoDItemInput[],
+    items: SeededDoDItemInput[],
     userId?: string
   ): Promise<DefinitionOfDoneWithItems> {
     if (!items.some((item) => item.isActive)) {
@@ -392,7 +406,15 @@ class DefinitionOfDoneService {
       const supersededItems = await tx.doDItem.findMany({
         where: { dodId: existingDod.id },
         orderBy: { order: 'asc' },
-        select: { description: true, category: true, isActive: true, order: true },
+        select: {
+          description: true,
+          category: true,
+          isActive: true,
+          order: true,
+          // Carried into the snapshot so a superseded version's built-in criteria stay readable in
+          // the reader's own language.
+          defaultKey: true,
+        },
       });
 
       // Append-only: preserve the version being replaced before it is replaced. `upsert` with an
@@ -467,6 +489,9 @@ class DefinitionOfDoneService {
             dodId: existingDod.id,
             description: item.description,
             category: item.category ?? 'quality',
+            // Only ever set from a key this service put there; a payload that arrived over the wire
+            // had the field dropped, so a criterion a team invents is never labelled as a built-in.
+            defaultKey: item.defaultKey ?? null,
             isActive: item.isActive,
             order: index,
             createdBy: userId,
@@ -543,6 +568,7 @@ class DefinitionOfDoneService {
         category: item.category,
         isActive: item.isActive,
         order: item.order,
+        defaultKey: item.defaultKey,
       })),
       createdAt: dod.updatedAt.toISOString(),
       createdBy: dod.updatedBy,

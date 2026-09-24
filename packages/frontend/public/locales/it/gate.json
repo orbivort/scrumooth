@@ -1,0 +1,45 @@
+{
+  "dodGroupGoverned": {
+    "guideClause": "Se più team Scrum lavorano insieme su un prodotto, devono definire e rispettare reciprocamente la stessa Definizione di Fatto.",
+    "recovery": "Modifica la Definizione di Fatto condivisa dalla scheda di definizione di qualsiasi team del gruppo.",
+    "rule": "Questo team lavora con altri team Scrum su un unico prodotto, quindi rispetta la Definizione di Fatto che condividono e non può modificare la propria."
+  },
+  "dodRequired": {
+    "guideClause": "La Definizione di Fatto è una descrizione formale dello stato dell'Incremento quando soddisfa le misure di qualità richieste per il prodotto.",
+    "recovery": "Riattiva o aggiungi un criterio, poi salva di nuovo la Definizione di Fatto.",
+    "rule": "Una Definizione di Fatto deve contenere almeno un criterio attivo."
+  },
+  "dodTeamMembersOnly": {
+    "recovery": "Chiedi a un membro di questo team di aprire la sua Definizione di Fatto.",
+    "rule": "La Definizione di Fatto appartiene al team Scrum che ci lavora, quindi solo i suoi membri possono leggerla o modificarla."
+  },
+  "dorRequired": {
+    "recovery": "Riattiva o aggiungi un criterio, poi salva di nuovo la Definizione di Pronto.",
+    "rule": "La Definizione di Pronto deve contenere almeno un criterio attivo."
+  },
+  "dorScrumMasterOnly": {
+    "recovery": "Chiedi al tuo Scrum Master di modificarla.",
+    "rule": "La Definizione di Pronto è una pratica complementare mantenuta dallo Scrum Master del team. Non è un artefatto della Guida di Scrum."
+  },
+  "dorTeamMembersOnly": {
+    "recovery": "Chiedi a un membro di questo team di aprire la sua Definizione di Pronto.",
+    "rule": "La Definizione di Pronto è un accordo di questo team, quindi solo i suoi membri possono leggerla."
+  },
+  "teamGroupAlreadyMember": {
+    "recovery": "Esci prima dal gruppo a cui appartiene.",
+    "rule": "Un team rispetta una sola Definizione di Fatto condivisa, quindi non può unirsi a un secondo gruppo."
+  },
+  "teamGroupDodAcknowledgementRequired": {
+    "guideClause": "Se più team Scrum lavorano insieme su un prodotto, devono definire e rispettare reciprocamente la stessa Definizione di Fatto.",
+    "recovery": "Esamina la versione in vigore e adottala.",
+    "rule": "La Definizione di Fatto condivisa è cambiata dopo la tua revisione, quindi la versione che hai confermato non è più quella in vigore."
+  },
+  "teamGroupLeadershipOnly": {
+    "recovery": "Chiedi al Product Owner o allo Scrum Master del tuo team di fare questa modifica.",
+    "rule": "Il Product Owner o lo Scrum Master di un team decide a quale Definizione di Fatto condivisa aderisce."
+  },
+  "teamGroupNotEmpty": {
+    "recovery": "Fai prima uscire tutti i team dal gruppo.",
+    "rule": "Un gruppo la cui Definizione di Fatto governa ancora dei team non può essere rimosso, perché rimuoverlo toglierebbe loro l'impegno invece di spostarlo."
+  }
+}

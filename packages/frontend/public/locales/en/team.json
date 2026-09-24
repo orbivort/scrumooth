@@ -184,30 +184,11 @@
   },
   "subtitle": "Manage team members and team standards",
   "tabs": {
-    "agreements": "Working Agreements",
     "ariaLabel": "Team sections",
+    "definition": "Definition",
     "health": "Scrum Health",
     "members": "Members",
     "overview": "Overview"
-  },
-  "teamGroup": {
-    "adopt": "Join and adopt version {{version}}",
-    "adopted": "Adopted version {{version}} on {{date}}.",
-    "choose": "Group",
-    "current": "Complying with {{name}} — shared version {{version}}.",
-    "discover": "Do other Scrum Teams work on the same product as this team? Then you must comply with the same Definition of Done.",
-    "discoverAction": "Open Team Groups",
-    "drift": "The shared Definition of Done has changed since this team adopted it. Review it so the teams still agree on one.",
-    "hint": "Scrum Teams working together on one product comply with the same Definition of Done. The group owns that one Definition of Done; its teams read it and cannot edit their own.",
-    "joinError": "The team could not join the group.",
-    "leave": "Leave the group",
-    "leaveError": "The team could not leave the group.",
-    "leaveMessage": "The team keeps the Definition of Done it has been complying with, and can then change it on its own.",
-    "leaveTitle": "Leave {{name}}?",
-    "manage": "Manage the shared Definition of Done",
-    "none": "This team works on its own, so it defines its own Definition of Done.",
-    "review": "Review what would be adopted",
-    "title": "Shared Definition of Done"
   },
   "teamInfo": {
     "created": "Created: {{date}}",

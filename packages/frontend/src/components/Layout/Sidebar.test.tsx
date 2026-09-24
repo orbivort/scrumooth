@@ -784,7 +784,7 @@ describe('Layout Component', () => {
       });
 
       expect(screen.getByText(i18nT('nav.settings.sprintConfiguration'))).toBeInTheDocument();
-      expect(screen.getByText(i18nT('nav.settings.teamDefinitions'))).toBeInTheDocument();
+      expect(screen.getByText(i18nT('nav.settings.teamGroups'))).toBeInTheDocument();
     });
 
     it('shows role-specific settings for Scrum Master', () => {
@@ -793,7 +793,7 @@ describe('Layout Component', () => {
       });
 
       expect(screen.getByText(i18nT('nav.settings.sprintConfiguration'))).toBeInTheDocument();
-      expect(screen.getByText(i18nT('nav.settings.teamDefinitions'))).toBeInTheDocument();
+      expect(screen.getByText(i18nT('nav.settings.teamGroups'))).toBeInTheDocument();
     });
   });
 

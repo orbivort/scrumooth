@@ -122,11 +122,13 @@ describe('DefinitionOfDoneCard', () => {
     expect(onRetry).toHaveBeenCalledTimes(1);
   });
 
-  it('links to the team definitions', () => {
+  // The card is about the Definition of Done, so it opens where the Definition of Done is read --
+  // the Definition tab of the team that owns it, whose first agreement is that commitment.
+  it('links to the Definition of Done the team owns', () => {
     renderWithProviders(<DefinitionOfDoneCard group={makeGroup(report)} onRetry={vi.fn()} />);
 
     expect(
       screen.getByRole('link', { name: 'Open team definitions to review the Definition of Done' })
-    ).toHaveAttribute('href', '/settings/team-definitions');
+    ).toHaveAttribute('href', '/team?tab=definition');
   });
 });

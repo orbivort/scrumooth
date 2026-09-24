@@ -30,7 +30,6 @@ import {
   SunIcon,
   AlertTriangleIcon,
   PackageIcon,
-  FileTextIcon,
   SearchIcon,
   MessageCircleIcon,
   TrendingUpIcon,
@@ -85,12 +84,10 @@ export const SETTINGS_GROUPS: SettingsGroup[] = [
         // standing commitment behind the Daily Scrum is theirs to set.
         roles: ['SCRUM_MASTER'],
       },
-      {
-        path: '/settings/team-definitions',
-        icon: FileTextIcon,
-        labelKey: 'nav.settings.teamDefinitions',
-        roles: ['PRODUCT_OWNER', 'SCRUM_MASTER'],
-      },
+      // The Definition of Done and the Definition of Ready are read on the Team module's Definition
+      // tab, which every team member can reach: the Guide requires the Developers to conform to the
+      // Definition of Done, so a commitment that is hidden behind a role is not a commitment they can
+      // keep. Only group administration, which is a leadership act, is configured here.
       {
         path: '/settings/team-groups',
         icon: UsersIcon,

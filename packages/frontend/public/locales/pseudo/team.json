@@ -184,30 +184,11 @@
   },
   "subtitle": "[Mànàgé téàm mémbérs ànd téàm stàndàrdsssssssssssss]",
   "tabs": {
-    "agreements": "[Wórkíng Àgrééméntsssssss]",
     "ariaLabel": "[Téàm séctíónsssss]",
+    "definition": "[Défínítíónnnn]",
     "health": "[Scrúm Héàlthhhhh]",
     "members": "[Mémbérssss]",
     "overview": "[Óvérvíéwwww]"
-  },
-  "teamGroup": {
-    "adopt": "[Jóín ànd àdópt vérsíónnnnnnnn {{version}}]",
-    "adopted": "[Àdóptéd vérsíónnnnnn {{version}} óónn {{date}}.]",
-    "choose": "[Gróúppp]",
-    "current": "[Cómplyíng wíthhhhhh {{name}} — shàréd vérsíónnnnnnn {{version}}.]",
-    "discover": "[Dó óthér Scrúm Téàms wórk ón thé sàmé pródúct às thís téàm? Thén yóú múst cómply wíth thé sàmé Défínítíón óf Dónéééééééééééééééééééééééééééééééééééé.]",
-    "discoverAction": "[Ópén Téàm Gróúpssssss]",
-    "drift": "[Thé shàréd Défínítíón óf Dóné hàs chàngéd síncé thís téàm àdóptéd ít. Révíéw ít só thé téàms stíll àgréé ón ónééééééééééééééééééééééééééééééééééé.]",
-    "hint": "[Scrúm Téàms wórkíng tógéthér ón óné pródúct cómply wíth thé sàmé Défínítíón óf Dóné. Thé gróúp ówns thàt óné Défínítíón óf Dóné; íts téàms réàd ít ànd cànnót édít théír ównnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn.]",
-    "joinError": "[Thé téàm cóúld nót jóín thé gróúpppppppppppp.]",
-    "leave": "[Léàvé thé gróúpppppp]",
-    "leaveError": "[Thé téàm cóúld nót léàvé thé gróúpppppppppppp.]",
-    "leaveMessage": "[Thé téàm kééps thé Défínítíón óf Dóné ít hàs béén cómplyíng wíth, ànd càn thén chàngé ít ón íts ównnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn.]",
-    "leaveTitle": "[Léàvééé {{name}}?]",
-    "manage": "[Mànàgé thé shàréd Défínítíón óf Dónéééééééééééé]",
-    "none": "[Thís téàm wórks ón íts ówn, só ít défínés íts ówn Défínítíón óf Dónéééééééééééééééééééééé.]",
-    "review": "[Révíéw whàt wóúld bé àdóptédddddddddd]",
-    "title": "[Shàréd Défínítíón óf Dónééééééééé]"
   },
   "teamInfo": {
     "created": "[Créàtédddd: {{date}}]",

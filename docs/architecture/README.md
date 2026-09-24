@@ -214,6 +214,15 @@ Internationalization architecture and implementation:
 - Translation file organization, pluralization, and cultural formatting
 - New-language onboarding playbook and modern best-practices alignment (2026)
 
+### 8. [Scrum Guide Conformance — Decided Positions](./scrum-guide-conformance.md)
+
+The positions the product commits to, and the ones it deliberately declines:
+
+- The Definition of Done as the Increment's commitment, authored where the team is
+- The one shared Definition of Done a multi-team product requires, and what "mutually define" means here
+- The Definition of Ready as a complementary practice maintained by the Scrum Master
+- The organization-wide minimum Definition of Done, documented as out of scope
+
 ## Quick Navigation
 
 ### For Developers

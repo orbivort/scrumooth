@@ -243,7 +243,7 @@ pages/                               # Page-scoped feature components
 │   └── components/                  # BurndownChart, TaskList, ImpedimentList
 ├── Settings/
 │   ├── TeamManagement/              # Team CRUD components
-│   ├── TeamDefinitions/             # Definition of Done/Ready panels
+│   ├── TeamGroups/                  # Group administration: create, rename, delete, roster
 │   ├── SprintConfiguration/         # Sprint config settings
 │   └── PrivacyData/                 # Data export and privacy controls
 ├── ProductGoals/                    # Product goal modals
@@ -253,7 +253,7 @@ pages/                               # Page-scoped feature components
 ├── Impediments/                     # Impediment tracking
 ├── Reports/                         # Velocity chart
 ├── Notifications/                   # Notification page
-├── Team/                            # Team member cards and messaging
+├── Team/                            # The team module: overview, members, Definition tab, health
 └── Auth/                            # Login, forgot/reset password
 ```
 
@@ -263,6 +263,46 @@ pages/                               # Page-scoped feature components
 - Page-level components export a default or named component that serves as the route target.
 - Sub-components are imported only by their parent page, not shared across pages.
 - Cross-cutting feature components (e.g., `Notifications/`, `TeamSwitcher/`) live in the top-level `components/` directory.
+
+### The Unified Definition Surface
+
+`pages/Team/Definition/` is one surface over one commitment, in whichever scope governs the team. It
+is worth reading as a unit because its shape is the answer to a defect rather than a preference: the
+Definition of Done used to be reachable in three places — a Settings page that could not write it for
+a grouped team, a group admin screen that could, and a governance panel under Scrum Health — and none
+of them was visible to the Developers the Guide says must conform to it.
+
+| Component                  | Owns                                                                                 |
+| -------------------------- | ------------------------------------------------------------------------------------ |
+| `DefinitionPanel`          | The order of the sections, the anchors a link can name, the namespace fallback       |
+| `DefinitionOfDoneSection`  | The read, and the write **routed by the resolved scope**                             |
+| `DefinitionScopeSwitch`    | The scope ribbon, the inline review, adopt/leave, drift, and who may act             |
+| `DefinitionOfReadySection` | The readiness practice, its disclosure, and its own history                          |
+| `VersionHistoryPopover`    | One badge's history, fetched only when it is opened                                  |
+| `DefinitionEditor`         | Add, reword, reorder, deactivate, remove — shared by every scope and both agreements |
+| `criterionLabel`           | One criterion's wording, resolved from its `defaultKey`                              |
+
+Two invariants hold this together:
+
+- **The write follows the scope, not the screen.** A team-scoped write is never issued while the team
+  is grouped, so `GATE_DOD_GROUP_GOVERNED` stays unreachable from the interface while the API keeps
+  enforcing it. Offering a control whose only possible answer is "no" is the failure mode this avoids.
+- **The editor cannot send a `defaultKey`.** Its payload type is narrower than the criterion it was
+  loaded from, so a client cannot label a sentence it wrote itself with the product's built-in wording.
+  The service owns that column.
+
+### Gate Refusals
+
+`components/common/GateRefusal/` is the one place a Scrum rule refusal is explained. Given an error,
+`useGateRefusal` resolves its `code` through `GATE_DEFINITIONS` to the copy under the `gate` i18n
+namespace and reports the rule, the 2020 Scrum Guide clause where one exists, and the remedy. The
+caller supplies the control that performs the remedy, because only the caller knows the context —
+re-reviewing a version that changed under the reader's feet is a different act from asking a Scrum
+Master for an edit.
+
+The namespace is deliberately partial: the gates the commitment surfaces can provoke have copy, and any
+other code falls back to the server's already-localized message rather than explaining nothing.
+Extending it is additive content, with no code change.
 
 ### Layout Components
 
@@ -366,6 +406,28 @@ export const queryKeys = {
   // ... additional domains: burndown, definitionOfDone, myTeams, notification, etc.
 };
 ```
+
+**One question, one family**: a query key belongs to the _subject_, never to the screen reading it. The
+Definition of Done is the clearest case: a team and its group read the same commitment row, and the
+same row is read by the team's Definition tab, its Sprint boundary hint and the group's own screen.
+They all live in `queryKeys.definitionOfDone`:
+
+```typescript
+definitionOfDone: {
+  all: ['definition-of-done'] as const,
+  byTeam: (teamId) => [...all, 'team', teamId] as const,   // the commitment as a team works to it
+  byGroup: (groupId) => [...all, 'group', groupId] as const, // the same row as the group owns it
+  history: (teamId) => [...all, 'history', teamId] as const,
+},
+```
+
+Every Definition of Done write invalidates `definitionOfDone.all`, so both views and the history
+refresh from one write. Two families for one row is what let a surface keep showing a superseded
+version while another showed the current one.
+
+`queryKeys.team.byId` is declared under `team.details()` for the same reason: as its own `['team', id]`
+root it was invisible to `invalidateQueries({ queryKey: team.all })`, so a write that changed a team's
+group membership left the team's own read stale.
 
 **Cache Invalidation Pattern**:
 
@@ -563,7 +625,7 @@ Scrumooth uses React Router v6 with lazy-loaded route components and protected r
 │  ├── /sprint                   → SprintBoard                │
 │  ├── /daily-scrum              → DailyScrum                 │
 │  ├── /impediments              → Impediments                │
-│  ├── /team                     → Team (with PageErrorBoundary)│
+│  ├── /team                     → Team (Overview|Members|Definition|Health)│
 │  ├── /reports                  → Reports                    │
 │  ├── /increments               → IncrementList              │
 │  ├── /increment/:id            → IncrementDetail            │
@@ -575,10 +637,11 @@ Scrumooth uses React Router v6 with lazy-loaded route components and protected r
 │  ├── /notifications            → Notifications              │
 │  └── /settings/*               → Settings sub-routes        │
 │      ├── /settings/team-management    → TeamManagement      │
-│      ├── /settings/team-definitions   → TeamDefinitions     │
+│      ├── /settings/team-groups        → TeamGroups          │
 │      ├── /settings/sprint-configuration → SprintConfiguration│
 │      ├── /settings/privacy-data       → PrivacyData         │
-│      └── /settings/definition-of-done → Redirect to team-definitions?tab=dod│
+│      ├── /settings/team-definitions   → Redirect to /team?tab=definition│
+│      └── /settings/definition-of-done → Redirect to /team?tab=definition│
 └─────────────────────────────────────────────────────────────┘
 ```
 

@@ -385,6 +385,11 @@
     "teamUpdated": "Équipe mise à jour",
     "unread": "Non lu"
   },
+  "gateRefusal": {
+    "dismiss": "Ignorer",
+    "guideClauseLabel": "Guide Scrum 2020",
+    "regionLabel": "Pourquoi ceci a été refusé"
+  },
   "helpPanel": {
     "avoidExample": "✗ À éviter :",
     "goodExample": "✓ Bon exemple :",
@@ -470,7 +475,6 @@
       "privacyData": "Confidentialité et données",
       "sprintConfiguration": "Configuration de Sprint",
       "team": "Équipe",
-      "teamDefinitions": "Définitions d'équipe",
       "teamGroups": "Groupes d'équipes",
       "teamManagement": "Gestion d'équipe"
     },

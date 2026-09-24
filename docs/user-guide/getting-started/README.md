@@ -431,7 +431,7 @@ Congratulations! You've completed the basic setup. Here's what to do next:
 
 - **Reports** - View velocity, burndown charts, and metrics
 - **Notifications** - Stay updated on team activities
-- **Settings** - Configure team definitions, workflow, and more
+- **Settings** - Configure workflow, team groups, and more
 
 ### Getting Help
 

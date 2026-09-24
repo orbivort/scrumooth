@@ -1511,7 +1511,7 @@ X-CSRF-Token: <token>
 `dodVersionAtPush` records the Definition of Done version this Retrospective produced: the evidence
 that the adaptation loop closed. The Definition of Done itself is written by the Definition of Done
 service, so the version bump, the superseded-version snapshot and the rule that a Definition of Done
-can never be emptied all behave exactly as they do in Team Definitions.
+can never be emptied all behave exactly as they do on the team's Definition tab.
 
 **Behaviour**
 

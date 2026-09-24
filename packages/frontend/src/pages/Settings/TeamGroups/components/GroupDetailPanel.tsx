@@ -1,24 +1,24 @@
-// The selected group: who it is, which teams comply with its Definition of Done, and the commitment
-// itself.
+// The selected group: who it is, which teams comply with its Definition of Done, and where that
+// commitment is read and changed.
 //
 // The roster is where the Scrum Guide rule becomes observable rather than asserted. A team whose
 // adopted version is behind the version in force is not merely listed, it is marked: "they must
 // mutually define and comply with the same Definition of Done" has stopped holding for that team,
 // and the point of recording the adopted version on joining was to be able to say so.
-import React from 'react';
+//
+// The commitment itself is stated and then delegated. This screen is where a *group* is administered
+// -- created, renamed, deleted, its roster read -- and the Definition of Done is not an
+// administrative object: it is the Increment's commitment, authored by the Scrum Team, in the place
+// where the criteria and the Sprint they gate are both on screen. Keeping a second editor here is
+// what made "where do I change our Definition of Done?" answerable only by a page about groups.
+import React, { useId } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router';
 import { formatLocaleDate } from '@scrumooth/shared';
-import type {
-  SharedDefinitionOfDone,
-  TeamGroupMember,
-  TeamGroupSummary,
-  UpdateSharedDoDInput,
-} from '@scrumooth/shared';
+import type { SharedDefinitionOfDone, TeamGroupMember, TeamGroupSummary } from '@scrumooth/shared';
 
 import { Button } from '../../../../components/common/Button/Button';
 import styles from '../TeamGroups.module.css';
-
-import { SharedDoDPanel } from './SharedDoDPanel';
 
 import { useI18nStore } from '@/i18n/useI18nStore';
 import { EditIcon, TrashIcon } from '@/components/common/Icons';
@@ -33,10 +33,8 @@ interface GroupDetailPanelProps {
   canManage: boolean;
   /** Whether the roster read was refused, so only the commitment could be shown. */
   isRosterRestricted: boolean;
-  isSavingSharedDoD: boolean;
   onRename: () => void;
   onDelete: () => void;
-  onSaveSharedDoD: (input: UpdateSharedDoDInput) => Promise<void>;
 }
 
 export const GroupDetailPanel: React.FC<GroupDetailPanelProps> = ({
@@ -45,13 +43,14 @@ export const GroupDetailPanel: React.FC<GroupDetailPanelProps> = ({
   sharedDoD,
   canManage,
   isRosterRestricted,
-  isSavingSharedDoD,
   onRename,
   onDelete,
-  onSaveSharedDoD,
 }) => {
   const { t } = useTranslation('settings');
   const { locale } = useI18nStore();
+  // Generated rather than spelled: `aria-labelledby` with a fixed id names whichever element the
+  // browser found first, and this panel is rendered beside other labelled sections.
+  const commitmentTitleId = useId();
 
   // A group is only removable once no team complies with its Definition of Done: removing it while
   // teams remain would take their commitment away rather than move them to another one. The API
@@ -183,12 +182,32 @@ export const GroupDetailPanel: React.FC<GroupDetailPanelProps> = ({
         )}
       </div>
 
-      <SharedDoDPanel
-        sharedDoD={sharedDoD}
-        canManage={canManage}
-        isSaving={isSavingSharedDoD}
-        onSave={onSaveSharedDoD}
-      />
+      {/* The commitment is stated, not edited. Its criteria are readable in full on the Definition
+          tab of any team in the group, which is where the change belongs and where the Sprint the
+          agreement gates is also in view. */}
+      <section className={styles.commitment} aria-labelledby={commitmentTitleId}>
+        <div className={styles['commitment-head']}>
+          <h3 id={commitmentTitleId} className={styles['commitment-title']}>
+            {t('teamGroups.sharedDoD.title')}
+          </h3>
+          <span className={styles['roster-version']}>
+            {t('teamGroups.versionShort', { version: sharedDoD.version })}
+          </span>
+          <span className={styles['commitment-updated']}>
+            {t('teamGroups.sharedDoD.updated', {
+              date: formatLocaleDate(sharedDoD.updatedAt, locale),
+            })}
+          </span>
+        </div>
+
+        <p className={styles['commitment-body']}>{t('teamGroups.sharedDoD.delegated')}</p>
+
+        <p className={styles['commitment-action']}>
+          <Link to="/team?tab=definition#definition-of-done" className={styles['commitment-link']}>
+            {t('teamGroups.sharedDoD.openAction')}
+          </Link>
+        </p>
+      </section>
     </div>
   );
 };

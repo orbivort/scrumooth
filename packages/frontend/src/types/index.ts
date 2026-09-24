@@ -11,6 +11,7 @@ import {
   type IncrementChainNode,
   type IncrementCompositionResult,
   type DoDVersionSnapshot,
+  type DoRVersionSnapshot,
   type EventComplianceSummary,
   type ImpedimentMetrics,
   type DoDComplianceTrend,
@@ -48,6 +49,7 @@ export type {
   IncrementChainNode,
   IncrementCompositionResult,
   DoDVersionSnapshot,
+  DoRVersionSnapshot,
   EventComplianceSummary,
   ImpedimentMetrics,
   DoDComplianceTrend,
@@ -544,6 +546,14 @@ export interface DoDItem {
   category?: string; // e.g., 'quality', 'documentation', 'testing'
   isActive: boolean;
   order: number;
+  /**
+   * The built-in criterion this one descends from, or null for one the team wrote itself.
+   *
+   * The key, not the English sentence, is what decides which translation to show: a team may reword
+   * "Code is properly documented" and keep the criterion readable in all five languages. Null also
+   * covers rows written before the key existed, which fall back to the sentence match.
+   */
+  defaultKey?: string | null;
 }
 
 export interface DoDChecklistVerification {
@@ -585,6 +595,8 @@ export interface DoRItem {
   category?: string;
   isActive: boolean;
   order: number;
+  /** The built-in criterion this one descends from, or null for one the team wrote itself. */
+  defaultKey?: string | null;
 }
 
 /**

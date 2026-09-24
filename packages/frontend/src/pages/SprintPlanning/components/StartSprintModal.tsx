@@ -52,7 +52,7 @@ export interface StartSprintModalProps {
   hasDefinitionOfDone?: boolean;
   /** How many selected items still have an unverified active readiness criterion. */
   unreadyReadinessItemCount?: number;
-  /** Leaves this dialog for the definitions the refusal points at (Team Definitions). */
+  /** Leaves this dialog for the agreement the refusal points at (the team's Definition tab). */
   onOpenDefinitions?: () => void;
 }
 

@@ -59,6 +59,7 @@ import {
   type DoDChecklistVerification,
   type DoDComplianceReport,
   type DoDVersionSnapshot,
+  type DoRVersionSnapshot,
   type DefinitionOfReady,
   type DoRItem,
   type DoRChecklistVerification,
@@ -2649,12 +2650,42 @@ class MockApiService {
   }
 
   /**
-   * The append-only Definition of Done version history, newest first. The mock reports no history
-   * because a demo team's Definition of Done has not been superseded.
+   * The append-only Definition of Done version history, newest first.
+   *
+   * The demo's Definition of Done has never been superseded, so the history is the version in force
+   * and nothing behind it -- which is what a team that has changed nothing really sees. Reporting it
+   * as one entry rather than as an empty list is the point: "v2" with no readable history is the
+   * claim the version badge exists to make answerable.
    */
-  async getDoDHistory(_teamId: string): Promise<ApiResponse<DoDVersionSnapshot[]>> {
+  async getDoDHistory(teamId: string): Promise<ApiResponse<DoDVersionSnapshot[]>> {
     await delay(300);
-    return { success: true, data: [] };
+    const dod = mockDefinitionOfDone[teamId];
+
+    if (!dod) {
+      return { success: true, data: [] };
+    }
+
+    return {
+      success: true,
+      data: [
+        {
+          id: dod.id,
+          teamId,
+          version: dod.version,
+          items: dod.items.map((item) => ({
+            description: item.description,
+            category: item.category ?? null,
+            isActive: item.isActive,
+            order: item.order,
+            defaultKey: item.defaultKey ?? null,
+          })),
+          createdAt: dod.updatedAt,
+          createdBy: dod.updatedBy ?? null,
+          createdByName: null,
+          isCurrent: true,
+        },
+      ],
+    };
   }
 
   async verifyDoDForPBI(
@@ -2696,48 +2727,56 @@ class MockApiService {
     'team-1': {
       id: 'dor-team-1',
       teamId: 'team-1',
+      // The six criteria the product seeds for a new team, at the wording and keys it seeds them
+      // with: the demo shows a seeded criterion resolved from its key, not from its sentence.
       items: [
         {
           id: 'dor-1',
-          description: 'Clear title and description',
+          description: 'Clear title and description provided',
           category: 'acceptance',
           isActive: true,
           order: 1,
+          defaultKey: 'clearTitle',
         },
         {
           id: 'dor-2',
-          description: 'Acceptance criteria defined',
+          description: 'Acceptance criteria defined and agreed',
           category: 'acceptance',
           isActive: true,
           order: 2,
+          defaultKey: 'acceptanceCriteria',
         },
         {
           id: 'dor-3',
-          description: 'Story points estimated',
+          description: 'Story points estimated by the team',
           category: 'estimation',
           isActive: true,
           order: 3,
+          defaultKey: 'storyPointsEstimated',
         },
         {
           id: 'dor-4',
           description: 'Business value assigned',
-          category: 'value',
+          category: 'estimation',
           isActive: true,
           order: 4,
+          defaultKey: 'businessValue',
         },
         {
           id: 'dor-5',
-          description: 'Dependencies identified',
+          description: 'Dependencies identified and documented',
           category: 'dependencies',
           isActive: true,
           order: 5,
+          defaultKey: 'dependencies',
         },
         {
           id: 'dor-6',
-          description: 'No blockers',
+          description: 'No blockers or impediments',
           category: 'dependencies',
           isActive: true,
           order: 6,
+          defaultKey: 'noBlockers',
         },
       ],
       version: 1,
@@ -2860,9 +2899,39 @@ class MockApiService {
     return { success: true, data: updatedDoR };
   }
 
-  async getDoRHistory(_teamId: string): Promise<ApiResponse<DefinitionOfReady[]>> {
+  /**
+   * The append-only Definition of Ready version history, newest first -- the same shape the
+   * Definition of Done reports, so one component reads both.
+   */
+  async getDoRHistory(teamId: string): Promise<ApiResponse<DoRVersionSnapshot[]>> {
     await delay(300);
-    return { success: true, data: [] };
+    const dor = this.mockDefinitionOfReady[teamId];
+
+    if (!dor) {
+      return { success: true, data: [] };
+    }
+
+    return {
+      success: true,
+      data: [
+        {
+          id: dor.id,
+          teamId,
+          version: dor.version,
+          items: dor.items.map((item) => ({
+            description: item.description,
+            category: item.category ?? null,
+            isActive: item.isActive,
+            order: item.order,
+            defaultKey: item.defaultKey ?? null,
+          })),
+          createdAt: dor.updatedAt,
+          createdBy: dor.updatedBy ?? null,
+          createdByName: null,
+          isCurrent: true,
+        },
+      ],
+    };
   }
 
   async verifyDoRForPBI(

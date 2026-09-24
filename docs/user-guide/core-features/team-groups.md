@@ -12,7 +12,7 @@ Done. It is the product view of the rule in the 2020 Scrum Guide:
 - [Who Can Do What](#who-can-do-what)
 - [Creating a Group](#creating-a-group)
 - [Reading the Roster](#reading-the-roster)
-- [Editing the Shared Definition of Done](#editing-the-shared-definition-of-done)
+- [Where the Shared Definition of Done Is Changed](#where-the-shared-definition-of-done-is-changed)
 - [Joining and Leaving](#joining-and-leaving)
 - [What Happens to a Team's Own Definition of Done](#what-happens-to-a-teams-own-definition-of-done)
 - [Reading Without Leading](#reading-without-leading)
@@ -38,23 +38,28 @@ A group is a **product-collaboration device**, not a team decomposition:
 
 ### Where It Lives
 
-| Task                                             | Where                                               |
-| ------------------------------------------------ | --------------------------------------------------- |
-| Create, rename or delete a group                 | **Settings → Team → Team Groups**                   |
-| Read the roster and the version each team holds  | **Settings → Team → Team Groups**                   |
-| Edit the Definition of Done they all comply with | **Settings → Team → Team Groups**                   |
-| Join or leave a group                            | **Team → Scrum Health → Shared Definition of Done** |
-| See which commitment governs your team           | **Team → Scrum Health → Shared Definition of Done** |
+| Task                                                    | Where                                                       |
+| ------------------------------------------------------- | ----------------------------------------------------------- |
+| Create, rename or delete a group                        | **Settings → Team → Team Groups**                           |
+| Read the roster and the version each team holds         | **Settings → Team → Team Groups**                           |
+| Read and change the Definition of Done they comply with | **Team → Definition** (the scope ribbon above the criteria) |
+| Join or leave a group                                   | **Team → Definition** (the scope ribbon)                    |
+| See which commitment governs your team                  | **Team → Definition** (the scope ribbon above the criteria) |
 
-The two screens are linked: from the Team page you can jump straight to the group, and the notice on
-**Settings → Team → Team Definitions** links to the group that governs the team you are looking at.
+### Why It Lives With the Team
 
-### Why Two Screens
+The Definition of Done is the Increment's commitment, not an administrative setting, so it is read and
+changed where the team is — on the **Definition tab**, with the Sprint it gates in view. The scope
+ribbon directly above the criteria states which agreement governs the team: its own, or the one it
+shares with the other teams in its group. The same ribbon is where a team's leadership reviews the
+shared agreement, changes it, adopts one or leaves.
 
-A group is shared by several teams, so it does not belong to any one of them. Creating and dissolving
-a group, and replacing the commitment every team in it complies with, is a product-level decision and
-lives with the other product-wide settings. Whether _this_ team joins is the team's own decision and
-lives on the team.
+**Settings → Team Groups** does what an administration screen should: it creates, renames and deletes
+a group, and shows its roster with the version each team adopted. It states which commitment governs
+the group's teams and links to where that commitment is authored.
+
+Two answers to "where do I change our Definition of Done?" was one too many: the answer is always the
+Definition tab of a team.
 
 ---
 
@@ -119,19 +124,23 @@ Definition of Done but the exact version it agreed to was not captured.
 
 ---
 
-## Editing the Shared Definition of Done
+## Where the Shared Definition of Done Is Changed
 
-The **Shared Definition of Done** panel shows the version in force, when it last changed, and the
-active criteria with their categories.
+Open **Team → Definition** on any team in the group. The scope ribbon above the criteria says the
+agreement is shared, names the group and how many teams comply with it, and links to the group's own
+screen.
 
-1. Choose **Edit shared Definition of Done**.
-2. Add, reword, reorder, deactivate or remove criteria. The editor is the same one your team uses for
-   its own Definition of Done.
+1. Choose **Edit DoD**. (Only the group's teams' Product Owners and Scrum Masters see the control.)
+2. Add, reword, reorder, deactivate or remove criteria. It is the same editor a team uses for its own
+   Definition of Done — the commitment is one commitment, so the editing is one editing.
 3. Choose **Save Changes**.
 
-One change, seen by every team that shares the commitment, and the version increments. A banner above
-the editor states the consequence before you save, because this is the one write in the product that
-changes several teams' commitment at once.
+One change, seen by every team that shares the commitment, and the shared version increments. A banner
+above the editor states the consequence before you save, because this is the one write in the product
+that changes several teams' commitment at once.
+
+**Review the shared agreement** in the scope ribbon reads the criteria in full without entering the
+editor, and **Manage the group** goes to the roster.
 
 Two things worth knowing:
 
@@ -150,23 +159,29 @@ the tool records what was agreed, not what is currently on screen.
 
 ## Joining and Leaving
 
-Joining is the team's own decision, so it lives on the team.
+Joining is the team's own decision, and it is taken next to the commitment it decides.
 
-1. Open **Team → Scrum Health**.
-2. In **Shared Definition of Done**, choose the group from the **Group** list.
-3. Choose **Review what would be adopted** and read the criteria in full.
-4. Choose **Join and adopt version N**.
+1. Open **Team → Definition**.
+2. In the scope ribbon, choose the group from the **Team group** list.
+3. Choose **Review** and read the criteria in full.
+4. Choose **Adopt vN**.
 
-Step 3 is not decoration: a Definition of Done a team may not read before agreeing to it is not one
-it "mutually defined". The join is refused if the version you are shown is no longer the one in force,
-so a team can never be recorded as complying with a definition it never saw. In that case, review
-again and adopt the current version.
+Step 3 is not decoration: a Definition of Done a team may not read before agreeing to it is not one it
+"mutually defined". The ribbon states plainly what this product means by mutual definition — the teams
+adopt a named version, and a change made afterwards is shown as drift until this team adopts the new
+one.
 
-To leave, choose **Leave the group** on the same panel and confirm. Leaving is not a deletion: the
+If the version moved between your review and your confirmation, the join is refused. The refusal
+appears in place with the rule and a **Review the current version** control that reads the version now
+in force and adopts it — so a team can never be recorded as complying with a definition it never saw,
+and never has to guess how to recover.
+
+To leave, choose **Leave the group** in the same ribbon and confirm. Leaving is not a deletion: the
 team keeps the Definition of Done it has been complying with, and can then change it on its own.
 
-Only the team's **Product Owner** or **Scrum Master** sees the join and leave controls. Every member
-sees which group governs the team and which version it adopted.
+Only the team's **Product Owner** or **Scrum Master** sees the adopt and leave controls. Every member
+sees which group governs the team, which version it adopted, and whether that version is still the one
+in force.
 
 ---
 
@@ -179,8 +194,9 @@ sees which group governs the team and which version it adopted.
 | **On leaving**       | Rewritten with the group's criteria — through the ordinary versioned update, so the change is snapshotted like any other. |
 
 A team is therefore never left without a commitment, and never left with a stale definition it
-happened to keep. On **Settings → Team → Team Definitions**, a grouped team's Definition of Done is
-shown read-only, with a notice pointing at the group where it is changed.
+happened to keep. On **Team → Definition**, a grouped team's Definition of Done is shown with its
+scope stated above the criteria, and it is edited there — the same editor, writing to the group —
+rather than from a separate screen.
 
 ---
 
@@ -190,9 +206,11 @@ The group directory and every group's shared Definition of Done are readable by 
 This is deliberate rather than lax: a team cannot join a collaboration it cannot find, and it cannot
 "mutually define" a commitment it is not allowed to read.
 
-If you open a group whose teams you do not lead, you see its Definition of Done in full with a notice
-explaining that only its teams' Product Owners and Scrum Masters can change it. Nothing is hidden and
-no action is offered that would be refused.
+If you open a group whose teams you do not lead, **Settings → Team Groups** still shows you which
+version governs its teams and the roster, and a notice explains that only its teams' Product Owners
+and Scrum Masters can change it. On **Team → Definition**, a member who does not lead sees the
+commitment in full with a sentence naming who maintains it. Nothing is hidden and no action is offered
+that would be refused.
 
 ---
 

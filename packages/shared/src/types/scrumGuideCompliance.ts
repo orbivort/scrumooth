@@ -221,12 +221,42 @@ export interface ActionItemCompletion {
 
 // --- Definition of Done versions ---
 
+/**
+ * A criterion the product seeds into a new agreement, identified by a stable key.
+ *
+ * The key is what makes a built-in criterion translatable *and* editable: a team may reword "Code is
+ * properly documented" without the interface losing track of which built-in criterion it started
+ * from, where matching on the English sentence would drop its translation the moment it is polished.
+ * It is declared once, in `constants/definitionDefaults.ts`, and read by the seeding service, the
+ * migration that backfills existing rows, and the interface that renders them.
+ */
+export interface DefinitionDefaultItem {
+  /** Stable key, unique within its definition type -- e.g. `codeReviewed`. */
+  key: string;
+  /** The canonical English wording the product seeds. */
+  description: string;
+  /** The seeded category, or null when the criterion is seeded uncategorised. */
+  category: string | null;
+  /**
+   * Translation key under the `settings` namespace, e.g. `dodPanel.item.codeReviewed`.
+   *
+   * Declared here rather than derived from the key because the two vocabularies are independent: a
+   * key names the criterion, the translation key names where its wording lives.
+   */
+  i18nKey: string;
+}
+
 /** One item as it stood in a superseded Definition of Done version. */
 export interface DoDVersionItem {
   description: string;
   category: string | null;
   isActive: boolean;
   order: number;
+  /**
+   * The seeded criterion this item descends from, or null for a criterion the team wrote itself.
+   * Absent from snapshots written before the key existed, which read as null -- the legacy case.
+   */
+  defaultKey: string | null;
 }
 
 /**
@@ -240,6 +270,39 @@ export interface DoDVersionSnapshot {
   teamId: string;
   version: number;
   items: DoDVersionItem[];
+  createdAt: string;
+  createdBy: string | null;
+  /** Name of the member who made the change, when the account still exists. */
+  createdByName?: string | null;
+  /** Whether this snapshot is the version the team currently works to. */
+  isCurrent: boolean;
+}
+
+// --- Definition of Ready versions ---
+
+/** One criterion as it stood in a superseded Definition of Ready version. */
+export interface DoRVersionItem {
+  description: string;
+  category: string | null;
+  isActive: boolean;
+  order: number;
+  /** The seeded criterion this item descends from, or null for one the team wrote itself. */
+  defaultKey: string | null;
+}
+
+/**
+ * An immutable snapshot of a team's Definition of Ready at one version.
+ *
+ * The readiness agreement is not a Guide artifact, but it *is* enforced at the Sprint boundary, and
+ * a gate whose agreement changed silently is not one a team can inspect. Keeping the superseded
+ * versions is what makes this product's claim about the readiness practice answerable rather than
+ * asserted -- the same reason the Definition of Done keeps its own.
+ */
+export interface DoRVersionSnapshot {
+  id: string;
+  teamId: string;
+  version: number;
+  items: DoRVersionItem[];
   createdAt: string;
   createdBy: string | null;
   /** Name of the member who made the change, when the account still exists. */

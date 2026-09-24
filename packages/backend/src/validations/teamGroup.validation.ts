@@ -6,6 +6,8 @@
 // are gates and live in the service, where the answer is known.
 import { z } from 'zod';
 
+import { definitionItemsSchema } from './definitionItem.validation';
+
 export const groupIdSchema = z.object({
   groupId: z.string().uuid('Invalid group ID'),
 });
@@ -33,18 +35,12 @@ export const updateTeamGroupSchema = z.object({
  *
  * An inactive item is kept rather than dropped, because a Definition of Done that loses its history
  * of criteria would hide what the teams changed their minds about.
+ *
+ * Validated by the same schema as the team's own agreements. This one used to carry its own, stricter
+ * copy, so a criterion that the team's editor accepted could be refused the moment the same
+ * commitment was edited as the group's.
  */
-const sharedDoDItemSchema = z.object({
-  id: z.string().uuid('Invalid item ID').optional(),
-  description: z.string().min(1, 'Description is required').max(500),
-  category: z.string().max(100).optional(),
-  isActive: z.boolean(),
-  order: z.number().int().min(0),
-});
-
-export const updateSharedDoDSchema = z.object({
-  items: z.array(sharedDoDItemSchema).max(50, 'A Definition of Done holds at most 50 items'),
-});
+export const updateSharedDoDSchema = definitionItemsSchema();
 
 /**
  * Joining a group: which group, and which version of its shared Definition of Done is being adopted.

@@ -39,6 +39,14 @@ export interface SharedDoDItem {
   category: string | null;
   isActive: boolean;
   order: number;
+  /**
+   * The built-in criterion this one descends from, or null for one a team wrote itself.
+   *
+   * Carried on the shared agreement because it is the same agreement when a team leaves the group:
+   * the criteria are copied onto the team's own Definition of Done, and their built-in identity has
+   * to travel with them or the team loses the translation on the way out.
+   */
+  defaultKey: string | null;
 }
 
 /**

@@ -14,6 +14,7 @@ vi.mock('../../../services/dor.service', () => ({
     getDefinitionOfReady: vi.fn(),
     createDefaultDefinitionOfReady: vi.fn(),
     updateDefinitionOfReady: vi.fn(),
+    getDoRVersionSnapshots: vi.fn(),
     verifyDoRForPBI: vi.fn(),
     getDoRVerificationsForPBI: vi.fn(),
   },
@@ -191,31 +192,58 @@ describe('DoR Controller', () => {
   });
 
   describe('getDoRHistory', () => {
-    it('should return DoR history', async () => {
+    it('should return the append-only history, newest first', async () => {
       mockReq.params = { teamId: 'team-123' };
-      const mockDoR = {
-        id: 'dor-123',
-        teamId: 'team-123',
-        items: [{ id: 'item-1', description: 'Has acceptance criteria' }],
-      };
+      const mockVersions = [
+        {
+          id: 'dor-123',
+          teamId: 'team-123',
+          version: 2,
+          items: [
+            {
+              description: 'Clear title and description provided',
+              category: 'acceptance',
+              isActive: true,
+              order: 0,
+              defaultKey: 'clearTitle',
+            },
+          ],
+          createdAt: '2026-09-22T09:00:00.000Z',
+          createdBy: 'user-1',
+          createdByName: 'Sam Master',
+          isCurrent: true,
+        },
+        {
+          id: 'snapshot-1',
+          teamId: 'team-123',
+          version: 1,
+          items: [],
+          createdAt: '2026-08-01T09:00:00.000Z',
+          createdBy: null,
+          createdByName: null,
+          isCurrent: false,
+        },
+      ];
 
-      (definitionOfReadyService.getDefinitionOfReady as any).mockResolvedValue(mockDoR);
+      (definitionOfReadyService.getDoRVersionSnapshots as any).mockResolvedValue(mockVersions);
 
       getDoRHistory(mockReq as any, mockRes as any, mockNext);
       await new Promise((resolve) => setTimeout(resolve, 0));
 
       expect(mockNext).not.toHaveBeenCalled();
-      expect(definitionOfReadyService.getDefinitionOfReady).toHaveBeenCalledWith('team-123');
+      // The readiness agreement keeps superseded versions like the Definition of Done does, so the
+      // endpoint reads the history rather than the row in force.
+      expect(definitionOfReadyService.getDoRVersionSnapshots).toHaveBeenCalledWith('team-123');
       expect(mockRes._json).toEqual({
         success: true,
-        data: [mockDoR],
+        data: mockVersions,
       });
     });
 
-    it('should return empty array when no DoR exists', async () => {
+    it('should return an empty array when the team has no readiness agreement', async () => {
       mockReq.params = { teamId: 'team-123' };
 
-      (definitionOfReadyService.getDefinitionOfReady as any).mockResolvedValue(null);
+      (definitionOfReadyService.getDoRVersionSnapshots as any).mockResolvedValue([]);
 
       getDoRHistory(mockReq as any, mockRes as any, mockNext);
       await new Promise((resolve) => setTimeout(resolve, 0));
@@ -239,7 +267,7 @@ describe('DoR Controller', () => {
       mockReq.params = { teamId: 'team-123' };
       const error = new Error('Database error');
 
-      (definitionOfReadyService.getDefinitionOfReady as any).mockRejectedValue(error);
+      (definitionOfReadyService.getDoRVersionSnapshots as any).mockRejectedValue(error);
 
       getDoRHistory(mockReq as any, mockRes as any, mockNext);
       await new Promise((resolve) => setTimeout(resolve, 0));

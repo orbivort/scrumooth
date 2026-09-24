@@ -1,13 +1,7 @@
 /* The working agreements and cross-functionality panels: token-driven, card and table based. */
 
-/* The Team module owns the page padding and the module header, so a panel only stacks its own
-   content -- no inset of its own to double. */
-.page {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-6);
-}
-
+/* The Team module owns the page padding, the module header and the space between sections, so a
+   panel only stacks its own content -- no inset and no gap of its own to double. */
 .panel {
   display: flex;
   flex-direction: column;

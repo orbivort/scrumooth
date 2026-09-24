@@ -48,7 +48,10 @@ const tx = {
     update: vi.fn(),
     create: vi.fn(),
   },
-  definitionOfReady: { update: vi.fn() },
+  definitionOfReady: { update: vi.fn(), findUniqueOrThrow: vi.fn() },
+  // The version being superseded is preserved before it is replaced, so the write path needs the
+  // snapshot table inside the same transaction.
+  doRVersionSnapshot: { upsert: vi.fn() },
 };
 
 /**
@@ -79,6 +82,14 @@ describe('DefinitionOfReadyService', () => {
     tx.doRItem.update.mockResolvedValue({} as never);
     tx.doRItem.create.mockResolvedValue({} as never);
     tx.definitionOfReady.update.mockResolvedValue({ id: 'dor-1', version: 2 } as never);
+    // The write path reads the agreement twice inside its transaction: once to answer "what version
+    // am I superseding?", and once to decide which criteria the payload keeps. Tests that care about
+    // the second read queue two values; the first is the version being preserved.
+    tx.definitionOfReady.findUniqueOrThrow.mockResolvedValue({
+      version: 3,
+      teamId: 'team-1',
+    } as never);
+    tx.doRVersionSnapshot.upsert.mockResolvedValue({} as never);
   });
 
   describe('getDefinitionOfReady', () => {
@@ -157,6 +168,7 @@ describe('DefinitionOfReadyService', () => {
                 id: 'mock-uuid-v7',
                 description: 'Clear title and description provided',
                 category: 'acceptance',
+                defaultKey: 'clearTitle',
                 isActive: true,
                 order: 0,
                 createdBy: 'user-1',
@@ -165,6 +177,7 @@ describe('DefinitionOfReadyService', () => {
                 id: 'mock-uuid-v7',
                 description: 'Acceptance criteria defined and agreed',
                 category: 'acceptance',
+                defaultKey: 'acceptanceCriteria',
                 isActive: true,
                 order: 1,
                 createdBy: 'user-1',
@@ -173,6 +186,7 @@ describe('DefinitionOfReadyService', () => {
                 id: 'mock-uuid-v7',
                 description: 'Story points estimated by the team',
                 category: 'estimation',
+                defaultKey: 'storyPointsEstimated',
                 isActive: true,
                 order: 2,
                 createdBy: 'user-1',
@@ -181,6 +195,7 @@ describe('DefinitionOfReadyService', () => {
                 id: 'mock-uuid-v7',
                 description: 'Business value assigned',
                 category: 'estimation',
+                defaultKey: 'businessValue',
                 isActive: true,
                 order: 3,
                 createdBy: 'user-1',
@@ -189,6 +204,7 @@ describe('DefinitionOfReadyService', () => {
                 id: 'mock-uuid-v7',
                 description: 'Dependencies identified and documented',
                 category: 'dependencies',
+                defaultKey: 'dependencies',
                 isActive: true,
                 order: 4,
                 createdBy: 'user-1',
@@ -197,6 +213,7 @@ describe('DefinitionOfReadyService', () => {
                 id: 'mock-uuid-v7',
                 description: 'No blockers or impediments',
                 category: 'dependencies',
+                defaultKey: 'noBlockers',
                 isActive: true,
                 order: 5,
                 createdBy: 'user-1',
@@ -319,7 +336,9 @@ describe('DefinitionOfReadyService', () => {
 
     it('should keep a criterion that survives the edit so its verifications are not cascaded away', async () => {
       vi.mocked(prisma.definitionOfReady.findUnique).mockResolvedValue({ id: 'dor-1' } as any);
-      // First read: the criteria that exist, which decides update-in-place versus insert.
+      // First read: the version being superseded, which the snapshot preserves.
+      tx.doRItem.findMany.mockResolvedValueOnce([] as never);
+      // Second read: the criteria that exist, which decides update-in-place versus insert.
       tx.doRItem.findMany.mockResolvedValueOnce([{ id: 'item-a' }, { id: 'item-b' }] as never);
       tx.definitionOfReady.update.mockResolvedValue({ id: 'dor-1', version: 4 } as never);
 
@@ -361,8 +380,57 @@ describe('DefinitionOfReadyService', () => {
       });
     });
 
+    it('should preserve the version it is superseding, so the agreement keeps a real history', async () => {
+      vi.mocked(prisma.definitionOfReady.findUnique).mockResolvedValue({ id: 'dor-1' } as any);
+      tx.definitionOfReady.findUniqueOrThrow.mockResolvedValue({
+        version: 3,
+        teamId: 'team-1',
+      } as never);
+      // The version being replaced, criteria and all.
+      tx.doRItem.findMany.mockResolvedValueOnce([
+        {
+          description: 'Clear title and description provided',
+          category: 'acceptance',
+          isActive: true,
+          order: 0,
+          defaultKey: 'clearTitle',
+        },
+      ] as never);
+      tx.doRItem.findMany.mockResolvedValueOnce([{ id: 'item-a' }] as never);
+      tx.definitionOfReady.update.mockResolvedValue({ id: 'dor-1', version: 4 } as never);
+
+      await definitionOfReadyService.updateDefinitionOfReady(
+        'team-1',
+        [
+          {
+            id: 'item-a',
+            description: 'Titel und Beschreibung sind klar',
+            isActive: true,
+            order: 0,
+          },
+        ],
+        'user-1'
+      );
+
+      expect(tx.doRVersionSnapshot.upsert).toHaveBeenCalledWith({
+        where: { dorId_version: { dorId: 'dor-1', version: 3 } },
+        create: expect.objectContaining({
+          dorId: 'dor-1',
+          teamId: 'team-1',
+          version: 3,
+          // The key travels into the snapshot, so a superseded criterion stays readable in the
+          // reader's language after the team rewords it.
+          items: [expect.objectContaining({ defaultKey: 'clearTitle' })],
+        }),
+        // `upsert` with an empty update keeps the first snapshot if two writers race for the same
+        // version: the record of a version is never rewritten.
+        update: {},
+      });
+    });
+
     it('should treat an id that names no criterion of this agreement as a new criterion', async () => {
       vi.mocked(prisma.definitionOfReady.findUnique).mockResolvedValue({ id: 'dor-1' } as any);
+      tx.doRItem.findMany.mockResolvedValueOnce([] as never);
       tx.doRItem.findMany.mockResolvedValueOnce([{ id: 'item-a' }] as never);
 
       await definitionOfReadyService.updateDefinitionOfReady(

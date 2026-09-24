@@ -68,7 +68,7 @@ Scrumooth enforces the agreement as the team's own commitment. Committing a Spri
 | **Strictness**      | Every active criterion must be verified for every selected item     | Every active criterion must be verified for that item      |
 | **Who maintains**   | The team's Scrum Master (the agreement itself)                      | The Scrum Team, member by member (the agreement itself)    |
 | **Who records it**  | Any team member, per criterion, per PBI                             | Any team member, per criterion, per PBI                    |
-| **Version history** | The version in force; superseded versions are not snapshotted       | Append-only snapshots of every superseded version          |
+| **Version history** | Append-only snapshots of every superseded version                   | Append-only snapshots of every superseded version          |
 | **Focus**           | Preparedness and clarity                                            | Quality and completeness                                   |
 
 ### When to Verify DoR
@@ -249,9 +249,10 @@ The payload is the agreement's new state, and each criterion's identity decides 
   longer discards the evidence for the others;
 - an item with **no `id`** — or with an `id` this agreement does not hold — is inserted as a new
   criterion, under an id the service assigns;
-- a criterion **absent from the payload** is deleted, and its verifications go with it. Version
-  history is not kept for the DoR, so a removed criterion is not recoverable: retiring a criterion
-  loses the verdicts recorded against it.
+- a criterion **absent from the payload** is deleted, and its verifications go with it. The version
+  being replaced is preserved as a snapshot first, so what the criterion said is still readable in the
+  history, but a removed criterion is gone from the live agreement: retiring one loses the verdicts
+  recorded against it.
 
 The resulting agreement must keep **at least one active criterion** (`400 GATE_DOR_REQUIRED`
 otherwise), so the Sprint boundary rule it feeds can never be emptied away. Sending `items: []`, or
@@ -364,18 +365,18 @@ curl -X PUT https://api.scrumooth.dev/api/v1/teams/550e8400-e29b-41d4-a716-44665
 
 ### Get DoR Version History
 
-Get the Definition of Ready in force for a team.
+Get the append-only version history of a team's Definition of Ready, newest first.
 
-**The DoR keeps a version number, not a history.** Unlike the Definition of Done — whose superseded
-versions are preserved as append-only snapshots because it is the Increment's commitment — the
-readiness agreement is a complementary practice, and Scrumooth does not keep snapshots of it. The
-`version` field advances on every replacement, which makes "has this changed since we agreed it?" a
-question an integrator can answer; `GET /teams/:teamId/definition-of-done/history` is the endpoint
-with real version history.
+**The DoR keeps a real history.** Every replacement first preserves the version it is about to
+supersede, so the versions the team changed its mind about remain readable — the same treatment the
+Definition of Done receives, and for the same reason: an enforced agreement whose earlier versions
+vanish is one the team cannot inspect. A team that has never changed its readiness agreement sees one
+entry: the version in force.
 
-The response is therefore an array holding the agreement currently in force (or empty when the team
-has never had one), in the same shape `GET /teams/:teamId/definition-of-ready` returns it. There are
-no paging parameters.
+The response is an array of version snapshots. The version in force is the first entry and carries
+`isCurrent: true`; every entry behind it comes from a snapshot. Each entry holds the criteria as they
+stood, so a criterion that was later reworded or retired is still legible in the version that held it.
+There are no paging parameters.
 
 **Endpoint**
 
@@ -407,28 +408,52 @@ Content-Type: application/json
       "version": 2,
       "items": [
         {
-          "id": "550e8400-e29b-41d4-a716-446655440121",
-          "description": "User story has clear and testable acceptance criteria",
+          "description": "Clear title and description provided",
           "category": "acceptance",
           "isActive": true,
-          "order": 0
+          "order": 0,
+          "defaultKey": "clearTitle"
         },
         {
-          "id": "550e8400-e29b-41d4-a716-446655440122",
           "description": "Dependencies have been identified and resolved",
           "category": "dependencies",
           "isActive": true,
-          "order": 1
+          "order": 1,
+          "defaultKey": null
+        }
+      ],
+      "createdAt": "2026-04-29T13:00:00.000Z",
+      "createdBy": "550e8400-e29b-41d4-a716-446655440001",
+      "createdByName": "Sam Master",
+      "isCurrent": true
+    },
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440199",
+      "teamId": "550e8400-e29b-41d4-a716-446655440000",
+      "version": 1,
+      "items": [
+        {
+          "description": "Clear title and description provided",
+          "category": "acceptance",
+          "isActive": true,
+          "order": 0,
+          "defaultKey": "clearTitle"
         }
       ],
       "createdAt": "2026-04-29T12:00:00.000Z",
-      "updatedAt": "2026-04-29T13:00:00.000Z"
+      "createdBy": "550e8400-e29b-41d4-a716-446655440001",
+      "createdByName": "Sam Master",
+      "isCurrent": false
     }
   ]
 }
 ```
 
 An empty array means the team has no readiness agreement yet.
+
+`defaultKey` names the built-in criterion a criterion descends from, so it stays readable in the
+reader's language after it is reworded; `null` means the team wrote it itself, and it is then shown
+exactly as written. The field is absent from snapshots written before it existed, which read as null.
 
 **Error Responses**
 

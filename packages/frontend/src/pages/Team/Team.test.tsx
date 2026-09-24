@@ -14,8 +14,14 @@ import { AxiosError, type AxiosResponse } from 'axios';
 import { vi, beforeAll } from 'vitest';
 
 import { useTeamStore, useAuthStore } from '../../store';
-import { apiService, healthCheckService } from '../../services';
+import {
+  apiService,
+  definitionService,
+  healthCheckService,
+  workingAgreementsService,
+} from '../../services';
 import type { ApiResponse } from '../../types';
+import { queryKeys } from '../../hooks/queryKeys';
 
 import { TeamManagement, type TeamTab } from './Team';
 
@@ -47,6 +53,13 @@ vi.mock('../../services', () => ({
     getAgreements: vi.fn(),
     createAgreement: vi.fn(),
     updateAgreement: vi.fn(),
+  },
+  // The Definition tab reads both agreements, so the module cannot render it without these.
+  definitionService: {
+    getDefinitionOfDone: vi.fn(),
+    updateDefinitionOfDone: vi.fn(),
+    getDefinitionOfReady: vi.fn(),
+    updateDefinitionOfReady: vi.fn(),
   },
   sessionManager: {
     startSession: vi.fn(),
@@ -3027,7 +3040,7 @@ describe('TeamManagement - Multiple Teams', () => {
       // Team data now loads with a Product Owner → the selected role becomes
       // unavailable, and the component resets it back to developers.
       await act(async () => {
-        await queryClient.refetchQueries({ queryKey: ['team', baseTeam.id] });
+        await queryClient.refetchQueries({ queryKey: queryKeys.team.byId(baseTeam.id) });
       });
 
       await waitFor(() => {
@@ -3248,6 +3261,50 @@ describe('TeamManagement - module tabs', () => {
       success: true,
       data: null,
     });
+
+    // The Definition tab is three reads, not one: the two agreements and the working agreements. A
+    // definition that is never seeded is not an answer the interface can render, so the module tests
+    // pin the reads the tab depends on.
+    (definitionService.getDefinitionOfDone as unknown as vi.Mock).mockResolvedValue({
+      success: true,
+      data: {
+        id: 'dod-1',
+        teamId,
+        items: [
+          {
+            id: 'dod-item-1',
+            description: 'Code is peer-reviewed and approved',
+            category: 'quality',
+            isActive: true,
+            order: 0,
+          },
+        ],
+        version: 2,
+        updatedAt: '2024-06-01T00:00:00Z',
+      },
+    });
+    (definitionService.getDefinitionOfReady as unknown as vi.Mock).mockResolvedValue({
+      success: true,
+      data: {
+        id: 'dor-1',
+        teamId,
+        items: [
+          {
+            id: 'dor-item-1',
+            description: 'Acceptance criteria defined and agreed',
+            category: 'acceptance',
+            isActive: true,
+            order: 0,
+          },
+        ],
+        version: 1,
+        updatedAt: '2024-06-01T00:00:00Z',
+      },
+    });
+    (workingAgreementsService.getAgreements as unknown as vi.Mock).mockResolvedValue({
+      success: true,
+      data: [],
+    });
   });
 
   // The module is one destination with four sections, so the rail has to name all four and say which
@@ -3260,7 +3317,7 @@ describe('TeamManagement - module tabs', () => {
     expect(tabs.map((tab) => tab.textContent)).toEqual([
       i18nT('team:tabs.overview'),
       i18nT('team:tabs.members'),
-      i18nT('team:tabs.agreements'),
+      i18nT('team:tabs.definition'),
       i18nT('team:tabs.health'),
     ]);
     expect(screen.getByRole('tab', { name: i18nT('team:tabs.overview') })).toHaveAttribute(
@@ -3273,13 +3330,41 @@ describe('TeamManagement - module tabs', () => {
   // The address is the module's single source of truth, so a link can point at a section and a
   // refresh comes back to it.
   it('opens the section the address names', async () => {
-    renderWithProviders(<TeamManagement />, { initialRoute: '/team?tab=agreements' });
+    renderWithProviders(<TeamManagement />, { initialRoute: '/team?tab=definition' });
 
-    expect(await screen.findByRole('tab', { name: i18nT('team:tabs.agreements') })).toHaveAttribute(
+    expect(await screen.findByRole('tab', { name: i18nT('team:tabs.definition') })).toHaveAttribute(
       'aria-selected',
       'true'
     );
-    expect(screen.getByTestId('working-agreements')).toBeInTheDocument();
+    expect(screen.getByTestId('team-definition-tab')).toBeInTheDocument();
+  });
+
+  // The three agreements share the tab, and the order is the point: the Definition of Done is the
+  // commitment of the Increment, so it is read first; the readiness practice is this product's own
+  // complementary practice and follows it.
+  it('reads the Definition of Done, then the Definition of Ready, then the working agreements', async () => {
+    renderWithProviders(<TeamManagement />, { initialRoute: '/team?tab=definition' });
+
+    const headings = await screen.findAllByRole('heading', { level: 2 });
+
+    expect(headings.map((heading) => heading.textContent)).toEqual([
+      i18nT('settings:dodPanel.title'),
+      i18nT('settings:dorPanel.title'),
+      i18nT('agreements:agreements.title'),
+    ]);
+  });
+
+  // `?tab=agreements` addressed this tab while it held only the working agreements. A bookmark to it
+  // still means "the team's agreements", so it resolves here rather than silently opening the
+  // overview the user never asked for.
+  it('resolves the retired ?tab=agreements address to the Definition tab', async () => {
+    renderWithProviders(<TeamManagement />, { initialRoute: '/team?tab=agreements' });
+
+    expect(await screen.findByRole('tab', { name: i18nT('team:tabs.definition') })).toHaveAttribute(
+      'aria-selected',
+      'true'
+    );
+    expect(screen.getByTestId('team-definition-tab')).toBeInTheDocument();
   });
 
   // A tab strip is one tab stop that moves with the arrow keys, rather than four stops a keyboard

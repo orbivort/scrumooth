@@ -2,9 +2,13 @@
 //
 // The team's identity and its metrics, its roster, the agreements it holds itself to, and the
 // assessments of how healthy it is are four views of one subject: the team as it is. They share one
-// module, one header and one URL -- `?tab=agreements` opens the agreements so a link can point
+// module, one header and one URL -- `?tab=definition` opens the agreements so a link can point
 // straight at them, and the old `/working-agreements` route redirects here, the same way the
 // organizational-barrier register became a tab of the Impediments module.
+//
+// The Definition tab is where the Scrum Guide's own artifact is authored: the Definition of Done is
+// the commitment of the Increment, so it is read and changed where the team is, by any team member --
+// not in a settings screen and not by one role.
 import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
@@ -22,8 +26,8 @@ import {
 } from '../../components/common/Icons';
 import { queryKeys } from '../../hooks/queryKeys';
 import type { ApiResponse, Team } from '../../types';
-import { WorkingAgreements } from '../WorkingAgreements/WorkingAgreements';
 
+import { DefinitionPanel } from './Definition';
 import { MembersPanel } from './components/MembersPanel';
 import { OverviewPanel } from './components/OverviewPanel';
 import { ScrumHealthPanel } from './components/ScrumHealthPanel';
@@ -40,16 +44,30 @@ interface TeamErrorState {
 
 /**
  * The tabs of the module. The overview is the default, so it is the tab the URL stays silent about:
- * `/team` is the overview, `/team?tab=agreements` is the agreements.
+ * `/team` is the overview, `/team?tab=definition` is the agreements.
  */
-export type TeamTab = 'overview' | 'members' | 'agreements' | 'health';
+export type TeamTab = 'overview' | 'members' | 'definition' | 'health';
 
 const TAB_PARAM = 'tab';
 
-const TAB_IDS: readonly TeamTab[] = ['overview', 'members', 'agreements', 'health'];
+const TAB_IDS: readonly TeamTab[] = ['overview', 'members', 'definition', 'health'];
+
+/**
+ * Tab ids that were published before a tab was renamed.
+ *
+ * `?tab=agreements` addressed this tab while it held only the working agreements. A bookmark to it
+ * still means "the team's agreements", so it resolves to the Definition tab rather than silently
+ * falling back to the overview.
+ */
+const TAB_ALIASES: Readonly<Record<string, TeamTab>> = { agreements: 'definition' };
 
 const readTab = (params: URLSearchParams): TeamTab => {
   const requested = params.get(TAB_PARAM);
+
+  if (requested && TAB_ALIASES[requested]) {
+    return TAB_ALIASES[requested];
+  }
+
   return TAB_IDS.includes(requested as TeamTab) ? (requested as TeamTab) : 'overview';
 };
 
@@ -136,7 +154,7 @@ export const TeamManagement: React.FC = () => {
     () => [
       { id: 'overview' as const, label: t('tabs.overview'), Icon: ChartIcon },
       { id: 'members' as const, label: t('tabs.members'), Icon: UsersIcon },
-      { id: 'agreements' as const, label: t('tabs.agreements'), Icon: ClipboardListIcon },
+      { id: 'definition' as const, label: t('tabs.definition'), Icon: ClipboardListIcon },
       { id: 'health' as const, label: t('tabs.health'), Icon: SparklesIcon },
     ],
     [t]
@@ -406,9 +424,9 @@ export const TeamManagement: React.FC = () => {
         {activeTab === 'members' && (
           <MembersPanel teamId={teamId} team={team} isUninvitedUser={isUninvitedUser} />
         )}
-        {activeTab === 'agreements' && <WorkingAgreements teamId={teamId} />}
+        {activeTab === 'definition' && <DefinitionPanel teamId={teamId} team={team} />}
         {activeTab === 'health' && (
-          <ScrumHealthPanel teamId={teamId} team={team} isUninvitedUser={isUninvitedUser} />
+          <ScrumHealthPanel teamId={teamId} isUninvitedUser={isUninvitedUser} />
         )}
       </div>
     </div>

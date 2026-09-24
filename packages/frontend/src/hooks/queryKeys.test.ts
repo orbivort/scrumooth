@@ -179,11 +179,18 @@ describe('queryKeys', () => {
     });
 
     it('should generate correct byId key', () => {
-      expect(queryKeys.team.byId('team-1')).toEqual(['team', 'team-1']);
+      expect(queryKeys.team.byId('team-1')).toEqual(['teams', 'detail', 'team-1']);
     });
 
     it('should generate correct byId key with undefined', () => {
-      expect(queryKeys.team.byId(undefined)).toEqual(['team', undefined]);
+      expect(queryKeys.team.byId(undefined)).toEqual(['teams', 'detail', undefined]);
+    });
+
+    it('should be reached by invalidating the team family', () => {
+      // The reason `byId` lives under `details()`: a write that changes a team's group membership
+      // invalidates `team.all`, and the team's own read has to be inside that family to be refreshed.
+      const teamKey = queryKeys.team.byId('team-1');
+      expect(teamKey.slice(0, queryKeys.team.all.length)).toEqual([...queryKeys.team.all]);
     });
   });
 
@@ -193,7 +200,33 @@ describe('queryKeys', () => {
     });
 
     it('should generate correct byTeam key', () => {
-      expect(queryKeys.definitionOfDone.byTeam('team-1')).toEqual(['definition-of-done', 'team-1']);
+      expect(queryKeys.definitionOfDone.byTeam('team-1')).toEqual([
+        'definition-of-done',
+        'team',
+        'team-1',
+      ]);
+    });
+
+    it('should generate correct byGroup key', () => {
+      expect(queryKeys.definitionOfDone.byGroup('group-1')).toEqual([
+        'definition-of-done',
+        'group',
+        'group-1',
+      ]);
+    });
+
+    it('should keep team and group reads in one family, so one invalidation covers both', () => {
+      // A grouped team's read resolves to the group's row: two views of one commitment, and a write
+      // through either has to refresh both.
+      for (const key of [
+        queryKeys.definitionOfDone.byTeam('team-1'),
+        queryKeys.definitionOfDone.byGroup('group-1'),
+        queryKeys.definitionOfDone.history('team-1'),
+      ]) {
+        expect(key.slice(0, queryKeys.definitionOfDone.all.length)).toEqual([
+          ...queryKeys.definitionOfDone.all,
+        ]);
+      }
     });
   });
 
@@ -530,6 +563,14 @@ describe('queryKeys', () => {
 
     it('should generate correct byTeam key', () => {
       expect(queryKeys.definitionOfReady.byTeam('team-1')).toEqual(['definitionOfReady', 'team-1']);
+    });
+
+    it('should generate correct history key', () => {
+      expect(queryKeys.definitionOfReady.history('team-1')).toEqual([
+        'definitionOfReady',
+        'history',
+        'team-1',
+      ]);
     });
   });
 

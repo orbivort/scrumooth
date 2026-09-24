@@ -28,6 +28,7 @@ import enScrumMasterDashboard from '../../public/locales/en/scrum-master-dashboa
 import enTimebox from '../../public/locales/en/timebox.json';
 import enBarriers from '../../public/locales/en/barriers.json';
 import enAgreements from '../../public/locales/en/agreements.json';
+import enGate from '../../public/locales/en/gate.json';
 import deCommon from '../../public/locales/de/common.json';
 import deAuth from '../../public/locales/de/auth.json';
 import deDashboard from '../../public/locales/de/dashboard.json';
@@ -48,6 +49,7 @@ import deScrumMasterDashboard from '../../public/locales/de/scrum-master-dashboa
 import deTimebox from '../../public/locales/de/timebox.json';
 import deBarriers from '../../public/locales/de/barriers.json';
 import deAgreements from '../../public/locales/de/agreements.json';
+import deGate from '../../public/locales/de/gate.json';
 import frCommon from '../../public/locales/fr/common.json';
 import frAuth from '../../public/locales/fr/auth.json';
 import frDashboard from '../../public/locales/fr/dashboard.json';
@@ -68,6 +70,7 @@ import frScrumMasterDashboard from '../../public/locales/fr/scrum-master-dashboa
 import frTimebox from '../../public/locales/fr/timebox.json';
 import frBarriers from '../../public/locales/fr/barriers.json';
 import frAgreements from '../../public/locales/fr/agreements.json';
+import frGate from '../../public/locales/fr/gate.json';
 import esCommon from '../../public/locales/es/common.json';
 import esAuth from '../../public/locales/es/auth.json';
 import esDashboard from '../../public/locales/es/dashboard.json';
@@ -88,6 +91,7 @@ import esScrumMasterDashboard from '../../public/locales/es/scrum-master-dashboa
 import esTimebox from '../../public/locales/es/timebox.json';
 import esBarriers from '../../public/locales/es/barriers.json';
 import esAgreements from '../../public/locales/es/agreements.json';
+import esGate from '../../public/locales/es/gate.json';
 import itCommon from '../../public/locales/it/common.json';
 import itAuth from '../../public/locales/it/auth.json';
 import itDashboard from '../../public/locales/it/dashboard.json';
@@ -108,6 +112,7 @@ import itScrumMasterDashboard from '../../public/locales/it/scrum-master-dashboa
 import itTimebox from '../../public/locales/it/timebox.json';
 import itBarriers from '../../public/locales/it/barriers.json';
 import itAgreements from '../../public/locales/it/agreements.json';
+import itGate from '../../public/locales/it/gate.json';
 
 const NAMESPACES = [
   'common',
@@ -130,6 +135,7 @@ const NAMESPACES = [
   'timebox',
   'barriers',
   'agreements',
+  'gate',
 ] as const;
 
 // Build resource maps per locale
@@ -154,6 +160,7 @@ const enResources = {
   timebox: enTimebox,
   barriers: enBarriers,
   agreements: enAgreements,
+  gate: enGate,
 };
 
 const deResources = {
@@ -177,6 +184,7 @@ const deResources = {
   timebox: deTimebox,
   barriers: deBarriers,
   agreements: deAgreements,
+  gate: deGate,
 };
 
 const frResources = {
@@ -200,6 +208,7 @@ const frResources = {
   timebox: frTimebox,
   barriers: frBarriers,
   agreements: frAgreements,
+  gate: frGate,
 };
 
 const esResources = {
@@ -223,6 +232,7 @@ const esResources = {
   timebox: esTimebox,
   barriers: esBarriers,
   agreements: esAgreements,
+  gate: esGate,
 };
 
 const itResources = {
@@ -246,6 +256,7 @@ const itResources = {
   timebox: itTimebox,
   barriers: itBarriers,
   agreements: itAgreements,
+  gate: itGate,
 };
 
 type LocaleResources = Record<string, Record<string, unknown>>;

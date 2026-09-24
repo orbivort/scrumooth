@@ -1,0 +1,45 @@
+{
+  "dodGroupGoverned": {
+    "guideClause": "[Íf théré àré múltíplé Scrúm Téàms wórkíng tógéthér ón à pródúct, théy múst mútúàlly défíné ànd cómply wíth thé sàmé Défínítíón óf Dónéééééééééééééééééééééééééééééééééééééééééé.]",
+    "recovery": "[Chàngé thé shàréd Défínítíón óf Dóné fróm thé défínítíón tàb óf àny téàm ín thé gróúppppppppppppppppppppppppppp.]",
+    "rule": "[Thís téàm wórks wíth óthér Scrúm Téàms ón óné pródúct, só ít cómplíés wíth thé Défínítíón óf Dóné théy shàré ànd cànnót chàngé íts ównnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn.]"
+  },
+  "dodRequired": {
+    "guideClause": "[Thé Défínítíón óf Dóné ís à fórmàl déscríptíón óf thé stàté óf thé Íncrémént whén ít mééts thé qúàlíty méàsúrés réqúíréd fór thé pródúcttttttttttttttttttttttttttttttttttttttttttt.]",
+    "recovery": "[Réàctívàté ór àdd à crítéríón, thén sàvé thé Défínítíón óf Dóné àgàínnnnnnnnnnnnnnnnnnnnnn.]",
+    "rule": "[À Défínítíón óf Dóné múst hóld àt léàst óné àctívé crítéríónnnnnnnnnnnnnnnnnnnn.]"
+  },
+  "dodTeamMembersOnly": {
+    "recovery": "[Àsk à mémbér óf thís téàm tó ópén íts Défínítíón óf Dónééééééééééééééééééé.]",
+    "rule": "[Thé Défínítíón óf Dóné bélóngs tó thé Scrúm Téàm thàt wórks tó ít, só ónly íts mémbérs càn réàd ór chàngé ítttttttttttttttttttttttttttttttttt.]"
+  },
+  "dorRequired": {
+    "recovery": "[Réàctívàté ór àdd à crítéríón, thén sàvé thé Défínítíón óf Réàdy àgàínnnnnnnnnnnnnnnnnnnnnnn.]",
+    "rule": "[Thé Défínítíón óf Réàdy múst hóld àt léàst óné àctívé crítéríónnnnnnnnnnnnnnnnnnnnn.]"
+  },
+  "dorScrumMasterOnly": {
+    "recovery": "[Àsk yóúr Scrúm Màstér tó chàngé ítttttttttttt.]",
+    "rule": "[Thé Défínítíón óf Réàdy ís à cómpléméntàry pràctícé màíntàínéd by thé téàm's Scrúm Màstér. Ít ís nót à Scrúm Gúídé àrtífàcttttttttttttttttttttttttttttttttttttttt.]"
+  },
+  "dorTeamMembersOnly": {
+    "recovery": "[Àsk à mémbér óf thís téàm tó ópén íts Défínítíón óf Réàdyyyyyyyyyyyyyyyyyyy.]",
+    "rule": "[Thé Défínítíón óf Réàdy ís thís téàm's ówn àgréémént, só ónly íts mémbérs càn réàd íttttttttttttttttttttttttttt.]"
+  },
+  "teamGroupAlreadyMember": {
+    "recovery": "[Léàvé thé gróúp ít bélóngs tó fírstttttttttttt.]",
+    "rule": "[À téàm cómplíés wíth óné shàréd Défínítíón óf Dóné, só ít cànnót jóín à sécónd gróúppppppppppppppppppppppppppp.]"
+  },
+  "teamGroupDodAcknowledgementRequired": {
+    "guideClause": "[Íf théré àré múltíplé Scrúm Téàms wórkíng tógéthér ón à pródúct, théy múst mútúàlly défíné ànd cómply wíth thé sàmé Défínítíón óf Dónéééééééééééééééééééééééééééééééééééééééééé.]",
+    "recovery": "[Révíéw thé vérsíón nów ín fórcé ànd àdópt íttttttttttttttt.]",
+    "rule": "[Thé shàréd Défínítíón óf Dóné chàngéd àftér yóú révíéwéd ít, só thé vérsíón yóú àcknówlédgéd ís nó lóngér thé óné ín fórcéééééééééééééééééééééééééééééééééééééé.]"
+  },
+  "teamGroupLeadershipOnly": {
+    "recovery": "[Àsk yóúr téàm's Pródúct Ównér ór Scrúm Màstér tó màké thís chàngééééééééééééééééééééé.]",
+    "rule": "[À téàm's Pródúct Ównér ór Scrúm Màstér décídés whích shàréd Défínítíón óf Dóné ít cómplíés wíthhhhhhhhhhhhhhhhhhhhhhhhhhhhhh.]"
+  },
+  "teamGroupNotEmpty": {
+    "recovery": "[Hàvé évéry téàm léàvé thé gróúp fírsttttttttttttt.]",
+    "rule": "[À gróúp whósé Défínítíón óf Dóné stíll góvérns téàms cànnót bé rémóvéd, bécàúsé rémóvíng ít wóúld tàké théír cómmítmént àwày ràthér thàn móvé íttttttttttttttttttttttttttttttttttttttttttttt.]"
+  }
+}

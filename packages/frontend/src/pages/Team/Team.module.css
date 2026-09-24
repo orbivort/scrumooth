@@ -826,7 +826,7 @@
 }
 
 /* ========================================
-   MODULE TABS (Overview | Members | Working agreements | Scrum health)
+   MODULE TABS (Overview | Members | Definition | Scrum health)
    ======================================== */
 
 .tabs {
@@ -1372,134 +1372,8 @@
   color: var(--color-primary-700);
 }
 
-/* The group a team shares a product -- and one Definition of Done -- with. */
-.team-group {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  padding: var(--space-4);
-  border: var(--border-width-1) solid var(--color-border-default);
-  border-radius: var(--radius-lg);
-  background: var(--color-background-card);
-  box-shadow: var(--shadow-sm);
-}
-
-.team-group-title {
-  margin: 0;
-  font-size: var(--font-size-lg);
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-text-primary);
-}
-
-.team-group-hint,
-.team-group-meta {
-  margin: 0;
-  font-size: var(--font-size-sm);
-  color: var(--color-text-secondary);
-}
-
-.team-group-status {
-  margin: 0;
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-text-primary);
-}
-
-/* The adopted version is behind the version in force: the team is complying with an older
-   Definition of Done than the one its group holds. */
-.team-group-drift {
-  margin: 0;
-  padding: var(--space-2);
-  border-radius: var(--radius-sm);
-  background: var(--color-warning-100);
-  color: var(--color-warning-700);
-  font-size: var(--font-size-sm);
-}
-
-.team-group-actions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  gap: var(--space-2);
-}
-
-/* The way out to the group's own screen. The commitment belongs to the group, so the place to
-   change it is there rather than here -- the team's panel decides only whether it complies. */
-.team-group-link {
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-primary-600);
-  text-decoration: underline;
-  text-underline-offset: 2px;
-}
-
-.team-group-link:hover {
-  color: var(--color-primary-700);
-}
-
-.team-group-link:focus-visible {
-  outline: none;
-  border-radius: var(--radius-sm);
-  box-shadow: var(--focus-ring);
-}
-
-/* A team that works alone but shares a product with other teams has a rule to satisfy, not merely a
-   setting to read. */
-.team-group-discover {
-  margin: 0;
-  font-size: var(--font-size-sm);
-  color: var(--color-text-secondary);
-}
-
-.team-group-field {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-}
-
-.team-group-label {
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-semibold);
-  text-transform: uppercase;
-  letter-spacing: var(--letter-spacing-wide);
-  color: var(--color-text-secondary);
-}
-
-.team-group-select {
-  padding: var(--space-2);
-  border: var(--border-width-1) solid var(--color-border-default);
-  border-radius: var(--radius-sm);
-  background: var(--color-background-card);
-  color: var(--color-text-primary);
-  font-size: var(--font-size-sm);
-}
-
-/* The commitment read out before it is adopted. */
-.team-group-review {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  padding: var(--space-3);
-  border: var(--border-width-1) solid var(--color-border-default);
-  border-radius: var(--radius-sm);
-  background: var(--color-background-page);
-}
-
-.team-group-items {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  margin: 0;
-  padding-inline-start: var(--space-4);
-  font-size: var(--font-size-sm);
-  color: var(--color-text-primary);
-}
-
-.team-group-error {
-  margin: 0;
-  font-size: var(--font-size-sm);
-  color: var(--color-error-600);
-}
+/* The shared-Definition-of-Done panel that used to live under this tab moved to the Definition tab,
+   where the commitment it governs is read and changed; its styles moved with it. */
 
 .role-default {
   background: linear-gradient(135deg, var(--color-gray-100) 0%, var(--color-gray-200) 100%);

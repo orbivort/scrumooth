@@ -2,7 +2,7 @@
 import { Link, useNavigate } from 'react-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { TIME, formatDateRange, SCRUM_EVENTS } from '@scrumooth/shared';
+import { GATE_CODES, TIME, formatDateRange, SCRUM_EVENTS } from '@scrumooth/shared';
 
 import { apiService } from '../../services';
 import { API_BASE_URL, getCsrfHeader } from '../../services/core/api.core';
@@ -1430,15 +1430,22 @@ export const SprintPlanning: React.FC = () => {
   };
 
   /**
-   * Leave planning for the definitions the refusal points at.
+   * Leave planning for the agreement the refusal points at.
    *
    * A refused Start is actionable: the team either has no Definition of Done or has not verified its
-   * readiness agreement, and both live in Team Definitions. The dialog closes first so returning to
-   * planning does not land behind a stale modal.
+   * readiness agreement, and both are read on the team's Definition tab. The dialog closes first so
+   * returning to planning does not land behind a stale modal, and the address names the section the
+   * refusal is about rather than dropping the reader at the top of the page to find it.
    */
   const handleOpenDefinitions = () => {
+    const isReadinessRefusal =
+      startSprintErrorCode === GATE_CODES.DOR_REQUIRED ||
+      startSprintErrorCode === GATE_CODES.DOR_NOT_VERIFIED;
+
     handleCancelStartSprint();
-    void navigate('/settings/team-definitions');
+    void navigate(
+      `/team?tab=definition#${isReadinessRefusal ? 'definition-of-ready' : 'definition-of-done'}`
+    );
   };
 
   const handleSaveSprintGoal = useCallback(

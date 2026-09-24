@@ -30,6 +30,8 @@ const sharedDoDTemplate = (): SharedDefinitionOfDone => ({
       category: 'review',
       isActive: true,
       order: 0,
+      // A built-in criterion, so the demo shows a seeded one being translated by its key...
+      defaultKey: 'codeReviewed',
     },
     {
       id: 'shared-item-2',
@@ -37,6 +39,7 @@ const sharedDoDTemplate = (): SharedDefinitionOfDone => ({
       category: 'testing',
       isActive: true,
       order: 1,
+      defaultKey: 'integrationTests',
     },
     {
       id: 'shared-item-3',
@@ -44,6 +47,8 @@ const sharedDoDTemplate = (): SharedDefinitionOfDone => ({
       category: 'delivery',
       isActive: true,
       order: 2,
+      // ...and, beside it, a criterion the teams wrote themselves, which is shown as written.
+      defaultKey: null,
     },
   ],
 });
@@ -206,6 +211,11 @@ export class MockTeamGroupService {
       return { success: false, error: { code: 'NOT_FOUND', message: 'Team group not found' } };
     }
 
+    // The write payload never carries `defaultKey`: only the service may set it. Its update path
+    // leaves the column alone, so an edit keeps a built-in criterion's identity and a criterion the
+    // teams add has none. The mock mirrors that rather than minting one.
+    const existingKeys = new Map(group.dod.items.map((item) => [item.id, item.defaultKey]));
+
     group.dod = {
       groupId,
       version: group.dod.version + 1,
@@ -216,6 +226,7 @@ export class MockTeamGroupService {
         category: item.category ?? null,
         isActive: item.isActive,
         order: index,
+        defaultKey: (item.id ? existingKeys.get(item.id) : null) ?? null,
       })),
     };
 

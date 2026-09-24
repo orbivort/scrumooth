@@ -1,0 +1,45 @@
+{
+  "dodGroupGoverned": {
+    "guideClause": "Wenn mehrere Scrum-Teams gemeinsam an einem Produkt arbeiten, müssen sie gemeinsam dieselbe Definition of Done festlegen und befolgen.",
+    "recovery": "Ändere die geteilte Definition of Done im Definition-Tab eines beliebigen Teams der Gruppe.",
+    "rule": "Dieses Team arbeitet mit anderen Scrum-Teams an einem Produkt und befolgt daher die gemeinsam geteilte Definition of Done; die eigene kann es nicht ändern."
+  },
+  "dodRequired": {
+    "guideClause": "Die Definition of Done ist eine formale Beschreibung des Zustands des Increments, wenn es die für das Produkt geforderten Qualitätsmaßstäbe erfüllt.",
+    "recovery": "Aktiviere oder ergänze ein Kriterium und speichere die Definition of Done erneut.",
+    "rule": "Eine Definition of Done muss mindestens ein aktives Kriterium enthalten."
+  },
+  "dodTeamMembersOnly": {
+    "recovery": "Bitte ein Mitglied dieses Teams, seine Definition of Done zu öffnen.",
+    "rule": "Die Definition of Done gehört dem Scrum-Team, das nach ihr arbeitet; daher können nur seine Mitglieder sie lesen oder ändern."
+  },
+  "dorRequired": {
+    "recovery": "Aktiviere oder ergänze ein Kriterium und speichere die Definition of Ready erneut.",
+    "rule": "Die Definition of Ready muss mindestens ein aktives Kriterium enthalten."
+  },
+  "dorScrumMasterOnly": {
+    "recovery": "Bitte deinen Scrum Master, sie zu ändern.",
+    "rule": "Die Definition of Ready ist eine ergänzende Praxis, die vom Scrum Master des Teams gepflegt wird. Sie ist kein Artefakt des Scrum Guide."
+  },
+  "dorTeamMembersOnly": {
+    "recovery": "Bitte ein Mitglied dieses Teams, seine Definition of Ready zu öffnen.",
+    "rule": "Die Definition of Ready ist die Vereinbarung dieses Teams; daher können nur seine Mitglieder sie lesen."
+  },
+  "teamGroupAlreadyMember": {
+    "recovery": "Verlasse zuerst die Gruppe, der es angehört.",
+    "rule": "Ein Team befolgt eine einzige geteilte Definition of Done und kann daher keiner zweiten Gruppe beitreten."
+  },
+  "teamGroupDodAcknowledgementRequired": {
+    "guideClause": "Wenn mehrere Scrum-Teams gemeinsam an einem Produkt arbeiten, müssen sie gemeinsam dieselbe Definition of Done festlegen und befolgen.",
+    "recovery": "Prüfe die aktuell gültige Version und übernimm sie.",
+    "rule": "Die geteilte Definition of Done hat sich geändert, nachdem du sie geprüft hast; die von dir bestätigte Version ist nicht mehr die gültige."
+  },
+  "teamGroupLeadershipOnly": {
+    "recovery": "Bitte den Product Owner oder Scrum Master deines Teams, diese Änderung vorzunehmen.",
+    "rule": "Der Product Owner oder der Scrum Master eines Teams entscheidet, nach welcher geteilten Definition of Done es arbeitet."
+  },
+  "teamGroupNotEmpty": {
+    "recovery": "Lass zuerst alle Teams die Gruppe verlassen.",
+    "rule": "Eine Gruppe, deren Definition of Done noch für Teams gilt, kann nicht entfernt werden, weil das ihre Vereinbarung wegnehmen statt verlagern würde."
+  }
+}

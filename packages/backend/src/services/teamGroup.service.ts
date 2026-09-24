@@ -455,6 +455,9 @@ class TeamGroupService {
         category: item.category ?? undefined,
         isActive: item.isActive,
         order: item.order,
+        // The built-in identity travels with the criterion, so the team keeps the wording in its
+        // own language once it holds the agreement itself rather than the group's copy.
+        defaultKey: item.defaultKey ?? undefined,
       })),
       userId
     );
@@ -490,7 +493,16 @@ class TeamGroupService {
         version: true,
         updatedAt: true,
         items: {
-          select: { id: true, description: true, category: true, isActive: true, order: true },
+          select: {
+            id: true,
+            description: true,
+            category: true,
+            isActive: true,
+            order: true,
+            // Reported so the reader sees a built-in criterion in their own language, and so a team
+            // that leaves the group carries the identity onto the agreement it then holds itself.
+            defaultKey: true,
+          },
           orderBy: { order: 'asc' },
         },
       },

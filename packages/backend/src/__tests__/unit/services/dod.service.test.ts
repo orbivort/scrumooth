@@ -210,6 +210,7 @@ describe('DefinitionOfDoneService', () => {
                 id: 'mock-uuid-v7',
                 description: 'Code is peer-reviewed and approved',
                 category: 'review',
+                defaultKey: 'codeReviewed',
                 isActive: true,
                 order: 0,
                 createdBy: 'user-1',
@@ -218,6 +219,7 @@ describe('DefinitionOfDoneService', () => {
                 id: 'mock-uuid-v7',
                 description: 'Unit tests written and passing (minimum 80% coverage)',
                 category: 'testing',
+                defaultKey: 'unitTests',
                 isActive: true,
                 order: 1,
                 createdBy: 'user-1',
@@ -226,6 +228,7 @@ describe('DefinitionOfDoneService', () => {
                 id: 'mock-uuid-v7',
                 description: 'Integration tests passing',
                 category: 'testing',
+                defaultKey: 'integrationTests',
                 isActive: true,
                 order: 2,
                 createdBy: 'user-1',
@@ -234,6 +237,7 @@ describe('DefinitionOfDoneService', () => {
                 id: 'mock-uuid-v7',
                 description: 'Code is properly documented',
                 category: 'documentation',
+                defaultKey: 'documentation',
                 isActive: true,
                 order: 3,
                 createdBy: 'user-1',
@@ -242,6 +246,7 @@ describe('DefinitionOfDoneService', () => {
                 id: 'mock-uuid-v7',
                 description: 'No critical or high-severity bugs',
                 category: 'quality',
+                defaultKey: 'noCriticalBugs',
                 isActive: true,
                 order: 4,
                 createdBy: 'user-1',
@@ -355,6 +360,9 @@ describe('DefinitionOfDoneService', () => {
           dodId: 'dod-1',
           description: 'New item 1',
           category: 'quality',
+          // A criterion the team adds is not a built-in one, so it carries no key. The write payload
+          // cannot supply one either: the service keeps that column to itself.
+          defaultKey: null,
           isActive: true,
           order: 0,
           createdBy: 'user-1',
@@ -560,6 +568,34 @@ describe('DefinitionOfDoneService', () => {
         }),
       });
     });
+
+    it('should drop a defaultKey a client tries to send, so a team cannot mint a built-in criterion', async () => {
+      const existingDoD = { id: 'dod-1', teamId: 'team-1', version: 1 };
+      const updatedDoD = { id: 'dod-1', teamId: 'team-1', version: 2, items: [] };
+
+      vi.mocked(prisma.definitionOfDone.findUnique).mockResolvedValue(existingDoD as any);
+      tx.doDItem.findMany.mockResolvedValue([] as never);
+      tx.definitionOfDone.update.mockResolvedValue(updatedDoD as never);
+
+      // The field is not part of the write contract. A payload carrying one is the case the service
+      // has to defend against: labelling a sentence the team wrote with the product's built-in wording
+      // would show the reader a criterion nobody agreed to.
+      const items = [
+        {
+          description: 'Whatever we typed',
+          category: 'quality',
+          isActive: true,
+          order: 0,
+          defaultKey: 'codeReviewed',
+        } as never,
+      ];
+
+      await definitionOfDoneService.updateDefinitionOfDone('team-1', items, 'user-1');
+
+      expect(tx.doDItem.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({ defaultKey: null }),
+      });
+    });
   });
 
   describe('getDoDVersionSnapshots', () => {
@@ -650,8 +686,52 @@ describe('DefinitionOfDoneService', () => {
       const result = await definitionOfDoneService.getDoDVersionSnapshots('team-1');
 
       expect(result[1]!.items).toEqual([
-        { description: 'Valid item', category: 'review', isActive: true, order: 0 },
+        // A snapshot written before the key existed reads as null rather than being dropped, so the
+        // interface can fall back to matching the sentence.
+        {
+          description: 'Valid item',
+          category: 'review',
+          isActive: true,
+          order: 0,
+          defaultKey: null,
+        },
       ]);
+    });
+
+    it('should carry a seeded criterion’s key into the history', async () => {
+      vi.mocked(prisma.definitionOfDone.findUnique).mockResolvedValue({
+        id: 'dod-1',
+        teamId: 'team-1',
+        version: 3,
+        updatedBy: null,
+        updatedAt: new Date('2026-09-20T10:00:00.000Z'),
+        items: [],
+      } as never);
+      vi.mocked(prisma.doDVersionSnapshot.findMany).mockResolvedValue([
+        {
+          id: 'snapshot-1',
+          teamId: 'team-1',
+          version: 2,
+          items: [
+            {
+              description: 'Code is properly documented',
+              category: 'documentation',
+              isActive: true,
+              order: 0,
+              defaultKey: 'documentation',
+            },
+          ],
+          createdAt: new Date('2026-09-18T10:00:00.000Z'),
+          createdBy: null,
+        },
+      ] as never);
+      vi.mocked(prisma.user.findMany).mockResolvedValue([] as never);
+
+      const result = await definitionOfDoneService.getDoDVersionSnapshots('team-1');
+
+      // The key travels with the version, so a superseded criterion stays readable in the reader's
+      // language after the team has reworded it.
+      expect(result[1]!.items[0]!.defaultKey).toBe('documentation');
     });
 
     it('should not query author names when no version records one', async () => {

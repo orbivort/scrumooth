@@ -129,16 +129,60 @@
       "technical": "Technisch",
       "value": "Wert"
     },
-    "dorInfo": "Die Definition of Ready ist eine Checkliste von Kriterien, die eine User Story erfüllen muss, bevor sie in einen Sprint aufgenommen werden kann. Sie stellt sicher, dass das Team genügend Informationen hat, um die Arbeit erfolgreich abzuschließen.",
+    "dorInfo": "Die Definition of Ready ist eine selbst erklärte Praxis dieses Teams und kein Artefakt des Scrum Guide: Der Guide nennt drei Artefakte, und keines davon ist eine Bereitschafts-Checkliste. Der Scrum Master des Teams pflegt sie, und Scrumooth erzwingt sie an der Sprint-Grenze.",
     "editTitle": "{{label}} bearbeiten",
     "empty": "Noch keine {{shortLabel}}-Elemente. Fügen Sie oben Ihr erstes Kriterium hinzu.",
     "inactive": "{{count}} inaktiv",
     "inactive_one": "{{count}} inaktiv",
     "inactive_other": "{{count}} inaktiv",
     "newItemPlaceholder": "Neues {{shortLabel}}-Kriterium eingeben...",
+    "noActiveWarning": "Eine Definition muss mindestens ein aktives Kriterium behalten. Aktivieren Sie eines oder fügen Sie ein neues hinzu, bevor Sie speichern.",
     "saveChanges": "Änderungen speichern",
     "saving": "Speichern...",
     "unsavedWarning": "Sie haben ungespeicherte Änderungen"
+  },
+  "definitionHistory": {
+    "authorUnknown": "Urheber nicht erfasst",
+    "changedBy": "Geändert von {{name}}",
+    "close": "Schließen",
+    "current": "Aktuell",
+    "empty": "Für diese Vereinbarung ist noch keine Version erfasst.",
+    "error": "Der Versionsverlauf konnte nicht geladen werden.",
+    "loading": "Versionsverlauf wird geladen…",
+    "noActiveCriteria": "Diese Version enthielt kein aktives Kriterium.",
+    "retry": "Erneut versuchen",
+    "title": "Versionsverlauf",
+    "versionLabel": "v{{version}}"
+  },
+  "definitionScope": {
+    "adoptAction": "Version {{version}} übernehmen",
+    "adoptHint": "Wenn mehrere Scrum-Teams an einem Produkt arbeiten, müssen sie dieselbe Definition of Done festlegen und befolgen.",
+    "adoptTitle": "Geteilte Definition of Done übernehmen",
+    "adoptedAt": "Version {{version}} am {{date}} übernommen.",
+    "chooseLabel": "Teamgruppe",
+    "drift": "Dieses Team hat Version {{adopted}} übernommen; gültig ist Version {{current}}.",
+    "groupHint": "Dieses Team arbeitet mit den anderen Teams in {{name}} an einem Produkt und befolgt daher die gemeinsam geteilte Definition of Done.",
+    "groupTitle": "Geteilt mit {{name}} · {{count}} Teams.",
+    "hideReviewLink": "Geteilte Vereinbarung ausblenden",
+    "joinFailed": "Die Gruppe konnte nicht übernommen werden.",
+    "leave": "Gruppe verlassen",
+    "leaveFailed": "Die Gruppe konnte nicht verlassen werden.",
+    "leaveMessage": "Dieses Team behält die Definition of Done, nach der es gearbeitet hat, und kann sie danach selbst ändern.",
+    "leaveTitle": "{{name}} verlassen?",
+    "manageLink": "Gruppe verwalten",
+    "mutualBody": "Die Teams legen diese Vereinbarung gemeinsam fest, indem sie beim Beitritt eine benannte Version übernehmen. Eine spätere Änderung wird hier angezeigt, bis dieses Team die neue Version übernimmt.",
+    "mutualTitle": "Gemeinsam festgelegt",
+    "readOnlyNote": "Gepflegt vom Product Owner oder Scrum Master eines Teams in {{name}}.",
+    "reviewAction": "Ansehen",
+    "reviewCurrentAction": "Aktuelle Version ansehen",
+    "reviewLabel": "Die Definition of Done, die jedes Team in {{name}} befolgt",
+    "reviewLink": "Geteilte Vereinbarung ansehen",
+    "teamHint": "Jedes Teammitglied kann sie ändern.",
+    "teamTitle": "Diese Vereinbarung gehört deinem Team."
+  },
+  "definitionStates": {
+    "inactiveMessage": "Alle Kriterien sind derzeit deaktiviert. Aktivieren Sie eines oder fügen Sie ein neues hinzu, bevor Sie speichern.",
+    "inactiveTitle": "Keine aktiven Kriterien"
   },
   "deleteTeamModal": {
     "awaitingConfirmation": "Warte auf Bestätigung",
@@ -209,14 +253,15 @@
     "editButton": "DoD bearbeiten",
     "empty": {
       "configureButton": "DoD konfigurieren",
-      "message": "Konfigurieren Sie die Definition of Done Kriterien Ihres Teams.",
-      "title": "Keine aktiven DoD-Elemente"
+      "message": "Ein Sprint kann nicht festgelegt oder gestartet werden, ohne dass mindestens ein Kriterium vorhanden ist, und kein Element kann als Done markiert werden, solange nicht jedes aktive Kriterium verifiziert ist.",
+      "title": "Noch keine Definition of Done"
     },
     "error": {
-      "message": "Definition of Done konnte nicht geladen werden. Standard-Elemente werden verwendet.",
+      "message": "Die Definition of Done konnte nicht geladen werden.",
       "retry": "Erneut versuchen",
       "title": "Laden fehlgeschlagen"
     },
+    "groupEditBanner": "Jedes Team in {{name}} befolgt diese Definition of Done. Beim Speichern gilt die Änderung sofort für alle {{count}} Teams und die geteilte Version wird erhöht.",
     "inactive": "{{count}} inaktiv",
     "inactive_one": "{{count}} inaktiv",
     "inactive_other": "{{count}} inaktiv",
@@ -229,15 +274,6 @@
     },
     "lastUpdated": "Zuletzt aktualisiert:",
     "loading": "Definition of Done wird geladen...",
-    "noTeam": {
-      "message": "Bitte wählen Sie ein Team aus, um die Definition of Done anzuzeigen und zu verwalten.",
-      "title": "Kein Team ausgewählt"
-    },
-    "sharedDoD": {
-      "manageLink": "In den Teamgruppen verwalten",
-      "message": "Dieses Team arbeitet in {{name}} mit anderen Scrum-Teams an einem Produkt und befolgt daher deren gemeinsame Definition of Done. Geändert wird sie dort.",
-      "title": "Gemeinsame Definition of Done."
-    },
     "shortLabel": "DoD",
     "title": "Definition of Done",
     "toast": {
@@ -263,21 +299,16 @@
     "inactive_other": "{{count}} inaktiv",
     "item": {
       "acceptanceCriteria": "Akzeptanzkriterien definiert und vereinbart",
-      "acceptanceCriteriaDefined": "Akzeptanzkriterien definiert",
       "businessValue": "Business-Wert zugewiesen",
       "clearTitle": "Klarer Titel und Beschreibung bereitgestellt",
       "dependencies": "Abhängigkeiten identifiziert und dokumentiert",
-      "dependenciesIdentified": "Abhängigkeiten identifiziert",
       "noBlockers": "Keine Blocker oder Impediments",
-      "storyPointsEstimated": "Story-Points vom Team geschätzt",
-      "storyPointsEstimatedOld": "Story-Points geschätzt",
-      "userStoryWritten": "User Story klar geschrieben"
+      "storyPointsEstimated": "Story-Points vom Team geschätzt"
     },
     "lastUpdated": "Zuletzt aktualisiert:",
     "loading": "Definition of Ready wird geladen...",
-    "noTeam": "Bitte wählen Sie ein Team aus, um die Definition of Ready anzuzeigen.",
     "practice": {
-      "message": "Sie ist keines der drei Artefakte des Scrum Guide 2020 – Product Backlog, Sprint Backlog und Increment – deshalb kennzeichnet Scrumooth sie als ergänzende Praxis. Sie wird dennoch als eigene Vereinbarung des Teams durchgesetzt: Ein Sprint Backlog kann nicht festgelegt und ein Sprint nicht gestartet werden, solange ein ausgewähltes Element ein unverifiziertes Kriterium hat. Die Verifizierungen erfassen die Teammitglieder, die Vereinbarung pflegt der Scrum Master.",
+      "message": "Sie ist keines der drei Artefakte des Scrum Guide 2020 – Product Backlog, Sprint Backlog und Increment – deshalb kennzeichnet Scrumooth sie als ergänzende Praxis. Sie wird dennoch durchgesetzt: Ein Sprint Backlog kann nicht festgelegt und ein Sprint nicht gestartet werden, solange ein ausgewähltes Element ein unverifiziertes Kriterium hat. Die Verifizierungen erfassen die Teammitglieder; die Vereinbarung pflegt der Scrum Master des Teams.",
       "scrumMasterOnly": "Diese Vereinbarung pflegt der Scrum Master des Teams.",
       "title": "Ergänzende Praxis, kein Artefakt des Guide."
     },
@@ -468,17 +499,6 @@
     "COMPLETED": "Abgeschlossen",
     "PLANNED": "Geplant"
   },
-  "teamDefinitions": {
-    "ariaLabels": {
-      "definitionTabs": "Definitions-Tabs"
-    },
-    "subtitle": "Konfigurieren Sie die Definition of Ready und Definition of Done Kriterien Ihres Teams",
-    "tabs": {
-      "definitionOfDone": "Definition of Done",
-      "definitionOfReady": "Definition of Ready"
-    },
-    "title": "Team-Definitionen"
-  },
   "teamGroups": {
     "delete": {
       "message": "Die Gruppe, ihre Teamliste und ihre gemeinsame Definition of Done werden entfernt. Das kann nicht rückgängig gemacht werden.",
@@ -487,7 +507,7 @@
     "detail": {
       "delete": "Gruppe löschen",
       "deleteBlocked": "Eine Gruppe kann nicht entfernt werden, solange Teams ihre Definition of Done befolgen — das würde ihnen ihre Vereinbarung nehmen, statt sie zu einer anderen zu führen. Zuerst muss jedes Team austreten.",
-      "readOnlyNotice": "Sie können diese Vereinbarung lesen, führen aber kein Team in dieser Gruppe. Ändern können sie nur die Product Owner und Scrum Master ihrer Teams.",
+      "readOnlyNotice": "Du kannst diese Vereinbarung lesen, leitest aber kein Team dieser Gruppe. Die Teams pflegen sie in ihrem Definition-Tab.",
       "rename": "Umbenennen"
     },
     "directoryAriaLabel": "Teamgruppen",
@@ -537,20 +557,12 @@
       "title": "Teams",
       "unknown": "—"
     },
-    "selectPrompt": "Wählen Sie eine Gruppe, um die Teams zu sehen, die ihre Definition of Done befolgen, und um diese Vereinbarung zu bearbeiten.",
+    "selectPrompt": "Wähle eine Gruppe, um die Teams zu sehen, die ihre Definition of Done befolgen.",
     "sharedDoD": {
-      "activeCount": "{{count}} aktive Kriterien",
-      "activeCount_one": "{{count}} aktives Kriterium",
-      "activeCount_other": "{{count}} aktive Kriterien",
-      "banner": "Jedes Team in dieser Gruppe befolgt diese Definition of Done. Beim Speichern einer Änderung gilt sie sofort für alle, und die gemeinsame Version wird erhöht.",
-      "edit": "Gemeinsame Definition of Done bearbeiten",
-      "empty": "Die Definition of Done dieser Gruppe hat kein aktives Kriterium. Fügen Sie eines hinzu, damit ihre Teams eine Vereinbarung haben, die sie befolgen können.",
-      "inactiveCount": "{{count}} inaktiv",
-      "inactiveCount_one": "{{count}} inaktiv",
-      "inactiveCount_other": "{{count}} inaktiv",
-      "readOnly": "Sie dürfen diese Vereinbarung lesen, führen aber kein Team in dieser Gruppe — ändern können sie nur die Product Owner und Scrum Master ihrer Teams.",
-      "title": "Gemeinsame Definition of Done",
-      "updated": "Aktualisiert am {{date}}"
+      "delegated": "Jedes Team dieser Gruppe liest und ändert diese Definition of Done in seinem eigenen Definition-Tab, wo alle Kriterien angezeigt werden.",
+      "openAction": "Definition-Tab öffnen",
+      "title": "Definition of Done",
+      "updated": "Aktualisiert {{date}}"
     },
     "subtitle": "Die Scrum-Teams, die an einem Produkt arbeiten, und die eine Definition of Done, die alle befolgen.",
     "teamCount": "{{count}} Teams",
@@ -560,7 +572,6 @@
     "toast": {
       "created": "Die Teamgruppe wurde erstellt.",
       "deleted": "Die Teamgruppe wurde entfernt.",
-      "sharedDoDUpdated": "Die gemeinsame Definition of Done wurde aktualisiert. Jedes Team der Gruppe befolgt die neue Version.",
       "updated": "Die Teamgruppe wurde aktualisiert."
     },
     "versionShort": "v{{version}}"

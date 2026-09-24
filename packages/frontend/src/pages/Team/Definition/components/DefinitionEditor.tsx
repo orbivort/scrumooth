@@ -1,9 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
+import type { DefinitionType } from '@scrumooth/shared';
 
-import type { DefinitionItemPayload } from '../../../../types';
-
-import { getCategoryColor, type CategoryConfig } from './categories';
+import { categoriesFor, getCategoryColor } from './categories';
 import styles from './DefinitionEditor.module.css';
 
 import {
@@ -24,11 +23,27 @@ import {
  */
 const LOCAL_ITEM_ID_PREFIX = 'local-';
 
+/**
+ * One criterion as this editor sends it.
+ *
+ * Deliberately narrower than the criterion it was loaded from. `defaultKey` is not part of it: it
+ * names the built-in criterion a row descends from, and only the service may set it -- a client able
+ * to send one could label a sentence it wrote itself with the product's built-in wording. The
+ * service preserves the column on an edit, so a built-in criterion keeps its key whether or not the
+ * editor ever mentions it.
+ */
+export interface DefinitionItemWrite {
+  id?: string;
+  description: string;
+  category?: string;
+  isActive: boolean;
+  order: number;
+}
+
 interface DefinitionEditorProps<T extends { id: string }> {
   definition: { items: T[]; version: number; updatedAt: string };
-  definitionType: 'DoD' | 'DoR';
-  categories: CategoryConfig[];
-  onSave: (items: DefinitionItemPayload<T>[]) => Promise<void>;
+  definitionType: DefinitionType;
+  onSave: (items: DefinitionItemWrite[]) => Promise<void>;
   onCancel: () => void;
   isLoading?: boolean;
 }
@@ -44,12 +59,15 @@ export function DefinitionEditor<
 >({
   definition,
   definitionType,
-  categories,
   onSave,
   onCancel,
   isLoading = false,
 }: DefinitionEditorProps<T>): React.ReactElement {
   const { t } = useTranslation('settings');
+  // Derived from the agreement rather than passed in: the categories and the agreement are one fact,
+  // and passing both let a caller hand the readiness categories to the Definition of Done editor.
+  const categories = categoriesFor(definitionType);
+  const isDefinitionOfDone = definitionType === 'DOD';
   const [items, setItems] = useState<T[]>([]);
   const [newItemText, setNewItemText] = useState('');
   const [newItemCategory, setNewItemCategory] = useState<string>(categories[0]?.value ?? '');
@@ -58,8 +76,8 @@ export function DefinitionEditor<
   // Only ever used to key criteria the user has not saved yet, so a monotonic counter is enough.
   const localItemSeq = useRef(0);
 
-  const definitionLabel = definitionType === 'DoD' ? t('dodPanel.title') : t('dorPanel.title');
-  const shortLabel = definitionType === 'DoD' ? t('dodPanel.shortLabel') : t('dorPanel.shortLabel');
+  const definitionLabel = isDefinitionOfDone ? t('dodPanel.title') : t('dorPanel.title');
+  const shortLabel = isDefinitionOfDone ? t('dodPanel.shortLabel') : t('dorPanel.shortLabel');
 
   useEffect(() => {
     if (definition.items.length > 0) {
@@ -139,16 +157,18 @@ export function DefinitionEditor<
 
   const handleSave = async () => {
     await onSave(
-      items.map((item): DefinitionItemPayload<T> => {
-        // A criterion the server already knows keeps its id; one the user just added is sent
-        // without one, so the service inserts it rather than trying to update a row that is not
-        // there.
-        if (!item.id.startsWith(LOCAL_ITEM_ID_PREFIX)) {
-          return item;
-        }
+      items.map((item): DefinitionItemWrite => {
+        // Built field by field rather than spread: a criterion the server already knows keeps its
+        // id, one the user just added is sent without one, and nothing else the row happens to
+        // carry -- a `defaultKey` in particular -- is ever echoed back to the service.
+        const write: DefinitionItemWrite = {
+          description: item.description,
+          category: item.category,
+          isActive: item.isActive,
+          order: item.order,
+        };
 
-        const { id: _localOnlyId, ...newItem } = item;
-        return newItem;
+        return item.id.startsWith(LOCAL_ITEM_ID_PREFIX) ? write : { ...write, id: item.id };
       })
     );
     setHasChanges(false);
@@ -171,8 +191,22 @@ export function DefinitionEditor<
     setShowCancelDialog(false);
   };
 
-  const infoText =
-    definitionType === 'DoD' ? t('definitionEditor.dodInfo') : t('definitionEditor.dorInfo');
+  const infoText = isDefinitionOfDone
+    ? t('definitionEditor.dodInfo')
+    : t('definitionEditor.dorInfo');
+
+  /** The translated name of one category value, from the agreement's own set. */
+  const categoryLabel = (value: string): string =>
+    isDefinitionOfDone
+      ? t(`definitionEditor.dodCategories.${value}` as never)
+      : t(`definitionEditor.dorCategories.${value}` as never);
+
+  const activeCount = items.filter((item) => item.isActive).length;
+
+  // A definition with no active criterion is not a commitment: the service refuses to store one
+  // (`GATE_DOD_REQUIRED` / `GATE_DOR_REQUIRED`), because a gate with nothing to check would pass
+  // vacuously. Saying so here keeps the interface from offering a save whose answer is already no.
+  const canSave = hasChanges && activeCount > 0;
 
   return (
     <div className={styles['definition-editor']}>
@@ -194,10 +228,7 @@ export function DefinitionEditor<
           >
             {categories.map((cat) => (
               <option key={cat.value} value={cat.value}>
-                {cat.icon}{' '}
-                {definitionType === 'DoD'
-                  ? t(`definitionEditor.dodCategories.${cat.value}` as never)
-                  : t(`definitionEditor.dorCategories.${cat.value}` as never)}
+                {cat.icon} {categoryLabel(cat.value)}
               </option>
             ))}
           </select>
@@ -261,21 +292,19 @@ export function DefinitionEditor<
                 value={item.category ?? categories[0]?.value ?? ''}
                 onChange={(e) => handleCategoryChange(item.id, e.target.value)}
                 className={styles['item-category']}
-                style={getCategoryColor(item.category ?? categories[0]?.value ?? '', categories)}
+                style={getCategoryColor(
+                  item.category ?? categories[0]?.value ?? '',
+                  definitionType
+                )}
               >
                 {!categories.find((c) => c.value === item.category) && item.category && (
                   <option value={item.category}>
-                    {definitionType === 'DoD'
-                      ? t('dodPanel.uncategorized')
-                      : t('dorPanel.uncategorized')}
+                    {isDefinitionOfDone ? t('dodPanel.uncategorized') : t('dorPanel.uncategorized')}
                   </option>
                 )}
                 {categories.map((cat) => (
                   <option key={cat.value} value={cat.value}>
-                    {cat.icon}{' '}
-                    {definitionType === 'DoD'
-                      ? t(`definitionEditor.dodCategories.${cat.value}` as never)
-                      : t(`definitionEditor.dorCategories.${cat.value}` as never)}
+                    {cat.icon} {categoryLabel(cat.value)}
                   </option>
                 ))}
               </select>
@@ -324,7 +353,7 @@ export function DefinitionEditor<
 
       <div className={styles['definition-summary']}>
         <span className={styles['active-count-summary']}>
-          {t('definitionEditor.activeItems', { count: items.filter((i) => i.isActive).length })}
+          {t('definitionEditor.activeItems', { count: activeCount })}
         </span>
         <span className={styles['inactive-count-summary']}>
           {t('definitionEditor.inactive', { count: items.filter((i) => !i.isActive).length })}
@@ -343,7 +372,7 @@ export function DefinitionEditor<
         <button
           className={`${styles.button} ${styles['button-primary']}`}
           onClick={handleSave}
-          disabled={!hasChanges || isLoading}
+          disabled={!canSave || isLoading}
           type="button"
         >
           {isLoading ? (
@@ -356,6 +385,13 @@ export function DefinitionEditor<
           )}
         </button>
       </div>
+
+      {hasChanges && activeCount === 0 && (
+        <div className={styles['empty-warning']} role="alert">
+          <AlertTriangleIcon size={16} />
+          {t('definitionEditor.noActiveWarning')}
+        </div>
+      )}
 
       {hasChanges && (
         <div className={styles['unsaved-warning']} role="alert">

@@ -4,14 +4,12 @@ import { screen, fireEvent, renderWithProviders, initTestI18n } from '../../../.
 import { vi } from 'vitest';
 
 import { DefinitionEditor } from './DefinitionEditor';
-import { DOR_CATEGORIES, DOD_CATEGORIES } from './categories';
+import { categoriesFor } from './categories';
 
 const mockItems = [
   { id: 'item-1', description: 'Test item 1', category: 'clarity', isActive: true, order: 0 },
   { id: 'item-2', description: 'Test item 2', category: 'acceptance', isActive: false, order: 1 },
 ];
-
-const mockCategories = DOR_CATEGORIES;
 
 describe('DefinitionEditor', () => {
   let onSaveMock: ReturnType<typeof vi.fn>;
@@ -30,8 +28,7 @@ describe('DefinitionEditor', () => {
     renderWithProviders(
       <DefinitionEditor
         definition={{ items: mockItems, version: 1, updatedAt: '2024-01-01T00:00:00Z' }}
-        definitionType="DoR"
-        categories={mockCategories}
+        definitionType="DOR"
         onSave={onSaveMock}
         onCancel={onCancelMock}
       />
@@ -44,8 +41,7 @@ describe('DefinitionEditor', () => {
     renderWithProviders(
       <DefinitionEditor
         definition={{ items: [], version: 1, updatedAt: '2024-01-01T00:00:00Z' }}
-        definitionType="DoR"
-        categories={mockCategories}
+        definitionType="DOR"
         onSave={onSaveMock}
         onCancel={onCancelMock}
       />
@@ -64,8 +60,7 @@ describe('DefinitionEditor', () => {
     renderWithProviders(
       <DefinitionEditor
         definition={{ items: mockItems, version: 1, updatedAt: '2024-01-01T00:00:00Z' }}
-        definitionType="DoR"
-        categories={mockCategories}
+        definitionType="DOR"
         onSave={onSaveMock}
         onCancel={onCancelMock}
       />
@@ -81,8 +76,7 @@ describe('DefinitionEditor', () => {
     renderWithProviders(
       <DefinitionEditor
         definition={{ items: [mockItems[0]!], version: 1, updatedAt: '2024-01-01T00:00:00Z' }}
-        definitionType="DoR"
-        categories={mockCategories}
+        definitionType="DOR"
         onSave={onSaveMock}
         onCancel={onCancelMock}
       />
@@ -99,8 +93,7 @@ describe('DefinitionEditor', () => {
     renderWithProviders(
       <DefinitionEditor
         definition={{ items: mockItems, version: 1, updatedAt: '2024-01-01T00:00:00Z' }}
-        definitionType="DoR"
-        categories={mockCategories}
+        definitionType="DOR"
         onSave={onSaveMock}
         onCancel={onCancelMock}
       />
@@ -121,8 +114,7 @@ describe('DefinitionEditor', () => {
     renderWithProviders(
       <DefinitionEditor
         definition={{ items: mockItems, version: 1, updatedAt: '2024-01-01T00:00:00Z' }}
-        definitionType="DoR"
-        categories={mockCategories}
+        definitionType="DOR"
         onSave={onSaveMock}
         onCancel={onCancelMock}
       />
@@ -145,12 +137,49 @@ describe('DefinitionEditor', () => {
     expect(payload[2]).toMatchObject({ description: 'Brand new criterion', isActive: true });
   });
 
+  it('should never send a defaultKey, so a client cannot label its own criterion as a built-in one', async () => {
+    onSaveMock.mockResolvedValue(undefined);
+    renderWithProviders(
+      <DefinitionEditor
+        definition={{
+          items: [
+            {
+              id: 'item-1',
+              description: 'Code is peer-reviewed and approved',
+              category: 'review',
+              isActive: true,
+              order: 0,
+              defaultKey: 'codeReviewed',
+            },
+          ],
+          version: 1,
+          updatedAt: '2024-01-01T00:00:00Z',
+        }}
+        definitionType="DOD"
+        onSave={onSaveMock}
+        onCancel={onCancelMock}
+      />
+    );
+
+    const input = screen.getByDisplayValue('Code is peer-reviewed and approved');
+    fireEvent.change(input, { target: { value: 'Every pull request is reviewed' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save Changes' }));
+
+    await waitFor(() => expect(onSaveMock).toHaveBeenCalled());
+
+    const payload = onSaveMock.mock.calls[0]![0];
+    // The write payload is narrower than the criterion it was loaded from: the key belongs to the
+    // service, which preserves the column on an edit without ever reading it from a client.
+    for (const item of payload) {
+      expect(item).not.toHaveProperty('defaultKey');
+    }
+  });
+
   it('should call onCancel when cancel button clicked and no changes', () => {
     renderWithProviders(
       <DefinitionEditor
         definition={{ items: mockItems, version: 1, updatedAt: '2024-01-01T00:00:00Z' }}
-        definitionType="DoR"
-        categories={mockCategories}
+        definitionType="DOR"
         onSave={onSaveMock}
         onCancel={onCancelMock}
       />
@@ -166,8 +195,7 @@ describe('DefinitionEditor', () => {
     renderWithProviders(
       <DefinitionEditor
         definition={{ items: mockItems, version: 1, updatedAt: '2024-01-01T00:00:00Z' }}
-        definitionType="DoR"
-        categories={mockCategories}
+        definitionType="DOR"
         onSave={onSaveMock}
         onCancel={onCancelMock}
       />
@@ -188,8 +216,7 @@ describe('DefinitionEditor', () => {
       renderWithProviders(
         <DefinitionEditor
           definition={{ items: mockItems, version: 1, updatedAt: '2024-01-01T00:00:00Z' }}
-          definitionType="DoD"
-          categories={DOD_CATEGORIES}
+          definitionType="DOD"
           onSave={onSaveMock}
           onCancel={onCancelMock}
         />
@@ -202,8 +229,7 @@ describe('DefinitionEditor', () => {
       renderWithProviders(
         <DefinitionEditor
           definition={{ items: mockItems, version: 1, updatedAt: '2024-01-01T00:00:00Z' }}
-          definitionType="DoD"
-          categories={DOD_CATEGORIES}
+          definitionType="DOD"
           onSave={onSaveMock}
           onCancel={onCancelMock}
         />
@@ -216,8 +242,7 @@ describe('DefinitionEditor', () => {
       renderWithProviders(
         <DefinitionEditor
           definition={{ items: [], version: 1, updatedAt: '2024-01-01T00:00:00Z' }}
-          definitionType="DoD"
-          categories={DOD_CATEGORIES}
+          definitionType="DOD"
           onSave={onSaveMock}
           onCancel={onCancelMock}
         />
@@ -232,8 +257,7 @@ describe('DefinitionEditor', () => {
       renderWithProviders(
         <DefinitionEditor
           definition={{ items: [], version: 1, updatedAt: '2024-01-01T00:00:00Z' }}
-          definitionType="DoR"
-          categories={mockCategories}
+          definitionType="DOR"
           onSave={onSaveMock}
           onCancel={onCancelMock}
         />
@@ -246,8 +270,7 @@ describe('DefinitionEditor', () => {
       renderWithProviders(
         <DefinitionEditor
           definition={{ items: mockItems, version: 1, updatedAt: '2024-01-01T00:00:00Z' }}
-          definitionType="DoR"
-          categories={mockCategories}
+          definitionType="DOR"
           onSave={onSaveMock}
           onCancel={onCancelMock}
         />
@@ -263,8 +286,7 @@ describe('DefinitionEditor', () => {
       renderWithProviders(
         <DefinitionEditor
           definition={{ items: [], version: 1, updatedAt: '2024-01-01T00:00:00Z' }}
-          definitionType="DoR"
-          categories={mockCategories}
+          definitionType="DOR"
           onSave={onSaveMock}
           onCancel={onCancelMock}
         />
@@ -278,8 +300,7 @@ describe('DefinitionEditor', () => {
       renderWithProviders(
         <DefinitionEditor
           definition={{ items: [], version: 1, updatedAt: '2024-01-01T00:00:00Z' }}
-          definitionType="DoR"
-          categories={mockCategories}
+          definitionType="DOR"
           onSave={onSaveMock}
           onCancel={onCancelMock}
         />
@@ -298,8 +319,7 @@ describe('DefinitionEditor', () => {
       renderWithProviders(
         <DefinitionEditor
           definition={{ items: mockItems, version: 1, updatedAt: '2024-01-01T00:00:00Z' }}
-          definitionType="DoR"
-          categories={mockCategories}
+          definitionType="DOR"
           onSave={onSaveMock}
           onCancel={onCancelMock}
         />
@@ -313,8 +333,7 @@ describe('DefinitionEditor', () => {
       renderWithProviders(
         <DefinitionEditor
           definition={{ items: mockItems, version: 1, updatedAt: '2024-01-01T00:00:00Z' }}
-          definitionType="DoR"
-          categories={mockCategories}
+          definitionType="DOR"
           onSave={onSaveMock}
           onCancel={onCancelMock}
         />
@@ -328,8 +347,7 @@ describe('DefinitionEditor', () => {
       renderWithProviders(
         <DefinitionEditor
           definition={{ items: mockItems, version: 1, updatedAt: '2024-01-01T00:00:00Z' }}
-          definitionType="DoR"
-          categories={mockCategories}
+          definitionType="DOR"
           onSave={onSaveMock}
           onCancel={onCancelMock}
         />
@@ -370,8 +388,7 @@ describe('DefinitionEditor', () => {
       renderWithProviders(
         <DefinitionEditor
           definition={{ items: threeItems, version: 1, updatedAt: '2024-01-01T00:00:00Z' }}
-          definitionType="DoR"
-          categories={mockCategories}
+          definitionType="DOR"
           onSave={onSaveMock}
           onCancel={onCancelMock}
         />
@@ -411,8 +428,7 @@ describe('DefinitionEditor', () => {
       renderWithProviders(
         <DefinitionEditor
           definition={{ items: threeItems, version: 1, updatedAt: '2024-01-01T00:00:00Z' }}
-          definitionType="DoR"
-          categories={mockCategories}
+          definitionType="DOR"
           onSave={onSaveMock}
           onCancel={onCancelMock}
         />
@@ -431,8 +447,7 @@ describe('DefinitionEditor', () => {
       renderWithProviders(
         <DefinitionEditor
           definition={{ items: [mockItems[0]], version: 1, updatedAt: '2024-01-01T00:00:00Z' }}
-          definitionType="DoR"
-          categories={mockCategories}
+          definitionType="DOR"
           onSave={onSaveMock}
           onCancel={onCancelMock}
         />
@@ -448,8 +463,7 @@ describe('DefinitionEditor', () => {
       renderWithProviders(
         <DefinitionEditor
           definition={{ items: mockItems, version: 1, updatedAt: '2024-01-01T00:00:00Z' }}
-          definitionType="DoR"
-          categories={mockCategories}
+          definitionType="DOR"
           onSave={onSaveMock}
           onCancel={onCancelMock}
         />
@@ -459,7 +473,9 @@ describe('DefinitionEditor', () => {
       fireEvent.change(categorySelects[0], { target: { value: 'estimation' } });
 
       expect(categorySelects[0]).toHaveValue('estimation');
-      expect(categorySelects[1]).toHaveValue(mockCategories[0].value);
+      // The category picker for the next criterion falls back to the agreement's first category,
+      // which the editor derives from the agreement rather than being handed.
+      expect(categorySelects[1]).toHaveValue(categoriesFor('DOR')[0]?.value);
     });
   });
 
@@ -468,8 +484,7 @@ describe('DefinitionEditor', () => {
       renderWithProviders(
         <DefinitionEditor
           definition={{ items: mockItems, version: 1, updatedAt: '2024-01-01T00:00:00Z' }}
-          definitionType="DoR"
-          categories={mockCategories}
+          definitionType="DOR"
           onSave={onSaveMock}
           onCancel={onCancelMock}
         />
@@ -479,12 +494,48 @@ describe('DefinitionEditor', () => {
       expect(saveButton).toBeDisabled();
     });
 
+    it('should refuse to save a definition with no active criterion', () => {
+      // A definition with nothing active is not a commitment: the service refuses to store one,
+      // because the gate it exists to enforce would pass vacuously.
+      renderWithProviders(
+        <DefinitionEditor
+          definition={{
+            items: [
+              {
+                id: 'item-1',
+                description: 'Only criterion',
+                category: 'clarity',
+                isActive: false,
+                order: 0,
+              },
+            ],
+            version: 1,
+            updatedAt: '2024-01-01T00:00:00Z',
+          }}
+          definitionType="DOR"
+          onSave={onSaveMock}
+          onCancel={onCancelMock}
+        />
+      );
+
+      fireEvent.change(screen.getByDisplayValue('Only criterion'), {
+        target: { value: 'Still inactive' },
+      });
+
+      expect(screen.getByRole('button', { name: 'Save Changes' })).toBeDisabled();
+      expect(
+        screen.getByText(
+          'A definition must keep at least one active criterion. Reactivate one, or add a new one, before saving.'
+        )
+      ).toBeInTheDocument();
+      expect(onSaveMock).not.toHaveBeenCalled();
+    });
+
     it('should show "Saving..." when isLoading is true', () => {
       renderWithProviders(
         <DefinitionEditor
           definition={{ items: mockItems, version: 1, updatedAt: '2024-01-01T00:00:00Z' }}
-          definitionType="DoR"
-          categories={mockCategories}
+          definitionType="DOR"
           onSave={onSaveMock}
           onCancel={onCancelMock}
           isLoading={true}
@@ -498,8 +549,7 @@ describe('DefinitionEditor', () => {
       renderWithProviders(
         <DefinitionEditor
           definition={{ items: mockItems, version: 1, updatedAt: '2024-01-01T00:00:00Z' }}
-          definitionType="DoR"
-          categories={mockCategories}
+          definitionType="DOR"
           onSave={onSaveMock}
           onCancel={onCancelMock}
         />
@@ -515,8 +565,7 @@ describe('DefinitionEditor', () => {
       renderWithProviders(
         <DefinitionEditor
           definition={{ items: mockItems, version: 1, updatedAt: '2024-01-01T00:00:00Z' }}
-          definitionType="DoR"
-          categories={mockCategories}
+          definitionType="DOR"
           onSave={onSaveMock}
           onCancel={onCancelMock}
         />
@@ -543,8 +592,7 @@ describe('DefinitionEditor', () => {
       renderWithProviders(
         <DefinitionEditor
           definition={{ items: mockItems, version: 1, updatedAt: '2024-01-01T00:00:00Z' }}
-          definitionType="DoR"
-          categories={mockCategories}
+          definitionType="DOR"
           onSave={onSaveMock}
           onCancel={onCancelMock}
         />
@@ -571,8 +619,7 @@ describe('DefinitionEditor', () => {
       renderWithProviders(
         <DefinitionEditor
           definition={{ items: mockItems, version: 1, updatedAt: '2024-01-01T00:00:00Z' }}
-          definitionType="DoR"
-          categories={mockCategories}
+          definitionType="DOR"
           onSave={onSaveMock}
           onCancel={onCancelMock}
         />

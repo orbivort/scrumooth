@@ -184,30 +184,11 @@
   },
   "subtitle": "Teammitglieder und Team-Standards verwalten",
   "tabs": {
-    "agreements": "Arbeitsvereinbarungen",
     "ariaLabel": "Team-Bereiche",
+    "definition": "Definition",
     "health": "Scrum-Gesundheit",
     "members": "Mitglieder",
     "overview": "Übersicht"
-  },
-  "teamGroup": {
-    "adopt": "Beitreten und Version {{version}} übernehmen",
-    "adopted": "Übernommene Version {{version}} am {{date}}.",
-    "choose": "Gruppe",
-    "current": "Befolgt {{name}} — gemeinsame Version {{version}}.",
-    "discover": "Arbeiten weitere Scrum-Teams am selben Produkt wie dieses Team? Dann müssen alle dieselbe Definition of Done befolgen.",
-    "discoverAction": "Teamgruppen öffnen",
-    "drift": "Die gemeinsame Definition of Done hat sich geändert, seit dieses Team sie übernommen hat. Prüfen Sie sie, damit die Teams weiterhin dieselbe befolgen.",
-    "hint": "Scrum-Teams, die gemeinsam an einem Produkt arbeiten, befolgen dieselbe Definition of Done. Die Gruppe besitzt diese eine Definition of Done; ihre Teams lesen sie und können ihre eigene nicht ändern.",
-    "joinError": "Das Team konnte der Gruppe nicht beitreten.",
-    "leave": "Gruppe verlassen",
-    "leaveError": "Das Team konnte die Gruppe nicht verlassen.",
-    "leaveMessage": "Das Team behält die Definition of Done, die es befolgt hat, und kann sie danach selbst ändern.",
-    "leaveTitle": "{{name}} verlassen?",
-    "manage": "Gemeinsame Definition of Done verwalten",
-    "none": "Dieses Team arbeitet allein und definiert seine eigene Definition of Done.",
-    "review": "Prüfen, was übernommen würde",
-    "title": "Gemeinsame Definition of Done"
   },
   "teamInfo": {
     "created": "Erstellt: {{date}}",

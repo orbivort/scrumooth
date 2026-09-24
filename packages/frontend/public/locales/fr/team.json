@@ -184,30 +184,11 @@
   },
   "subtitle": "Gérer les membres de l'équipe et les standards de l'équipe",
   "tabs": {
-    "agreements": "Accords de travail",
     "ariaLabel": "Sections de l’équipe",
+    "definition": "Définition",
     "health": "Santé Scrum",
     "members": "Membres",
     "overview": "Vue d’ensemble"
-  },
-  "teamGroup": {
-    "adopt": "Rejoindre et adopter la version {{version}}",
-    "adopted": "Version {{version}} adoptée le {{date}}.",
-    "choose": "Groupe",
-    "current": "Respecte celle de {{name}} — version commune {{version}}.",
-    "discover": "D'autres équipes Scrum travaillent-elles sur le même produit que cette équipe ? Elles doivent alors respecter la même Definition of Done.",
-    "discoverAction": "Ouvrir Groupes d'équipes",
-    "drift": "La Definition of Done commune a changé depuis que cette équipe l'a adoptée. Examinez-la pour que les équipes en respectent toujours une seule.",
-    "hint": "Les équipes Scrum qui travaillent ensemble sur un même produit respectent la même Definition of Done. Le groupe possède cette unique Definition of Done ; ses équipes la lisent et ne peuvent pas modifier la leur.",
-    "joinError": "L'équipe n'a pas pu rejoindre le groupe.",
-    "leave": "Quitter le groupe",
-    "leaveError": "L'équipe n'a pas pu quitter le groupe.",
-    "leaveMessage": "L'équipe conserve la Definition of Done qu'elle respectait et peut ensuite la modifier elle-même.",
-    "leaveTitle": "Quitter {{name}} ?",
-    "manage": "Gérer la Definition of Done commune",
-    "none": "Cette équipe travaille seule et définit donc sa propre Definition of Done.",
-    "review": "Examiner ce qui serait adopté",
-    "title": "Definition of Done commune"
   },
   "teamInfo": {
     "created": "Créé : {{date}}",

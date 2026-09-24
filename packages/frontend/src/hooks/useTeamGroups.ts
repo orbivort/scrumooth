@@ -8,7 +8,11 @@
 // permission is resolved by the API rather than inferred from the caller's global role; these hooks
 // therefore expose the refusal as an ordinary error and let the surface decide what it can show.
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { UpdateSharedDoDInput, UpdateTeamGroupInput } from '@scrumooth/shared';
+import type {
+  JoinTeamGroupInput,
+  UpdateSharedDoDInput,
+  UpdateTeamGroupInput,
+} from '@scrumooth/shared';
 
 import { teamGroupService } from '../services';
 
@@ -26,11 +30,17 @@ export interface GroupFormInput {
   description?: string | null;
 }
 
-/** The directory: what a team can join, and which shared Definition of Done version it would adopt. */
-export const useTeamGroups = () =>
+/**
+ * The directory: what a team can join, and which shared Definition of Done version it would adopt.
+ *
+ * @param enabled set to `false` for a reader who cannot act on it -- a team that already belongs to a
+ * group, or a member who does not lead one. The directory is only ever read to choose from.
+ */
+export const useTeamGroups = (enabled = true) =>
   useQuery({
     queryKey: queryKeys.teamGroup.directory(),
     queryFn: () => teamGroupService.listGroups(),
+    enabled,
     staleTime: GROUP_READ_STALE_TIME,
   });
 
@@ -57,12 +67,16 @@ export const useTeamGroupDetail = (groupId: string) =>
  * "mutually define" an act rather than a claim, so this is also the read the surface falls back to
  * when it may not see who is in the group.
  *
+ * Keyed in the `definitionOfDone` family rather than under `teamGroup`, because that is what it is:
+ * the same commitment a member team reads as its own. Two families for one row is what let the
+ * group's copy and the team's copy cache separately and drift apart.
+ *
  * @param enabled set to `false` when the roster read already carried the Definition of Done, so a
  * successful detail read does not pay for a second request for the same fact.
  */
 export const useTeamGroupSharedDoD = (groupId: string, enabled = true) =>
   useQuery({
-    queryKey: queryKeys.teamGroup.sharedDoD(groupId),
+    queryKey: queryKeys.definitionOfDone.byGroup(groupId),
     queryFn: () => teamGroupService.getSharedDefinitionOfDone(groupId),
     enabled: !!groupId && enabled,
     staleTime: GROUP_READ_STALE_TIME,
@@ -140,11 +154,63 @@ export const useUpdateSharedDoD = () => {
     mutationFn: ({ groupId, data }: { groupId: string; data: UpdateSharedDoDInput }) =>
       teamGroupService.updateSharedDefinitionOfDone(groupId, data),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: queryKeys.teamGroup.all });
       void queryClient.invalidateQueries({ queryKey: queryKeys.definitionOfDone.all });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.teamGroup.all });
+      // The version in force moved, and every member team reports it: the roster's drift column and
+      // the team's own `groupDodVersionAtJoin` comparison both read from the team detail.
+      void queryClient.invalidateQueries({ queryKey: queryKeys.team.all });
     },
     onError: (error: unknown) => {
       handleMutationError(error, { operationName: 'update the shared Definition of Done' });
+    },
+  });
+};
+
+/**
+ * A team adopts a group's shared Definition of Done, naming the version it adopts.
+ *
+ * The acknowledgement is what makes "mutually define" an act rather than a claim, so the version is
+ * part of the mutation's input and not resolved at submit time: a version that moved between the
+ * review and the commit is refused by the API (`GATE_TEAM_GROUP_DOD_ACKNOWLEDGEMENT_REQUIRED`)
+ * rather than adopted unseen.
+ */
+export const useJoinTeamGroup = (teamId: string) => {
+  const queryClient = useQueryClient();
+  const { handleMutationError } = useMutationErrorHandler();
+
+  return useMutation({
+    mutationFn: (input: JoinTeamGroupInput) => teamGroupService.joinGroup(teamId, input),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.teamGroup.all });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.definitionOfDone.all });
+      // The team now complies with another commitment, and that is recorded on the team itself.
+      void queryClient.invalidateQueries({ queryKey: queryKeys.team.all });
+    },
+    onError: (error: unknown) => {
+      handleMutationError(error, { operationName: 'adopt a sharing team group' });
+    },
+  });
+};
+
+/**
+ * A team leaves its group, keeping the Definition of Done it has been complying with.
+ *
+ * The team's own row is rewritten by the API as part of leaving, so the invalidations here are not
+ * cosmetic: a stale read would show the group's commitment as still governing a team that has left.
+ */
+export const useLeaveTeamGroup = (teamId: string) => {
+  const queryClient = useQueryClient();
+  const { handleMutationError } = useMutationErrorHandler();
+
+  return useMutation({
+    mutationFn: () => teamGroupService.leaveGroup(teamId),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.teamGroup.all });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.definitionOfDone.all });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.team.all });
+    },
+    onError: (error: unknown) => {
+      handleMutationError(error, { operationName: 'leave the sharing team group' });
     },
   });
 };

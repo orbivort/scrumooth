@@ -24,15 +24,22 @@ structural:
 
 ## Where this lives in the product
 
-| Task                                           | Screen                                              | Endpoints                                                       |
-| ---------------------------------------------- | --------------------------------------------------- | --------------------------------------------------------------- |
-| Browse and manage groups, read the roster      | **Settings → Team → Team Groups**                   | `GET/POST /team-groups`, `GET/PUT/DELETE /team-groups/:groupId` |
-| Read and replace the shared Definition of Done | **Settings → Team → Team Groups**                   | `GET/PUT /team-groups/:groupId/shared-definition-of-done`       |
-| Join or leave a group                          | **Team → Scrum Health → Shared Definition of Done** | `POST/DELETE /teams/:teamId/group`                              |
+| Task                                               | Screen                            | Endpoints                                                       |
+| -------------------------------------------------- | --------------------------------- | --------------------------------------------------------------- |
+| Create, rename and delete a group; read the roster | **Settings → Team → Team Groups** | `GET/POST /team-groups`, `GET/PUT/DELETE /team-groups/:groupId` |
+| Read and replace the shared Definition of Done     | **Team → Definition**             | `GET/PUT /team-groups/:groupId/shared-definition-of-done`       |
+| Join or leave a group                              | **Team → Definition**             | `POST/DELETE /teams/:teamId/group`                              |
 
-A grouped team's own Definition of Done panel (**Settings → Team → Team Definitions**) becomes
-read-only and links to the group that governs it, so the interface never offers an edit the API would
-refuse with `GATE_DOD_GROUP_GOVERNED`.
+The Definition of Done — including the one a group shares — is read and changed on the **Definition
+tab of a team in the group** (`/team?tab=definition`), where the criteria and the Sprint they gate are
+both in view, and where the scope ribbon states which agreement governs the team. The section routes
+its save by the resolved scope, so a grouped team's edit is written to
+`PUT /team-groups/:groupId/shared-definition-of-done` and the team-scoped write is never issued: the
+interface cannot provoke `409 GATE_DOD_GROUP_GOVERNED`, and the API keeps enforcing it.
+
+**Settings → Team Groups administers the group and nothing else.** It states which version governs the
+group's teams, marks the teams that have not re-adopted a change, and links to where the commitment is
+authored.
 
 See the [Team Groups user guide](../user-guide/core-features/team-groups.md) for the same rules told
 from a user's point of view.

@@ -2,12 +2,47 @@ import prisma from '../utils/prisma';
 import { NotFoundError, BadRequestError, localizedError } from '../utils/errors';
 import { generateUUIDv7 } from '../utils/uuid';
 import { assertDoRScrumMaster, assertDoRTeamMember } from './incrementAccess';
-import { GATE_CODES } from '@scrumooth/shared';
-import type { DoRItem, DoRChecklistVerification } from '../generated/prisma/client';
+import { DOR_DEFAULTS, GATE_CODES } from '@scrumooth/shared';
+import type { DoRVersionItem, DoRVersionSnapshot } from '@scrumooth/shared';
+import type { DoRItem, DoRChecklistVerification, Prisma } from '../generated/prisma/client';
 
 type DefinitionOfReadyWithItems = Awaited<
   ReturnType<typeof prisma.definitionOfReady.findUnique>
 > & { items: DoRItem[] };
+
+/**
+ * Read a persisted readiness snapshot's `items` JSON back into typed criteria.
+ *
+ * A snapshot is written by this service and never updated, but it is still external data by the
+ * time it is read: a malformed or legacy entry is dropped rather than allowed to poison the whole
+ * history response.
+ */
+function parseSnapshotItems(value: Prisma.JsonValue): DoRVersionItem[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value.flatMap((entry): DoRVersionItem[] => {
+    if (typeof entry !== 'object' || entry === null || Array.isArray(entry)) {
+      return [];
+    }
+
+    const record = entry as Record<string, unknown>;
+    if (typeof record.description !== 'string') {
+      return [];
+    }
+
+    return [
+      {
+        description: record.description,
+        category: typeof record.category === 'string' ? record.category : null,
+        isActive: record.isActive === true,
+        order: typeof record.order === 'number' ? record.order : 0,
+        defaultKey: typeof record.defaultKey === 'string' ? record.defaultKey : null,
+      },
+    ];
+  });
+}
 
 /**
  * Order values are reassigned densely (`0..n-1`) on every write, so a swap between two surviving
@@ -58,44 +93,6 @@ class DefinitionOfReadyService {
     userId?: string
   ): Promise<DefinitionOfReadyWithItems> {
     const dorId = generateUUIDv7();
-    const defaultItems: DoRItemInput[] = [
-      {
-        description: 'Clear title and description provided',
-        category: 'acceptance',
-        isActive: true,
-        order: 0,
-      },
-      {
-        description: 'Acceptance criteria defined and agreed',
-        category: 'acceptance',
-        isActive: true,
-        order: 1,
-      },
-      {
-        description: 'Story points estimated by the team',
-        category: 'estimation',
-        isActive: true,
-        order: 2,
-      },
-      {
-        description: 'Business value assigned',
-        category: 'estimation',
-        isActive: true,
-        order: 3,
-      },
-      {
-        description: 'Dependencies identified and documented',
-        category: 'dependencies',
-        isActive: true,
-        order: 4,
-      },
-      {
-        description: 'No blockers or impediments',
-        category: 'dependencies',
-        isActive: true,
-        order: 5,
-      },
-    ];
 
     const dor = await prisma.definitionOfReady.create({
       data: {
@@ -104,11 +101,14 @@ class DefinitionOfReadyService {
         version: 1,
         createdBy: userId,
         items: {
-          create: defaultItems.map((item, index) => ({
+          // Seeded from the shared canonical list, so every built-in criterion carries the key that
+          // keeps it translatable after the Scrum Master rewords it.
+          create: DOR_DEFAULTS.map((item, index) => ({
             id: generateUUIDv7(),
             description: item.description,
             category: item.category ?? 'documentation',
-            isActive: item.isActive,
+            defaultKey: item.key,
+            isActive: true,
             order: index,
             createdBy: userId,
           })),
@@ -165,8 +165,12 @@ class DefinitionOfReadyService {
   }
 
   /**
-   * The identity-preserving write itself: update the criteria the payload still carries, insert the
-   * ones it adds, delete the ones it dropped, and renumber densely.
+   * The identity-preserving write itself: preserve the version being superseded, update the criteria
+   * the payload still carries, insert the ones it adds, delete the ones it dropped, and renumber
+   * densely.
+   *
+   * A retained criterion keeps its `defaultKey`: the update never writes the column, so reworking a
+   * seeded criterion's wording does not cost it its translation in the other four languages.
    */
   private async writeDefinitionOfReady(
     dorId: string,
@@ -176,8 +180,43 @@ class DefinitionOfReadyService {
     const dor = await prisma.$transaction(async (tx) => {
       // The agreement's current criteria must be read and replaced atomically: two concurrent
       // editors reading outside a lock would each see a different "already exists" set and could
-      // delete a row the other one just updated — taking its verifications with it.
+      // delete a row the other one just updated — taking its verifications with it. The same lock
+      // serialises the snapshot below, so two writers cannot both preserve the same version and
+      // leave the one in between unrecorded.
       await tx.$queryRaw`SELECT "id" FROM "definition_of_ready" WHERE "id" = ${dorId} FOR UPDATE`;
+
+      const current = await tx.definitionOfReady.findUniqueOrThrow({
+        where: { id: dorId },
+        select: { version: true, teamId: true },
+      });
+
+      const supersededItems = await tx.doRItem.findMany({
+        where: { dorId },
+        orderBy: { order: 'asc' },
+        select: {
+          description: true,
+          category: true,
+          isActive: true,
+          order: true,
+          defaultKey: true,
+        },
+      });
+
+      // Append-only: preserve the version being replaced before it is replaced. `upsert` with an
+      // empty update keeps the first snapshot if two writers still race for the same version, so the
+      // record of a version is never rewritten.
+      await tx.doRVersionSnapshot.upsert({
+        where: { dorId_version: { dorId, version: current.version } },
+        create: {
+          id: generateUUIDv7(),
+          dorId,
+          teamId: current.teamId,
+          version: current.version,
+          items: supersededItems as unknown as Prisma.InputJsonValue,
+          createdBy: userId,
+        },
+        update: {},
+      });
 
       const existingItems = await tx.doRItem.findMany({
         where: { dorId },
@@ -259,6 +298,74 @@ class DefinitionOfReadyService {
       return [];
     }
     return dor.items;
+  }
+
+  /**
+   * The full, append-only version history of a team's Definition of Ready, newest first.
+   *
+   * The current version is the Definition of Ready row itself; every superseded version comes from
+   * its snapshot. A team that has never changed its readiness agreement therefore sees exactly one
+   * entry, marked current -- the same shape the Definition of Done reports, so a version badge
+   * behaves identically on either agreement.
+   */
+  async getDoRVersionSnapshots(teamId: string): Promise<DoRVersionSnapshot[]> {
+    const dor = await this.getDefinitionOfReady(teamId);
+
+    if (!dor) {
+      return [];
+    }
+
+    const snapshots = await prisma.doRVersionSnapshot.findMany({
+      where: { dorId: dor.id },
+      orderBy: { version: 'desc' },
+    });
+
+    // Resolve every author name in one lookup rather than one query per version.
+    const authorIds = [...new Set([...snapshots.map((s) => s.createdBy), dor.updatedBy])].filter(
+      (id): id is string => typeof id === 'string'
+    );
+
+    const authors =
+      authorIds.length > 0
+        ? await prisma.user.findMany({
+            where: { id: { in: authorIds } },
+            select: { id: true, firstName: true, lastName: true },
+          })
+        : [];
+    const authorNames = new Map(
+      authors.map((author) => [author.id, `${author.firstName} ${author.lastName}`])
+    );
+
+    const current: DoRVersionSnapshot = {
+      id: dor.id,
+      teamId,
+      version: dor.version,
+      items: dor.items.map((item) => ({
+        description: item.description,
+        category: item.category,
+        isActive: item.isActive,
+        order: item.order,
+        defaultKey: item.defaultKey,
+      })),
+      createdAt: dor.updatedAt.toISOString(),
+      createdBy: dor.updatedBy,
+      createdByName: dor.updatedBy ? (authorNames.get(dor.updatedBy) ?? null) : null,
+      isCurrent: true,
+    };
+
+    return [
+      current,
+      ...snapshots.map((snapshot) => ({
+        id: snapshot.id,
+        teamId,
+        version: snapshot.version,
+        items: parseSnapshotItems(snapshot.items),
+        createdAt: snapshot.createdAt.toISOString(),
+        createdBy: snapshot.createdBy,
+        createdByName: snapshot.createdBy ? (authorNames.get(snapshot.createdBy) ?? null) : null,
+        isCurrent: false,
+      })),
+    ];
   }
 
   /**

@@ -29,7 +29,6 @@ import {
   LazyImpediments as Impediments,
   LazySprintConfiguration as SprintConfiguration,
   LazyDailyScrumSchedule as DailyScrumSchedulePage,
-  LazyTeamDefinitionsPage as TeamDefinitionsPage,
   LazyTeamGroupsPage as TeamGroupsPage,
   LazyProductBacklog as ProductBacklog,
   LazyProductGoalsPage as ProductGoalsPage,
@@ -50,6 +49,7 @@ import {
   LazyPrivacyData as PrivacyData,
   LazyIconGallery as IconGallery,
 } from './routes/lazyComponents';
+import { LegacyDefinitionRedirect } from './routes/LegacyDefinitionRedirect';
 
 const ROUTER_BASENAME = getRouterBasename();
 
@@ -335,16 +335,6 @@ function App() {
                           }
                         />
                         <Route
-                          path="/settings/team-definitions"
-                          element={
-                            <ProtectedRoute>
-                              <LazyRoute fallbackMessage="Loading team definitions...">
-                                <TeamDefinitionsPage />
-                              </LazyRoute>
-                            </ProtectedRoute>
-                          }
-                        />
-                        <Route
                           path="/settings/team-groups"
                           element={
                             <ProtectedRoute>
@@ -356,9 +346,17 @@ function App() {
                             </ProtectedRoute>
                           }
                         />
+                        {/* The Definition of Done and the Definition of Ready are the team's own
+                            agreements, so they are authored on the Definition tab of the Team
+                            module. The addresses they used to live at are kept, so links and
+                            bookmarks still land on the agreement they meant. */}
+                        <Route
+                          path="/settings/team-definitions"
+                          element={<LegacyDefinitionRedirect />}
+                        />
                         <Route
                           path="/settings/definition-of-done"
-                          element={<Navigate to="/settings/team-definitions?tab=dod" replace />}
+                          element={<LegacyDefinitionRedirect id="definition-of-done" />}
                         />
                         <Route
                           path="/reports"
@@ -387,12 +385,12 @@ function App() {
                           path="/organizational-barriers"
                           element={<Navigate to="/impediments?tab=barriers" replace />}
                         />
-                        {/* The working agreements are the third tab of the Team module; the address
-                            they used to live at is kept, so links and bookmarks still land on
-                            them. */}
+                        {/* The working agreements are the third section of the Team module's
+                            Definition tab; the address they used to live at is kept, so links and
+                            bookmarks still land on them. */}
                         <Route
                           path="/working-agreements"
-                          element={<Navigate to="/team?tab=agreements" replace />}
+                          element={<LegacyDefinitionRedirect id="working-agreements" />}
                         />
                         <Route
                           path="/settings/sprint-configuration"

@@ -1,5 +1,5 @@
 /**
- * The working agreements panel, as the Team module's third tab.
+ * The working agreements panel, as the last section of the Team module's Definition tab.
  *
  * Coverage: the team's agreements are listed with their authorship, retiring one keeps it visible
  * rather than deleting it, and the panel reads the agreements of the current team only. On top of

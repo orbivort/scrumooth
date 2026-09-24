@@ -1,12 +1,13 @@
-// The team's working agreements, as the Team module's third tab.
+// The team's working agreements: the third and last section of the Team module's Definition tab.
 //
 // Self-management means the team decides how it works, so the agreements belong to the team: every
-// member reads them and any member can add or retire one. The panel owns only that half of the
-// picture -- whether the team collectively holds the skills its work needs is the other half, and
-// it is recorded beside the values health check on the Scrum Health tab.
+// member reads them and any member can add or retire one. That is why they sit under the same tab as
+// the Definition of Done and the Definition of Ready -- all three are what the team has agreed to
+// hold itself to -- while the other half of the picture, whether the team collectively holds the
+// skills its work needs, is recorded beside the values health check on the Scrum Health tab.
 //
 // It renders no page chrome of its own: the module owns the h1, the header and the URL, so this is
-// a panel that assumes a team is already resolved above it.
+// a section that assumes a team is already resolved above it.
 import React, { useCallback, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
@@ -96,12 +97,18 @@ export const WorkingAgreements: React.FC<WorkingAgreementsProps> = ({ teamId }) 
   }
 
   return (
-    <div className={styles.page} data-testid="working-agreements">
+    <>
       <ToastContainer toasts={toasts} onClose={removeToast} />
 
-      <section className={styles.panel} aria-labelledby="agreements-heading">
+      {/* The third section of the Definition tab, in the module's card language. The heading is a
+          deep-link target, so it is focusable without joining the tab order. */}
+      <section
+        className={styles.panel}
+        aria-labelledby="working-agreements"
+        data-testid="working-agreements"
+      >
         <div className={styles['panel-header']}>
-          <h2 id="agreements-heading" className={styles['panel-title']}>
+          <h2 id="working-agreements" tabIndex={-1} className={styles['panel-title']}>
             {t('agreements.title')}
           </h2>
           {formMode !== 'create' && (
@@ -185,7 +192,7 @@ export const WorkingAgreements: React.FC<WorkingAgreementsProps> = ({ teamId }) 
           />
         )}
       </section>
-    </div>
+    </>
   );
 };
 

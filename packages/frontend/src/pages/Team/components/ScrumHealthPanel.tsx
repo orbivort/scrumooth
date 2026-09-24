@@ -1,25 +1,28 @@
-// How healthy the team is, read from the three things the tool can actually observe about it.
+// How healthy the team is, read from the two things the tool can actually observe about it.
 //
 // The Scrum Values health check is the team's own periodic self-inspection. The cross-functionality
 // assessment says whether the team collectively holds the skills its work needs -- the half of the
-// definition that a member list cannot show. The group panel says which shared Definition of Done
-// governs the team when it works on a product with other Scrum Teams. They answer one question --
-// can this team, as it is constituted, deliver an Increment it stands behind -- so they share a tab
-// rather than being scattered across the module.
-import React, { useCallback, useMemo, useState } from 'react';
+// definition that a member list cannot show. They answer one question -- can this team, as it is
+// constituted, deliver an Increment it stands behind -- so they share a tab rather than being
+// scattered across the module.
+//
+// Which Definition of Done governs the team used to live here, as a third panel. It is a governance
+// fact about a commitment rather than a reading of the team's health, so it moved to the Definition
+// tab, beside the commitment it decides -- where the criteria it applies to are on screen.
+import React, { useCallback, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { UserRole } from '@scrumooth/shared';
 
 import { crossFunctionalityService, healthCheckService } from '../../../services';
-import { useAuthStore, useTeamStore } from '../../../store';
+import { useTeamStore } from '../../../store';
 import { useToast } from '../../../hooks/useToast';
 import { ToastContainer } from '../../../components/common/ToastContainer';
 import { HealthCheckSurvey } from '../../../components/common/HealthCheckSurvey';
 import { SparklesIcon } from '../../../components/common/Icons';
 import { queryKeys } from '../../../hooks/queryKeys';
 import { HealthCheckStatus } from '../../../types';
-import type { ApiResponse, Team } from '../../../types';
+import type { ApiResponse } from '../../../types';
 import type { CrossFunctionalityRecord } from '../../../services/domain/crossFunctionality.service';
 import {
   CrossFunctionalityPanel,
@@ -27,23 +30,14 @@ import {
 } from '../../WorkingAgreements/components/CrossFunctionalityPanel';
 import styles from '../Team.module.css';
 
-import { TeamGroupPanel } from './TeamGroupPanel';
-
 interface ScrumHealthPanelProps {
   teamId: string | undefined;
-  /** The resolved team, which carries the group it complies with. */
-  team: Team | null;
   isUninvitedUser: boolean;
 }
 
-export const ScrumHealthPanel: React.FC<ScrumHealthPanelProps> = ({
-  teamId,
-  team,
-  isUninvitedUser,
-}) => {
+export const ScrumHealthPanel: React.FC<ScrumHealthPanelProps> = ({ teamId, isUninvitedUser }) => {
   const { t } = useTranslation(['team', 'agreements']);
   const { userRoleInCurrentTeam } = useTeamStore();
-  const { user } = useAuthStore();
   const queryClient = useQueryClient();
   const { toasts, success, error: toastError, removeToast } = useToast();
 
@@ -108,21 +102,6 @@ export const ScrumHealthPanel: React.FC<ScrumHealthPanelProps> = ({
     [assessmentMutation]
   );
 
-  // Joining or leaving a group decides which Definition of Done the team is held to, so it is the
-  // team's own leadership's decision -- the same roles that may add or remove its members.
-  const canDecideOnGroup = useMemo(() => {
-    const membership = team?.members?.find((member) => member.userId === user?.id);
-    // Roles arrive as the API spells them and are compared as the interface spells them, the same
-    // normalisation the member badges use.
-    const role = membership?.role.toLowerCase();
-    return role === 'product_owner' || role === 'scrum_master';
-  }, [team?.members, user?.id]);
-
-  // The team detail read carries the group, so a successful join or leave has to re-read it.
-  const handleGroupChanged = useCallback(async () => {
-    await queryClient.invalidateQueries({ queryKey: ['team', teamId] });
-  }, [queryClient, teamId]);
-
   return (
     <div className={styles['health-panel']}>
       <ToastContainer toasts={toasts} onClose={removeToast} />
@@ -161,17 +140,6 @@ export const ScrumHealthPanel: React.FC<ScrumHealthPanelProps> = ({
         submitting={assessmentMutation.isPending}
         onRecord={handleRecordAssessment}
       />
-
-      {teamId && !isUninvitedUser && (
-        <TeamGroupPanel
-          teamId={teamId}
-          group={team?.group ?? null}
-          adoptedVersion={team?.groupDodVersionAtJoin ?? null}
-          joinedAt={team?.groupJoinedAt ?? null}
-          canDecide={canDecideOnGroup}
-          onChanged={handleGroupChanged}
-        />
-      )}
     </div>
   );
 };

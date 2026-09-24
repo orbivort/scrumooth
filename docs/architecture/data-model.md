@@ -402,28 +402,60 @@ The database schema is organized into logical groups:
 
 ### 8. DefinitionOfDone / DefinitionOfReady
 
-**Purpose**: Define team-specific checklists.
+**Purpose**: Hold the two agreements a team works to. The Definition of Done is the Increment's
+commitment and is owned by a team or by the team group that shares a product; the Definition of Ready
+is the team's own readiness practice, maintained by its Scrum Master. See
+[Scrum Guide Conformance](./scrum-guide-conformance.md) for why the two differ in authority and why
+the Definition of Done has no organization scope.
 
 **Fields (DoD/DoR)**:
 
-| Field     | Type      | Constraints       | Description        |
-| --------- | --------- | ----------------- | ------------------ |
-| id        | UUID      | PK                | Unique identifier  |
-| teamId    | UUID      | FK (Team), Unique | Team reference     |
-| version   | Int       | Default: 1        | Version number     |
-| createdAt | Timestamp | Auto              | Creation timestamp |
-| updatedAt | Timestamp | Auto              | Update timestamp   |
+| Field     | Type      | Constraints                      | Description                                 |
+| --------- | --------- | -------------------------------- | ------------------------------------------- |
+| id        | UUID      | PK                               | Unique identifier                           |
+| teamId    | UUID      | FK (Team), Unique, nullable      | Team reference — the only owner for the DoR |
+| groupId   | UUID      | FK (TeamGroup), Unique, nullable | Group reference — DoD only                  |
+| version   | Int       | Default: 1                       | Version in force                            |
+| createdAt | Timestamp | Auto                             | Creation timestamp                          |
+| updatedAt | Timestamp | Auto                             | Update timestamp                            |
+
+A Definition of Done is owned by exactly one scope — a team **or** a group, never both and never
+neither. The invariant is a database `CHECK` (`CHECK ((team_id IS NULL) <> (group_id IS NULL))`), not
+an application rule: Prisma cannot express it, so it lives in SQL. While a team belongs to a group its
+own row is retained but inert, and a re-scoping write on leave materializes the group's criteria back
+into it.
 
 **Fields (DoDItem/DoRItem)**:
 
-| Field       | Type    | Constraints   | Description       |
-| ----------- | ------- | ------------- | ----------------- |
-| id          | UUID    | PK            | Unique identifier |
-| dodId/dorId | UUID    | FK            | DoD/DoR reference |
-| description | String  | Required      | Item description  |
-| category    | String  | Optional      | Item category     |
-| isActive    | Boolean | Default: true | Active status     |
-| order       | Int     | Required      | Display order     |
+| Field       | Type    | Constraints   | Description                                              |
+| ----------- | ------- | ------------- | -------------------------------------------------------- |
+| id          | UUID    | PK            | Unique identifier                                        |
+| dodId/dorId | UUID    | FK            | DoD/DoR reference                                        |
+| description | String  | Required      | Item wording, seeded in English and editable by the team |
+| category    | String  | Optional      | Item category, free-form                                 |
+| defaultKey  | String  | Optional      | The built-in criterion it descends from, or `null`       |
+| isActive    | Boolean | Default: true | Active status                                            |
+| order       | Int     | Required      | Display order, unique within the agreement               |
+
+`defaultKey` is what keeps a built-in criterion translatable. The canonical seeds and their keys are
+declared once in `packages/shared/src/constants/definitionDefaults.ts`, which the seeding service, the
+migration that backfilled existing rows, and the interface all read. The column is owned by the
+service: a write payload never carries it, an edit preserves whatever the row holds, and only the
+internal "carry the group's criteria onto a leaving team" path sets it on an insert.
+
+**Version snapshots**:
+
+| Table                   | What it preserves                                            |
+| ----------------------- | ------------------------------------------------------------ |
+| `dod_version_snapshots` | One row per superseded Definition of Done version, as JSONB  |
+| `dor_version_snapshots` | One row per superseded Definition of Ready version, as JSONB |
+
+Both carry `@@unique([dodId|dorId, version])`, which is at once the append-only guard (a replayed
+update cannot create a second row claiming the same version) and the read path (history is always "for
+this agreement, in version order"). `items` is JSONB rather than a child table on purpose: a snapshot
+must be immutable, and rows that never change cannot drift with the live items they were copied from.
+The snapshot JSON carries `defaultKey` for the same reason the live row does, so a superseded version
+stays readable in the reader's language.
 
 ## Daily Scrum Module
 

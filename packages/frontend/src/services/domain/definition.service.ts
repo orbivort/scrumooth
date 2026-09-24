@@ -7,6 +7,7 @@ import type {
   DefinitionOfReady,
   DoRItemPayload,
   DoRChecklistVerification,
+  DoRVersionSnapshot,
   ApiResponse,
 } from '../../types';
 import { apiService } from '../index';
@@ -84,8 +85,12 @@ class DefinitionService {
     return response.data;
   }
 
-  async getDoRHistory(teamId: string): Promise<ApiResponse<DefinitionOfReady[]>> {
-    const response = await apiService.get<ApiResponse<DefinitionOfReady[]>>(
+  /**
+   * The append-only Definition of Ready version history, newest first, with the current version
+   * marked -- the same shape the Definition of Done's history reports, so one component reads both.
+   */
+  async getDoRHistory(teamId: string): Promise<ApiResponse<DoRVersionSnapshot[]>> {
+    const response = await apiService.get<ApiResponse<DoRVersionSnapshot[]>>(
       `/teams/${teamId}/definition-of-ready/history`
     );
     return response.data;

@@ -53,12 +53,12 @@ export const getDoRHistory = asyncHandler(async (req: Request, res: Response) =>
     return res.status(400).json({ success: false, error: { message: 'Team ID is required' } });
   }
 
-  // The Definition of Ready keeps its version number but no superseded snapshots: unlike the
-  // Definition of Done it is a complementary team agreement, not the Increment's commitment, so
-  // there is no version to preserve for an audit. The history is therefore the version in force,
-  // reported in the same array shape an integrator already handles.
-  const dor = await definitionOfReadyService.getDefinitionOfReady(teamId);
-  return res.json(createSuccessResponse(dor ? [dor] : []));
+  // Append-only, like the Definition of Done's: every superseded version is preserved as a
+  // snapshot, and the live row is reported as the current version of the same list. The readiness
+  // agreement is enforced at the Sprint boundary, and an enforced agreement whose earlier versions
+  // vanished would be one a team could not inspect.
+  const versions = await definitionOfReadyService.getDoRVersionSnapshots(teamId);
+  return res.json(createSuccessResponse(versions));
 });
 
 export const verifyDoRForPBI = asyncHandler(async (req: Request, res: Response) => {

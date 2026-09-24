@@ -1,8 +1,24 @@
+import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, waitFor } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 import { useSprintCommitmentReadiness } from './useSprintCommitmentReadiness';
 import { definitionService } from '@/services';
+
+/**
+ * The hook reads through TanStack Query now, so a client is part of rendering it. `retry: false`
+ * keeps a deliberate failure from being retried: the hook's whole point is to fail open on the first
+ * answer rather than to keep the boundary hint waiting.
+ */
+const createWrapper = () => {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false, gcTime: 0 } },
+  });
+
+  return ({ children }: { children: React.ReactNode }) =>
+    React.createElement(QueryClientProvider, { client: queryClient }, children);
+};
 
 vi.mock('@/services', () => ({
   definitionService: {
@@ -67,7 +83,9 @@ describe('useSprintCommitmentReadiness', () => {
   });
 
   it('should report a team that holds both agreements with every item verified', async () => {
-    const { result } = renderHook(() => useSprintCommitmentReadiness('team-1', ['pbi-1']));
+    const { result } = renderHook(() => useSprintCommitmentReadiness('team-1', ['pbi-1']), {
+      wrapper: createWrapper(),
+    });
 
     await waitFor(() => expect(result.current.isLoading).toBe(false));
 
@@ -81,7 +99,9 @@ describe('useSprintCommitmentReadiness', () => {
       definitionOfDoneWith(0) as never
     );
 
-    const { result } = renderHook(() => useSprintCommitmentReadiness('team-1', ['pbi-1']));
+    const { result } = renderHook(() => useSprintCommitmentReadiness('team-1', ['pbi-1']), {
+      wrapper: createWrapper(),
+    });
 
     await waitFor(() => expect(result.current.isLoading).toBe(false));
 
@@ -104,7 +124,10 @@ describe('useSprintCommitmentReadiness', () => {
         }) as never
     );
 
-    const { result } = renderHook(() => useSprintCommitmentReadiness('team-1', ['pbi-1', 'pbi-2']));
+    const { result } = renderHook(
+      () => useSprintCommitmentReadiness('team-1', ['pbi-1', 'pbi-2']),
+      { wrapper: createWrapper() }
+    );
 
     await waitFor(() => expect(result.current.isLoading).toBe(false));
 
@@ -116,7 +139,9 @@ describe('useSprintCommitmentReadiness', () => {
       definitionOfReadyWith(0) as never
     );
 
-    const { result } = renderHook(() => useSprintCommitmentReadiness('team-1', ['pbi-1']));
+    const { result } = renderHook(() => useSprintCommitmentReadiness('team-1', ['pbi-1']), {
+      wrapper: createWrapper(),
+    });
 
     await waitFor(() => expect(result.current.isLoading).toBe(false));
 
@@ -127,7 +152,9 @@ describe('useSprintCommitmentReadiness', () => {
   it('should fail open so a read error never blocks the action the service still gates', async () => {
     vi.mocked(definitionService.getDefinitionOfDone).mockRejectedValue(new Error('offline'));
 
-    const { result } = renderHook(() => useSprintCommitmentReadiness('team-1', ['pbi-1']));
+    const { result } = renderHook(() => useSprintCommitmentReadiness('team-1', ['pbi-1']), {
+      wrapper: createWrapper(),
+    });
 
     await waitFor(() => expect(result.current.isLoading).toBe(false));
 
@@ -136,7 +163,9 @@ describe('useSprintCommitmentReadiness', () => {
   });
 
   it('should not read the agreements without a team', async () => {
-    const { result } = renderHook(() => useSprintCommitmentReadiness(undefined, ['pbi-1']));
+    const { result } = renderHook(() => useSprintCommitmentReadiness(undefined, ['pbi-1']), {
+      wrapper: createWrapper(),
+    });
 
     await waitFor(() => expect(result.current.isLoading).toBe(false));
 

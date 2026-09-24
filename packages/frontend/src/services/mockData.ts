@@ -146,12 +146,15 @@ export const mockDefinitionOfDone: Record<string, DefinitionOfDone> = {
     id: 'dod-1',
     teamId: 'team-1',
     items: [
+      // The five criteria the product seeds for a new team, carrying the keys they were seeded
+      // with; everything below them is a criterion this team wrote itself.
       {
         id: 'dod-1',
         description: 'Code is peer-reviewed and approved',
         category: 'review',
         isActive: true,
         order: 0,
+        defaultKey: 'codeReviewed',
       },
       {
         id: 'dod-2',
@@ -159,6 +162,7 @@ export const mockDefinitionOfDone: Record<string, DefinitionOfDone> = {
         category: 'testing',
         isActive: true,
         order: 1,
+        defaultKey: 'unitTests',
       },
       {
         id: 'dod-3',
@@ -166,6 +170,7 @@ export const mockDefinitionOfDone: Record<string, DefinitionOfDone> = {
         category: 'testing',
         isActive: true,
         order: 2,
+        defaultKey: 'integrationTests',
       },
       {
         id: 'dod-4',
@@ -173,6 +178,7 @@ export const mockDefinitionOfDone: Record<string, DefinitionOfDone> = {
         category: 'documentation',
         isActive: true,
         order: 3,
+        defaultKey: 'documentation',
       },
       {
         id: 'dod-5',
@@ -180,6 +186,7 @@ export const mockDefinitionOfDone: Record<string, DefinitionOfDone> = {
         category: 'quality',
         isActive: true,
         order: 4,
+        defaultKey: 'noCriticalBugs',
       },
       {
         id: 'dod-6',

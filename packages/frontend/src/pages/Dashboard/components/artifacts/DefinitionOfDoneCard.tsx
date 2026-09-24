@@ -146,8 +146,10 @@ const DefinitionOfDoneCard: React.FC<DefinitionOfDoneCardProps> = memo(({ group,
             <h3 className={styles['card-title']}>{artifactName}</h3>
           </div>
         </div>
+        {/* The card is about the Definition of Done, so it lands on the Definition of Done: the
+            agreement leads the Definition tab and the link keeps the URL truthful about that. */}
         <Link
-          to="/settings/team-definitions"
+          to="/team?tab=definition"
           className={styles['card-link']}
           aria-label={t('artifacts.definitionOfDone.viewDefinitionsAria')}
         >

@@ -28,6 +28,7 @@ model User {
   dodVerifications       DoDChecklistVerification[]
   dodVersionSnapshots    DoDVersionSnapshot[]       @relation("DoDVersionSnapshotCreator")
   dorVerifications       DoRChecklistVerification[]
+  dorVersionSnapshots    DoRVersionSnapshot[]       @relation("DoRVersionSnapshotCreator")
   emailLogs              EmailLog[]
   ownedImpediments       Impediment[]               @relation("ImpedimentOwner")
   reportedImpediments    Impediment[]               @relation("ImpedimentReporter")
@@ -93,6 +94,7 @@ model Team {
   members             TeamMember[]
   timeboxes           Timebox[]
   dodVersionSnapshots DoDVersionSnapshot[]
+  dorVersionSnapshots DoRVersionSnapshot[]
   sprintCompletionSnapshots SprintCompletionSnapshot[]
   smNotesRevisions    SmNotesRevision[]
   organizationalBarriers OrganizationalBarrier[]
@@ -601,6 +603,13 @@ model DoDItem {
   dodId            String                     @db.Uuid
   description      String
   category         String?
+  /// Which built-in criterion this one descends from, or null for one the team wrote itself.
+  ///
+  /// A seeded criterion is translated by its key rather than by its English wording, so a team may
+  /// reword "Code is properly documented" without the interface losing the translation in all five
+  /// languages. The key travels into the version snapshots too, so a superseded version stays
+  /// readable in the reader's language.
+  defaultKey       String?
   isActive         Boolean                    @default(true)
   order            Int                        @default(0)
   createdAt        DateTime                   @default(now()) @db.Timestamptz(3)
@@ -681,8 +690,39 @@ model DefinitionOfReady {
   updatedBy String?   @db.Uuid
   team      Team      @relation(fields: [teamId], references: [id], onDelete: Cascade)
   items     DoRItem[]
+  snapshots DoRVersionSnapshot[]
 
   @@map("definition_of_ready")
+}
+
+/// An immutable, append-only copy of one Definition of Ready version.
+///
+/// The readiness agreement is not a Guide artifact, but it is enforced at the Sprint boundary, and
+/// an enforced agreement whose earlier versions vanish is one a team cannot inspect. The Definition
+/// of Done has kept its superseded versions for exactly that reason; this is the same treatment, so
+/// that a version badge on either agreement opens a real history rather than only the current row.
+///
+/// Team-scoped only, unlike the Definition of Done: the readiness agreement is never shared with
+/// another Scrum Team, so there is no group owner to mirror.
+model DoRVersionSnapshot {
+  id        String   @id @db.Uuid
+  dorId     String   @db.Uuid
+  teamId    String   @db.Uuid
+  /// The superseded version this snapshot preserves; unique per Definition of Ready.
+  version   Int
+  items     Json
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  createdBy String?  @db.Uuid
+  creator           User?              @relation("DoRVersionSnapshotCreator", fields: [createdBy], references: [id], onDelete: SetNull)
+  definitionOfReady DefinitionOfReady   @relation(fields: [dorId], references: [id], onDelete: Cascade)
+  team              Team               @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  // The unique index is the read path too: history is always "for this Definition of Ready, in
+  // version order", so a separate index on ("dorId", "version") would duplicate it.
+  @@unique([dorId, version])
+  @@index([teamId])
+  @@index([createdBy])
+  @@map("dor_version_snapshots")
 }
 
 model DoRItem {
@@ -690,6 +730,8 @@ model DoRItem {
   dorId             String                     @db.Uuid
   description       String
   category          String?
+  /// Which built-in criterion this one descends from, or null for one the team wrote itself.
+  defaultKey        String?
   isActive          Boolean                    @default(true)
   order             Int                        @default(0)
   createdAt         DateTime                   @default(now()) @db.Timestamptz(3)
