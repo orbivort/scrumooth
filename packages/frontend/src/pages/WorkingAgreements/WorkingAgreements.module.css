@@ -20,20 +20,18 @@
   gap: var(--space-2);
 }
 
+/* This heading is the deep-link target for the section, so it carries the offset that clears the app
+   shell's sticky bar and the Definition tab's own navigation. The offset belongs on the heading rather
+   than on the wrapping <section>: the fragment targets the heading, so an offset on the section would be
+   a silent no-op and the heading would open underneath the sticky chrome. */
 .panel-title {
   margin: 0;
   font-size: var(--font-size-lg);
   font-weight: var(--font-weight-semibold);
   color: var(--color-text-primary);
-}
-
-.section-title {
-  margin: var(--space-3) 0 0;
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-semibold);
-  text-transform: uppercase;
-  letter-spacing: var(--letter-spacing-wide);
-  color: var(--color-text-secondary);
+  scroll-margin-top: calc(
+    var(--app-topbar-height) + var(--definition-nav-height) + var(--definition-anchor-gap)
+  );
 }
 
 .list {
@@ -92,6 +90,21 @@
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-2);
+}
+
+/* The page carries one primary action: the one belonging to the section the reader is in. Adding an
+   agreement is a different verb from editing a definition, but it is still the action this page would
+   have the reader take, so it steps back with the others rather than competing with them. A demoted
+   action keeps its place, its label and its reachability -- only its emphasis changes. */
+.panel:not([data-active='true']) .primary-action {
+  background: var(--color-background-card);
+  color: var(--color-gray-700);
+  border-color: var(--color-gray-300);
+}
+
+.panel:not([data-active='true']) .primary-action:hover:not(:disabled) {
+  background: var(--color-gray-50);
+  border-color: var(--color-gray-400);
 }
 
 .badge {

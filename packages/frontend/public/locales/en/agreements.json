@@ -13,6 +13,7 @@
     "retire": "Retire",
     "retired": "Retired",
     "retiredAt": "Retired",
+    "retiredDisclosure": "Show retired agreements ({{count}})",
     "retiredGroup": "Retired agreements",
     "save": "Save",
     "saved": "Agreement updated",

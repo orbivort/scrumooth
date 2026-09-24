@@ -4,7 +4,15 @@
   display: flex;
   min-height: 100vh;
   background-color: var(--color-background-page);
-  overflow-x: hidden;
+
+  /* `clip`, not `hidden`. A non-visible `overflow-x` forces `overflow-y` to compute to `auto`, which
+     makes this element a scroll container -- and because the shell has no fixed height, it grows to fit
+     its content and therefore never scrolls. A scrollport that never scrolls is inert for scrolling but
+     fatal for `position: sticky`: every sticky descendant resolves against it, never moves, and scrolls
+     away with the page. That silently stopped the topbar from sticking, and it would stop the Team
+     module's in-page section navigation too. `clip` clips exactly as `hidden` does without creating a
+     scroll container, so the sticky ancestors keep working. */
+  overflow-x: clip;
 }
 
 /* Sidebar - Enhanced with gradient and depth */
@@ -1032,11 +1040,17 @@
   color: var(--color-gray-700);
 }
 
-/* Main Content */
+/* Main Content.
+   This is the element a module's sticky sub-header resolves against, so it must not be a scroll
+   container: `overflow-y: auto` here made one, and because the box grows with its content it never
+   scrolled, which pinned the sticky offset at zero for the whole subtree. It was doing nothing for
+   scrolling -- the window is the scroller -- and it was costing every sticky descendant its behaviour.
+   The shorthand keeps the horizontal clipping the `auto` was accidentally providing, without creating a
+   scrollport. */
 .main-content {
   flex: 1;
   padding: var(--space-6);
-  overflow-y: auto;
+  overflow: clip visible;
 }
 
 /* Responsive Design */

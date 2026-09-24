@@ -30,6 +30,7 @@ import { useAuthStore } from '../../../../store';
 import { useToast } from '../../../../hooks/useToast';
 import { queryKeys } from '../../../../hooks/queryKeys';
 import type { ApiResponse, DefinitionOfDone, DoDItem, Team } from '../../../../types';
+import { usePublishSectionCount } from '../SectionCountsContext';
 
 import { DefinitionEditor, type DefinitionItemWrite } from './DefinitionEditor';
 import { DefinitionScopeSwitch } from './DefinitionScopeSwitch';
@@ -48,11 +49,14 @@ export interface DefinitionOfDoneSectionProps {
   teamId: string;
   /** The resolved team: it carries both the group whose agreement governs it and its own roster. */
   team: Team | null;
+  /** Whether the reader is in this section, so it can carry the page's one primary action. */
+  isActive: boolean;
 }
 
 export function DefinitionOfDoneSection({
   teamId,
   team,
+  isActive,
 }: DefinitionOfDoneSectionProps): React.ReactElement {
   const { t } = useTranslation('settings');
   const { locale } = useI18nStore();
@@ -129,6 +133,11 @@ export function DefinitionOfDoneSection({
 
   const showHeaderEdit = canEditHere && isSettled && !isEditMode && activeItems.length > 0;
 
+  // The navigation shows this beside the section's name. Published rather than derived a second time:
+  // this section owns the read, so it owns the number. Nothing is published until the read settles, so
+  // a count can never appear for an agreement nobody has loaded.
+  usePublishSectionCount('definition-of-done', isSettled ? activeItems.length : undefined);
+
   const handleSave = async (updatedItems: DefinitionItemWrite[]): Promise<void> => {
     await saveMutation.mutateAsync(updatedItems);
   };
@@ -201,7 +210,7 @@ export function DefinitionOfDoneSection({
           </p>
           {canEditHere && (
             <button
-              className={`${styles.button} ${styles['button-primary']}`}
+              className={`${styles.button} ${styles['button-primary']} ${styles['primary-action']}`}
               onClick={() => setIsEditMode(true)}
               type="button"
             >
@@ -256,7 +265,12 @@ export function DefinitionOfDoneSection({
   return (
     <>
       <ToastContainer toasts={toasts} onClose={removeToast} />
-      <section className={styles.section} aria-labelledby="definition-of-done">
+      <section
+        className={styles.section}
+        aria-labelledby="definition-of-done"
+        data-active={isActive}
+        data-editing={isEditMode}
+      >
         <div className={styles.header}>
           <div className={styles['header-left']}>
             <h2 id="definition-of-done" tabIndex={-1} className={styles['section-title']}>
@@ -280,7 +294,7 @@ export function DefinitionOfDoneSection({
           <div className={styles['header-right']}>
             {showHeaderEdit && (
               <button
-                className={`${styles.button} ${styles['button-primary']}`}
+                className={`${styles.button} ${styles['button-primary']} ${styles['primary-action']}`}
                 onClick={() => setIsEditMode(true)}
                 type="button"
               >

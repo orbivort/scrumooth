@@ -154,8 +154,15 @@
     "title": "Historial de versiones",
     "versionLabel": "v{{version}}"
   },
+  "definitionNav": {
+    "label": "En este acuerdo",
+    "sectionWithCount": "{{name}} — {{count}} criterios activos",
+    "sectionWithCount_one": "{{name}} — {{count}} criterio activo",
+    "sectionWithCount_other": "{{name}} — {{count}} criterios activos"
+  },
   "definitionScope": {
     "adoptAction": "Adoptar v{{version}}",
+    "adoptDisclosure": "Adoptar una DoD compartida",
     "adoptHint": "Si varios equipos Scrum trabajan en un mismo producto, deben definir y cumplir la misma Definición de Terminado.",
     "adoptTitle": "Adoptar una Definición de Terminado compartida",
     "adoptedAt": "Adoptada la v{{version}} el {{date}}.",
@@ -169,6 +176,7 @@
     "leaveFailed": "No se pudo salir del grupo.",
     "leaveMessage": "Este equipo conserva la Definición de Terminado que venía cumpliendo y podrá cambiarla por su cuenta.",
     "leaveTitle": "¿Salir de {{name}}?",
+    "manageDisclosure": "Revisar o salir",
     "manageLink": "Gestionar el grupo",
     "mutualBody": "Los equipos definen mutuamente este compromiso adoptando una versión concreta al unirse. Si después cambia, el cambio se muestra aquí hasta que este equipo adopte la nueva versión.",
     "mutualTitle": "Definida mutuamente",

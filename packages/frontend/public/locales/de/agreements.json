@@ -13,6 +13,7 @@
     "retire": "Zurückziehen",
     "retired": "Zurückgezogen",
     "retiredAt": "Zurückgezogen am",
+    "retiredDisclosure": "Zurückgezogene Vereinbarungen anzeigen ({{count}})",
     "retiredGroup": "Zurückgezogene Vereinbarungen",
     "save": "Speichern",
     "saved": "Vereinbarung aktualisiert",

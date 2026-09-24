@@ -154,8 +154,15 @@
     "title": "Versionsverlauf",
     "versionLabel": "v{{version}}"
   },
+  "definitionNav": {
+    "label": "In dieser Vereinbarung",
+    "sectionWithCount": "{{name}} — {{count}} aktive Kriterien",
+    "sectionWithCount_one": "{{name}} — {{count}} aktives Kriterium",
+    "sectionWithCount_other": "{{name}} — {{count}} aktive Kriterien"
+  },
   "definitionScope": {
     "adoptAction": "Version {{version}} übernehmen",
+    "adoptDisclosure": "Geteiltes DoD übernehmen",
     "adoptHint": "Wenn mehrere Scrum-Teams an einem Produkt arbeiten, müssen sie dieselbe Definition of Done festlegen und befolgen.",
     "adoptTitle": "Geteilte Definition of Done übernehmen",
     "adoptedAt": "Version {{version}} am {{date}} übernommen.",
@@ -169,6 +176,7 @@
     "leaveFailed": "Die Gruppe konnte nicht verlassen werden.",
     "leaveMessage": "Dieses Team behält die Definition of Done, nach der es gearbeitet hat, und kann sie danach selbst ändern.",
     "leaveTitle": "{{name}} verlassen?",
+    "manageDisclosure": "Prüfen oder verlassen",
     "manageLink": "Gruppe verwalten",
     "mutualBody": "Die Teams legen diese Vereinbarung gemeinsam fest, indem sie beim Beitritt eine benannte Version übernehmen. Eine spätere Änderung wird hier angezeigt, bis dieses Team die neue Version übernimmt.",
     "mutualTitle": "Gemeinsam festgelegt",

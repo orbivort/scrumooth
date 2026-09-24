@@ -13,6 +13,7 @@
     "retire": "Ritira",
     "retired": "Ritirato",
     "retiredAt": "Ritirato il",
+    "retiredDisclosure": "Mostrare gli accordi ritirati ({{count}})",
     "retiredGroup": "Accordi ritirati",
     "save": "Salva",
     "saved": "Accordo aggiornato",

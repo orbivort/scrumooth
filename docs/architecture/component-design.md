@@ -130,6 +130,10 @@ components/common/
 │   ├── Button.tsx              # Primary, secondary, link, danger, warning variants
 │   ├── Button.module.css       # Variant and size styles
 │   └── index.ts                # Public export
+├── Disclosure/
+│   ├── Disclosure.tsx          # A summary row or a quiet pill that opens onto its detail
+│   ├── Disclosure.module.css   # Both trigger shapes, one body
+│   └── index.ts                # Public export
 ├── Form/
 │   ├── CharacterCounter.tsx     # Textarea character count display
 │   ├── ChunkErrorBoundary.tsx   # Catches lazy-load chunk failures
@@ -272,17 +276,24 @@ Definition of Done used to be reachable in three places — a Settings page that
 a grouped team, a group admin screen that could, and a governance panel under Scrum Health — and none
 of them was visible to the Developers the Guide says must conform to it.
 
-| Component                  | Owns                                                                                 |
-| -------------------------- | ------------------------------------------------------------------------------------ |
-| `DefinitionPanel`          | The order of the sections, the anchors a link can name, the namespace fallback       |
-| `DefinitionOfDoneSection`  | The read, and the write **routed by the resolved scope**                             |
-| `DefinitionScopeSwitch`    | The scope ribbon, the inline review, adopt/leave, drift, and who may act             |
-| `DefinitionOfReadySection` | The readiness practice, its disclosure, and its own history                          |
-| `VersionHistoryPopover`    | One badge's history, fetched only when it is opened                                  |
-| `DefinitionEditor`         | Add, reword, reorder, deactivate, remove — shared by every scope and both agreements |
-| `criterionLabel`           | One criterion's wording, resolved from its `defaultKey`                              |
+| Component                  | Owns                                                                                                   |
+| -------------------------- | ------------------------------------------------------------------------------------------------------ |
+| `DefinitionPanel`          | The order of the sections, the in-page navigation, the anchors a link can name, the namespace fallback |
+| `SectionNav`               | One anchor per agreement, the count beside it, and which section is current                            |
+| `useSectionDeepLink`       | The fragment a link named, the section being read, and the measured sticky offset                      |
+| `DefinitionOfDoneSection`  | The read, and the write **routed by the resolved scope**                                               |
+| `DefinitionScopeSwitch`    | The scope statement, and the decisions behind it: review, adopt/leave, drift, who may act              |
+| `DefinitionOfReadySection` | The readiness practice, its own history, and its pill                                                  |
+| `VersionHistoryPopover`    | One badge's history, fetched only when it is opened                                                    |
+| `DefinitionEditor`         | Add, reword, reorder, deactivate, remove — shared by every scope and both agreements                   |
+| `criterionLabel`           | One criterion's wording, resolved from its `defaultKey`                                                |
 
-Two invariants hold this together:
+The three agreements are reached by an in-page navigation rather than by tabs, and that is a decision
+rather than an omission: the anchors are the identity the deep links already publish, the three are read
+in the order the Guide implies rather than as parallel views, and the module keeps one tab rail instead
+of nesting a second one under it.
+
+Three invariants hold this together:
 
 - **The write follows the scope, not the screen.** A team-scoped write is never issued while the team
   is grouped, so `GATE_DOD_GROUP_GOVERNED` stays unreachable from the interface while the API keeps
@@ -290,6 +301,13 @@ Two invariants hold this together:
 - **The editor cannot send a `defaultKey`.** Its payload type is narrower than the criterion it was
   loaded from, so a client cannot label a sentence it wrote itself with the product's built-in wording.
   The service owns that column.
+- **The offset a deep link has to clear is measured, never assumed.** The fragment targets a section
+  heading, so the heading carries the `scroll-margin-top` — an offset on the wrapping `<section>` would
+  be a silent no-op. Its two parts come from the running shell (the topbar is sized by its contents, and
+  below 768px it becomes `fixed` while the shell pads the content instead), so `useSectionDeepLink`
+  measures both and publishes them as custom properties that the heading and the sticky navigation
+  consume. A constant would be wrong on one of the two breakpoints, and a heading would open underneath
+  the chrome it is meant to clear.
 
 ### Gate Refusals
 

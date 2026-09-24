@@ -30,6 +30,7 @@ import { useToast } from '../../../../hooks/useToast';
 import { queryKeys } from '../../../../hooks/queryKeys';
 import { canEditDefinitionOfReady } from '../../../../utils/roleUtils';
 import type { DefinitionOfReady, DoRItem, ApiResponse } from '../../../../types';
+import { usePublishSectionCount } from '../SectionCountsContext';
 
 import { DefinitionEditor, type DefinitionItemWrite } from './DefinitionEditor';
 import { VersionHistoryPopover } from './VersionHistoryPopover';
@@ -38,29 +39,26 @@ import { criterionLabel } from './criterionLabel';
 import styles from './DefinitionOfReadySection.module.css';
 
 import { useI18nStore } from '@/i18n/useI18nStore';
-import {
-  ChevronDownIcon,
-  ChevronUpIcon,
-  EditIcon,
-  PlusIcon,
-  RefreshCwIcon,
-} from '@/components/common/Icons';
+import { EditIcon, PlusIcon, RefreshCwIcon } from '@/components/common/Icons';
+import { Disclosure } from '@/components/common/Disclosure';
 
 const DOR_SCOPE = 'DOR' as const;
 
 export interface DefinitionOfReadySectionProps {
   /** Resolved by the module shell; the section never reads the current team itself. */
   teamId: string;
+  /** Whether the reader is in this section, so it can carry the page's one primary action. */
+  isActive: boolean;
 }
 
 export function DefinitionOfReadySection({
   teamId,
+  isActive,
 }: DefinitionOfReadySectionProps): React.ReactElement {
   const { t } = useTranslation('settings');
   const { locale } = useI18nStore();
   const { userRoleInCurrentTeam } = useTeamStore();
   const [isEditing, setIsEditing] = useState(false);
-  const [isPracticeOpen, setIsPracticeOpen] = useState(false);
   const queryClient = useQueryClient();
   const { toasts, success, removeToast } = useToast();
 
@@ -100,6 +98,10 @@ export function DefinitionOfReadySection({
   const inactiveCount = sortedItems.filter((item) => !item.isActive).length;
   const hasFailed = !!error && !definition;
   const isSettled = !isLoading && !hasFailed;
+
+  // The navigation shows this beside the section's name. Published rather than derived a second time:
+  // this section owns the read, so it owns the number.
+  usePublishSectionCount('definition-of-ready', isSettled ? activeItems.length : undefined);
 
   const handleSave = async (updatedItems: DefinitionItemWrite[]): Promise<void> => {
     await updateMutation.mutateAsync(updatedItems);
@@ -148,24 +150,19 @@ export function DefinitionOfReadySection({
     }
 
     // The compliance explanation, quiet by default. It is a real disclosure control, so a keyboard
-    // or screen-reader user opens it exactly as anyone else does.
+    // or screen-reader user opens it exactly as anyone else does. The body keeps its own id, because
+    // the trigger's `aria-controls` and the existing test both name it.
     const practice = (
       <div className={styles.practice}>
-        <button
-          type="button"
-          className={styles['practice-toggle']}
-          aria-expanded={isPracticeOpen}
-          aria-controls="dor-practice-detail"
-          onClick={() => setIsPracticeOpen((open) => !open)}
+        <Disclosure
+          variant="pill"
+          tone="warning"
+          label={t('dorPanel.practice.title')}
+          bodyId="dor-practice-detail"
+          bodyClassName={styles['practice-detail']}
         >
-          <span className={styles['practice-icon']} aria-hidden="true">
-            {isPracticeOpen ? <ChevronUpIcon size={14} /> : <ChevronDownIcon size={14} />}
-          </span>
-          {t('dorPanel.practice.title')}
-        </button>
-        <p id="dor-practice-detail" className={styles['practice-detail']} hidden={!isPracticeOpen}>
           {t('dorPanel.practice.message')}
-        </p>
+        </Disclosure>
       </div>
     );
 
@@ -188,7 +185,7 @@ export function DefinitionOfReadySection({
             {canEdit ? (
               <button
                 type="button"
-                className={`${styles.button} ${styles['button-primary']}`}
+                className={`${styles.button} ${styles['button-primary']} ${styles['primary-action']}`}
                 onClick={() => setIsEditing(true)}
               >
                 <PlusIcon size={16} />
@@ -247,7 +244,12 @@ export function DefinitionOfReadySection({
   return (
     <>
       <ToastContainer toasts={toasts} onClose={removeToast} />
-      <section className={styles.section} aria-labelledby="definition-of-ready">
+      <section
+        className={styles.section}
+        aria-labelledby="definition-of-ready"
+        data-active={isActive}
+        data-editing={isEditing}
+      >
         <div className={styles.header}>
           <div className={styles['header-left']}>
             <h2 id="definition-of-ready" tabIndex={-1} className={styles['section-title']}>
@@ -274,7 +276,7 @@ export function DefinitionOfReadySection({
               (canEdit ? (
                 <button
                   type="button"
-                  className={`${styles.button} ${styles['button-primary']}`}
+                  className={`${styles.button} ${styles['button-primary']} ${styles['primary-action']}`}
                   onClick={() => setIsEditing(true)}
                 >
                   <EditIcon size={16} />

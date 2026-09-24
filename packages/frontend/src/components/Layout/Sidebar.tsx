@@ -279,8 +279,10 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
         {/* Skip Link for Accessibility */}
         <SkipLink targetId="main-content" />
 
-        {/* Top Bar */}
-        <header className={styles.topbar}>
+        {/* Top Bar. `data-app-topbar` is a stable handle onto the sticky chrome: the class name is
+            hashed by CSS modules, and a module that pins a sub-header underneath this bar has to know
+            how tall it is -- the bar's height is content-driven, so it cannot be read from a token. */}
+        <header className={styles.topbar} data-app-topbar>
           <div className={styles['topbar-left']}>
             <button
               className={styles['menu-toggle']}

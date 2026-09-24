@@ -154,8 +154,15 @@
     "title": "Historique des versions",
     "versionLabel": "v{{version}}"
   },
+  "definitionNav": {
+    "label": "Dans cet accord",
+    "sectionWithCount": "{{name}} — {{count}} critères actifs",
+    "sectionWithCount_one": "{{name}} — {{count}} critère actif",
+    "sectionWithCount_other": "{{name}} — {{count}} critères actifs"
+  },
   "definitionScope": {
     "adoptAction": "Adopter la v{{version}}",
+    "adoptDisclosure": "Adopter une DoD partagée",
     "adoptHint": "Si plusieurs équipes Scrum travaillent sur un même produit, elles doivent définir et respecter la même Définition de Fini.",
     "adoptTitle": "Adopter une Définition de Fini partagée",
     "adoptedAt": "v{{version}} adoptée le {{date}}.",
@@ -169,6 +176,7 @@
     "leaveFailed": "Impossible de quitter le groupe.",
     "leaveMessage": "Cette équipe conserve la Définition de Fini qu'elle respectait et pourra ensuite la modifier elle-même.",
     "leaveTitle": "Quitter {{name}} ?",
+    "manageDisclosure": "Examiner ou quitter",
     "manageLink": "Gérer le groupe",
     "mutualBody": "Les équipes définissent mutuellement cet engagement en adoptant une version nommée lors de leur adhésion. Une modification ultérieure s'affiche ici jusqu'à ce que cette équipe adopte la nouvelle version.",
     "mutualTitle": "Définie mutuellement",

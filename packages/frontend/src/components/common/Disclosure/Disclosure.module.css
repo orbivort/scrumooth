@@ -1,0 +1,189 @@
+/* One block, two shapes.
+   The `row` shape is the summary row a section opens onto its own detail: full width, one border, the
+   page's own surface, so it reads as part of the section rather than as a new control. The `pill` shape
+   is the quiet inline marker -- the readiness practice's disclaimer -- that has to stay out of the way.
+   Both are the same element underneath; only the trigger changes.
+
+   The rules below are grouped by the compound they end on, and within each group specificity only ever
+   ascends, because `no-descending-specificity` is enforced. A variant therefore cannot sit next to the
+   base rule it modifies: it belongs further down, with the other variants. */
+
+/* --- The block ------------------------------------------------------------ */
+
+.disclosure {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+/* The pill was aligned by its parent's flex rule before it became a block, so the wrapper has to carry
+   that alignment now rather than stretch across the column. */
+.disclosure[data-variant='pill'] {
+  align-self: flex-start;
+}
+
+/* --- The trigger ---------------------------------------------------------- */
+
+.trigger {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  inline-size: 100%;
+  min-block-size: 44px;
+  padding: var(--space-2) var(--space-3);
+  border: var(--border-width-1) solid var(--color-border-default);
+  border-radius: var(--radius-lg);
+  background: var(--color-background-page);
+  color: var(--color-text-secondary);
+  font-family: var(--font-family-sans);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-normal);
+  line-height: var(--line-height-normal);
+  text-align: start;
+  cursor: pointer;
+  transition:
+    background-color var(--transition-fast) var(--ease-out),
+    border-color var(--transition-fast) var(--ease-out);
+}
+
+.trigger:hover {
+  border-color: var(--color-border-hover);
+  background: var(--color-gray-100);
+}
+
+.trigger:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+/* A shared agreement is not this team's own, so the row carries the accent the ribbon used to. */
+.disclosure[data-tone='primary'] .trigger {
+  background: var(--color-primary-50);
+  border-color: var(--color-primary-200);
+}
+
+.disclosure[data-tone='warning'] .trigger {
+  background: var(--color-warning-50);
+  border-color: var(--color-warning-200);
+}
+
+.disclosure[data-variant='pill'] .trigger {
+  inline-size: auto;
+  align-items: center;
+  align-self: flex-start;
+  gap: var(--space-1);
+  min-block-size: 32px;
+  padding: var(--space-1) var(--space-2);
+  border-color: var(--color-warning-200);
+  border-radius: var(--radius-full);
+  background: var(--color-warning-50);
+  color: var(--color-warning-800);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+}
+
+.disclosure[data-tone='primary'] .trigger:hover {
+  background: var(--color-primary-100);
+  border-color: var(--color-primary-300);
+}
+
+.disclosure[data-tone='warning'] .trigger:hover {
+  background: var(--color-warning-100);
+  border-color: var(--color-warning-300);
+}
+
+.disclosure[data-variant='pill'] .trigger:hover {
+  border-color: var(--color-warning-200);
+  background: var(--color-warning-100);
+}
+
+/* --- The leading icon ----------------------------------------------------- */
+
+.icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+
+  /* On the first line's baseline rather than the block's centre: the label wraps to two lines on a
+     narrow screen, and a centred icon would float between them. */
+  margin-block-start: var(--border-width-2);
+  color: var(--color-text-tertiary);
+}
+
+.disclosure[data-tone='primary'] .icon {
+  color: var(--color-primary-600);
+}
+
+.disclosure[data-tone='warning'] .icon {
+  color: var(--color-warning-800);
+}
+
+/* --- The label ------------------------------------------------------------ */
+
+.label {
+  flex: 1;
+  min-width: 0;
+}
+
+.label strong {
+  color: var(--color-text-primary);
+  font-weight: var(--font-weight-semibold);
+}
+
+/* --- The chevrons ---------------------------------------------------------
+   One icon per trigger, turned rather than swapped, so the state change is a transition instead of a
+   different glyph appearing. */
+
+.chevron-lead,
+.chevron-trail {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: transform var(--transition-fast) var(--ease-out);
+}
+
+.chevron-trail {
+  margin-block-start: var(--border-width-2);
+  color: var(--color-text-tertiary);
+}
+
+.trigger[aria-expanded='true'] .chevron-lead,
+.trigger[aria-expanded='true'] .chevron-trail {
+  transform: rotate(180deg);
+}
+
+/* --- The body -------------------------------------------------------------
+   Chrome-free: what opens is the caller's content, so a section can open onto criteria, a form or a
+   list without the primitive imposing a box around it. */
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+/* `hidden` has to win over the display above it.
+   The user agent's `[hidden] { display: none }` rule loses to any `display` declared here, so without
+   this the body would be marked hidden -- and out of the accessibility tree -- while still being painted,
+   which is the worst of both: a disclosure that neither collapses nor reads as open. */
+.body[hidden] {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .trigger,
+  .chevron-lead,
+  .chevron-trail {
+    transition: none;
+  }
+}
+
+@media (prefers-contrast: high) {
+  .trigger {
+    border-width: var(--border-width-2);
+  }
+}

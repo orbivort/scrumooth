@@ -37,14 +37,22 @@
 }
 
 /* The section heading is also the deep-link target, so it must be focusable without adding a tab
-   stop to the reading order. */
+   stop to the reading order.
+   
+   The offset it clears is the app shell's sticky bar plus this page's own navigation, both measured in
+   the running document: the heading is what the fragment targets, so this is where the offset belongs.
+   Put on the surrounding <section> instead it would be a silent no-op, because the fragment never
+   targets that element -- and the heading would open underneath the sticky chrome. `--space-6` (24px)
+   was enough when only the page's own scroll margin was above it; nothing is now. */
 .section-title {
   margin: 0;
   font-size: var(--font-size-lg);
   font-weight: var(--font-weight-semibold);
   color: var(--color-text-primary);
   letter-spacing: var(--letter-spacing-tight);
-  scroll-margin-top: var(--space-6);
+  scroll-margin-top: calc(
+    var(--app-topbar-height) + var(--definition-nav-height) + var(--definition-anchor-gap)
+  );
 }
 
 .section-title:focus-visible {
@@ -204,7 +212,10 @@
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-semibold);
   cursor: pointer;
-  transition: background-color var(--transition-fast) var(--ease-out);
+  transition:
+    background-color var(--transition-normal) var(--ease-out),
+    border-color var(--transition-normal) var(--ease-out),
+    color var(--transition-normal) var(--ease-out);
 }
 
 .button:focus-visible {
@@ -233,6 +244,24 @@
 }
 
 .button-secondary:hover:not(:disabled) {
+  background: var(--color-gray-50);
+  border-color: var(--color-gray-400);
+}
+
+/* The page carries one primary action: the one belonging to the section the reader is in. Three
+   identically emphasised buttons down a single scroll are indistinguishable, and the one that changes
+   what the whole team is held to is not the one to press by accident. A demoted action keeps its place,
+   its label and its reachability -- only its emphasis steps back.
+   
+   Nothing is suspended while a section is being edited: the header action is not rendered at all in
+   that mode, so there is no competing primary to quiet. */
+.section:not([data-active='true']) .primary-action {
+  background: var(--color-background-card);
+  color: var(--color-gray-700);
+  border-color: var(--color-gray-300);
+}
+
+.section:not([data-active='true']) .primary-action:hover:not(:disabled) {
   background: var(--color-gray-50);
   border-color: var(--color-gray-400);
 }

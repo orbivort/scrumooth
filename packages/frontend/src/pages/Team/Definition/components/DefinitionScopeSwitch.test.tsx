@@ -1,16 +1,19 @@
 /**
  * The scope switch: which Definition of Done governs the team, and what the reader may do about it.
  *
- * Four properties matter beyond rendering:
+ * Five properties matter beyond rendering:
  *
+ *  * The scope statement is always visible, and the decisions it holds are not. A reader can always tell
+ *    whether the criteria below are their own team's or one they share, without opening anything.
  *  * Adopting is an explicit act. The agreement is read in full and the version being adopted is
  *    named, so "mutually define" is something the teams did rather than something the tool asserts.
  *  * A version that moved between the review and the commit is refused by the API -- and the refusal
  *    comes back with a control that fixes it, not as a sentence to interpret. That is the adoption
  *    race the review found had no recovery path.
  *  * Leaving keeps the commitment the team has been complying with.
- *  * Drift is stated: an adopted version behind the version in force means the teams no longer
- *    comply with the same Definition of Done, which is the one thing the group exists to prevent.
+ *  * Drift is stated, and states itself: an adopted version behind the version in force means the teams
+ *    no longer comply with the same Definition of Done, which is the one thing the group exists to
+ *    prevent -- so it opens the block rather than waiting behind a control.
  */
 import React from 'react';
 import userEvent from '@testing-library/user-event';
@@ -81,6 +84,17 @@ const renderSwitch = (props: Partial<React.ComponentProps<typeof DefinitionScope
     />
   );
 
+/** The scope statement holds the decisions now, so anything inside them is one activation away. */
+const openGovernance = async (user: ReturnType<typeof userEvent.setup>): Promise<HTMLElement> => {
+  const trigger = await screen.findByRole('button', {
+    name: /Adopt a shared DoD|Review or leave/,
+  });
+
+  await user.click(trigger);
+
+  return trigger;
+};
+
 describe('DefinitionScopeSwitch', () => {
   beforeAll(async () => {
     await initTestI18n();
@@ -100,20 +114,38 @@ describe('DefinitionScopeSwitch', () => {
   it('should say the team owns what governs it when it works alone', () => {
     renderSwitch();
 
-    expect(screen.getByText('Your team owns this agreement.')).toBeInTheDocument();
+    expect(screen.getByText('Your team owns this agreement.')).toBeVisible();
+  });
+
+  it('should keep the decisions closed until they are asked for', () => {
+    renderSwitch();
+
+    const trigger = screen.getByRole('button', { name: /Adopt a shared DoD/ });
+
+    expect(trigger).toHaveAttribute('aria-expanded', 'false');
+    // The statement is the fact; the adopt flow behind it is the decision.
+    expect(screen.getByText('Your team owns this agreement.')).toBeVisible();
+    expect(screen.getByText('Adopt a shared Definition of Done')).not.toBeVisible();
+  });
+
+  it('should offer the statement and no control to a reader with nothing to decide', () => {
+    renderSwitch({ canDecide: false });
+
+    expect(screen.getByText('Your team owns this agreement.')).toBeVisible();
+    // Nothing behind it, so no disclosure is offered -- a control that opens onto nothing is worse than
+    // the statement alone. The adopt flow is not rendered at all, and the directory is not read either,
+    // since there would be nothing to choose from.
+    expect(screen.queryByRole('button', { name: /Adopt a shared DoD/ })).not.toBeInTheDocument();
+    expect(screen.queryByText('Adopt a shared Definition of Done')).not.toBeInTheDocument();
+    expect(teamGroupService.listGroups).not.toHaveBeenCalled();
   });
 
   describe('adopting a shared Definition of Done', () => {
-    it('should offer the directory to the team leadership only', () => {
-      renderSwitch({ canDecide: false });
-
-      expect(screen.queryByText('Adopt a shared Definition of Done')).not.toBeInTheDocument();
-      expect(teamGroupService.listGroups).not.toHaveBeenCalled();
-    });
-
     it('should read the agreement out in full before it is adopted', async () => {
       const user = userEvent.setup();
       renderSwitch();
+
+      await openGovernance(user);
 
       const select = await screen.findByLabelText('Team group');
       await screen.findByRole('option', { name: /Payments product/ });
@@ -130,6 +162,8 @@ describe('DefinitionScopeSwitch', () => {
     it('should adopt the version it read', async () => {
       const user = userEvent.setup();
       renderSwitch();
+
+      await openGovernance(user);
 
       const select = await screen.findByLabelText('Team group');
       await screen.findByRole('option', { name: /Payments product/ });
@@ -153,6 +187,8 @@ describe('DefinitionScopeSwitch', () => {
         gateRefusal(GATE_CODES.TEAM_GROUP_DOD_ACKNOWLEDGEMENT_REQUIRED)
       );
       renderSwitch();
+
+      await openGovernance(user);
 
       const select = await screen.findByLabelText('Team group');
       await screen.findByRole('option', { name: /Payments product/ });
@@ -182,6 +218,8 @@ describe('DefinitionScopeSwitch', () => {
         });
       renderSwitch();
 
+      await openGovernance(user);
+
       const select = await screen.findByLabelText('Team group');
       await screen.findByRole('option', { name: /Payments product/ });
       await user.selectOptions(select, PAYMENTS.id);
@@ -202,17 +240,28 @@ describe('DefinitionScopeSwitch', () => {
 
   describe('when the team complies with a group', () => {
     it('should name the group, its team count and the version adopted', async () => {
+      const user = userEvent.setup();
       renderSwitch({ group: PAYMENTS, adoptedVersion: 3, joinedAt: '2026-09-01T09:00:00.000Z' });
 
-      expect(screen.getByText('Shared with Payments product · 2 teams.')).toBeInTheDocument();
-      expect(screen.getByText(/Adopted v3 on/)).toBeInTheDocument();
+      // The statement is on the surface; what the team adopted is the record behind it.
+      expect(screen.getByText('Shared with Payments product · 2 teams.')).toBeVisible();
+
+      await openGovernance(user);
+
+      expect(screen.getByText(/Adopted v3 on/)).toBeVisible();
     });
 
-    it('should report drift when the adopted version is behind the one in force', () => {
+    it('should open itself when the adopted version is behind the one in force', () => {
       renderSwitch({ group: PAYMENTS, adoptedVersion: 1, joinedAt: '2026-08-01T09:00:00.000Z' });
 
+      // Drift comes with a remedy, so it is not left behind a control the reader has to think to open.
+      expect(screen.getByRole('status')).toBeVisible();
       expect(screen.getByRole('status')).toHaveTextContent(
         'This team adopted v1 and v3 is in force.'
+      );
+      expect(screen.getByRole('button', { name: /Review or leave/ })).toHaveAttribute(
+        'aria-expanded',
+        'true'
       );
     });
 
@@ -220,6 +269,7 @@ describe('DefinitionScopeSwitch', () => {
       const user = userEvent.setup();
       renderSwitch({ group: PAYMENTS, adoptedVersion: 3, joinedAt: '2026-09-01T09:00:00.000Z' });
 
+      await openGovernance(user);
       await user.click(screen.getByRole('button', { name: 'Leave the group' }));
 
       expect(await screen.findByText('Leave Payments product?')).toBeInTheDocument();
@@ -231,7 +281,8 @@ describe('DefinitionScopeSwitch', () => {
       });
     });
 
-    it('should state who maintains it when the reader may not act, and offer no refused control', () => {
+    it('should state who maintains it when the reader may not act, and offer no refused control', async () => {
+      const user = userEvent.setup();
       renderSwitch({
         group: PAYMENTS,
         adoptedVersion: 3,
@@ -239,11 +290,13 @@ describe('DefinitionScopeSwitch', () => {
         canDecide: false,
       });
 
+      await openGovernance(user);
+
       expect(
         screen.getByText(
           'Maintained by the Product Owner or Scrum Master of a team in Payments product.'
         )
-      ).toBeInTheDocument();
+      ).toBeVisible();
       expect(screen.queryByRole('button', { name: 'Leave the group' })).not.toBeInTheDocument();
     });
 
@@ -251,10 +304,25 @@ describe('DefinitionScopeSwitch', () => {
       const user = userEvent.setup();
       renderSwitch({ group: PAYMENTS, adoptedVersion: 3, joinedAt: '2026-09-01T09:00:00.000Z' });
 
+      await openGovernance(user);
       await user.click(screen.getByRole('button', { name: 'Review the shared agreement' }));
 
       expect(await screen.findByText('Code is peer-reviewed and approved')).toBeInTheDocument();
       expect(screen.getByText('Mutually defined')).toBeInTheDocument();
+    });
+
+    it('should reach the group screen from inside the decisions, not from the statement', async () => {
+      const user = userEvent.setup();
+      renderSwitch({ group: PAYMENTS, adoptedVersion: 3, joinedAt: '2026-09-01T09:00:00.000Z' });
+
+      await openGovernance(user);
+
+      // A link cannot live inside the trigger -- the trigger is a button -- so administration moved into
+      // the decisions, where the rest of the governing is.
+      expect(screen.getByRole('link', { name: 'Manage the group' })).toHaveAttribute(
+        'href',
+        '/settings/team-groups?group=group-1'
+      );
     });
   });
 });

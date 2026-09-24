@@ -60,24 +60,52 @@ describe('WorkingAgreements', () => {
   });
 
   it('lists the team agreements with who added them', async () => {
-    renderWithProviders(<WorkingAgreements teamId={TEAM_ID} />);
+    renderWithProviders(<WorkingAgreements teamId={TEAM_ID} isActive />);
 
     expect(await screen.findByText('No meetings before 10:00')).toBeInTheDocument();
     expect(screen.getAllByText(/Added by: Ada Lovelace/).length).toBeGreaterThan(0);
   });
 
-  it('keeps a retired agreement visible instead of deleting it', async () => {
-    renderWithProviders(<WorkingAgreements teamId={TEAM_ID} />);
+  it('keeps a retired agreement visible instead of deleting it, behind a disclosure', async () => {
+    const user = userEvent.setup();
+
+    renderWithProviders(<WorkingAgreements teamId={TEAM_ID} isActive />);
 
     await screen.findByText('No meetings before 10:00');
 
-    expect(screen.getByText('Retired agreements')).toBeInTheDocument();
-    expect(screen.getByText('Every Increment is demonstrated from staging')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Reactivate' })).toBeInTheDocument();
+    // Retiring keeps the agreement rather than deleting it -- but the list of what the team no longer
+    // holds itself to should not push the agreements in force up the page.
+    const toggle = screen.getByRole('button', { name: 'Show retired agreements (1)' });
+
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.getByText('Every Increment is demonstrated from staging')).not.toBeVisible();
+
+    await user.click(toggle);
+
+    expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByText('Every Increment is demonstrated from staging')).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Reactivate' })).toBeVisible();
+  });
+
+  it('offers no retired group at all when nothing has been retired', async () => {
+    vi.mocked(workingAgreementsService.getAgreements).mockResolvedValue({
+      success: true,
+      data: mockWorkingAgreements.filter(
+        (agreement) => agreement.status === WorkingAgreementStatus.ACTIVE
+      ),
+    });
+
+    renderWithProviders(<WorkingAgreements teamId={TEAM_ID} isActive />);
+
+    await screen.findByText('No meetings before 10:00');
+
+    expect(
+      screen.queryByRole('button', { name: /Show retired agreements/ })
+    ).not.toBeInTheDocument();
   });
 
   it('lets any team member add an agreement', async () => {
-    renderWithProviders(<WorkingAgreements teamId={TEAM_ID} />);
+    renderWithProviders(<WorkingAgreements teamId={TEAM_ID} isActive />);
 
     await screen.findByText('No meetings before 10:00');
 
@@ -90,20 +118,20 @@ describe('WorkingAgreements', () => {
       data: [],
     });
 
-    renderWithProviders(<WorkingAgreements teamId={TEAM_ID} />);
+    renderWithProviders(<WorkingAgreements teamId={TEAM_ID} isActive />);
 
     expect(await screen.findByText('No working agreement recorded yet.')).toBeInTheDocument();
   });
 
   it('asks for a team before reading anything', () => {
-    renderWithProviders(<WorkingAgreements teamId={undefined} />);
+    renderWithProviders(<WorkingAgreements teamId={undefined} isActive />);
 
     expect(screen.getByTestId('empty-state')).toBeInTheDocument();
     expect(workingAgreementsService.getAgreements).not.toHaveBeenCalled();
   });
 
   it('reads the agreements from the current team only', async () => {
-    renderWithProviders(<WorkingAgreements teamId={TEAM_ID} />);
+    renderWithProviders(<WorkingAgreements teamId={TEAM_ID} isActive />);
 
     await screen.findByText('No meetings before 10:00');
 
@@ -113,7 +141,7 @@ describe('WorkingAgreements', () => {
   it('adds an agreement from the form and confirms it', async () => {
     const user = userEvent.setup();
 
-    renderWithProviders(<WorkingAgreements teamId={TEAM_ID} />);
+    renderWithProviders(<WorkingAgreements teamId={TEAM_ID} isActive />);
     await screen.findByText('No meetings before 10:00');
 
     await user.click(screen.getByRole('button', { name: 'Add agreement' }));
@@ -143,7 +171,7 @@ describe('WorkingAgreements', () => {
     const user = userEvent.setup();
     vi.mocked(workingAgreementsService.createAgreement).mockRejectedValue(new Error('boom'));
 
-    renderWithProviders(<WorkingAgreements teamId={TEAM_ID} />);
+    renderWithProviders(<WorkingAgreements teamId={TEAM_ID} isActive />);
     await screen.findByText('No meetings before 10:00');
 
     await user.click(screen.getByRole('button', { name: 'Add agreement' }));
@@ -158,7 +186,7 @@ describe('WorkingAgreements', () => {
     const user = userEvent.setup();
     vi.mocked(workingAgreementsService.updateAgreement).mockRejectedValue(new Error('boom'));
 
-    renderWithProviders(<WorkingAgreements teamId={TEAM_ID} />);
+    renderWithProviders(<WorkingAgreements teamId={TEAM_ID} isActive />);
     await screen.findByText('No meetings before 10:00');
 
     await user.click(screen.getByRole('button', { name: 'Edit' }));
@@ -174,7 +202,7 @@ describe('WorkingAgreements', () => {
   it('closes a new, still empty agreement form without adding anything', async () => {
     const user = userEvent.setup();
 
-    renderWithProviders(<WorkingAgreements teamId={TEAM_ID} />);
+    renderWithProviders(<WorkingAgreements teamId={TEAM_ID} isActive />);
     await screen.findByText('No meetings before 10:00');
 
     await user.click(screen.getByRole('button', { name: 'Add agreement' }));
@@ -191,7 +219,7 @@ describe('WorkingAgreements', () => {
   it('edits an agreement and confirms the update', async () => {
     const user = userEvent.setup();
 
-    renderWithProviders(<WorkingAgreements teamId={TEAM_ID} />);
+    renderWithProviders(<WorkingAgreements teamId={TEAM_ID} isActive />);
     await screen.findByText('No meetings before 10:00');
 
     await user.click(screen.getByRole('button', { name: 'Edit' }));
@@ -223,7 +251,7 @@ describe('WorkingAgreements', () => {
   it('closes the edit form when the member cancels', async () => {
     const user = userEvent.setup();
 
-    renderWithProviders(<WorkingAgreements teamId={TEAM_ID} />);
+    renderWithProviders(<WorkingAgreements teamId={TEAM_ID} isActive />);
     await screen.findByText('No meetings before 10:00');
 
     await user.click(screen.getByRole('button', { name: 'Edit' }));
@@ -239,7 +267,7 @@ describe('WorkingAgreements', () => {
   it('retires an active agreement instead of deleting it', async () => {
     const user = userEvent.setup();
 
-    renderWithProviders(<WorkingAgreements teamId={TEAM_ID} />);
+    renderWithProviders(<WorkingAgreements teamId={TEAM_ID} isActive />);
     await screen.findByText('No meetings before 10:00');
 
     await user.click(screen.getByRole('button', { name: 'Retire' }));
@@ -254,9 +282,10 @@ describe('WorkingAgreements', () => {
   it('reactivates a retired agreement', async () => {
     const user = userEvent.setup();
 
-    renderWithProviders(<WorkingAgreements teamId={TEAM_ID} />);
+    renderWithProviders(<WorkingAgreements teamId={TEAM_ID} isActive />);
     await screen.findByText('No meetings before 10:00');
 
+    await user.click(screen.getByRole('button', { name: /Show retired agreements/ }));
     await user.click(screen.getByRole('button', { name: 'Reactivate' }));
 
     await waitFor(() =>
@@ -270,7 +299,7 @@ describe('WorkingAgreements', () => {
     const user = userEvent.setup();
     vi.mocked(workingAgreementsService.updateAgreement).mockRejectedValue(new Error('boom'));
 
-    renderWithProviders(<WorkingAgreements teamId={TEAM_ID} />);
+    renderWithProviders(<WorkingAgreements teamId={TEAM_ID} isActive />);
     await screen.findByText('No meetings before 10:00');
 
     await user.click(screen.getByRole('button', { name: 'Retire' }));

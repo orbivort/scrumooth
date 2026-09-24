@@ -154,8 +154,15 @@
     "title": "Cronologia delle versioni",
     "versionLabel": "v{{version}}"
   },
+  "definitionNav": {
+    "label": "In questo accordo",
+    "sectionWithCount": "{{name}} — {{count}} criteri attivi",
+    "sectionWithCount_one": "{{name}} — {{count}} criterio attivo",
+    "sectionWithCount_other": "{{name}} — {{count}} criteri attivi"
+  },
   "definitionScope": {
     "adoptAction": "Adotta la v{{version}}",
+    "adoptDisclosure": "Adottare una DoD condivisa",
     "adoptHint": "Se più team Scrum lavorano su un unico prodotto, devono definire e rispettare la stessa Definizione di Fatto.",
     "adoptTitle": "Adotta una Definizione di Fatto condivisa",
     "adoptedAt": "v{{version}} adottata il {{date}}.",
@@ -169,6 +176,7 @@
     "leaveFailed": "Non è stato possibile uscire dal gruppo.",
     "leaveMessage": "Questo team mantiene la Definizione di Fatto che rispettava e potrà poi modificarla da solo.",
     "leaveTitle": "Uscire da {{name}}?",
+    "manageDisclosure": "Esaminare o abbandonare",
     "manageLink": "Gestisci il gruppo",
     "mutualBody": "I team definiscono reciprocamente questo impegno adottando una versione precisa quando entrano nel gruppo. Una modifica successiva compare qui finché questo team non adotta la nuova versione.",
     "mutualTitle": "Definita reciprocamente",

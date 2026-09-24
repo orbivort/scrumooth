@@ -19,13 +19,14 @@
 // It reads nothing itself except the two things only it needs -- the directory it may adopt from and
 // the shared agreement it reviews -- and reports every refusal through the shared gate renderer, so a
 // refusal arrives with its rule and its remedy rather than as a sentence to interpret.
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 import { formatLocaleDate, GATE_CODES } from '@scrumooth/shared';
 import type { SharedDefinitionOfDone, TeamGroupSummary } from '@scrumooth/shared';
 
 import { Button } from '../../../../components/common/Button';
+import { Disclosure } from '../../../../components/common/Disclosure';
 import { ConfirmDialog } from '../../../../components/ConfirmDialog/ConfirmDialog';
 import { GateRefusal, useGateRefusal } from '../../../../components/common/GateRefusal';
 import {
@@ -72,6 +73,16 @@ export const DefinitionScopeSwitch: React.FC<DefinitionScopeSwitchProps> = ({
   const [isReviewing, setIsReviewing] = useState(false);
   const [selectedGroupId, setSelectedGroupId] = useState('');
   const [isLeaving, setIsLeaving] = useState(false);
+
+  /**
+   * Whether the scope statement has been opened onto the decisions it holds.
+   *
+   * The statement itself stays visible in every state -- it is what tells the reader which Definition of
+   * Done governs this team. What sits behind the disclosure is the governing, not the fact: the adopt
+   * flow, the review, leaving the group, and the record of what was adopted. Those are decisions a team
+   * takes occasionally, and they were the tallest thing on the page for everyone who never takes them.
+   */
+  const [isGovernanceOpen, setIsGovernanceOpen] = useState(false);
 
   // The directory is what makes adopting possible at all: a team cannot adopt a collaboration it
   // cannot find. Read only for a reader who could act on it -- a team that already belongs to a group
@@ -120,9 +131,15 @@ export const DefinitionScopeSwitch: React.FC<DefinitionScopeSwitchProps> = ({
     setSelectedGroupId('');
   }, []);
 
+  /**
+   * The act itself. `mutate`, not `mutateAsync`: a refusal is rendered in place by the gate renderer
+   * below -- its rule, why it exists and the act that resolves it -- so there is nothing here to await,
+   * and awaiting it left the rejection unhandled. The two sibling handlers on this component already
+   * take the same form.
+   */
   const handleAdopt = useCallback(
-    async (groupId: string, acknowledgedDodVersion: number) => {
-      await joinMutation.mutateAsync({ groupId, acknowledgedDodVersion });
+    (groupId: string, acknowledgedDodVersion: number) => {
+      joinMutation.mutate({ groupId, acknowledgedDodVersion });
     },
     [joinMutation]
   );
@@ -155,6 +172,19 @@ export const DefinitionScopeSwitch: React.FC<DefinitionScopeSwitchProps> = ({
   /** A change made after adoption is drift the team has to see, not a silent mismatch. */
   const adoptionIsBehind =
     group !== null && adoptedVersion !== null && adoptedVersion < group.dodVersion;
+
+  /**
+   * Drift opens the block on its own.
+   *
+   * Leaving it behind a control the reader has to think to open would be the one thing this collapse
+   * must not do: drift says the agreement this team agreed to has moved, and it comes with a remedy.
+   * Closing it again stays the reader's choice -- this opens it, it does not pin it open.
+   */
+  useEffect(() => {
+    if (adoptionIsBehind) {
+      setIsGovernanceOpen(true);
+    }
+  }, [adoptionIsBehind]);
 
   const activeItems = useMemo(
     () =>
@@ -242,7 +272,7 @@ export const DefinitionScopeSwitch: React.FC<DefinitionScopeSwitchProps> = ({
               <Button
                 size="sm"
                 loading={joinMutation.isPending}
-                onClick={() => void handleAdopt(selectedGroupId, reviewedVersion)}
+                onClick={() => handleAdopt(selectedGroupId, reviewedVersion)}
               >
                 {t('definitionScope.adoptAction', { version: reviewedVersion })}
               </Button>
@@ -253,86 +283,130 @@ export const DefinitionScopeSwitch: React.FC<DefinitionScopeSwitchProps> = ({
     </div>
   );
 
-  const renderRibbon = (): React.ReactElement => {
-    if (!group) {
-      return (
-        <p className={styles.ribbon} data-scope="team" role="note">
-          <span className={styles.icon} aria-hidden="true">
-            <CheckCircleIcon size={14} />
-          </span>
-          <span className={styles.text}>
-            <strong className={styles.strong}>{t('definitionScope.teamTitle')}</strong>{' '}
-            {t('definitionScope.teamHint')}
-          </span>
-        </p>
-      );
-    }
+  /**
+   * The scope statement: which Definition of Done governs this team, and why.
+   *
+   * It never collapses. It is the fact the rest of the block is a decision about, and a reader who
+   * cannot see it cannot tell whether the criteria below are their own team's or one they share.
+   */
+  const renderScopeStatement = (): React.ReactElement =>
+    group ? (
+      <>
+        <strong>
+          {t('definitionScope.groupTitle', { name: group.name, count: group.teamCount })}
+        </strong>{' '}
+        {t('definitionScope.groupHint', { name: group.name })}
+      </>
+    ) : (
+      <>
+        <strong>{t('definitionScope.teamTitle')}</strong> {t('definitionScope.teamHint')}
+      </>
+    );
 
-    return (
-      <p className={styles.ribbon} data-scope="group" role="note">
-        <span className={styles.icon} aria-hidden="true">
-          <UsersIcon size={14} />
-        </span>
-        <span className={styles.text}>
-          <strong className={styles.strong}>
-            {t('definitionScope.groupTitle', { name: group.name, count: group.teamCount })}
-          </strong>{' '}
-          {t('definitionScope.groupHint', { name: group.name })}{' '}
+  /** The statement as a plain note, for the one case where there is nothing behind it to open. */
+  const renderScopeNote = (): React.ReactElement => (
+    <p className={styles.ribbon} data-scope="team" role="note">
+      <span className={styles.icon} aria-hidden="true">
+        <CheckCircleIcon size={14} />
+      </span>
+      <span className={styles.text}>{renderScopeStatement()}</span>
+    </p>
+  );
+
+  /**
+   * Everything the statement is a decision about, revealed on demand.
+   *
+   * Typed as a node rather than an element because the one reader with nothing to decide -- a team on its
+   * own, read by someone who does not lead it -- falls through both branches. That same condition is what
+   * the caller checks before offering the disclosure at all, so the empty case is never the visible one;
+   * the type just has to say so.
+   */
+  const renderGovernanceDecisions = (): React.ReactNode =>
+    group ? (
+      <>
+        {adoptedVersion !== null && (
+          <p className={styles.meta}>
+            {t('definitionScope.adoptedAt', {
+              version: adoptedVersion,
+              date: joinedAt ? formatLocaleDate(joinedAt, locale) : '—',
+            })}
+          </p>
+        )}
+
+        {adoptionIsBehind && (
+          <p className={styles.drift} role="status">
+            {t('definitionScope.drift', { adopted: adoptedVersion, current: group.dodVersion })}
+          </p>
+        )}
+
+        {!canDecide && (
+          <p className={styles['read-only']}>
+            {t('definitionScope.readOnlyNote', { name: group.name })}
+          </p>
+        )}
+
+        {/* Reading the shared agreement in full and leaving it are the two things a team in a group can
+            do about it, and the group's own screen is where it is administered rather than here. */}
+        <div className={styles.actions}>
+          <Button variant="link" size="sm" onClick={() => setIsReviewing((open) => !open)}>
+            {isReviewing ? t('definitionScope.hideReviewLink') : t('definitionScope.reviewLink')}
+          </Button>
+
           <Link to={`/settings/team-groups?group=${group.id}`} className={styles.link}>
             {t('definitionScope.manageLink')}
           </Link>
-        </span>
-      </p>
+
+          {canDecide && (
+            <Button variant="warning" size="sm" onClick={() => setIsLeaving(true)}>
+              {t('definitionScope.leave')}
+            </Button>
+          )}
+        </div>
+
+        {isReviewing && renderAgreement()}
+      </>
+    ) : (
+      canDecide && renderAdoptFlow()
     );
-  };
+
+  /**
+   * Whether there is a decision here at all.
+   *
+   * A team that works on its own, read by someone who does not lead it, has none: the adopt flow is not
+   * offered to them and there is nothing else behind the statement. A disclosure that opens onto nothing
+   * is worse than the statement alone, so in that one case the statement stays a plain note.
+   */
+  const hasGovernanceDecisions = group !== null || canDecide;
 
   return (
     <div className={styles.switch}>
-      {renderRibbon()}
-
-      {group ? (
-        <>
-          {adoptedVersion !== null && (
-            <p className={styles.meta}>
-              {t('definitionScope.adoptedAt', {
-                version: adoptedVersion,
-                date: joinedAt ? formatLocaleDate(joinedAt, locale) : '—',
-              })}
-            </p>
-          )}
-
-          {adoptionIsBehind && (
-            <p className={styles.drift} role="status">
-              {t('definitionScope.drift', { adopted: adoptedVersion, current: group.dodVersion })}
-            </p>
-          )}
-
-          {!canDecide && (
-            <p className={styles['read-only']}>
-              {t('definitionScope.readOnlyNote', { name: group.name })}
-            </p>
-          )}
-
-          <div className={styles.actions}>
-            <Button variant="link" size="sm" onClick={() => setIsReviewing((open) => !open)}>
-              {isReviewing ? t('definitionScope.hideReviewLink') : t('definitionScope.reviewLink')}
-            </Button>
-
-            {canDecide && (
-              <Button variant="warning" size="sm" onClick={() => setIsLeaving(true)}>
-                {t('definitionScope.leave')}
-              </Button>
-            )}
-          </div>
-
-          {isReviewing && renderAgreement()}
-        </>
+      {hasGovernanceDecisions ? (
+        <Disclosure
+          tone={group ? 'primary' : 'neutral'}
+          icon={group ? <UsersIcon size={14} /> : <CheckCircleIcon size={14} />}
+          open={isGovernanceOpen}
+          onOpenChange={setIsGovernanceOpen}
+          label={
+            <>
+              {renderScopeStatement()}{' '}
+              <span className={styles['disclosure-hint']}>
+                {group
+                  ? t('definitionScope.manageDisclosure')
+                  : t('definitionScope.adoptDisclosure')}
+              </span>
+            </>
+          }
+        >
+          {renderGovernanceDecisions()}
+        </Disclosure>
       ) : (
-        canDecide && renderAdoptFlow()
+        renderScopeNote()
       )}
 
       {/* One renderer for both directions: adopting a group and leaving one are the same kind of
-          decision, and a stale acknowledgement is a third state of the same flow. */}
+          decision, and a stale acknowledgement is a third state of the same flow. Both refusals stay
+          outside the disclosure -- a gate is the process working, and its reason must never sit behind a
+          control the reader has to think to open. */}
       <GateRefusal
         view={joinRefusal}
         onDismiss={() => joinMutation.reset()}

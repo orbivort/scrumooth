@@ -154,8 +154,15 @@
     "title": "[Vérsíón hístóryyyyyy]",
     "versionLabel": "[vv{{version}}]"
   },
+  "definitionNav": {
+    "label": "[Ín thís àgrééménttttttt]",
+    "sectionWithCount": "[{{name}} — {{count}} àctívé ítémsssss]",
+    "sectionWithCount_one": "[{{name}} — {{count}} àctívé ítémmmmm]",
+    "sectionWithCount_other": "[{{name}} — {{count}} àctívé ítémsssss]"
+  },
   "definitionScope": {
     "adoptAction": "[ÀÀddóópptt v{{version}}]",
+    "adoptDisclosure": "[Àdópt à shàréd DóDDDDDDD]",
     "adoptHint": "[Whén sévéràl Scrúm Téàms wórk ón óné pródúct, théy múst défíné ànd cómply wíth thé sàmé Défínítíón óf Dónéééééééééééééééééééééééééééééééééé.]",
     "adoptTitle": "[Àdópt à shàréd Défínítíón óf Dónééééééééééé]",
     "adoptedAt": "[Àdóptéd vvvv{{version}} óónn {{date}}.]",
@@ -169,11 +176,13 @@
     "leaveFailed": "[Thé gróúp cóúld nót bé léftttttttttt.]",
     "leaveMessage": "[Thís téàm kééps thé Défínítíón óf Dóné ít hàs béén cómplyíng wíth ànd càn thén chàngé ít ón íts ównnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn.]",
     "leaveTitle": "[Léàvééé {{name}}?]",
+    "manageDisclosure": "[Révíéw ór léàvéééééé]",
     "manageLink": "[Mànàgé thé gróúpppppp]",
     "mutualBody": "[Thé téàms mútúàlly défíné thís cómmítmént by àdóptíng à nàméd vérsíón whén théy jóín. À chàngé màdé àftérwàrds ís shówn héré úntíl thís téàm àdópts thé néw vérsíónnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn.]",
     "mutualTitle": "[Mútúàlly défínédddddd]",
     "readOnlyNote": "[Màíntàínéd by thé Pródúct Ównér ór Scrúm Màstér óf à téàm ínnnnnnnnnnnnnnnnnnnn {{name}}.]",
     "reviewAction": "[Révíéwww]",
+    "reviewCurrentAction": "[Révíéw thé cúrrént vérsíónnnnnnnnn]",
     "reviewLabel": "[Thé Défínítíón óf Dóné évéry téàm ínnnnnnnnnnnnn {{name}} cómplíés wíthhhhhh]",
     "reviewLink": "[Révíéw thé shàréd àgrééméntttttttttt]",
     "teamHint": "[Àny téàm mémbér càn chàngé ítttttttttt.]",

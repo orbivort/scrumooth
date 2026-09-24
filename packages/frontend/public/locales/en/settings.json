@@ -154,8 +154,15 @@
     "title": "Version history",
     "versionLabel": "v{{version}}"
   },
+  "definitionNav": {
+    "label": "In this agreement",
+    "sectionWithCount": "{{name}} — {{count}} active items",
+    "sectionWithCount_one": "{{name}} — {{count}} active item",
+    "sectionWithCount_other": "{{name}} — {{count}} active items"
+  },
   "definitionScope": {
     "adoptAction": "Adopt v{{version}}",
+    "adoptDisclosure": "Adopt a shared DoD",
     "adoptHint": "When several Scrum Teams work on one product, they must define and comply with the same Definition of Done.",
     "adoptTitle": "Adopt a shared Definition of Done",
     "adoptedAt": "Adopted v{{version}} on {{date}}.",
@@ -169,6 +176,7 @@
     "leaveFailed": "The group could not be left.",
     "leaveMessage": "This team keeps the Definition of Done it has been complying with and can then change it on its own.",
     "leaveTitle": "Leave {{name}}?",
+    "manageDisclosure": "Review or leave",
     "manageLink": "Manage the group",
     "mutualBody": "The teams mutually define this commitment by adopting a named version when they join. A change made afterwards is shown here until this team adopts the new version.",
     "mutualTitle": "Mutually defined",

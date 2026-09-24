@@ -49,10 +49,11 @@ A group is a **product-collaboration device**, not a team decomposition:
 ### Why It Lives With the Team
 
 The Definition of Done is the Increment's commitment, not an administrative setting, so it is read and
-changed where the team is — on the **Definition tab**, with the Sprint it gates in view. The scope
-ribbon directly above the criteria states which agreement governs the team: its own, or the one it
-shares with the other teams in its group. The same ribbon is where a team's leadership reviews the
-shared agreement, changes it, adopts one or leaves.
+changed where the team is — on the **Definition tab**, with the Sprint it gates in view. The tab's own
+navigation names the three agreements the team holds itself to and enters the page at the one you mean.
+The scope statement directly above the criteria states which Definition of Done governs the team: its
+own, or the one it shares with the other teams in its group. Opening that statement is where a team's
+leadership reviews the shared agreement, changes it, adopts one or leaves.
 
 **Settings → Team Groups** does what an administration screen should: it creates, renames and deletes
 a group, and shows its roster with the version each team adopted. It states which commitment governs

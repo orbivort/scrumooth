@@ -124,7 +124,9 @@ describe('DefinitionOfDoneSection', () => {
       () => new Promise(() => {})
     );
 
-    renderWithProviders(<DefinitionOfDoneSection teamId={TEAM_ID} team={teamWith(null)} />);
+    renderWithProviders(
+      <DefinitionOfDoneSection teamId={TEAM_ID} team={teamWith(null)} isActive />
+    );
 
     expect(screen.getByText(/Loading Definition of Done.../)).toBeInTheDocument();
   });
@@ -132,7 +134,9 @@ describe('DefinitionOfDoneSection', () => {
   it('should render error state when API fails', async () => {
     (definitionService.getDefinitionOfDone as vi.Mock).mockRejectedValue(new Error('Failed'));
 
-    renderWithProviders(<DefinitionOfDoneSection teamId={TEAM_ID} team={teamWith(null)} />);
+    renderWithProviders(
+      <DefinitionOfDoneSection teamId={TEAM_ID} team={teamWith(null)} isActive />
+    );
 
     expect(await screen.findByText('Failed to Load')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Retry' })).toBeInTheDocument();
@@ -144,12 +148,32 @@ describe('DefinitionOfDoneSection', () => {
       data: withItems(),
     });
 
-    renderWithProviders(<DefinitionOfDoneSection teamId={TEAM_ID} team={teamWith(null)} />);
+    renderWithProviders(
+      <DefinitionOfDoneSection teamId={TEAM_ID} team={teamWith(null)} isActive />
+    );
 
     expect(await screen.findByText('Test item 1')).toBeInTheDocument();
     expect(screen.getByText('Test item 2')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Edit DoD' })).toBeInTheDocument();
     expect(screen.getByTestId('version-history')).toHaveTextContent('v1');
+  });
+
+  it('should report whether the reader is in this section, which decides the emphasis of its action', async () => {
+    (definitionService.getDefinitionOfDone as vi.Mock).mockResolvedValue({
+      success: true,
+      data: withItems(),
+    });
+
+    const { container } = renderWithProviders(
+      <DefinitionOfDoneSection teamId={TEAM_ID} team={teamWith(null)} isActive={false} />
+    );
+
+    await screen.findByText('Test item 1');
+
+    // The page keeps one primary action and gives it to the section being read. This attribute is how a
+    // section says which one that is; the styling behind it is the stylesheet's business.
+    expect(container.querySelector('section')).toHaveAttribute('data-active', 'false');
+    expect(screen.getByRole('button', { name: 'Edit DoD' })).toBeInTheDocument();
   });
 
   it('should render an empty state, not seeded criteria, when the team has no agreement', async () => {
@@ -158,7 +182,9 @@ describe('DefinitionOfDoneSection', () => {
       data: withItems({ items: [] }),
     });
 
-    renderWithProviders(<DefinitionOfDoneSection teamId={TEAM_ID} team={teamWith(null)} />);
+    renderWithProviders(
+      <DefinitionOfDoneSection teamId={TEAM_ID} team={teamWith(null)} isActive />
+    );
 
     expect(await screen.findByText('No Definition of Done yet')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Configure DoD' })).toBeInTheDocument();
@@ -175,7 +201,9 @@ describe('DefinitionOfDoneSection', () => {
       data: withItems(),
     });
 
-    renderWithProviders(<DefinitionOfDoneSection teamId={TEAM_ID} team={teamWith(null)} />);
+    renderWithProviders(
+      <DefinitionOfDoneSection teamId={TEAM_ID} team={teamWith(null)} isActive />
+    );
 
     fireEvent.click(await screen.findByRole('button', { name: 'Edit DoD' }));
 
@@ -188,7 +216,9 @@ describe('DefinitionOfDoneSection', () => {
       data: withItems(),
     });
 
-    renderWithProviders(<DefinitionOfDoneSection teamId={TEAM_ID} team={teamWith(null)} />);
+    renderWithProviders(
+      <DefinitionOfDoneSection teamId={TEAM_ID} team={teamWith(null)} isActive />
+    );
 
     expect(await screen.findByText('Your team owns this agreement.')).toBeInTheDocument();
   });
@@ -213,7 +243,9 @@ describe('DefinitionOfDoneSection', () => {
       }),
     });
 
-    renderWithProviders(<DefinitionOfDoneSection teamId={TEAM_ID} team={teamWith(null)} />);
+    renderWithProviders(
+      <DefinitionOfDoneSection teamId={TEAM_ID} team={teamWith(null)} isActive />
+    );
 
     expect(await screen.findByText('Code is peer-reviewed and approved')).toBeInTheDocument();
   });
@@ -235,25 +267,36 @@ describe('DefinitionOfDoneSection', () => {
       }),
     });
 
-    renderWithProviders(<DefinitionOfDoneSection teamId={TEAM_ID} team={teamWith(null)} />);
+    renderWithProviders(
+      <DefinitionOfDoneSection teamId={TEAM_ID} team={teamWith(null)} isActive />
+    );
 
     expect(await screen.findByText('Shipped behind a feature flag')).toBeInTheDocument();
   });
 
   describe('when the team shares a Definition of Done with its group', () => {
-    it('should name the group, its team count and where the group is administered', async () => {
+    it('should name the group and its team count on the statement, and administer it from the decisions', async () => {
       (definitionService.getDefinitionOfDone as vi.Mock).mockResolvedValue({
         success: true,
         data: withItems({ version: 3 }),
       });
 
       renderWithProviders(
-        <DefinitionOfDoneSection teamId={TEAM_ID} team={teamWith(UserRole.PRODUCT_OWNER, GROUP)} />
+        <DefinitionOfDoneSection
+          teamId={TEAM_ID}
+          team={teamWith(UserRole.PRODUCT_OWNER, GROUP)}
+          isActive
+        />
       );
 
-      expect(
-        await screen.findByText('Shared with Payments product · 2 teams.')
-      ).toBeInTheDocument();
+      // Which Definition of Done governs the team is never behind a control: it is the fact the criteria
+      // below are read against.
+      expect(await screen.findByText('Shared with Payments product · 2 teams.')).toBeVisible();
+
+      // Where the group is administered moved into the decisions, with the rest of the governing -- a
+      // link cannot live inside the trigger, because the trigger is a button.
+      fireEvent.click(screen.getByRole('button', { name: /Review or leave/ }));
+
       expect(screen.getByRole('link', { name: 'Manage the group' })).toHaveAttribute(
         'href',
         '/settings/team-groups?group=group-1'
@@ -267,7 +310,11 @@ describe('DefinitionOfDoneSection', () => {
       });
 
       renderWithProviders(
-        <DefinitionOfDoneSection teamId={TEAM_ID} team={teamWith(UserRole.SCRUM_MASTER, GROUP)} />
+        <DefinitionOfDoneSection
+          teamId={TEAM_ID}
+          team={teamWith(UserRole.SCRUM_MASTER, GROUP)}
+          isActive
+        />
       );
 
       expect(await screen.findByRole('button', { name: 'Edit DoD' })).toBeInTheDocument();
@@ -284,7 +331,11 @@ describe('DefinitionOfDoneSection', () => {
       });
 
       renderWithProviders(
-        <DefinitionOfDoneSection teamId={TEAM_ID} team={teamWith(UserRole.PRODUCT_OWNER, GROUP)} />
+        <DefinitionOfDoneSection
+          teamId={TEAM_ID}
+          team={teamWith(UserRole.PRODUCT_OWNER, GROUP)}
+          isActive
+        />
       );
 
       fireEvent.click(await screen.findByRole('button', { name: 'Edit DoD' }));
@@ -301,7 +352,11 @@ describe('DefinitionOfDoneSection', () => {
       });
 
       renderWithProviders(
-        <DefinitionOfDoneSection teamId={TEAM_ID} team={teamWith(UserRole.DEVELOPERS, GROUP)} />
+        <DefinitionOfDoneSection
+          teamId={TEAM_ID}
+          team={teamWith(UserRole.DEVELOPERS, GROUP)}
+          isActive
+        />
       );
 
       expect(
@@ -319,7 +374,11 @@ describe('DefinitionOfDoneSection', () => {
       });
 
       renderWithProviders(
-        <DefinitionOfDoneSection teamId={TEAM_ID} team={teamWith(UserRole.PRODUCT_OWNER, GROUP)} />
+        <DefinitionOfDoneSection
+          teamId={TEAM_ID}
+          team={teamWith(UserRole.PRODUCT_OWNER, GROUP)}
+          isActive
+        />
       );
 
       expect(await screen.findByText('No Definition of Done yet')).toBeInTheDocument();
@@ -335,7 +394,11 @@ describe('DefinitionOfDoneSection', () => {
       });
 
       renderWithProviders(
-        <DefinitionOfDoneSection teamId={TEAM_ID} team={teamWith(UserRole.DEVELOPERS, GROUP)} />
+        <DefinitionOfDoneSection
+          teamId={TEAM_ID}
+          team={teamWith(UserRole.DEVELOPERS, GROUP)}
+          isActive
+        />
       );
 
       expect(await screen.findByText('No Definition of Done yet')).toBeInTheDocument();

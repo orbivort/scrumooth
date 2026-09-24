@@ -81,7 +81,7 @@ describe('DefinitionOfReadySection', () => {
       () => new Promise(() => {})
     );
 
-    renderWithProviders(<DefinitionOfReadySection teamId={TEAM_ID} />);
+    renderWithProviders(<DefinitionOfReadySection teamId={TEAM_ID} isActive />);
 
     expect(screen.getByText(/Loading Definition of Ready.../)).toBeInTheDocument();
   });
@@ -89,7 +89,7 @@ describe('DefinitionOfReadySection', () => {
   it('should render error state when API fails', async () => {
     (definitionService.getDefinitionOfReady as vi.Mock).mockRejectedValue(new Error('Failed'));
 
-    renderWithProviders(<DefinitionOfReadySection teamId={TEAM_ID} />);
+    renderWithProviders(<DefinitionOfReadySection teamId={TEAM_ID} isActive />);
 
     expect(await screen.findByText('Failed to load Definition of Ready')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Retry' })).toBeInTheDocument();
@@ -101,7 +101,7 @@ describe('DefinitionOfReadySection', () => {
       data: null,
     });
 
-    renderWithProviders(<DefinitionOfReadySection teamId={TEAM_ID} />);
+    renderWithProviders(<DefinitionOfReadySection teamId={TEAM_ID} isActive />);
 
     expect(
       await screen.findByText('No Definition of Ready configured for this team yet.')
@@ -115,7 +115,7 @@ describe('DefinitionOfReadySection', () => {
       data: withItems(),
     });
 
-    renderWithProviders(<DefinitionOfReadySection teamId={TEAM_ID} />);
+    renderWithProviders(<DefinitionOfReadySection teamId={TEAM_ID} isActive />);
 
     expect(await screen.findByText('Test item 1')).toBeInTheDocument();
     expect(screen.getByText('Test item 2')).toBeInTheDocument();
@@ -141,7 +141,7 @@ describe('DefinitionOfReadySection', () => {
       }),
     });
 
-    renderWithProviders(<DefinitionOfReadySection teamId={TEAM_ID} />);
+    renderWithProviders(<DefinitionOfReadySection teamId={TEAM_ID} isActive />);
 
     expect(await screen.findByText('Clear title and description provided')).toBeInTheDocument();
   });
@@ -156,7 +156,7 @@ describe('DefinitionOfReadySection', () => {
       }),
     });
 
-    renderWithProviders(<DefinitionOfReadySection teamId={TEAM_ID} />);
+    renderWithProviders(<DefinitionOfReadySection teamId={TEAM_ID} isActive />);
 
     fireEvent.click(await screen.findByRole('button', { name: 'Edit DoR' }));
 
@@ -169,7 +169,7 @@ describe('DefinitionOfReadySection', () => {
       data: withItems({ items: [] }),
     });
 
-    renderWithProviders(<DefinitionOfReadySection teamId={TEAM_ID} />);
+    renderWithProviders(<DefinitionOfReadySection teamId={TEAM_ID} isActive />);
 
     expect(
       await screen.findByText('No Definition of Ready configured for this team yet.')
@@ -188,7 +188,7 @@ describe('DefinitionOfReadySection', () => {
       }),
     });
 
-    renderWithProviders(<DefinitionOfReadySection teamId={TEAM_ID} />);
+    renderWithProviders(<DefinitionOfReadySection teamId={TEAM_ID} isActive />);
 
     const toggle = await screen.findByRole('button', {
       name: /Complementary practice, not a Guide artifact/i,
@@ -212,7 +212,7 @@ describe('DefinitionOfReadySection', () => {
       }),
     });
 
-    renderWithProviders(<DefinitionOfReadySection teamId={TEAM_ID} />);
+    renderWithProviders(<DefinitionOfReadySection teamId={TEAM_ID} isActive />);
 
     expect(await screen.findByText('Test item')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Edit DoR' })).not.toBeInTheDocument();

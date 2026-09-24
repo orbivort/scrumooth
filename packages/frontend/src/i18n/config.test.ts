@@ -350,6 +350,8 @@ describe('i18n config', () => {
         'timebox',
         'barriers',
         'agreements',
+        // The Scrum Guide rule behind a refusal, loaded eagerly so a refusal never shows the fallback.
+        'gate',
       ];
       expect(ns).toEqual(expected);
     });

@@ -8,6 +8,14 @@
 //
 // It renders no page chrome of its own: the module owns the h1, the header and the URL, so this is
 // a section that assumes a team is already resolved above it.
+//
+// Two things tie it to the page it now sits on. It publishes how many agreements are in force, so the
+// Definition tab's navigation can show that beside this section's name without reading the agreements a
+// second time -- hence the import from the Definition folder, which is where that one number is
+// collected; the two folders already know each other in the other direction, since the Definition tab
+// is what renders this section. And the retired agreements, which used to always take up room below the
+// live ones, now sit behind a disclosure: keeping a retired agreement rather than deleting it is the
+// point, but the list of what the team no longer holds itself to should not be the tallest thing here.
 import React, { useCallback, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
@@ -18,8 +26,10 @@ import { queryKeys } from '../../hooks/queryKeys';
 import { ToastContainer } from '../../components/common/ToastContainer';
 import { LoadingState } from '../../components/common/Loading';
 import { Button } from '../../components/common/Button';
+import { Disclosure } from '../../components/common/Disclosure';
 import { EmptyState } from '../../components/EmptyState';
 import { workingAgreementsService } from '../../services';
+import { usePublishSectionCount } from '../Team/Definition/SectionCountsContext';
 
 import { WorkingAgreementForm } from './components/WorkingAgreementForm';
 import styles from './WorkingAgreements.module.css';
@@ -27,9 +37,11 @@ import styles from './WorkingAgreements.module.css';
 interface WorkingAgreementsProps {
   /** The team whose agreements these are, already resolved by the module shell. */
   teamId: string | undefined;
+  /** Whether the reader is in this section, so it can carry the page's one primary action. */
+  isActive: boolean;
 }
 
-export const WorkingAgreements: React.FC<WorkingAgreementsProps> = ({ teamId }) => {
+export const WorkingAgreements: React.FC<WorkingAgreementsProps> = ({ teamId, isActive }) => {
   const { t } = useTranslation(['agreements', 'common']);
   const { toasts, success, error: toastError, removeToast } = useToast();
   const queryClient = useQueryClient();
@@ -92,6 +104,15 @@ export const WorkingAgreements: React.FC<WorkingAgreementsProps> = ({ teamId }) 
     };
   }, [agreementsQuery.data?.data]);
 
+  // The Definition tab's navigation shows this beside this section's name. Published rather than
+  // derived a second time: only some of the rows are active, and the section that read them is the one
+  // that knows. Nothing is published until the read succeeds, so a count can never describe an
+  // agreement nobody loaded.
+  usePublishSectionCount(
+    'working-agreements',
+    agreementsQuery.isSuccess ? active.length : undefined
+  );
+
   if (!teamId) {
     return <EmptyState type="no-team" variant="full-page" />;
   }
@@ -106,6 +127,8 @@ export const WorkingAgreements: React.FC<WorkingAgreementsProps> = ({ teamId }) 
         className={styles.panel}
         aria-labelledby="working-agreements"
         data-testid="working-agreements"
+        data-active={isActive}
+        data-editing={formMode !== null}
       >
         <div className={styles['panel-header']}>
           <h2 id="working-agreements" tabIndex={-1} className={styles['panel-title']}>
@@ -113,6 +136,7 @@ export const WorkingAgreements: React.FC<WorkingAgreementsProps> = ({ teamId }) 
           </h2>
           {formMode !== 'create' && (
             <Button
+              className={styles['primary-action']}
               onClick={() => {
                 setEditing(null);
                 setFormMode('create');
@@ -158,9 +182,12 @@ export const WorkingAgreements: React.FC<WorkingAgreementsProps> = ({ teamId }) 
           />
         )}
 
+        {/* The retired list is the only part of this page that grows without limit, and it is not what
+            anyone comes here for. Retiring an agreement keeps it rather than deleting it, which is the
+            point -- but the list of what the team no longer holds itself to should not push the
+            agreements in force off the screen. */}
         {retired.length > 0 && (
-          <>
-            <h3 className={styles['section-title']}>{t('agreements.retiredGroup')}</h3>
+          <Disclosure label={t('agreements.retiredDisclosure', { count: retired.length })}>
             <ul className={styles.list}>
               {retired.map((agreement) => (
                 <AgreementCard
@@ -176,7 +203,7 @@ export const WorkingAgreements: React.FC<WorkingAgreementsProps> = ({ teamId }) 
                 />
               ))}
             </ul>
-          </>
+          </Disclosure>
         )}
 
         {formMode === 'edit' && editing && (

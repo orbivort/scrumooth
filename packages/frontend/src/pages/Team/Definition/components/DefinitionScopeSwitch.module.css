@@ -36,20 +36,12 @@
   min-width: 0;
 }
 
-.strong {
-  color: var(--color-text-primary);
+/* The trailing hint on the scope statement: what opening it lets the reader do, said in words rather
+   than left to the chevron alone. Without it the only place adoption is discoverable would be inside the
+   block -- which is the detail this collapse exists to put out of the way. */
+.disclosure-hint {
+  color: var(--color-primary-700);
   font-weight: var(--font-weight-semibold);
-}
-
-/* A group-owned agreement is read and changed here, but it is not this team's own -- the accent says
-   the commitment is shared. */
-.ribbon[data-scope='group'] {
-  background: var(--color-primary-50);
-  border-color: var(--color-primary-200);
-}
-
-.ribbon[data-scope='group'] .icon {
-  color: var(--color-primary-600);
 }
 
 .link {

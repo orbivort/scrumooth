@@ -4,6 +4,8 @@ export { DefinitionOfReadySection } from './DefinitionOfReadySection';
 export type { DefinitionOfReadySectionProps } from './DefinitionOfReadySection';
 export { DefinitionScopeSwitch } from './DefinitionScopeSwitch';
 export type { DefinitionScopeSwitchProps } from './DefinitionScopeSwitch';
+export { SectionNav } from './SectionNav';
+export type { SectionNavProps } from './SectionNav';
 export { VersionHistoryPopover } from './VersionHistoryPopover';
 export type { VersionHistoryPopoverProps } from './VersionHistoryPopover';
 export { DefinitionEditor } from './DefinitionEditor';

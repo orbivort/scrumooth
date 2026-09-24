@@ -36,14 +36,19 @@
   gap: var(--space-3);
 }
 
-/* The section heading doubles as the deep-link target: focusable without joining the tab order. */
+/* The section heading doubles as the deep-link target: focusable without joining the tab order.
+   The offset it clears is the app shell's sticky bar plus this page's own navigation, both measured in
+   the running document. It belongs on the heading because the fragment targets the heading -- on the
+   surrounding <section> it would be a silent no-op and the heading would open under the sticky chrome. */
 .section-title {
   margin: 0;
   font-size: var(--font-size-lg);
   font-weight: var(--font-weight-semibold);
   color: var(--color-text-primary);
   letter-spacing: var(--letter-spacing-tight);
-  scroll-margin-top: var(--space-6);
+  scroll-margin-top: calc(
+    var(--app-topbar-height) + var(--definition-nav-height) + var(--definition-anchor-gap)
+  );
 }
 
 .section-title:focus-visible {
@@ -67,44 +72,13 @@
   color: var(--color-text-secondary);
 }
 
-/* The compliance explanation, quiet by default. It is a real disclosure control so a keyboard or
-   screen-reader user can open it like anyone else. */
+/* The compliance explanation is the shared `Disclosure` primitive's pill shape, so the trigger's own
+   geometry and states live there rather than here. What stays local is the alignment wrapper -- the
+   pill has to sit at the start of this section's column -- and the body's warning chrome. */
 .practice {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
-}
-
-.practice-toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-1);
-  align-self: flex-start;
-  padding: var(--space-1) var(--space-2);
-  border: var(--border-width-1) solid var(--color-warning-200);
-  border-radius: var(--radius-full);
-  background: var(--color-warning-50);
-  color: var(--color-warning-800);
-  font-family: var(--font-family-sans);
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-semibold);
-  cursor: pointer;
-  transition: background-color var(--transition-fast) var(--ease-out);
-}
-
-.practice-toggle:hover {
-  background: var(--color-warning-100);
-}
-
-.practice-toggle:focus-visible {
-  outline: none;
-  box-shadow: var(--focus-ring);
-}
-
-.practice-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
 }
 
 .practice-detail {
@@ -244,7 +218,10 @@
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-semibold);
   cursor: pointer;
-  transition: background-color var(--transition-fast) var(--ease-out);
+  transition:
+    background-color var(--transition-normal) var(--ease-out),
+    border-color var(--transition-normal) var(--ease-out),
+    color var(--transition-normal) var(--ease-out);
 }
 
 .button:focus-visible {
@@ -277,6 +254,22 @@
   border-color: var(--color-gray-400);
 }
 
+/* The page carries one primary action: the one belonging to the section the reader is in. A demoted
+   action keeps its place, its label and its reachability -- only its emphasis steps back.
+   
+   Nothing is suspended while this section is being edited: the header action is not rendered at all in
+   that mode, so there is no competing primary to quiet. */
+.section:not([data-active='true']) .primary-action {
+  background: var(--color-background-card);
+  color: var(--color-gray-700);
+  border-color: var(--color-gray-300);
+}
+
+.section:not([data-active='true']) .primary-action:hover:not(:disabled) {
+  background: var(--color-gray-50);
+  border-color: var(--color-gray-400);
+}
+
 @media (width <= 768px) {
   .section {
     gap: var(--space-3);
@@ -296,8 +289,7 @@
 
 @media (prefers-reduced-motion: reduce) {
   .item,
-  .button,
-  .practice-toggle {
+  .button {
     transition: none;
   }
 }
