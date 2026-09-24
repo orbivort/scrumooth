@@ -75,6 +75,7 @@
     "title": "Fehler beim Laden der Daten"
   },
   "filterByStatus": "Nach Status filtern",
+  "moduleSubtitle": "Was das Team heute blockiert, und die Barrieren, die nur die Organisation beseitigen kann.",
   "priority": {
     "critical": "Kritisch",
     "high": "Hoch",
@@ -103,6 +104,11 @@
     "resolved": "Gelöst"
   },
   "subtitle": "{{sprintName}} - Blocker verfolgen und lösen, die das Team betreffen",
+  "tabs": {
+    "ariaLabel": "Impediment-Register",
+    "barriers": "Organisatorische Barrieren",
+    "impediments": "Impediments"
+  },
   "title": "Impediments",
   "toast": {
     "created": "Impediment erfolgreich erstellt",

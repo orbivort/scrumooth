@@ -1,29 +1,26 @@
-/* Organizational barrier register: token-driven, matching the Impediments and SM dashboard cards. */
-.page {
+/* Organizational barrier register panel: token-driven, matching the Impediments and SM dashboard
+   cards.
+
+   The module shell (pages/Impediments) owns the page padding, background and page title, so this
+   panel only stacks its own content. */
+.panel {
   display: flex;
   flex-direction: column;
   gap: var(--space-5);
-  padding: var(--space-5);
 }
 
-.header {
+/* The register's own description and the action that adds to it share one row under the module
+   header, which owns the only h1. */
+.panel-toolbar {
   display: flex;
   flex-wrap: wrap;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
-  gap: var(--space-4);
-}
-
-.title {
-  margin: 0;
-  font-size: var(--font-size-2xl);
-  font-weight: var(--font-weight-bold);
-  letter-spacing: var(--letter-spacing-tight);
-  color: var(--color-text-primary);
+  gap: var(--space-3);
 }
 
 .subtitle {
-  margin: var(--space-1) 0 0;
+  margin: 0;
   max-inline-size: 60ch;
   font-size: var(--font-size-sm);
   color: var(--color-text-secondary);

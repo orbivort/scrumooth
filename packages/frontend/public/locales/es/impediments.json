@@ -75,6 +75,7 @@
     "title": "Error cargando datos"
   },
   "filterByStatus": "Filtrar por estado",
+  "moduleSubtitle": "Lo que bloquea al equipo hoy, y las barreras que solo la organización puede eliminar.",
   "priority": {
     "critical": "Crítica",
     "high": "Alta",
@@ -103,6 +104,11 @@
     "resolved": "Resuelto"
   },
   "subtitle": "{{sprintName}} - Rastrear y resolver bloqueadores que afectan al equipo",
+  "tabs": {
+    "ariaLabel": "Registros de Impediments",
+    "barriers": "Barreras organizativas",
+    "impediments": "Impediments"
+  },
   "title": "Impediments",
   "toast": {
     "created": "Impediment creado exitosamente",

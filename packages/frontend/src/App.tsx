@@ -38,7 +38,6 @@ import {
   LazyTeamManagementPage as TeamManagementPage,
   LazyReports as Reports,
   LazySmDashboard as SmDashboard,
-  LazyOrganizationalBarriers as OrganizationalBarriers,
   LazyWorkingAgreements as WorkingAgreements,
   LazyIncrementList as IncrementList,
   LazyIncrementDetail as IncrementDetail,
@@ -369,15 +368,12 @@ function App() {
                             </ProtectedRoute>
                           }
                         />
+                        {/* The barrier register is the second tab of the Impediments module; the
+                            address it used to live at is kept, so links and bookmarks still land
+                            on it. */}
                         <Route
                           path="/organizational-barriers"
-                          element={
-                            <ProtectedRoute>
-                              <LazyRoute fallbackMessage="Loading organizational barriers...">
-                                <OrganizationalBarriers />
-                              </LazyRoute>
-                            </ProtectedRoute>
-                          }
+                          element={<Navigate to="/impediments?tab=barriers" replace />}
                         />
                         <Route
                           path="/working-agreements"

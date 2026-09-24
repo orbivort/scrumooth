@@ -1,10 +1,13 @@
-// Organizational barrier register.
+// Organizational barrier register -- the second panel of the Impediments module.
 //
 // The Guide gives the Scrum Master a service beyond the team -- *"serving the organization ...
-// removing barriers between stakeholders and Scrum Teams"* -- and this page is that register: the
+// removing barriers between stakeholders and Scrum Teams"* -- and this is that register: the
 // barriers the team cannot remove alone, who owns each one, and the actions taken with the people
 // outside the team who have to act. Restricting the writes to the team's Scrum Master is the
-// server's rule; the page only hides affordances it knows will be refused.
+// server's rule; the panel only hides affordances it knows will be refused.
+//
+// The module shell (`pages/Impediments/Impediments.tsx`) owns the page header and the tab strip,
+// so this panel renders its content and its own toolbar, never a page title.
 import React, { useCallback, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
@@ -207,23 +210,24 @@ export const OrganizationalBarriers: React.FC = () => {
 
   const detail: OrganizationalBarrier | undefined = detailQuery.data?.data;
 
+  // The module shell already refuses to render a tab without a team; this stays as the panel's own
+  // guarantee that it never queries for an unknown team.
   if (!teamId) {
-    return <EmptyState type="no-team" variant="full-page" />;
+    return <EmptyState type="no-team" variant="default" />;
   }
 
   return (
-    <div className={styles.page} data-testid="organizational-barriers">
-      <header className={styles.header}>
-        <div>
-          <h1 className={styles.title}>{t('page.title')}</h1>
-          <p className={styles.subtitle}>{t('page.subtitle')}</p>
-        </div>
+    <div className={styles.panel} data-testid="organizational-barriers">
+      {/* Panel toolbar -- the module header owns the title, so the register's own description and
+          the action that adds to it share one row instead of repeating a page heading. */}
+      <div className={styles['panel-toolbar']}>
+        <p className={styles.subtitle}>{t('page.subtitle')}</p>
         {canWrite && formMode !== 'create' && (
           <div className={styles['page-actions']}>
             <Button onClick={() => setFormMode('create')}>{t('actions.new')}</Button>
           </div>
         )}
-      </header>
+      </div>
 
       <ToastContainer toasts={toasts} onClose={removeToast} />
 

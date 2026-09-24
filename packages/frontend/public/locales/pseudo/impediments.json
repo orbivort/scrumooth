@@ -75,6 +75,7 @@
     "title": "[Érrór Lóàdíng Dàtààààààà]"
   },
   "filterByStatus": "[Fíltér by stàtússssss]",
+  "moduleSubtitle": "[Whàt blócksss thé téàm tódàyyyy, ànd thé bàrríérs ónly thé órgànízàtíón càn rémóvévévé.]",
   "priority": {
     "critical": "[Crítícàllll]",
     "high": "[HHííggh]",
@@ -103,6 +104,11 @@
     "resolved": "[Résólvédddd]"
   },
   "subtitle": "[{{sprintName}} - Tràck ànd résólvé blóckérs àfféctíng thé téàmmmmmmmmmmmmmmmm]",
+  "tabs": {
+    "ariaLabel": "[Ímpédímént régístérssssssss]",
+    "barriers": "[Órgànízàtíónàl Bàrríérssssssss]",
+    "impediments": "[Ímpédíméntsssss]"
+  },
   "title": "[Ímpédíméntsssss]",
   "toast": {
     "created": "[Ímpédímént créàtéd súccéssfúllyyyyyyyyyyy]",

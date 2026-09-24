@@ -182,12 +182,12 @@ describe('OrganizationalBarriers', () => {
   });
 
   describe('reading the register', () => {
-    it('names the register and what it is for', async () => {
+    it('describes the register and leaves the page title to the module', async () => {
       await openRegister();
 
-      expect(
-        screen.getByRole('heading', { name: i18nT('barriers:page.title') })
-      ).toBeInTheDocument();
+      // The Impediments module header owns the only h1 of the page the panel is mounted in, so the
+      // panel contributes no heading of its own and keeps only what the register is for.
+      expect(screen.queryByRole('heading', { level: 1 })).not.toBeInTheDocument();
       expect(screen.getByText(i18nT('barriers:page.subtitle'))).toBeInTheDocument();
     });
 

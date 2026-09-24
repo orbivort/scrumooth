@@ -75,6 +75,7 @@
     "title": "Errore Caricamento Dati"
   },
   "filterByStatus": "Filtra per stato",
+  "moduleSubtitle": "Ciò che blocca il team oggi, e le barriere che solo l'organizzazione può rimuovere.",
   "priority": {
     "critical": "Critica",
     "high": "Alta",
@@ -103,6 +104,11 @@
     "resolved": "Risolto"
   },
   "subtitle": "{{sprintName}} - Traccia e risolvi i blocchi che ostacolano il team",
+  "tabs": {
+    "ariaLabel": "Registri degli Impediment",
+    "barriers": "Barriere organizzative",
+    "impediments": "Impediments"
+  },
   "title": "Impediments",
   "toast": {
     "created": "Impediment creato con successo",

@@ -62,6 +62,7 @@
     "title": "Error Loading Data"
   },
   "filterByStatus": "Filter by status",
+  "moduleSubtitle": "What blocks the team today, and the barriers only the organization can remove.",
   "reportImpediment": "Report Impediment",
   "stats": {
     "CLOSED": "Closed",
@@ -84,6 +85,11 @@
     "resolved": "Resolved"
   },
   "subtitle": "{{sprintName}} - Track and resolve blockers affecting the team",
+  "tabs": {
+    "ariaLabel": "Impediment registers",
+    "barriers": "Organizational barriers",
+    "impediments": "Impediments"
+  },
   "title": "Impediments",
   "toast": {
     "created": "Impediment created successfully",

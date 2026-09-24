@@ -283,7 +283,7 @@ const SmDashboardContent: React.FC = () => {
             </ul>
           )}
 
-          <Link className={styles['barriers-link']} to="/organizational-barriers">
+          <Link className={styles['barriers-link']} to="/impediments?tab=barriers">
             {t('barriers.viewRegister')}
           </Link>
         </div>

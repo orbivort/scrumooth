@@ -39,7 +39,6 @@ import {
   SettingsIcon,
   DownloadIcon,
   ShieldIcon,
-  FlagIcon,
   ClipboardListIcon,
 } from '../components/common/Icons';
 
@@ -61,10 +60,10 @@ export const NAV_ITEMS: NavItem[] = [
     labelKey: 'nav.scrumMaster',
     roles: ['SCRUM_MASTER'],
   },
-  // The barrier register is the team's view of what blocks it from outside; the working agreements
-  // are the team's own. Both are readable by every member -- only the writes are the Scrum
-  // Master's (barriers) or recorded by them (the assessment) -- so neither carries a role gate.
-  { path: '/organizational-barriers', icon: FlagIcon, labelKey: 'nav.organizationalBarriers' },
+  // The working agreements are the team's own, readable by every member -- only the assessment
+  // behind them is recorded by the Scrum Master -- so the item carries no role gate. The barrier
+  // register is no longer a destination of its own: it is the second tab of the Impediments
+  // module, reached there rather than from the sidebar.
   { path: '/working-agreements', icon: ClipboardListIcon, labelKey: 'nav.workingAgreements' },
   { path: '/team', icon: UsersIcon, labelKey: 'nav.team' },
 ];

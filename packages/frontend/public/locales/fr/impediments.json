@@ -75,6 +75,7 @@
     "title": "Erreur de chargement des données"
   },
   "filterByStatus": "Filtrer par statut",
+  "moduleSubtitle": "Ce qui bloque l'équipe aujourd'hui, et les barrières que seule l'organisation peut lever.",
   "priority": {
     "critical": "Critique",
     "high": "Élevée",
@@ -103,6 +104,11 @@
     "resolved": "Résolu"
   },
   "subtitle": "{{sprintName}} - Suivre et résoudre les bloquants affectant l'équipe",
+  "tabs": {
+    "ariaLabel": "Registres d'Impediments",
+    "barriers": "Barrières organisationnelles",
+    "impediments": "Impediments"
+  },
   "title": "Impediments",
   "toast": {
     "created": "Impediment créé avec succès",
