@@ -234,6 +234,7 @@
       "title": "Aucune équipe sélectionnée"
     },
     "sharedDoD": {
+      "manageLink": "La gérer dans Groupes d'équipes",
       "message": "Cette équipe travaille dans {{name}} avec d'autres équipes Scrum sur un même produit et respecte donc leur Definition of Done commune. Les modifications se font là-bas.",
       "title": "Definition of Done commune."
     },
@@ -477,6 +478,92 @@
       "definitionOfReady": "Definition of Ready"
     },
     "title": "Définitions d'équipe"
+  },
+  "teamGroups": {
+    "delete": {
+      "message": "Le groupe, sa liste d'équipes et sa Definition of Done commune sont supprimés. Cette action est irréversible.",
+      "title": "Supprimer {{name}} ?"
+    },
+    "detail": {
+      "delete": "Supprimer le groupe",
+      "deleteBlocked": "Un groupe ne peut pas être supprimé tant que des équipes respectent sa Definition of Done : cela leur retirerait leur engagement au lieu de les conduire vers un autre. Chaque équipe doit d'abord le quitter.",
+      "readOnlyNotice": "Vous pouvez lire cet engagement, mais vous ne dirigez aucune équipe de ce groupe : seuls les Product Owners et les Scrum Masters de ses équipes peuvent le modifier.",
+      "rename": "Renommer"
+    },
+    "directoryAriaLabel": "Groupes d'équipes",
+    "directoryHeading": "Groupes",
+    "empty": {
+      "action": "Créer le premier groupe",
+      "description": "Si plusieurs équipes Scrum travaillent sur un même produit, elles doivent respecter la même Definition of Done. Un groupe est ce qui leur permet de tenir cet engagement unique : créez-le, et chaque équipe l'adopte.",
+      "title": "Aucun groupe d'équipes pour l'instant"
+    },
+    "form": {
+      "beforeUnload": "Vous avez des modifications non enregistrées sur ce groupe d'équipes.",
+      "cancel": "Annuler",
+      "close": "Fermer",
+      "create": "Créer le groupe",
+      "createTitle": "Créer un groupe d'équipes",
+      "description": "Description",
+      "descriptionMaxLength": "La description ne doit pas dépasser 500 caractères.",
+      "descriptionPlaceholder": "Deux équipes, un produit, une Definition of Done.",
+      "editTitle": "Modifier {{name}}",
+      "name": "Nom",
+      "nameMaxLength": "Le nom ne doit pas dépasser 100 caractères.",
+      "namePlaceholder": "Produit paiements",
+      "nameRequired": "Un nom est requis.",
+      "optional": "Facultatif",
+      "save": "Enregistrer",
+      "subtitle": "Un groupe, ce sont les équipes Scrum qui travaillent ensemble sur un même produit, liées à l'unique Definition of Done qu'il possède."
+    },
+    "groupLoadError": "Ce groupe n'a pas pu être chargé. Sa liste d'équipes a peut-être changé pendant que vous la lisiez.",
+    "listAriaLabel": "Groupes d'équipes",
+    "loadError": "Les groupes d'équipes n'ont pas pu être chargés.",
+    "loading": "Chargement des groupes d'équipes…",
+    "meta": {
+      "sharedVersion": "Version commune",
+      "teams": "Équipes"
+    },
+    "newGroup": "Nouveau groupe",
+    "roster": {
+      "adopted": "Adoptée",
+      "caption": "Équipes respectant la Definition of Done commune de {{name}}",
+      "drift": "Version {{adopted}} adoptée — la version {{current}} est en vigueur",
+      "empty": "Aucune équipe n'a encore rejoint ce groupe.",
+      "inStep": "Alignée",
+      "joined": "A rejoint",
+      "notRecorded": "Non enregistrée",
+      "status": "Statut",
+      "team": "Équipe",
+      "title": "Équipes",
+      "unknown": "—"
+    },
+    "selectPrompt": "Choisissez un groupe pour voir les équipes qui respectent sa Definition of Done et pour modifier cet engagement.",
+    "sharedDoD": {
+      "activeCount": "{{count}} critères actifs",
+      "activeCount_one": "{{count}} critère actif",
+      "activeCount_other": "{{count}} critères actifs",
+      "banner": "Toutes les équipes de ce groupe respectent cette Definition of Done. Enregistrer une modification l'applique à toutes d'un coup et incrémente la version commune.",
+      "edit": "Modifier la Definition of Done commune",
+      "empty": "La Definition of Done de ce groupe ne contient aucun critère actif. Ajoutez-en un pour que ses équipes aient un engagement à respecter.",
+      "inactiveCount": "{{count}} inactifs",
+      "inactiveCount_one": "{{count}} inactif",
+      "inactiveCount_other": "{{count}} inactifs",
+      "readOnly": "Vous pouvez lire cet engagement, mais vous ne dirigez aucune équipe de ce groupe : seuls les Product Owners et les Scrum Masters de ses équipes peuvent le modifier.",
+      "title": "Definition of Done commune",
+      "updated": "Mise à jour le {{date}}"
+    },
+    "subtitle": "Les équipes Scrum qui travaillent sur un même produit, et l'unique Definition of Done qu'elles respectent toutes.",
+    "teamCount": "{{count}} équipes",
+    "teamCount_one": "{{count}} équipe",
+    "teamCount_other": "{{count}} équipes",
+    "title": "Groupes d'équipes",
+    "toast": {
+      "created": "Le groupe d'équipes a été créé.",
+      "deleted": "Le groupe d'équipes a été supprimé.",
+      "sharedDoDUpdated": "La Definition of Done commune a été mise à jour. Toutes les équipes du groupe respectent la nouvelle version.",
+      "updated": "Le groupe d'équipes a été mis à jour."
+    },
+    "versionShort": "v{{version}}"
   },
   "teamList": {
     "ariaLabel": "Équipes",

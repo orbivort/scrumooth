@@ -19,6 +19,7 @@ Scrumooth is a self-hosted, open-source web application for teams that run Scrum
 - **Daily Scrum** - Coordinate daily standups
 - **Sprint Reviews** - Gather feedback and demonstrate work
 - **Retrospectives** - Reflect and improve processes
+- **Team Groups** - Hold one Definition of Done across the teams on a product
 
 These are the features covered by this guide. The canonical, complete feature list — including Increments, Impediments, Definition of Done/Ready, the Workflow Engine, and Team Health Check — lives in the project README: [Features](../../README.md#features).
 
@@ -57,7 +58,8 @@ user-guide/
     ├── sprint-board.md          # Sprint board (Kanban) guide
     ├── daily-scrum.md           # Daily Scrum guide
     ├── sprint-review.md         # Sprint review guide
-    └── retrospectives.md        # Retrospectives guide
+    ├── retrospectives.md        # Retrospectives guide
+    └── team-groups.md           # Shared Definition of Done across teams
 ```
 
 ---
@@ -85,6 +87,7 @@ user-guide/
 | Daily Scrum     | [Daily Scrum Guide](./core-features/daily-scrum.md)         |
 | Sprint Review   | [Sprint Review Guide](./core-features/sprint-review.md)     |
 | Retrospectives  | [Retrospectives Guide](./core-features/retrospectives.md)   |
+| Team Groups     | [Team Groups Guide](./core-features/team-groups.md)         |
 
 ---
 

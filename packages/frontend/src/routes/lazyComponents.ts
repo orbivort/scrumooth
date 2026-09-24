@@ -37,6 +37,12 @@ export const LazyTeamDefinitionsPage = lazy(() =>
   }))
 );
 
+export const LazyTeamGroupsPage = lazy(() =>
+  import('../pages/Settings/TeamGroups').then((module) => ({
+    default: module.default,
+  }))
+);
+
 export const LazySprintBoard = lazy(() =>
   import('../pages/Sprint/SprintBoard').then((module) => ({
     default: module.SprintBoard,

@@ -1423,6 +1423,34 @@
   gap: var(--space-2);
 }
 
+/* The way out to the group's own screen. The commitment belongs to the group, so the place to
+   change it is there rather than here -- the team's panel decides only whether it complies. */
+.team-group-link {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-primary-600);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.team-group-link:hover {
+  color: var(--color-primary-700);
+}
+
+.team-group-link:focus-visible {
+  outline: none;
+  border-radius: var(--radius-sm);
+  box-shadow: var(--focus-ring);
+}
+
+/* A team that works alone but shares a product with other teams has a rule to satisfy, not merely a
+   setting to read. */
+.team-group-discover {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
 .team-group-field {
   display: flex;
   flex-direction: column;

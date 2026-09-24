@@ -97,6 +97,25 @@
   color: var(--color-text-primary);
 }
 
+/* The notice used to point at a destination that did not exist in the product. It is a link now, so
+   "the change is made there" is somewhere the reader can actually go. */
+.group-notice-link {
+  color: var(--color-primary-600);
+  font-weight: var(--font-weight-semibold);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.group-notice-link:hover {
+  color: var(--color-primary-700);
+}
+
+.group-notice-link:focus-visible {
+  outline: none;
+  border-radius: var(--radius-sm);
+  box-shadow: var(--focus-ring);
+}
+
 .button {
   display: inline-flex;
   align-items: center;

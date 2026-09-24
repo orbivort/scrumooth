@@ -802,7 +802,17 @@ A team that leaves a group keeps the Definition of Done it has been complying wi
 are written into its own row through the ordinary versioned update, which is snapshotted like any
 other change.
 
-See [Team Groups API](./team-groups.md).
+### Where this lives in the product
+
+A group's shared Definition of Done is not edited from a team's own panel — a grouped team is shown
+it read-only, with a link to where it is changed. Both the group and its shared Definition of Done
+are managed on **Settings → Team → Team Groups**: create, rename and delete a group, read its roster
+and the version each team adopted, and replace the commitment every team in it complies with.
+Joining and leaving stay on the team, under **Team → Scrum Health → Shared Definition of Done**,
+because that decision is the team's own.
+
+See [Team Groups API](./team-groups.md) and
+[Team Groups and the Shared Definition of Done](../user-guide/core-features/team-groups.md).
 
 ---
 

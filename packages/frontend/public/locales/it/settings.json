@@ -234,6 +234,7 @@
       "title": "Nessun team selezionato"
     },
     "sharedDoD": {
+      "manageLink": "Gestiscila in Gruppi di team",
       "message": "Questo team lavora in {{name}} con altri team Scrum su un unico prodotto, quindi rispetta la loro Definition of Done condivisa. Le modifiche si fanno lì.",
       "title": "Definition of Done condivisa."
     },
@@ -477,6 +478,92 @@
       "definitionOfReady": "Definizione di Ready"
     },
     "title": "Definizioni team"
+  },
+  "teamGroups": {
+    "delete": {
+      "message": "Il gruppo, il suo elenco di team e la sua Definition of Done condivisa vengono rimossi. L'operazione non è reversibile.",
+      "title": "Eliminare {{name}}?"
+    },
+    "detail": {
+      "delete": "Elimina gruppo",
+      "deleteBlocked": "Un gruppo non può essere rimosso finché dei team rispettano la sua Definition of Done: toglierebbe loro l'impegno invece di portarli verso un altro. Ogni team deve prima uscire.",
+      "readOnlyNotice": "Puoi leggere questo impegno, ma non guidi nessun team di questo gruppo: solo i Product Owner e gli Scrum Master dei suoi team possono modificarlo.",
+      "rename": "Rinomina"
+    },
+    "directoryAriaLabel": "Gruppi di team",
+    "directoryHeading": "Gruppi",
+    "empty": {
+      "action": "Crea il primo gruppo",
+      "description": "Se più team Scrum lavorano su un unico prodotto, devono rispettare la stessa Definition of Done. Un gruppo è il modo in cui tengono quell'unico impegno: crealo e ogni team lo adotta.",
+      "title": "Nessun gruppo di team"
+    },
+    "form": {
+      "beforeUnload": "Hai modifiche non salvate su questo gruppo di team.",
+      "cancel": "Annulla",
+      "close": "Chiudi",
+      "create": "Crea gruppo",
+      "createTitle": "Crea un gruppo di team",
+      "description": "Descrizione",
+      "descriptionMaxLength": "La descrizione deve avere al massimo 500 caratteri.",
+      "descriptionPlaceholder": "Due team, un prodotto, una Definition of Done.",
+      "editTitle": "Modifica {{name}}",
+      "name": "Nome",
+      "nameMaxLength": "Il nome deve avere al massimo 100 caratteri.",
+      "namePlaceholder": "Prodotto pagamenti",
+      "nameRequired": "Il nome è obbligatorio.",
+      "optional": "Facoltativo",
+      "save": "Salva modifiche",
+      "subtitle": "Un gruppo sono i team Scrum che lavorano insieme su un unico prodotto, legati all'unica Definition of Done che possiede."
+    },
+    "groupLoadError": "Non è stato possibile caricare questo gruppo. Il suo elenco di team potrebbe essere cambiato mentre lo leggevi.",
+    "listAriaLabel": "Gruppi di team",
+    "loadError": "Non è stato possibile caricare i gruppi di team.",
+    "loading": "Caricamento dei gruppi di team…",
+    "meta": {
+      "sharedVersion": "Versione condivisa",
+      "teams": "Team"
+    },
+    "newGroup": "Nuovo gruppo",
+    "roster": {
+      "adopted": "Adottata",
+      "caption": "Team che rispettano la Definition of Done condivisa di {{name}}",
+      "drift": "Ha adottato la v{{adopted}} — è in vigore la v{{current}}",
+      "empty": "Nessun team ha ancora aderito a questo gruppo.",
+      "inStep": "Allineato",
+      "joined": "Aderito il",
+      "notRecorded": "Non registrata",
+      "status": "Stato",
+      "team": "Team",
+      "title": "Team",
+      "unknown": "—"
+    },
+    "selectPrompt": "Scegli un gruppo per vedere i team che rispettano la sua Definition of Done e per modificare quell'impegno.",
+    "sharedDoD": {
+      "activeCount": "{{count}} criteri attivi",
+      "activeCount_one": "{{count}} criterio attivo",
+      "activeCount_other": "{{count}} criteri attivi",
+      "banner": "Tutti i team di questo gruppo rispettano questa Definition of Done. Salvando una modifica si applica a tutti insieme e la versione condivisa aumenta.",
+      "edit": "Modifica la Definition of Done condivisa",
+      "empty": "La Definition of Done di questo gruppo non ha criteri attivi. Aggiungine uno, così i suoi team hanno un impegno da rispettare.",
+      "inactiveCount": "{{count}} inattivi",
+      "inactiveCount_one": "{{count}} inattivo",
+      "inactiveCount_other": "{{count}} inattivi",
+      "readOnly": "Puoi leggere questo impegno, ma non guidi nessun team di questo gruppo: solo i Product Owner e gli Scrum Master dei suoi team possono modificarlo.",
+      "title": "Definition of Done condivisa",
+      "updated": "Aggiornata il {{date}}"
+    },
+    "subtitle": "I team Scrum che lavorano su un unico prodotto e l'unica Definition of Done che tutti rispettano.",
+    "teamCount": "{{count}} team",
+    "teamCount_one": "{{count}} team",
+    "teamCount_other": "{{count}} team",
+    "title": "Gruppi di team",
+    "toast": {
+      "created": "Il gruppo di team è stato creato.",
+      "deleted": "Il gruppo di team è stato rimosso.",
+      "sharedDoDUpdated": "La Definition of Done condivisa è stata aggiornata. Tutti i team del gruppo rispettano la nuova versione.",
+      "updated": "Il gruppo di team è stato aggiornato."
+    },
+    "versionShort": "v{{version}}"
   },
   "teamList": {
     "ariaLabel": "Team",

@@ -12,6 +12,7 @@
 // team agreed is visible to the team that has not re-adopted it.
 import React, { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { formatLocaleDate } from '@scrumooth/shared';
 
@@ -150,16 +151,44 @@ export const TeamGroupPanel: React.FC<TeamGroupPanelProps> = ({
           )}
 
           {canDecide && (
-            <div className={styles['team-group-actions']}>
-              <Button variant="secondary" size="sm" onClick={() => setIsLeaving(true)}>
-                {t('teamGroup.leave')}
-              </Button>
-            </div>
+            <>
+              <div className={styles['team-group-actions']}>
+                <Button variant="secondary" size="sm" onClick={() => setIsLeaving(true)}>
+                  {t('teamGroup.leave')}
+                </Button>
+              </div>
+              {/*
+                The commitment belongs to the group, so changing it belongs on the group's own
+                screen. This panel decides only whether the team complies.
+              */}
+              <p className={styles['team-group-discover']}>
+                <Link
+                  to={`/settings/team-groups?group=${group.id}`}
+                  className={styles['team-group-link']}
+                >
+                  {t('teamGroup.manage')}
+                </Link>
+              </p>
+            </>
           )}
         </>
       ) : (
         <>
           <p className={styles['team-group-meta']}>{t('teamGroup.none')}</p>
+
+          {/*
+            A team that works alone is not necessarily alone on its product. The Guide's rule only
+            bites when several teams share one, so the prompt names that condition rather than
+            telling every team to go looking for a group.
+          */}
+          {canDecide && (
+            <p className={styles['team-group-discover']}>
+              {t('teamGroup.discover')}{' '}
+              <Link to="/settings/team-groups" className={styles['team-group-link']}>
+                {t('teamGroup.discoverAction')}
+              </Link>
+            </p>
+          )}
 
           {canDecide && directory.length > 0 && (
             <div className={styles['team-group-actions']}>

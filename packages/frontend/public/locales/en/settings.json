@@ -234,6 +234,7 @@
       "title": "No Team Selected"
     },
     "sharedDoD": {
+      "manageLink": "Manage it in Team Groups",
       "message": "This team works with other Scrum Teams on one product in {{name}}, so it complies with their shared Definition of Done. Changes are made there.",
       "title": "Shared Definition of Done."
     },
@@ -477,6 +478,92 @@
       "definitionOfReady": "Definition of Ready"
     },
     "title": "Team Definitions"
+  },
+  "teamGroups": {
+    "delete": {
+      "message": "The group, its roster and its shared Definition of Done are removed. This cannot be undone.",
+      "title": "Delete {{name}}?"
+    },
+    "detail": {
+      "delete": "Delete Group",
+      "deleteBlocked": "A group cannot be removed while teams still comply with its Definition of Done — that would take their commitment away rather than move them to another one. Every team has to leave first.",
+      "readOnlyNotice": "You can read this commitment, but you do not lead a team in this group, so only its teams' Product Owners and Scrum Masters can change it.",
+      "rename": "Rename"
+    },
+    "directoryAriaLabel": "Team groups",
+    "directoryHeading": "Groups",
+    "empty": {
+      "action": "Create the first group",
+      "description": "If several Scrum Teams work on one product, they must comply with the same Definition of Done. A group is how they hold that one commitment — create it, and each team adopts it.",
+      "title": "No team groups yet"
+    },
+    "form": {
+      "beforeUnload": "You have unsaved changes to this team group.",
+      "cancel": "Cancel",
+      "close": "Close",
+      "create": "Create Group",
+      "createTitle": "Create a team group",
+      "description": "Description",
+      "descriptionMaxLength": "The description must be 500 characters or less.",
+      "descriptionPlaceholder": "Two teams, one product, one Definition of Done.",
+      "editTitle": "Edit {{name}}",
+      "name": "Name",
+      "nameMaxLength": "The name must be 100 characters or less.",
+      "namePlaceholder": "e.g., Payments Product",
+      "nameRequired": "A name is required.",
+      "optional": "Optional",
+      "save": "Save Changes",
+      "subtitle": "A group is the Scrum Teams that work together on one product, bound to the one Definition of Done it owns."
+    },
+    "groupLoadError": "This group could not be loaded. Its roster may have changed while you were reading it.",
+    "listAriaLabel": "Team groups",
+    "loadError": "The team groups could not be loaded.",
+    "loading": "Loading team groups...",
+    "meta": {
+      "sharedVersion": "Shared version",
+      "teams": "Teams"
+    },
+    "newGroup": "New Group",
+    "roster": {
+      "adopted": "Adopted",
+      "caption": "Teams complying with the shared Definition of Done of {{name}}",
+      "drift": "Adopted v{{adopted}} — v{{current}} is in force",
+      "empty": "No team has joined this group yet.",
+      "inStep": "In step",
+      "joined": "Joined",
+      "notRecorded": "Not recorded",
+      "status": "Status",
+      "team": "Team",
+      "title": "Teams",
+      "unknown": "—"
+    },
+    "selectPrompt": "Choose a group to see the teams that comply with its Definition of Done, and to edit that commitment.",
+    "sharedDoD": {
+      "activeCount": "{{count}} active criteria",
+      "activeCount_one": "{{count}} active criterion",
+      "activeCount_other": "{{count}} active criteria",
+      "banner": "Every team in this group complies with this Definition of Done. Saving a change applies it to all of them at once and increments the shared version.",
+      "edit": "Edit Shared Definition of Done",
+      "empty": "This group's Definition of Done holds no active criterion. Add one so its teams have a commitment to comply with.",
+      "inactiveCount": "{{count}} inactive",
+      "inactiveCount_one": "{{count}} inactive",
+      "inactiveCount_other": "{{count}} inactive",
+      "readOnly": "You may read this commitment, but you do not lead a team in this group — only its teams' Product Owners and Scrum Masters can change it.",
+      "title": "Shared Definition of Done",
+      "updated": "Updated {{date}}"
+    },
+    "subtitle": "The Scrum Teams that work on one product, and the one Definition of Done they all comply with.",
+    "teamCount": "{{count}} teams",
+    "teamCount_one": "{{count}} team",
+    "teamCount_other": "{{count}} teams",
+    "title": "Team Groups",
+    "toast": {
+      "created": "The team group was created.",
+      "deleted": "The team group was removed.",
+      "sharedDoDUpdated": "The shared Definition of Done was updated. Every team in the group complies with the new version.",
+      "updated": "The team group was updated."
+    },
+    "versionShort": "v{{version}}"
   },
   "teamList": {
     "ariaLabel": "Teams",

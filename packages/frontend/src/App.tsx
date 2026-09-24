@@ -30,6 +30,7 @@ import {
   LazySprintConfiguration as SprintConfiguration,
   LazyDailyScrumSchedule as DailyScrumSchedulePage,
   LazyTeamDefinitionsPage as TeamDefinitionsPage,
+  LazyTeamGroupsPage as TeamGroupsPage,
   LazyProductBacklog as ProductBacklog,
   LazyProductGoalsPage as ProductGoalsPage,
   LazySprintPlanning as SprintPlanning,
@@ -340,6 +341,18 @@ function App() {
                               <LazyRoute fallbackMessage="Loading team definitions...">
                                 <TeamDefinitionsPage />
                               </LazyRoute>
+                            </ProtectedRoute>
+                          }
+                        />
+                        <Route
+                          path="/settings/team-groups"
+                          element={
+                            <ProtectedRoute>
+                              <PageErrorBoundary pageName="Team Groups">
+                                <LazyRoute fallbackMessage="Loading team groups...">
+                                  <TeamGroupsPage />
+                                </LazyRoute>
+                              </PageErrorBoundary>
                             </ProtectedRoute>
                           }
                         />

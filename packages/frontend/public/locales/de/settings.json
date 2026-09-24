@@ -234,6 +234,7 @@
       "title": "Kein Team ausgewählt"
     },
     "sharedDoD": {
+      "manageLink": "In den Teamgruppen verwalten",
       "message": "Dieses Team arbeitet in {{name}} mit anderen Scrum-Teams an einem Produkt und befolgt daher deren gemeinsame Definition of Done. Geändert wird sie dort.",
       "title": "Gemeinsame Definition of Done."
     },
@@ -477,6 +478,92 @@
       "definitionOfReady": "Definition of Ready"
     },
     "title": "Team-Definitionen"
+  },
+  "teamGroups": {
+    "delete": {
+      "message": "Die Gruppe, ihre Teamliste und ihre gemeinsame Definition of Done werden entfernt. Das kann nicht rückgängig gemacht werden.",
+      "title": "{{name}} löschen?"
+    },
+    "detail": {
+      "delete": "Gruppe löschen",
+      "deleteBlocked": "Eine Gruppe kann nicht entfernt werden, solange Teams ihre Definition of Done befolgen — das würde ihnen ihre Vereinbarung nehmen, statt sie zu einer anderen zu führen. Zuerst muss jedes Team austreten.",
+      "readOnlyNotice": "Sie können diese Vereinbarung lesen, führen aber kein Team in dieser Gruppe. Ändern können sie nur die Product Owner und Scrum Master ihrer Teams.",
+      "rename": "Umbenennen"
+    },
+    "directoryAriaLabel": "Teamgruppen",
+    "directoryHeading": "Gruppen",
+    "empty": {
+      "action": "Erste Gruppe erstellen",
+      "description": "Arbeiten mehrere Scrum-Teams an einem Produkt, müssen sie dieselbe Definition of Done befolgen. Eine Gruppe hält diese eine Vereinbarung: Erstellen Sie sie, und jedes Team übernimmt sie.",
+      "title": "Noch keine Teamgruppen"
+    },
+    "form": {
+      "beforeUnload": "Sie haben ungespeicherte Änderungen an dieser Teamgruppe.",
+      "cancel": "Abbrechen",
+      "close": "Schließen",
+      "create": "Gruppe erstellen",
+      "createTitle": "Teamgruppe erstellen",
+      "description": "Beschreibung",
+      "descriptionMaxLength": "Die Beschreibung darf höchstens 500 Zeichen lang sein.",
+      "descriptionPlaceholder": "Zwei Teams, ein Produkt, eine Definition of Done.",
+      "editTitle": "{{name}} bearbeiten",
+      "name": "Name",
+      "nameMaxLength": "Der Name darf höchstens 100 Zeichen lang sein.",
+      "namePlaceholder": "Zahlungsprodukt",
+      "nameRequired": "Ein Name ist erforderlich.",
+      "optional": "Optional",
+      "save": "Änderungen speichern",
+      "subtitle": "Eine Gruppe sind die Scrum-Teams, die gemeinsam an einem Produkt arbeiten, gebunden an die eine Definition of Done, die sie besitzt."
+    },
+    "groupLoadError": "Diese Gruppe konnte nicht geladen werden. Ihre Teamliste hat sich möglicherweise geändert, während Sie sie gelesen haben.",
+    "listAriaLabel": "Teamgruppen",
+    "loadError": "Die Teamgruppen konnten nicht geladen werden.",
+    "loading": "Teamgruppen werden geladen…",
+    "meta": {
+      "sharedVersion": "Gemeinsame Version",
+      "teams": "Teams"
+    },
+    "newGroup": "Neue Gruppe",
+    "roster": {
+      "adopted": "Übernommen",
+      "caption": "Teams, die die gemeinsame Definition of Done von {{name}} befolgen",
+      "drift": "Version {{adopted}} übernommen — Version {{current}} ist in Kraft",
+      "empty": "Dieser Gruppe ist noch kein Team beigetreten.",
+      "inStep": "Im Gleichschritt",
+      "joined": "Beigetreten",
+      "notRecorded": "Nicht erfasst",
+      "status": "Status",
+      "team": "Team",
+      "title": "Teams",
+      "unknown": "—"
+    },
+    "selectPrompt": "Wählen Sie eine Gruppe, um die Teams zu sehen, die ihre Definition of Done befolgen, und um diese Vereinbarung zu bearbeiten.",
+    "sharedDoD": {
+      "activeCount": "{{count}} aktive Kriterien",
+      "activeCount_one": "{{count}} aktives Kriterium",
+      "activeCount_other": "{{count}} aktive Kriterien",
+      "banner": "Jedes Team in dieser Gruppe befolgt diese Definition of Done. Beim Speichern einer Änderung gilt sie sofort für alle, und die gemeinsame Version wird erhöht.",
+      "edit": "Gemeinsame Definition of Done bearbeiten",
+      "empty": "Die Definition of Done dieser Gruppe hat kein aktives Kriterium. Fügen Sie eines hinzu, damit ihre Teams eine Vereinbarung haben, die sie befolgen können.",
+      "inactiveCount": "{{count}} inaktiv",
+      "inactiveCount_one": "{{count}} inaktiv",
+      "inactiveCount_other": "{{count}} inaktiv",
+      "readOnly": "Sie dürfen diese Vereinbarung lesen, führen aber kein Team in dieser Gruppe — ändern können sie nur die Product Owner und Scrum Master ihrer Teams.",
+      "title": "Gemeinsame Definition of Done",
+      "updated": "Aktualisiert am {{date}}"
+    },
+    "subtitle": "Die Scrum-Teams, die an einem Produkt arbeiten, und die eine Definition of Done, die alle befolgen.",
+    "teamCount": "{{count}} Teams",
+    "teamCount_one": "{{count}} Team",
+    "teamCount_other": "{{count}} Teams",
+    "title": "Teamgruppen",
+    "toast": {
+      "created": "Die Teamgruppe wurde erstellt.",
+      "deleted": "Die Teamgruppe wurde entfernt.",
+      "sharedDoDUpdated": "Die gemeinsame Definition of Done wurde aktualisiert. Jedes Team der Gruppe befolgt die neue Version.",
+      "updated": "Die Teamgruppe wurde aktualisiert."
+    },
+    "versionShort": "v{{version}}"
   },
   "teamList": {
     "ariaLabel": "Teams",

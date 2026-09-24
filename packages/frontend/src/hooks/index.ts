@@ -25,6 +25,16 @@ export {
   useUpdateTeam,
   useDeleteTeam,
 } from './useTeamManagement';
+export {
+  useTeamGroups,
+  useTeamGroupDetail,
+  useTeamGroupSharedDoD,
+  useCreateTeamGroup,
+  useUpdateTeamGroup,
+  useDeleteTeamGroup,
+  useUpdateSharedDoD,
+} from './useTeamGroups';
+export type { GroupFormInput } from './useTeamGroups';
 export { useTeamState } from './useTeamState';
 export type { UseTeamStateReturn, TeamWithRole } from './useTeamState';
 export { useSprintPlanningState } from './useSprintPlanningState';

@@ -471,6 +471,7 @@
       "sprintConfiguration": "Sprint-Konfiguration",
       "team": "Team",
       "teamDefinitions": "Team-Definitionen",
+      "teamGroups": "Teamgruppen",
       "teamManagement": "Team-Verwaltung"
     },
     "settingsLabel": "Einstellungen",

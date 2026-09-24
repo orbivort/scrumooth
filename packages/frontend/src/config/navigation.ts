@@ -92,6 +92,14 @@ export const SETTINGS_GROUPS: SettingsGroup[] = [
         roles: ['PRODUCT_OWNER', 'SCRUM_MASTER'],
       },
       {
+        path: '/settings/team-groups',
+        icon: UsersIcon,
+        labelKey: 'nav.settings.teamGroups',
+        // The group is created and its shared Definition of Done replaced by the Product Owner or
+        // Scrum Master of one of its teams, so the entry belongs to the roles that can act on it.
+        roles: ['PRODUCT_OWNER', 'SCRUM_MASTER'],
+      },
+      {
         path: '/settings/team-management',
         icon: BuildingIcon,
         labelKey: 'nav.settings.teamManagement',

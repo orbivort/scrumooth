@@ -4,15 +4,16 @@ This section provides comprehensive guides for all core features of Scrumooth. E
 
 ## Feature Overview
 
-| Feature                                 | Purpose                                 | Primary Users             |
-| --------------------------------------- | --------------------------------------- | ------------------------- |
-| [Product Goals](./product-goals.md)     | Strategic direction and objectives      | Product Owner             |
-| [Product Backlog](./product-backlog.md) | Work item management and prioritization | Product Owner, Developers |
-| [Sprint Planning](./sprint-planning.md) | Sprint preparation and commitment       | Scrum Team (facilitated)  |
-| [Sprint Board](./sprint-board.md)       | Daily work tracking (Kanban)            | Developers                |
-| [Daily Scrum](./daily-scrum.md)         | Daily synchronization                   | Developers                |
-| [Sprint Review](./sprint-review.md)     | Demonstration and feedback              | Scrum Team + Stakeholders |
-| [Retrospectives](./retrospectives.md)   | Process improvement                     | Scrum Team (facilitated)  |
+| Feature                                 | Purpose                                 | Primary Users               |
+| --------------------------------------- | --------------------------------------- | --------------------------- |
+| [Product Goals](./product-goals.md)     | Strategic direction and objectives      | Product Owner               |
+| [Product Backlog](./product-backlog.md) | Work item management and prioritization | Product Owner, Developers   |
+| [Sprint Planning](./sprint-planning.md) | Sprint preparation and commitment       | Scrum Team (facilitated)    |
+| [Sprint Board](./sprint-board.md)       | Daily work tracking (Kanban)            | Developers                  |
+| [Daily Scrum](./daily-scrum.md)         | Daily synchronization                   | Developers                  |
+| [Sprint Review](./sprint-review.md)     | Demonstration and feedback              | Scrum Team + Stakeholders   |
+| [Retrospectives](./retrospectives.md)   | Process improvement                     | Scrum Team (facilitated)    |
+| [Team Groups](./team-groups.md)         | One Definition of Done for a product    | Product Owner, Scrum Master |
 
 ## Scrum Framework in Scrumooth
 
@@ -82,6 +83,7 @@ Each sprint follows this lifecycle:
 - [Product Backlog](./product-backlog.md) - Manage and prioritize work
 - [Sprint Planning](./sprint-planning.md) - Plan sprints with the team
 - [Sprint Review](./sprint-review.md) - Gather stakeholder feedback
+- [Team Groups](./team-groups.md) - Hold one Definition of Done across the teams on a product
 
 ### For Scrum Masters
 
@@ -89,6 +91,7 @@ Each sprint follows this lifecycle:
 - [Daily Scrum](./daily-scrum.md) - Run effective daily standups
 - [Sprint Review](./sprint-review.md) - Facilitate review meetings
 - [Retrospectives](./retrospectives.md) - Guide process improvement
+- [Team Groups](./team-groups.md) - Keep several teams on one shared Definition of Done
 
 ### For Developers
 

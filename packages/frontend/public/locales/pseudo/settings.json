@@ -234,6 +234,7 @@
       "title": "[Nó Téàm Séléctédddddd]"
     },
     "sharedDoD": {
+      "manageLink": "[Mànàgé ít ín Téàm Gróúpsssssssss]",
       "message": "[Thís téàm wórks wíth óthér Scrúm Téàms ón óné pródúct ínnnnnnnnnnnnnnnnnnn {{name}}, só ít cómplíés wíth théír shàréd Défínítíón óf Dóné. Chàngés àré màdé thérééééééééééééééééééééééééé.]",
       "title": "[Shàréd Défínítíón óf Dónééééééééé.]"
     },
@@ -477,6 +478,92 @@
       "definitionOfReady": "[Défínítíón óf Réàdyyyyyyy]"
     },
     "title": "[Téàm Défínítíónssssss]"
+  },
+  "teamGroups": {
+    "delete": {
+      "message": "[Thé gróúp, íts róstér ànd íts shàréd Défínítíón óf Dóné àré rémóvéd. Thís cànnót bé úndónééééééééééééééééééééééééééééé.]",
+      "title": "[DDéélléétté {{name}}?]"
+    },
+    "detail": {
+      "delete": "[Délété Gróúppppp]",
+      "deleteBlocked": "[À gróúp cànnót bé rémóvéd whílé téàms stíll cómply wíth íts Défínítíón óf Dóné — thàt wóúld tàké théír cómmítmént àwày ràthér thàn móvé thém tó ànóthér óné. Évéry téàm hàs tó léàvé fírstttttttttttttttttttttttttttttttttttttttttttttttttttttttttt.]",
+      "readOnlyNotice": "[Yóú càn réàd thís cómmítmént, bút yóú dó nót léàd à téàm ín thís gróúp, só ónly íts téàms' Pródúct Ównérs ànd Scrúm Màstérs càn chàngé íttttttttttttttttttttttttttttttttttttttttttt.]",
+      "rename": "[Rénàmééé]"
+    },
+    "directoryAriaLabel": "[Téàm gróúpsssss]",
+    "directoryHeading": "[Gróúpsss]",
+    "empty": {
+      "action": "[Créàté thé fírst gróúpppppppp]",
+      "description": "[Íf sévéràl Scrúm Téàms wórk ón óné pródúct, théy múst cómply wíth thé sàmé Défínítíón óf Dóné. À gróúp ís hów théy hóld thàt óné cómmítmént — créàté ít, ànd éàch téàm àdópts íttttttttttttttttttttttttttttttttttttttttttttttttttttttt.]",
+      "title": "[Nó téàm gróúps yéttttttt]"
+    },
+    "form": {
+      "beforeUnload": "[Yóú hàvé únsàvéd chàngés tó thís téàm gróúppppppppppppppp.]",
+      "cancel": "[Càncélll]",
+      "close": "[Clósééé]",
+      "create": "[Créàté Gróúppppp]",
+      "createTitle": "[Créàté à téàm gróúppppppp]",
+      "description": "[Déscríptíónnnnn]",
+      "descriptionMaxLength": "[Thé déscríptíón múst bé 500 chàràctérs ór lésssssssssssssssss.]",
+      "descriptionPlaceholder": "[Twó téàms, óné pródúct, óné Défínítíón óf Dónéééééééééééééééé.]",
+      "editTitle": "[ÉÉddíít {{name}}]",
+      "name": "[NNààmmé]",
+      "nameMaxLength": "[Thé nàmé múst bé 100 chàràctérs ór léssssssssssssss.]",
+      "namePlaceholder": "[é.g., Pàyménts Pródúctttttttt]",
+      "nameRequired": "[À nàmé ís réqúíréddddddd.]",
+      "optional": "[Óptíónàllll]",
+      "save": "[Sàvé Chàngésssss]",
+      "subtitle": "[À gróúp ís thé Scrúm Téàms thàt wórk tógéthér ón óné pródúct, bóúnd tó thé óné Défínítíón óf Dóné ít ównsssssssssssssssssssssssssssssssss.]"
+    },
+    "groupLoadError": "[Thís gróúp cóúld nót bé lóàdéd. Íts róstér mày hàvé chàngéd whílé yóú wéré réàdíng íttttttttttttttttttttttttttt.]",
+    "listAriaLabel": "[Téàm gróúpsssss]",
+    "loadError": "[Thé téàm gróúps cóúld nót bé lóàdédddddddddddd.]",
+    "loading": "[Lóàdíng téàm gróúpssssssss...]",
+    "meta": {
+      "sharedVersion": "[Shàréd vérsíónnnnnn]",
+      "teams": "[Téàmsss]"
+    },
+    "newGroup": "[Néw Gróúpppp]",
+    "roster": {
+      "adopted": "[Àdóptédddd]",
+      "caption": "[Téàms cómplyíng wíth thé shàréd Défínítíón óf Dóné óffffffffffffffffff {{name}}]",
+      "drift": "[Àdóptéd vvvv{{adopted}} — vvv{{current}} ís ín fórcééééé]",
+      "empty": "[Nó téàm hàs jóínéd thís gróúp yétttttttttttt.]",
+      "inStep": "[ÍÍnn ssttéép]",
+      "joined": "[Jóínéddd]",
+      "notRecorded": "[Nót récórdéddddd]",
+      "status": "[Stàtússs]",
+      "team": "[TTééààm]",
+      "title": "[Téàmsss]",
+      "unknown": "[—]"
+    },
+    "selectPrompt": "[Chóósé à gróúp tó séé thé téàms thàt cómply wíth íts Défínítíón óf Dóné, ànd tó édít thàt cómmítméntttttttttttttttttttttttttttttttt.]",
+    "sharedDoD": {
+      "activeCount": "[{{count}} àctívé crítéríàààààà]",
+      "activeCount_one": "[{{count}} àctívé crítéríónnnnnnn]",
+      "activeCount_other": "[{{count}} àctívé crítéríàààààà]",
+      "banner": "[Évéry téàm ín thís gróúp cómplíés wíth thís Défínítíón óf Dóné. Sàvíng à chàngé àpplíés ít tó àll óf thém àt óncé ànd íncréménts thé shàréd vérsíónnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn.]",
+      "edit": "[Édít Shàréd Défínítíón óf Dónéééééééééé]",
+      "empty": "[Thís gróúp's Défínítíón óf Dóné hólds nó àctívé crítéríón. Àdd óné só íts téàms hàvé à cómmítmént tó cómply wíthhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh.]",
+      "inactiveCount": "[{{count}} ínàctívéééé]",
+      "inactiveCount_one": "[{{count}} ínàctívéééé]",
+      "inactiveCount_other": "[{{count}} ínàctívéééé]",
+      "readOnly": "[Yóú mày réàd thís cómmítmént, bút yóú dó nót léàd à téàm ín thís gróúp — ónly íts téàms' Pródúct Ównérs ànd Scrúm Màstérs càn chàngé ítttttttttttttttttttttttttttttttttttttttttt.]",
+      "title": "[Shàréd Défínítíón óf Dónééééééééé]",
+      "updated": "[Úpdàtédddd {{date}}]"
+    },
+    "subtitle": "[Thé Scrúm Téàms thàt wórk ón óné pródúct, ànd thé óné Défínítíón óf Dóné théy àll cómply wíthhhhhhhhhhhhhhhhhhhhhhhhhhhhhh.]",
+    "teamCount": "[{{count}} téàmsss]",
+    "teamCount_one": "[{{count}} ttééààm]",
+    "teamCount_other": "[{{count}} téàmsss]",
+    "title": "[Téàm Gróúpsssss]",
+    "toast": {
+      "created": "[Thé téàm gróúp wàs créàtédddddddddd.]",
+      "deleted": "[Thé téàm gróúp wàs rémóvédddddddddd.]",
+      "sharedDoDUpdated": "[Thé shàréd Défínítíón óf Dóné wàs úpdàtéd. Évéry téàm ín thé gróúp cómplíés wíth thé néw vérsíónnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn.]",
+      "updated": "[Thé téàm gróúp wàs úpdàtédddddddddd.]"
+    },
+    "versionShort": "[vv{{version}}]"
   },
   "teamList": {
     "ariaLabel": "[Téàmsss]",

@@ -700,8 +700,9 @@ describe('TeamManagement - Multiple Teams', () => {
         expect(screen.getByRole('heading', { name: 'Team Members' })).toBeInTheDocument();
       });
 
-      // Component renders team page with member count
-      expect(screen.getByText(/2 member/i)).toBeInTheDocument();
+      // The roster reads on its own tab: one entry per member. The size against the limit belongs
+      // to the identity card, which the Overview tab owns.
+      expect(screen.getAllByRole('listitem')).toHaveLength(2);
     });
 
     it('should handle add member functionality', async () => {
@@ -1575,7 +1576,8 @@ describe('TeamManagement - Multiple Teams', () => {
         expect(screen.getByRole('heading', { name: 'Team Members' })).toBeInTheDocument();
       });
 
-      expect(screen.getByText(/0\s+member/i)).toBeInTheDocument();
+      // An empty roster says so rather than rendering a list with nothing in it.
+      expect(screen.getByText('No team members found.')).toBeInTheDocument();
     });
   });
 

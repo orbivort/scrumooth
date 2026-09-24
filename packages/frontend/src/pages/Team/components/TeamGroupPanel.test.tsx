@@ -216,6 +216,21 @@ describe('TeamGroupPanel', () => {
 
       expect(screen.queryByText('Code is peer-reviewed')).not.toBeInTheDocument();
     });
+
+    it('should tell a deciding caller that a shared product means a shared commitment', () => {
+      renderPanel();
+
+      expect(screen.getByRole('link', { name: 'Open Team Groups' })).toHaveAttribute(
+        'href',
+        '/settings/team-groups'
+      );
+    });
+
+    it('should not raise the possibility of a group to a caller who cannot decide', () => {
+      renderPanel({ canDecide: false });
+
+      expect(screen.queryByRole('link', { name: 'Open Team Groups' })).not.toBeInTheDocument();
+    });
   });
 
   describe('Joining a group', () => {
@@ -320,6 +335,22 @@ describe('TeamGroupPanel', () => {
       renderPanel({ group: ALPHA, adoptedVersion: 3, joinedAt: JOINED_AT, canDecide: false });
 
       expect(screen.queryByRole('button', { name: 'Leave the group' })).not.toBeInTheDocument();
+    });
+
+    it('should point a deciding caller at the screen where the commitment is changed', () => {
+      renderPanel({ group: ALPHA, adoptedVersion: 3, joinedAt: JOINED_AT });
+
+      expect(
+        screen.getByRole('link', { name: 'Manage the shared Definition of Done' })
+      ).toHaveAttribute('href', `/settings/team-groups?group=${ALPHA.id}`);
+    });
+
+    it('should not point a caller who cannot decide at a screen they may not act on', () => {
+      renderPanel({ group: ALPHA, adoptedVersion: 3, joinedAt: JOINED_AT, canDecide: false });
+
+      expect(
+        screen.queryByRole('link', { name: 'Manage the shared Definition of Done' })
+      ).not.toBeInTheDocument();
     });
   });
 

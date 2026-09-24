@@ -22,6 +22,21 @@ structural:
 - A group is a **product-collaboration device, not a team decomposition**: nothing inside a Scrum
   Team changes, so _"no sub-teams or hierarchies"_ is not infringed.
 
+## Where this lives in the product
+
+| Task                                           | Screen                                              | Endpoints                                                       |
+| ---------------------------------------------- | --------------------------------------------------- | --------------------------------------------------------------- |
+| Browse and manage groups, read the roster      | **Settings → Team → Team Groups**                   | `GET/POST /team-groups`, `GET/PUT/DELETE /team-groups/:groupId` |
+| Read and replace the shared Definition of Done | **Settings → Team → Team Groups**                   | `GET/PUT /team-groups/:groupId/shared-definition-of-done`       |
+| Join or leave a group                          | **Team → Scrum Health → Shared Definition of Done** | `POST/DELETE /teams/:teamId/group`                              |
+
+A grouped team's own Definition of Done panel (**Settings → Team → Team Definitions**) becomes
+read-only and links to the group that governs it, so the interface never offers an edit the API would
+refuse with `GATE_DOD_GROUP_GOVERNED`.
+
+See the [Team Groups user guide](../user-guide/core-features/team-groups.md) for the same rules told
+from a user's point of view.
+
 ## Authentication
 
 All endpoints require authentication. What each caller may then do is decided by the group's own

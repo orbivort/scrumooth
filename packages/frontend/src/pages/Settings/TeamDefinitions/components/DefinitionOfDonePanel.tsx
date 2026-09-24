@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router';
 import type { TFunction } from 'i18next';
 import { formatLocaleDate } from '@scrumooth/shared';
 
@@ -231,10 +232,21 @@ export function DefinitionOfDonePanel(): React.ReactElement {
           </div>
         </div>
 
+        {/*
+          A grouped team complies with the Definition of Done its group owns, so this panel reports
+          it rather than editing it. The notice names where the change is made, and links to that
+          place: a reader told to go elsewhere should not have to go looking.
+        */}
         {sharedWithGroup && (
           <p className={styles['group-notice']} role="status">
             <strong>{t('dodPanel.sharedDoD.title')}</strong>{' '}
-            {t('dodPanel.sharedDoD.message', { name: sharedWithGroup.name })}
+            {t('dodPanel.sharedDoD.message', { name: sharedWithGroup.name })}{' '}
+            <Link
+              to={`/settings/team-groups?group=${sharedWithGroup.id}`}
+              className={styles['group-notice-link']}
+            >
+              {t('dodPanel.sharedDoD.manageLink')}
+            </Link>
           </p>
         )}
 

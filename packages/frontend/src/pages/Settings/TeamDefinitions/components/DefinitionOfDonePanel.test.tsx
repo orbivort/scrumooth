@@ -2,7 +2,7 @@ import React from 'react';
 import { screen, fireEvent, renderWithProviders, initTestI18n } from '../../../../test-utils';
 import { vi } from 'vitest';
 
-import { definitionService } from '../../../../services';
+import { apiService, definitionService } from '../../../../services';
 import { DefinitionOfDonePanel } from './DefinitionOfDonePanel';
 
 vi.mock('../../../../store', () => {
@@ -15,6 +15,9 @@ vi.mock('../../../../store', () => {
 });
 
 vi.mock('../../../../services', () => ({
+  apiService: {
+    getTeam: vi.fn(),
+  },
   definitionService: {
     getDefinitionOfDone: vi.fn(),
     updateDefinitionOfDone: vi.fn(),
@@ -139,5 +142,48 @@ describe('DefinitionOfDonePanel', () => {
     expect(
       await screen.findByText('Please select a team to view and manage the Definition of Done.')
     ).toBeInTheDocument();
+  });
+
+  it('should send a grouped team to the group screen instead of offering it an editor', async () => {
+    (definitionService.getDefinitionOfDone as vi.Mock).mockResolvedValue({
+      success: true,
+      data: {
+        id: 'dod-1',
+        teamId: 'team-1',
+        items: [
+          {
+            id: 'item-1',
+            description: 'Code is peer-reviewed',
+            category: 'quality',
+            isActive: true,
+            order: 0,
+          },
+        ],
+        version: 3,
+        updatedAt: '2024-01-01T00:00:00Z',
+      },
+    });
+    (apiService.getTeam as vi.Mock).mockResolvedValue({
+      success: true,
+      data: {
+        ...mockTeam,
+        group: {
+          id: 'group-1',
+          name: 'Payments product',
+          description: null,
+          teamCount: 2,
+          dodVersion: 3,
+        },
+      },
+    });
+
+    renderWithProviders(<DefinitionOfDonePanel />);
+
+    // The notice used to name a destination that did not exist; it is now the destination.
+    expect(await screen.findByRole('link', { name: 'Manage it in Team Groups' })).toHaveAttribute(
+      'href',
+      '/settings/team-groups?group=group-1'
+    );
+    expect(screen.queryByRole('button', { name: 'Edit DoD' })).not.toBeInTheDocument();
   });
 });
