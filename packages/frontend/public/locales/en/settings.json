@@ -543,6 +543,9 @@
       "save": "Save Changes",
       "subtitle": "A group is the Scrum Teams that work together on one product, bound to the one Definition of Done it owns."
     },
+    "groupCount": "{{count}} groups",
+    "groupCount_one": "{{count}} group",
+    "groupCount_other": "{{count}} groups",
     "groupLoadError": "This group could not be loaded. Its roster may have changed while you were reading it.",
     "listAriaLabel": "Team groups",
     "loadError": "The team groups could not be loaded.",

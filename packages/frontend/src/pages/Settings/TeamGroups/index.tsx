@@ -312,7 +312,7 @@ export function TeamGroupsPage(): React.JSX.Element {
             {t('teamGroups.title')}
             {groups.length > 0 && (
               <span className={styles['item-count']}>
-                {t('teamGroups.teamCount', { count: groups.length })}
+                {t('teamGroups.groupCount', { count: groups.length })}
               </span>
             )}
           </h1>

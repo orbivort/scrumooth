@@ -543,6 +543,9 @@
       "save": "Salva modifiche",
       "subtitle": "Un gruppo sono i team Scrum che lavorano insieme su un unico prodotto, legati all'unica Definition of Done che possiede."
     },
+    "groupCount": "{{count}} gruppi",
+    "groupCount_one": "{{count}} gruppo",
+    "groupCount_other": "{{count}} gruppi",
     "groupLoadError": "Non è stato possibile caricare questo gruppo. Il suo elenco di team potrebbe essere cambiato mentre lo leggevi.",
     "listAriaLabel": "Gruppi di team",
     "loadError": "Non è stato possibile caricare i gruppi di team.",
