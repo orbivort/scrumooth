@@ -19,7 +19,6 @@ import { queryKeys } from '../../../hooks/queryKeys';
 import { useToast } from '../../../hooks/useToast';
 import { ToastContainer } from '../../../components/common/ToastContainer';
 import { EmptyState } from '../../../components/EmptyState';
-import { Button } from '../../../components/common/Button';
 import {
   ArrowLeftIcon,
   CalendarIcon,
@@ -27,7 +26,6 @@ import {
   ClockIcon,
   InfoIcon,
   PlusIcon,
-  SunIcon,
   TrashIcon,
 } from '../../../components/common/Icons';
 
@@ -341,7 +339,7 @@ export const DailyScrumSchedule: React.FC = () => {
       <div className={styles['header-left']}>
         <h1 className={styles['page-title']}>
           <span className={styles['page-title-icon']}>
-            <SunIcon />
+            <ClockIcon />
           </span>
           {t('dailyScrumSchedule.title')}
         </h1>
@@ -369,9 +367,13 @@ export const DailyScrumSchedule: React.FC = () => {
           <p className={styles['load-error-message']}>
             {t('errors:workflow.loadFailed', { resource: t('dailyScrumSchedule.title') })}
           </p>
-          <Button type="button" variant="secondary" size="md" onClick={handleRetryLoad}>
+          <button
+            type="button"
+            className={`${styles['button']} ${styles['button-secondary']}`}
+            onClick={handleRetryLoad}
+          >
             {t('errors:generic.retry')}
-          </Button>
+          </button>
         </div>
       </div>
     );
@@ -391,239 +393,243 @@ export const DailyScrumSchedule: React.FC = () => {
 
       <div className={styles['cards']}>
         <section className={styles['card']} aria-labelledby="cadence-heading">
-          <div className={styles['card-heading']}>
-            <span className={styles['card-heading-icon']}>
-              <ClockIcon size={18} />
-            </span>
-            <h2 id="cadence-heading" className={styles['card-title']}>
+          <div className={styles['card-header']}>
+            <h2 id="cadence-heading" className={styles['card-header-title']}>
+              <span className={styles['card-header-icon']}>
+                <ClockIcon size={20} />
+              </span>
               {t('dailyScrumSchedule.cadence.title')}
             </h2>
           </div>
 
-          <div className={styles['field-grid']}>
-            <div className={styles['field']}>
-              <label className={styles['field-label']} htmlFor="daily-scrum-start-time">
-                {t('dailyScrumSchedule.cadence.startTime')}
-              </label>
-              <input
-                id="daily-scrum-start-time"
-                type="time"
-                className={styles['input']}
-                value={startTime}
-                onChange={(event) => setStartTime(event.target.value)}
-                disabled={readOnly}
-                required
-              />
-              <span className={styles['field-hint']}>
-                {startMinute === null
-                  ? t('dailyScrumSchedule.validation.timeInvalid')
-                  : t('dailyScrumSchedule.cadence.preview', {
-                      time: formatStartMinute(startMinute),
-                    })}
-              </span>
+          <div className={styles['card-body']}>
+            <div className={styles['field-grid']}>
+              <div className={styles['field']}>
+                <label className={styles['field-label']} htmlFor="daily-scrum-start-time">
+                  {t('dailyScrumSchedule.cadence.startTime')}
+                </label>
+                <input
+                  id="daily-scrum-start-time"
+                  type="time"
+                  className={styles['input']}
+                  value={startTime}
+                  onChange={(event) => setStartTime(event.target.value)}
+                  disabled={readOnly}
+                  required
+                />
+                <span className={styles['field-hint']}>
+                  {startMinute === null
+                    ? t('dailyScrumSchedule.validation.timeInvalid')
+                    : t('dailyScrumSchedule.cadence.preview', {
+                        time: formatStartMinute(startMinute),
+                      })}
+                </span>
+              </div>
+
+              <div className={styles['field']}>
+                <label className={styles['field-label']} htmlFor="daily-scrum-timezone">
+                  {t('dailyScrumSchedule.cadence.timezone')}
+                </label>
+                <select
+                  id="daily-scrum-timezone"
+                  className={styles['input']}
+                  value={timezone}
+                  onChange={(event) => setTimezone(event.target.value)}
+                  disabled={readOnly}
+                >
+                  {timeZoneOptions.map((zone) => (
+                    <option key={zone} value={zone}>
+                      {zone}
+                    </option>
+                  ))}
+                </select>
+                <span className={styles['field-hint']}>
+                  {t('dailyScrumSchedule.cadence.timezoneHint')}
+                </span>
+              </div>
             </div>
 
-            <div className={styles['field']}>
-              <label className={styles['field-label']} htmlFor="daily-scrum-timezone">
-                {t('dailyScrumSchedule.cadence.timezone')}
-              </label>
-              <select
-                id="daily-scrum-timezone"
-                className={styles['input']}
-                value={timezone}
-                onChange={(event) => setTimezone(event.target.value)}
-                disabled={readOnly}
-              >
-                {timeZoneOptions.map((zone) => (
-                  <option key={zone} value={zone}>
-                    {zone}
-                  </option>
-                ))}
-              </select>
-              <span className={styles['field-hint']}>
-                {t('dailyScrumSchedule.cadence.timezoneHint')}
-              </span>
+            <div className={styles['field-grid']}>
+              <div className={styles['field']}>
+                <label className={styles['field-label']} htmlFor="daily-scrum-location">
+                  {t('dailyScrumSchedule.cadence.location')}
+                </label>
+                <input
+                  id="daily-scrum-location"
+                  type="text"
+                  className={styles['input']}
+                  value={locationName}
+                  maxLength={200}
+                  placeholder={t('dailyScrumSchedule.cadence.locationPlaceholder')}
+                  onChange={(event) => setLocationName(event.target.value)}
+                  disabled={readOnly}
+                />
+              </div>
+
+              <div className={styles['field']}>
+                <label className={styles['field-label']} htmlFor="daily-scrum-location-url">
+                  {t('dailyScrumSchedule.cadence.locationUrl')}
+                </label>
+                <input
+                  id="daily-scrum-location-url"
+                  type="url"
+                  className={styles['input']}
+                  value={locationUrl}
+                  placeholder="https://"
+                  onChange={(event) => setLocationUrl(event.target.value)}
+                  disabled={readOnly}
+                />
+                <span className={styles['field-hint']}>
+                  {t('dailyScrumSchedule.cadence.placeHint')}
+                </span>
+              </div>
             </div>
+
+            <p className={styles['next-meeting']}>
+              <CalendarIcon size={16} />
+              {nextDailyScrum
+                ? t('dailyScrumSchedule.cadence.nextMeeting', {
+                    date: new Intl.DateTimeFormat(locale, {
+                      weekday: 'long',
+                      day: 'numeric',
+                      month: 'long',
+                    }).format(new Date(`${nextDailyScrum}T00:00:00`)),
+                    time: formatStartMinute(startMinute ?? 0),
+                    timezone,
+                  })
+                : t('dailyScrumSchedule.cadence.noWorkingDays')}
+            </p>
           </div>
-
-          <div className={styles['field-grid']}>
-            <div className={styles['field']}>
-              <label className={styles['field-label']} htmlFor="daily-scrum-location">
-                {t('dailyScrumSchedule.cadence.location')}
-              </label>
-              <input
-                id="daily-scrum-location"
-                type="text"
-                className={styles['input']}
-                value={locationName}
-                maxLength={200}
-                placeholder={t('dailyScrumSchedule.cadence.locationPlaceholder')}
-                onChange={(event) => setLocationName(event.target.value)}
-                disabled={readOnly}
-              />
-            </div>
-
-            <div className={styles['field']}>
-              <label className={styles['field-label']} htmlFor="daily-scrum-location-url">
-                {t('dailyScrumSchedule.cadence.locationUrl')}
-              </label>
-              <input
-                id="daily-scrum-location-url"
-                type="url"
-                className={styles['input']}
-                value={locationUrl}
-                placeholder="https://"
-                onChange={(event) => setLocationUrl(event.target.value)}
-                disabled={readOnly}
-              />
-              <span className={styles['field-hint']}>
-                {t('dailyScrumSchedule.cadence.placeHint')}
-              </span>
-            </div>
-          </div>
-
-          <p className={styles['next-meeting']}>
-            <CalendarIcon size={16} />
-            {nextDailyScrum
-              ? t('dailyScrumSchedule.cadence.nextMeeting', {
-                  date: new Intl.DateTimeFormat(locale, {
-                    weekday: 'long',
-                    day: 'numeric',
-                    month: 'long',
-                  }).format(new Date(`${nextDailyScrum}T00:00:00`)),
-                  time: formatStartMinute(startMinute ?? 0),
-                  timezone,
-                })
-              : t('dailyScrumSchedule.cadence.noWorkingDays')}
-          </p>
         </section>
 
         <section className={styles['card']} aria-labelledby="working-week-heading">
-          <div className={styles['card-heading']}>
-            <span className={styles['card-heading-icon']}>
-              <CheckCircleIcon size={18} />
-            </span>
-            <h2 id="working-week-heading" className={styles['card-title']}>
+          <div className={styles['card-header']}>
+            <h2 id="working-week-heading" className={styles['card-header-title']}>
+              <span className={styles['card-header-icon']}>
+                <CheckCircleIcon size={20} />
+              </span>
               {t('dailyScrumSchedule.workingWeek.title')}
             </h2>
           </div>
 
-          <fieldset className={styles['fieldset']} disabled={readOnly}>
-            <legend className={styles['visually-hidden']}>
-              {t('dailyScrumSchedule.workingWeek.legend')}
-            </legend>
-            <div className={styles['chips']}>
-              {WEEKDAY_ORDER.map((weekday) => {
-                const selected = workingDays.includes(weekday);
-                return (
-                  <button
-                    key={weekday}
-                    type="button"
-                    role="checkbox"
-                    aria-checked={selected}
-                    className={`${styles['chip']} ${selected ? styles['chip-selected'] : ''}`}
-                    onClick={() => toggleWorkingDay(weekday)}
-                  >
-                    {t(WEEKDAY_LABELS[weekday])}
-                  </button>
-                );
-              })}
-            </div>
-          </fieldset>
+          <div className={styles['card-body']}>
+            <fieldset className={styles['fieldset']} disabled={readOnly}>
+              <legend className={styles['visually-hidden']}>
+                {t('dailyScrumSchedule.workingWeek.legend')}
+              </legend>
+              <div className={styles['chips']}>
+                {WEEKDAY_ORDER.map((weekday) => {
+                  const selected = workingDays.includes(weekday);
+                  return (
+                    <button
+                      key={weekday}
+                      type="button"
+                      role="checkbox"
+                      aria-checked={selected}
+                      className={`${styles['chip']} ${selected ? styles['chip-selected'] : ''}`}
+                      onClick={() => toggleWorkingDay(weekday)}
+                    >
+                      {t(WEEKDAY_LABELS[weekday])}
+                    </button>
+                  );
+                })}
+              </div>
+            </fieldset>
 
-          <p className={styles['field-hint']}>
-            {workingDays.length === 0
-              ? t('dailyScrumSchedule.workingWeek.noneSelected')
-              : t('dailyScrumSchedule.workingWeek.summary', { count: workingDays.length })}
-          </p>
+            <p className={styles['field-hint']}>
+              {workingDays.length === 0
+                ? t('dailyScrumSchedule.workingWeek.noneSelected')
+                : t('dailyScrumSchedule.workingWeek.summary', { count: workingDays.length })}
+            </p>
+          </div>
         </section>
 
         <section className={styles['card']} aria-labelledby="exceptions-heading">
-          <div className={styles['card-heading']}>
-            <span className={styles['card-heading-icon']}>
-              <CalendarIcon size={18} />
-            </span>
-            <h2 id="exceptions-heading" className={styles['card-title']}>
+          <div className={styles['card-header']}>
+            <h2 id="exceptions-heading" className={styles['card-header-title']}>
+              <span className={styles['card-header-icon']}>
+                <CalendarIcon size={20} />
+              </span>
               {t('dailyScrumSchedule.exceptions.title', { year })}
             </h2>
           </div>
 
-          {exceptions.length === 0 ? (
-            <p className={styles['empty-note']}>{t('dailyScrumSchedule.exceptions.empty')}</p>
-          ) : (
-            <ul className={styles['exception-list']}>
-              {exceptions.map((exception) => (
-                <li
-                  key={exception.id}
-                  className={`${styles['exception-row']} ${
-                    isExceptionInThePast(exception.date, todayIso)
-                      ? styles['exception-row-past']
-                      : ''
-                  }`}
-                >
-                  <span className={styles['exception-date']}>{exception.date}</span>
-                  <span className={styles['exception-name']}>
-                    {exception.name ?? t('dailyScrumSchedule.exceptions.unnamed')}
-                  </span>
-                  {!readOnly && (
-                    <Button
-                      type="button"
-                      variant="link"
-                      size="sm"
-                      aria-label={t('dailyScrumSchedule.exceptions.removeLabel', {
-                        date: exception.date,
-                      })}
-                      onClick={() => deleteExceptionMutation.mutate(exception.id)}
-                      disabled={deleteExceptionMutation.isPending}
-                    >
-                      <TrashIcon size={16} />
-                    </Button>
-                  )}
-                </li>
-              ))}
-            </ul>
-          )}
+          <div className={styles['card-body']}>
+            {exceptions.length === 0 ? (
+              <p className={styles['empty-note']}>{t('dailyScrumSchedule.exceptions.empty')}</p>
+            ) : (
+              <ul className={styles['exception-list']}>
+                {exceptions.map((exception) => (
+                  <li
+                    key={exception.id}
+                    className={`${styles['exception-row']} ${
+                      isExceptionInThePast(exception.date, todayIso)
+                        ? styles['exception-row-past']
+                        : ''
+                    }`}
+                  >
+                    <span className={styles['exception-date']}>{exception.date}</span>
+                    <span className={styles['exception-name']}>
+                      {exception.name ?? t('dailyScrumSchedule.exceptions.unnamed')}
+                    </span>
+                    {!readOnly && (
+                      <button
+                        type="button"
+                        className={styles['delete-button']}
+                        aria-label={t('dailyScrumSchedule.exceptions.removeLabel', {
+                          date: exception.date,
+                        })}
+                        onClick={() => deleteExceptionMutation.mutate(exception.id)}
+                        disabled={deleteExceptionMutation.isPending}
+                      >
+                        <TrashIcon size={16} />
+                      </button>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
 
-          {!readOnly && (
-            <div className={styles['add-exception']}>
-              <div className={styles['field']}>
-                <label className={styles['field-label']} htmlFor="daily-scrum-exception-date">
-                  {t('dailyScrumSchedule.exceptions.date')}
-                </label>
-                <input
-                  id="daily-scrum-exception-date"
-                  type="date"
-                  className={styles['input']}
-                  value={newExceptionDate}
-                  onChange={(event) => setNewExceptionDate(event.target.value)}
-                />
+            {!readOnly && (
+              <div className={styles['add-exception']}>
+                <div className={styles['field']}>
+                  <label className={styles['field-label']} htmlFor="daily-scrum-exception-date">
+                    {t('dailyScrumSchedule.exceptions.date')}
+                  </label>
+                  <input
+                    id="daily-scrum-exception-date"
+                    type="date"
+                    className={styles['input']}
+                    value={newExceptionDate}
+                    onChange={(event) => setNewExceptionDate(event.target.value)}
+                  />
+                </div>
+                <div className={styles['field']}>
+                  <label className={styles['field-label']} htmlFor="daily-scrum-exception-name">
+                    {t('dailyScrumSchedule.exceptions.name')}
+                  </label>
+                  <input
+                    id="daily-scrum-exception-name"
+                    type="text"
+                    className={styles['input']}
+                    value={newExceptionName}
+                    maxLength={120}
+                    placeholder={t('dailyScrumSchedule.exceptions.namePlaceholder')}
+                    onChange={(event) => setNewExceptionName(event.target.value)}
+                  />
+                </div>
+                <button
+                  type="button"
+                  className={`${styles['button']} ${styles['button-secondary']}`}
+                  onClick={() => addExceptionMutation.mutate()}
+                  disabled={!newExceptionDate || addExceptionMutation.isPending}
+                >
+                  <PlusIcon size={16} />
+                  {t('dailyScrumSchedule.exceptions.add')}
+                </button>
               </div>
-              <div className={styles['field']}>
-                <label className={styles['field-label']} htmlFor="daily-scrum-exception-name">
-                  {t('dailyScrumSchedule.exceptions.name')}
-                </label>
-                <input
-                  id="daily-scrum-exception-name"
-                  type="text"
-                  className={styles['input']}
-                  value={newExceptionName}
-                  maxLength={120}
-                  placeholder={t('dailyScrumSchedule.exceptions.namePlaceholder')}
-                  onChange={(event) => setNewExceptionName(event.target.value)}
-                />
-              </div>
-              <Button
-                type="button"
-                variant="secondary"
-                size="md"
-                onClick={() => addExceptionMutation.mutate()}
-                disabled={!newExceptionDate || addExceptionMutation.isPending}
-              >
-                <PlusIcon size={16} />
-                {t('dailyScrumSchedule.exceptions.add')}
-              </Button>
-            </div>
-          )}
+            )}
+          </div>
         </section>
       </div>
 
@@ -636,25 +642,22 @@ export const DailyScrumSchedule: React.FC = () => {
                 : t('dailyScrumSchedule.saveBar.saved'))}
           </span>
           <div className={styles['save-actions']}>
-            <Button
+            <button
               type="button"
-              variant="secondary"
-              size="md"
+              className={`${styles['button']} ${styles['button-secondary']}`}
               onClick={handleReset}
               disabled={!isDirty || saveMutation.isPending}
             >
               {t('dailyScrumSchedule.saveBar.reset')}
-            </Button>
-            <Button
+            </button>
+            <button
               type="button"
-              variant="primary"
-              size="md"
+              className={`${styles['button']} ${styles['button-primary']}`}
               onClick={handleSave}
-              loading={saveMutation.isPending}
               disabled={!isDirty || saveMutation.isPending}
             >
               {t('dailyScrumSchedule.saveBar.save')}
-            </Button>
+            </button>
           </div>
         </div>
       )}

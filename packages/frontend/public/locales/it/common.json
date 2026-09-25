@@ -465,22 +465,24 @@
     "activeSprint": "Sprint attivo",
     "dailyScrum": "Daily Scrum",
     "dashboard": "Dashboard",
-    "impediments": "Impediment",
+    "groups": {
+      "product": "Prodotto",
+      "scrumEvents": "Eventi Scrum"
+    },
+    "impediments": "Impediments",
     "increments": "Increment",
+    "mainNavigation": "Navigazione principale",
     "notifications": "Notifiche",
     "productBacklog": "Product Backlog",
     "productGoals": "Product Goal",
     "reports": "Report",
-    "retrospective": "Sprint Retrospective",
     "retrospectives": "Sprint Retrospective",
     "settings": {
       "dailyScrumSchedule": "Calendario del Daily Scrum",
-      "data": "Dati",
-      "privacyData": "Privacy e dati",
       "sprintConfiguration": "Configurazione Sprint",
-      "team": "Organizzazione",
       "teamGroups": "Gruppi di team",
-      "teamManagement": "Tutti i team"
+      "teamManagement": "Tutti i team",
+      "teamsAndGroups": "Team e gruppi"
     },
     "settingsLabel": "Impostazioni",
     "sprintPlanning": "Sprint Planning",
@@ -699,7 +701,8 @@
   "userMenu": {
     "changePassword": "Cambia password",
     "editProfile": "Modifica profilo",
-    "logout": "Esci"
+    "logout": "Esci",
+    "privacyData": "Privacy e dati"
   },
   "validation": {
     "acceptanceCriteriaRequired": "I criteri di accettazione sono richiesti. Si prega di definire condizioni specifiche e verificabili per il completamento.",

@@ -465,22 +465,24 @@
     "activeSprint": "[Àctívé Sprínttttt]",
     "dailyScrum": "[Dàíly Scrúmmmmm]",
     "dashboard": "[Dàshbóàrdddd]",
-    "impediments": "[Ímpédíméntttt]",
+    "groups": {
+      "product": "[Pródúctttt]",
+      "scrumEvents": "[Scrúm événtsssss]"
+    },
+    "impediments": "[Ímpédíméntsssss]",
     "increments": "[Íncréméntttt]",
+    "mainNavigation": "[Màín nàvígàtíónnnnnn]",
     "notifications": "[Nótífícàtíónsssss]",
     "productBacklog": "[Pródúct Bàcklógggggg]",
     "productGoals": "[Pródúct Góàlllll]",
     "reports": "[Répórtssss]",
-    "retrospective": "[Rétróspéctívééééé]",
     "retrospectives": "[Sprínt Rétróspéctívééééééé]",
     "settings": {
       "dailyScrumSchedule": "[Dàíly Scrúm Schédúlééééééé]",
-      "data": "[DDààttà]",
-      "privacyData": "[Prívàcy & Dàtàààààà]",
       "sprintConfiguration": "[Sprínt Cónfígúràtíónnnnnnn]",
-      "team": "[Órgànízàtíónnnnn]",
       "teamGroups": "[Téàm Gróúpsssss]",
-      "teamManagement": "[Àll Téàmssss]"
+      "teamManagement": "[Àll Téàmssss]",
+      "teamsAndGroups": "[Téàms & gróúpssssss]"
     },
     "settingsLabel": "[Séttíngssss]",
     "sprintPlanning": "[Sprínt Plànníngggggg]",
@@ -699,7 +701,8 @@
   "userMenu": {
     "changePassword": "[Chàngé Pàsswórdddddd]",
     "editProfile": "[Édít Prófílééééé]",
-    "logout": "[Lógóúttt]"
+    "logout": "[Lógóúttt]",
+    "privacyData": "[Prívàcy & Dàtàààààà]"
   },
   "validation": {
     "acceptanceCriteriaRequired": "[Àccéptàncé Crítéríà ís réqúíréd. Pléàsé défíné spécífíc, téstàblé cóndítíóns fór cómplétíónnnnnnnnnnnnnnnnnnnnnnnnnnnnn.]",

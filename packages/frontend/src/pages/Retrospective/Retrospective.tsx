@@ -1254,7 +1254,12 @@ export const SprintRetrospective: React.FC = () => {
             >
               {t('backToRetrospectives')}
             </button>
-            <h1 className={styles['page-title']}>{t('title')}</h1>
+            <h1 className={styles['page-title']}>
+              <span className={styles['page-title-icon']}>
+                <ClipboardListIcon size={24} />
+              </span>
+              {t('title')}
+            </h1>
             <p className={styles['retro-date']}>
               {formatLocaleDate(retrospective.retroDate, locale, 'PPPP')}
             </p>

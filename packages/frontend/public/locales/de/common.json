@@ -465,22 +465,24 @@
     "activeSprint": "Aktiver Sprint",
     "dailyScrum": "Daily Scrum",
     "dashboard": "Dashboard",
-    "impediments": "Impediment",
+    "groups": {
+      "product": "Produkt",
+      "scrumEvents": "Scrum-Events"
+    },
+    "impediments": "Impediments",
     "increments": "Increment",
+    "mainNavigation": "Hauptnavigation",
     "notifications": "Benachrichtigungen",
     "productBacklog": "Product Backlog",
     "productGoals": "Product Goal",
     "reports": "Berichte",
-    "retrospective": "Sprint Retrospective",
     "retrospectives": "Sprint Retrospective",
     "settings": {
       "dailyScrumSchedule": "Zeitplan für das Daily Scrum",
-      "data": "Daten",
-      "privacyData": "Datenschutz & Daten",
       "sprintConfiguration": "Sprint-Konfiguration",
-      "team": "Organisation",
       "teamGroups": "Teamgruppen",
-      "teamManagement": "Alle Teams"
+      "teamManagement": "Alle Teams",
+      "teamsAndGroups": "Teams & Gruppen"
     },
     "settingsLabel": "Einstellungen",
     "sprintPlanning": "Sprint Planning",
@@ -699,7 +701,8 @@
   "userMenu": {
     "changePassword": "Passwort ändern",
     "editProfile": "Profil bearbeiten",
-    "logout": "Abmelden"
+    "logout": "Abmelden",
+    "privacyData": "Datenschutz & Daten"
   },
   "validation": {
     "acceptanceCriteriaRequired": "Abnahmekriterien sind erforderlich. Bitte definieren Sie spezifische, testbare Bedingungen für die Fertigstellung.",

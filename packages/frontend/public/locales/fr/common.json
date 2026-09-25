@@ -465,22 +465,24 @@
     "activeSprint": "Sprint actif",
     "dailyScrum": "Daily Scrum",
     "dashboard": "Tableau de bord",
-    "impediments": "Impediment",
+    "groups": {
+      "product": "Produit",
+      "scrumEvents": "Événements Scrum"
+    },
+    "impediments": "Impediments",
     "increments": "Increment",
+    "mainNavigation": "Navigation principale",
     "notifications": "Notifications",
     "productBacklog": "Product Backlog",
     "productGoals": "Product Goal",
     "reports": "Rapports",
-    "retrospective": "Sprint Retrospective",
     "retrospectives": "Sprint Retrospective",
     "settings": {
       "dailyScrumSchedule": "Calendrier du Daily Scrum",
-      "data": "Données",
-      "privacyData": "Confidentialité et données",
       "sprintConfiguration": "Configuration de Sprint",
-      "team": "Organisation",
       "teamGroups": "Groupes d'équipes",
-      "teamManagement": "Toutes les équipes"
+      "teamManagement": "Toutes les équipes",
+      "teamsAndGroups": "Équipes et groupes"
     },
     "settingsLabel": "Paramètres",
     "sprintPlanning": "Sprint Planning",
@@ -699,7 +701,8 @@
   "userMenu": {
     "changePassword": "Changer le mot de passe",
     "editProfile": "Modifier le profil",
-    "logout": "Déconnexion"
+    "logout": "Déconnexion",
+    "privacyData": "Confidentialité et données"
   },
   "validation": {
     "acceptanceCriteriaRequired": "Les critères d'acceptation sont requis. Veuillez définir des conditions spécifiques et testables pour l'achèvement.",

@@ -352,7 +352,7 @@ Layout components define the application shell and are located in `packages/fron
 
 The `Layout` component (`Layout.tsx`) is the primary shell for authenticated pages. It integrates:
 
-- **Sidebar** - Collapsible navigation with team switcher, nav items, and settings groups. Uses `useUIStore` for collapsed state, `useTeamContext` for team data, and `useResponsive` for mobile detection.
+- **Sidebar** - Collapsible navigation with team switcher, Guide-named sections, the Settings band and a collapsed-mode tooltip. Uses `useUIStore` for collapsed state, `useTeamContext` for team data, and `useResponsive` for mobile detection. See [Sidebar Structure](#sidebar-structure).
 - **Header** - User menu dropdown, notification badge and panel, and team context display.
 - **Main Content** - Renders route children with proper scrolling and responsive behavior.
 
@@ -658,15 +658,58 @@ Scrumooth uses React Router v6 with lazy-loaded route components and protected r
 │  ├── /retrospectives           → RetrospectiveList          │
 │  ├── /retrospectives/:id       → SprintRetrospective        │
 │  ├── /notifications            → Notifications              │
+│  ├── /privacy-data             → PrivacyData (user menu)    │
 │  └── /settings/*               → Settings sub-routes        │
 │      ├── /settings/team-management    → TeamManagement      │
 │      ├── /settings/team-groups        → TeamGroups          │
 │      ├── /settings/sprint-configuration → SprintConfiguration│
-│      ├── /settings/privacy-data       → PrivacyData         │
+│      ├── /settings/daily-scrum-schedule → DailyScrumSchedule│
+│      ├── /settings/privacy-data       → Redirect to /privacy-data│
 │      ├── /settings/team-definitions   → Redirect to /team?tab=definition│
 │      └── /settings/definition-of-done → Redirect to /team?tab=definition│
 └─────────────────────────────────────────────────────────────┘
 ```
+
+### Sidebar Structure
+
+The sidebar is a Guide-named index with three levels, and the levels exist so a reader can hold the menu
+in mind instead of re-reading it. `config/navigation.ts` is the only place the shape is declared; the
+shell renders it and the route table guards it.
+
+- **A section is a run of destinations under one heading** (`NavSection`). Omitting the heading renders
+  the run ungrouped, which is how the home row (Dashboard, first by convention) and the trailing app
+  concepts (Impediments, Reports, My Team) keep their asymmetry: a heading over a single row, or over
+  rows the Guide has no category for, would promise a classification the product does not hold.
+- **A heading opens a section; it never closes one.** A heading is a prefix cue, so a run that declares
+  no heading leaves the section above it unbounded — and the run of app concepts after the Guide's
+  sections declares none on purpose. The quiet rule therefore stands wherever a heading is not doing the
+  opening: before that run, and before every section while collapsed, where every heading is hidden. Its
+  vertical margin is three times the gap between two rows of one group, so proximity and the rule say the
+  same thing; the first section is exempt, since the rail's own padding already opens it. Unruled, the
+  last Guide section bled into the app concepts and the layout asserted a Guide category for a row the
+  Guide has no category for.
+- **Headings name Guide categories where the Guide names one.** "Product" and "Scrum events" are the
+  Guide's own groupings, and the destinations beneath them keep the Guide's own terms, singular where the
+  Guide is singular ("Product Goal", "Increment", "Sprint Retrospective"). A register reads as a register
+  where the Guide has no term for the count ("Impediments").
+- **The Settings band is the one element that outranks a heading.** It marks where the menu ends and
+  configuration begins, so it carries a full-bleed tint and a rule on both sides; the section headings
+  beneath it stay quiet and ruleless. Before this, the two levels were typographically identical and the
+  nesting was invisible.
+- **Role filtering is presentation; the route guard is the boundary.** Every role-restricted entry is
+  filtered by `hasAnyRole`, and its route passes the same list, so a bookmark cannot open a page the menu
+  says the reader cannot see. Both sides read the constants (`TEAM_LEADERSHIP_ROLES`,
+  `SCRUM_MASTER_ROLES`) rather than repeating a literal.
+- **Active state is a boundary-aware match** (`isNavItemActive`), not path equality: an entry may declare
+  `activePrefixes` for the detail routes whose address differs from the register's (`/increments` owns
+  `/increment/:id`). `/sprint` never captures `/sprint-review`, and the same computed boolean drives the
+  row's class and its `aria-current="page"`.
+- **Personal surfaces live in the user menu; organization-wide configuration lives in the sidebar.** That
+  rule is what places Privacy & Data (`/privacy-data`, with the retired `/settings/privacy-data`
+  redirecting to it) beside Edit Profile and Change Password rather than beside Team Groups.
+- **Collapsed, the rail owes the reader the label it just hid.** `.sidebar-nav` scrolls, so the tooltip
+  (`NavTooltip`) renders through a portal and is positioned from the row's own box; it opens on focus as
+  well as on hover, because a `title` attribute would serve the pointer and not the keyboard.
 
 ### Module Tabs
 

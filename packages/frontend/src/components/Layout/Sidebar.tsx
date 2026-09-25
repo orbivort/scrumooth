@@ -29,22 +29,48 @@ import {
   GlobeIcon,
   LockIcon,
   LogOutIcon,
+  PrivacyIcon,
   ScrumoothIcon,
   UsersIcon,
 } from '../common/Icons';
 import { LanguageSwitcher } from '../common/LanguageSwitcher/LanguageSwitcher';
 import {
-  NAV_ITEMS,
+  NAV_SECTIONS,
   SETTINGS_GROUPS,
-  getFilteredNavItems,
+  getFilteredNavSections,
   getFilteredSettingsGroups,
+  isNavItemActive,
 } from '../../config/navigation';
+import type { NavItem } from '../../config/navigation';
 import { getRoleLabel, getRoleBadgeClass } from '../../utils/roleUtils';
 
+import { NavTooltip } from './NavTooltip';
+import type { NavTooltipAnchor } from './NavTooltip';
 import styles from './Layout.module.css';
 
 interface LayoutProps {
   children: React.ReactNode;
+}
+
+/** The one row whose label is being shown while the rail is collapsed, and where it sits. */
+interface NavTooltipState extends NavTooltipAnchor {
+  label: string;
+  sectionLabel?: string;
+}
+
+/**
+ * Whether a section opens with the quiet rule instead of a heading.
+ *
+ * A heading opens a section but never says where it stops -- it is a prefix cue. The run of app
+ * concepts that follows the Guide's sections declares no heading on purpose, because the Guide has no
+ * category for it, so nothing closed the section above: `Impediments` sat four pixels under
+ * `Sprint Retrospective`, the same gap that separates two rows of one group, and read as a sixth
+ * Scrum event. The rule therefore stands wherever a heading is not doing the opening -- before a
+ * section that declares no heading, and before every section while collapsed, where every heading is
+ * hidden. The first section is exempt: the rail's own padding is the only opener it needs.
+ */
+function opensWithRule(section: { labelKey?: string }, index: number, collapsed: boolean): boolean {
+  return index > 0 && (collapsed || !section.labelKey);
 }
 
 export const Layout: React.FC<LayoutProps> = ({ children }) => {
@@ -59,6 +85,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
   const [teamDropdownOpen, setTeamDropdownOpen] = useState(false);
   const [notificationPanelOpen, setNotificationPanelOpen] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  const [navTooltip, setNavTooltip] = useState<NavTooltipState | null>(null);
 
   // Refs
   const userMenuRef = useRef<HTMLDivElement>(null);
@@ -138,13 +165,35 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
     } else {
       toggleSidebar();
     }
+    // A rail that is about to draw its labels owes the reader no card, and the pointer that opened
+    // one has already left the row it belonged to.
+    setNavTooltip(null);
   }, [isMobile, toggleMobileSidebar, toggleSidebar]);
 
   const handleNavItemClick = useCallback(() => {
     if (isMobile && isMobileSidebarOpen) {
       setIsMobileSidebarOpen(false);
     }
+    setNavTooltip(null);
   }, [isMobile, isMobileSidebarOpen]);
+
+  /**
+   * Shows the name a collapsed row cannot draw. Hover and focus share one handler because they are
+   * the same question asked by two devices; the box is measured once, on open, since the row that
+   * asked is the row the pointer or the caret is already on.
+   */
+  const showNavTooltip = useCallback(
+    (event: React.SyntheticEvent<HTMLAnchorElement>, label: string, sectionLabel?: string) => {
+      if (!sidebarCollapsed) {
+        return;
+      }
+      const { top, left, width, height } = event.currentTarget.getBoundingClientRect();
+      setNavTooltip({ label, sectionLabel, top, left, width, height });
+    },
+    [sidebarCollapsed]
+  );
+
+  const hideNavTooltip = useCallback(() => setNavTooltip(null), []);
 
   const handleTeamSwitch = useCallback(
     async (teamId: string) => {
@@ -180,9 +229,50 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
     }
   }, [unsavedChanges, setEditProfileFormDirty, setChangePasswordFormDirty]);
 
-  // Filtered settings groups based on user role
+  // Filtered by role before rendering: an entry the reader cannot act on is not offered, and a
+  // section whose every entry was filtered away is not drawn either -- a heading over nothing would
+  // claim a category the reader has no door into.
+  const filteredNavSections = getFilteredNavSections(NAV_SECTIONS, userRole);
   const filteredSettingsGroups = getFilteredSettingsGroups(SETTINGS_GROUPS, userRole);
-  const filteredNavItems = getFilteredNavItems(NAV_ITEMS, userRole);
+
+  /**
+   * One row renderer for the primary sections and the settings groups alike. They used to be written
+   * twice, which is how the two lists drifted: only the primary rows carried a test handle, and only
+   * they were ever asked whether they were current. A single definition keeps the active state, the
+   * announcement and the tooltip wiring the same on both sides of the Settings band.
+   */
+  const renderNavRow = useCallback(
+    (item: NavItem, sectionLabel?: string) => {
+      const IconComponent = item.icon;
+      const label = t(item.labelKey as never);
+      const isActive = isNavItemActive(location.pathname, item);
+
+      return (
+        <Link
+          key={item.path}
+          to={item.path}
+          aria-label={label}
+          // Announced, not only painted: the accent bar is invisible to assistive technology, and
+          // the reader who relies on it is the one who most needs to know which page they are on.
+          aria-current={isActive ? 'page' : undefined}
+          className={`${styles['nav-item']} ${isActive ? styles.active : ''}`}
+          onClick={handleNavItemClick}
+          onMouseEnter={(event) => showNavTooltip(event, label, sectionLabel)}
+          onMouseLeave={hideNavTooltip}
+          onFocus={(event) => showNavTooltip(event, label, sectionLabel)}
+          onBlur={hideNavTooltip}
+          data-testid={`nav-${item.labelKey.split('.').pop()}`}
+          prefetch="intent"
+        >
+          <span className={styles['nav-icon']}>
+            <IconComponent size={20} />
+          </span>
+          {!sidebarCollapsed && <span className={styles['nav-label']}>{label}</span>}
+        </Link>
+      );
+    },
+    [handleNavItemClick, hideNavTooltip, location.pathname, showNavTooltip, sidebarCollapsed, t]
+  );
 
   return (
     <div
@@ -191,13 +281,16 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
       {/* Sidebar */}
       <aside className={styles.sidebar} ref={sidebarRef}>
         <div className={styles['sidebar-header']}>
-          <h1 className={styles.logo}>
+          {/* Not a heading: the brand is a fixed part of the chrome, while `PageHeader` already emits
+              the page's own `h1`. Two top-level headings on every page leave a screen reader to guess
+              which one names the document it is reading. */}
+          <div className={styles.logo}>
             <span className={styles['logo-mark']}>
               <ScrumoothIcon size={30} />
             </span>
             {/* eslint-disable-next-line no-literal-jsx-string/no-literal-jsx-string -- App brand name should not be translated */}
             <span className={styles['logo-text']}>Scrumooth</span>
-          </h1>
+          </div>
           <button
             className={styles['sidebar-toggle']}
             onClick={toggleSidebar}
@@ -208,64 +301,70 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
           </button>
         </div>
 
-        <nav className={styles['sidebar-nav']} ref={sidebarNavRef}>
-          {filteredNavItems.map((item) => {
-            const IconComponent = item.icon;
+        {/* Named, so the landmark can be told apart from the page-level `nav` surfaces other
+            modules mount -- the shell's menu and a page's own section list are different places. */}
+        <nav
+          className={styles['sidebar-nav']}
+          ref={sidebarNavRef}
+          aria-label={t('nav.mainNavigation')}
+        >
+          {filteredNavSections.map((section, index) => {
+            const sectionLabel = section.labelKey ? t(section.labelKey as never) : undefined;
+
             return (
-              <Link
-                key={item.path}
-                to={item.path}
-                aria-label={t(item.labelKey as never)}
-                className={`${styles['nav-item']} ${location.pathname === item.path ? styles.active : ''}`}
-                onClick={handleNavItemClick}
-                data-testid={`nav-${item.labelKey.split('.').pop()}`}
-                prefetch="intent"
+              <div
+                key={section.id}
+                role={sectionLabel ? 'group' : undefined}
+                aria-label={sectionLabel}
               >
-                <span className={styles['nav-icon']}>
-                  <IconComponent size={20} />
-                </span>
-                {!sidebarCollapsed && (
-                  <span className={styles['nav-label']}>{t(item.labelKey as never)}</span>
+                {sectionLabel && !sidebarCollapsed && (
+                  <div className={styles['nav-group-label']} aria-hidden="true">
+                    {sectionLabel}
+                  </div>
                 )}
-              </Link>
+                {opensWithRule(section, index, sidebarCollapsed) && (
+                  <div className={styles['nav-group-divider']} aria-hidden="true" />
+                )}
+                {section.items.map((item) => renderNavRow(item, sectionLabel))}
+              </div>
             );
           })}
 
           {!sidebarCollapsed && filteredSettingsGroups.length > 0 && (
             <div className={styles['nav-divider']}>{t('nav.settingsLabel')}</div>
           )}
-          {filteredSettingsGroups.map((group) => (
-            <div key={group.id} role="group" aria-label={t(group.labelKey as never)}>
-              {!sidebarCollapsed && (
-                <div className={styles['nav-group-label']} aria-hidden="true">
-                  {t(group.labelKey as never)}
-                </div>
-              )}
-              {sidebarCollapsed && <div className={styles['nav-group-divider']} />}
-              {group.items.map((item) => {
-                const IconComponent = item.icon;
+          {/* Collapsed, the band has no room to draw its label, but its boundary still matters:
+              without a rule the rail would run from My Team straight into the settings icons and the
+              reader would have no signal that the subject changed. */}
+          {sidebarCollapsed && filteredSettingsGroups.length > 0 && (
+            <div className={styles['nav-group-divider']} aria-hidden="true" />
+          )}
+          {filteredSettingsGroups.map((group, index) => {
+            const groupLabel = group.labelKey ? t(group.labelKey as never) : undefined;
 
-                return (
-                  <Link
-                    key={item.path}
-                    to={item.path}
-                    aria-label={t(item.labelKey as never)}
-                    className={`${styles['nav-item']} ${location.pathname === item.path ? styles.active : ''}`}
-                    onClick={handleNavItemClick}
-                    prefetch="intent"
-                  >
-                    <span className={styles['nav-icon']}>
-                      <IconComponent size={20} />
-                    </span>
-                    {!sidebarCollapsed && (
-                      <span className={styles['nav-label']}>{t(item.labelKey as never)}</span>
-                    )}
-                  </Link>
-                );
-              })}
-            </div>
-          ))}
+            return (
+              <div key={group.id} role={groupLabel ? 'group' : undefined} aria-label={groupLabel}>
+                {groupLabel && !sidebarCollapsed && (
+                  <div className={styles['nav-group-label']} aria-hidden="true">
+                    {groupLabel}
+                  </div>
+                )}
+                {opensWithRule(group, index, sidebarCollapsed) && (
+                  <div className={styles['nav-group-divider']} aria-hidden="true" />
+                )}
+                {group.items.map((item) => renderNavRow(item, groupLabel))}
+              </div>
+            );
+          })}
         </nav>
+
+        {sidebarCollapsed && navTooltip && (
+          <NavTooltip
+            label={navTooltip.label}
+            sectionLabel={navTooltip.sectionLabel}
+            anchor={navTooltip}
+          />
+        )}
 
         {/* Sidebar footer with app version */}
         <div className={styles['sidebar-footer']}>
@@ -421,6 +520,19 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
                     <GlobeIcon size={16} />
                     <LanguageSwitcher />
                   </div>
+                  {/* A link, not a button: it is a destination like any other, so it opens in place
+                      and can be opened in a new tab. Its sessions and export are the reader's own,
+                      which is the rule that keeps personal surfaces out of the sidebar's Settings
+                      band -- that band holds what the organization configures. */}
+                  <Link
+                    to="/privacy-data"
+                    className={styles['user-dropdown-item']}
+                    onClick={() => setUserMenuOpen(false)}
+                    data-testid="privacy-data-link"
+                  >
+                    <PrivacyIcon size={16} />
+                    {t('userMenu.privacyData')}
+                  </Link>
                   <div className={styles['user-dropdown-divider']} />
                   <button
                     className={styles['user-dropdown-item']}

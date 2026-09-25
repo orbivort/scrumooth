@@ -27,7 +27,7 @@ import {
   PlayIcon,
   FileTextIcon,
   CheckIcon,
-  SearchIcon,
+  ClipboardListIcon,
   EyeIcon,
   EyeOffIcon,
   PlusIcon,
@@ -375,7 +375,7 @@ export const RetrospectiveList: React.FC = () => {
         <div className={styles['header-content']}>
           <h1 className={styles['page-title']}>
             <span className={styles['page-title-icon']}>
-              <SearchIcon size={24} />
+              <ClipboardListIcon size={24} />
             </span>
             {t('list.title')}
           </h1>

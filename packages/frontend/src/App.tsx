@@ -19,7 +19,7 @@ import { TeamProvider, TeamInitializer } from './contexts/TeamContext';
 import { apiService } from './services';
 import { logger } from './utils/logger';
 import { getRouterBasename } from './utils/navigation';
-import { TEAM_LEADERSHIP_ROLES } from './config/navigation';
+import { SCRUM_MASTER_ROLES, TEAM_LEADERSHIP_ROLES } from './config/navigation';
 import { ProtectedRoute } from './routes/ProtectedRoute';
 import { I18nProvider } from './i18n/I18nProvider';
 import { initI18n } from './i18n/config';
@@ -359,10 +359,15 @@ function App() {
                           path="/working-agreements"
                           element={<LegacyDefinitionRedirect id="working-agreements" />}
                         />
+                        {/* Both parameters are offered to the roles that can change them, so both
+                            addresses admit the same roles: a hidden entry a bookmark could still
+                            open would refuse the reader only after the page's own reads came back
+                            403, which reads as a broken page rather than a boundary. The API
+                            remains the authority; the guard spares the trip. */}
                         <Route
                           path="/settings/sprint-configuration"
                           element={
-                            <ProtectedRoute>
+                            <ProtectedRoute roles={TEAM_LEADERSHIP_ROLES}>
                               <LazyRoute fallbackMessage="Loading sprint configuration...">
                                 <SprintConfiguration />
                               </LazyRoute>
@@ -372,22 +377,31 @@ function App() {
                         <Route
                           path="/settings/daily-scrum-schedule"
                           element={
-                            <ProtectedRoute>
+                            <ProtectedRoute roles={SCRUM_MASTER_ROLES}>
                               <LazyRoute fallbackMessage="Loading Daily Scrum schedule...">
                                 <DailyScrumSchedulePage />
                               </LazyRoute>
                             </ProtectedRoute>
                           }
                         />
+                        {/* Personal, not organizational: this surface holds the reader's own active
+                            sessions and their data export, so it is reached from the user menu
+                            rather than the sidebar's Settings band. It lives at its own address
+                            because it is no longer a settings page, and the address it used to have
+                            is kept, so links and bookmarks still land where they meant. */}
                         <Route
-                          path="/settings/privacy-data"
+                          path="/privacy-data"
                           element={
                             <ProtectedRoute>
-                              <LazyRoute fallbackMessage="Loading privacy & data settings...">
+                              <LazyRoute fallbackMessage="Loading privacy & data...">
                                 <PrivacyData />
                               </LazyRoute>
                             </ProtectedRoute>
                           }
+                        />
+                        <Route
+                          path="/settings/privacy-data"
+                          element={<Navigate to="/privacy-data" replace />}
                         />
                         <Route
                           path="/increments"

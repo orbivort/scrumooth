@@ -360,20 +360,24 @@
     "activeSprint": "Active Sprint",
     "dailyScrum": "Daily Scrum",
     "dashboard": "Dashboard",
+    "groups": {
+      "product": "Product",
+      "scrumEvents": "Scrum events"
+    },
     "impediments": "Impediments",
-    "increments": "Increments",
+    "increments": "Increment",
+    "mainNavigation": "Main navigation",
     "notifications": "Notifications",
     "productBacklog": "Product Backlog",
-    "productGoals": "Product Goals",
+    "productGoals": "Product Goal",
     "reports": "Reports",
-    "retrospective": "Retrospective",
-    "scrumMaster": "Scrum Master Dashboard",
+    "retrospectives": "Sprint Retrospective",
     "settings": {
-      "data": "Data",
-      "privacyData": "Privacy & Data",
+      "dailyScrumSchedule": "Daily Scrum Schedule",
       "sprintConfiguration": "Sprint Configuration",
-      "team": "Organization",
-      "teamManagement": "All Teams"
+      "teamGroups": "Team Groups",
+      "teamManagement": "All Teams",
+      "teamsAndGroups": "Teams & groups"
     },
     "settingsLabel": "Settings",
     "sprintPlanning": "Sprint Planning",
@@ -527,7 +531,8 @@
   "userMenu": {
     "changePassword": "Change Password",
     "editProfile": "Edit Profile",
-    "logout": "Logout"
+    "logout": "Logout",
+    "privacyData": "Privacy & Data"
   },
   "verify": "[Vêŕîƒý]",
   "view": "View",
