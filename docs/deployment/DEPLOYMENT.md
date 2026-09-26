@@ -1071,6 +1071,22 @@ docker compose up -d
 docker compose exec backend npx prisma migrate deploy
 ```
 
+> **One-time step: the consolidated migration.** The incremental migrations that followed
+> `00000000000000_init` were collapsed into `20260926000000_consolidate_incremental_migrations`. On an
+> installation that already ran the originals, record the consolidated file as applied **once, before**
+> running `migrate deploy`:
+>
+> ```bash
+> docker compose exec backend npx prisma migrate resolve \
+>   --applied 20260926000000_consolidate_incremental_migrations
+> ```
+>
+> Without it, `migrate deploy` tries to run the consolidated file and every `CREATE` collides with an
+> object that already exists. Fresh installations need nothing: `migrate deploy` applies
+> `00000000000000_init` and then the consolidated file. `prisma migrate status` reporting the sixteen
+> removed migrations as "applied to the database but missing from the local migrations directory" is
+> expected until the `resolve` above is recorded.
+
 ---
 
 ## Verification Steps
@@ -1604,6 +1620,11 @@ docker compose run --rm backend npx prisma migrate status
 # Apply migrations
 docker compose run --rm backend npx prisma migrate deploy
 ```
+
+> If this installation predates the consolidated migration
+> (`20260926000000_consolidate_incremental_migrations`) and still has not recorded it, run the
+> one-time `prisma migrate resolve --applied` step described under
+> [Database Migrations During Upgrades](#database-migrations-during-upgrades) first.
 
 #### 5. Start New Version
 

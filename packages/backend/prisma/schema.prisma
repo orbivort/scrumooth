@@ -348,6 +348,7 @@ model SprintBacklogChange {
   @@index([sprintId])
   @@index([pbiId])
   @@index([createdBy])
+  @@index([acknowledgedBy])
   @@index([createdAt])
   @@index([sprintId, approvalStatus])
   @@map("sprint_backlog_changes")

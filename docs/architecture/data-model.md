@@ -740,12 +740,26 @@ pnpm run db:migrate:prod
 ```
 prisma/
 ├── migrations/
-│   ├── 20260415000000_initial/
+│   ├── 00000000000000_init/
 │   │   └── migration.sql
-│   ├── 20260416000000_add_notifications/
+│   ├── 20260926000000_consolidate_incremental_migrations/
 │   │   └── migration.sql
 │   └── migration_lock.toml
 └── schema.prisma
+```
+
+The history is kept deliberately short. `00000000000000_init` is the frozen baseline, and
+`20260926000000_consolidate_incremental_migrations` is the collapsed history of every migration that
+followed it. The consolidated file names the migration each block of statements came from, section by
+section, so the reasoning is preserved even though the file boundaries are not. New work is added as a
+new migration on top of it as usual.
+
+A database that predates the consolidation already applied those migrations individually, so it must
+not execute the consolidated file. Record it as applied instead:
+
+```bash
+pnpm --filter=@scrumooth/backend exec prisma migrate resolve \
+  --applied 20260926000000_consolidate_incremental_migrations
 ```
 
 ### Migration Best Practices
@@ -755,9 +769,12 @@ prisma/
 3. **Index Creation**: Create indexes concurrently in production
 4. **Testing**: Test migrations on staging before production
 5. **Backup**: Always backup before production migrations
-6. **Enum before column**: `CREATE TYPE "X" AS ENUM (...)` must precede any `ALTER TABLE ... ADD COLUMN` that uses it, and the values must appear in the same order as the Prisma enum so the generated SQL stays drift-free. Verify with `prisma migrate diff --from-migrations prisma/migrations --to-schema prisma/schema.prisma`.
+6. **Enum before column**: `CREATE TYPE "X" AS ENUM (...)` must precede any `ALTER TABLE ... ADD COLUMN` that uses it, and the value _set_ must match the Prisma enum. Write the values in the enum's declared order, because PostgreSQL compares enums by declaration order and a later `ORDER BY` on such a column depends on it. Order can still diverge afterwards, and that is not a defect: `ALTER TYPE ... ADD VALUE` always appends, so a value added to the middle of the Prisma enum lands at the end in the database and cannot be moved without recreating the type. Prisma's differ compares value sets rather than order, so the divergence produces no drift and no migration — `NotificationType` is the one place it currently differs (`IMPEDIMENT_ESCALATION` is fifth in the schema, twelfth in the database), and nothing orders by that column. Verify with `prisma migrate diff --from-migrations prisma/migrations --to-schema prisma/schema.prisma`.
 7. **Widening an existing constraint is a drop-and-recreate**: changing a foreign key to `ON DELETE SET NULL` — or making a `NOT NULL` column nullable — requires `ALTER TABLE ... DROP CONSTRAINT` followed by `ALTER TABLE ... ADD CONSTRAINT`, plus `ALTER COLUMN ... DROP NOT NULL`. Do both in one migration so the schema and the database never disagree mid-deploy.
 8. **Say why a constraint is what it is**: a constraint that looks like an oversight (a nullable FK where a NOT NULL one "should" be, a `SET NULL` where the rest of the table cascades) is a decision. Comment it in the migration, or the next reader will "fix" it back.
+9. **Squash history by baselining, never by editing applied migrations**: when a run of incremental migrations is collapsed into one file, carry the original reasoning over as comments, drop statements that only correct an earlier one, and record the new file as applied on every database that already ran the originals (`prisma migrate resolve --applied <name>`) _before_ deploying. An environment that already ran the originals must never execute the squashed file — every `CREATE` would collide. Prove the squash with two scratch databases: one built from the originals, one from the squashed file, then compare with `pg_dump --schema-only` and `prisma migrate diff`.
+10. **Some objects are owned by SQL, not by the schema**: the Prisma schema language cannot express `CHECK` constraints or partial indexes (`... WHERE <predicate>`), so those objects exist only in the migrations — the 21 `chk_*` constraints and five partial indexes: `sprints_active_idx`, `impediments_open_idx`, `notifications_unread_idx`, and the unique pair `team_members_single_product_owner_idx` / `team_members_single_scrum_master_idx`. The last two are load-bearing: they, not the service layer, are what make _"one Product Owner and one Scrum Master per team"_ true in the database. Because `prisma migrate diff` cannot model these objects it never reports them as missing — and it cannot round-trip them either, which is why the datamodel-to-database direction proposes nonsense for their plain mirrors (it suggests `ALTER INDEX "sprints_teamId_idx" RENAME TO "sprints_active_idx"`, a name collision that cannot execute). Treat differ output as a proposal to review, never as a patch to apply, and never drop one of these by hand.
+11. **A schema-only change may correctly need no migration**: when a migration already created an object and the schema simply never declared it, adding the declaration is a catch-up, not a change. `sprint_backlog_changes` carried an index on `acknowledgedBy` — created by `20260921140000` — with no matching `@@index` in the model, which made `prisma migrate dev` want to _drop_ it; declaring `@@index([acknowledgedBy])` fixed the model without any DDL. `prisma migrate diff` returning an empty diff afterwards is the proof that the declaration caught up rather than changed something.
 
 ### Example Migration
 
