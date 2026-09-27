@@ -154,7 +154,7 @@
       "question": "Question",
       "suggestion": "Suggestion"
     },
-    "empty": "No feedback collected yet. Click \"Add Feedback\" to add stakeholder feedback.",
+    "empty": "No stakeholder feedback yet. Add feedback to capture what stakeholders raised.",
     "owner": "Owner:",
     "title": "Stakeholder Feedback"
   },
@@ -195,6 +195,10 @@
     "completedSprints_plural": "Completed Sprints",
     "createIncrement": "Create Increment",
     "createReview": "Create Sprint Review",
+    "emptyState": {
+      "description": "A Sprint Review can be held for an active or completed Sprint. Start a Sprint in Sprint Planning to begin.",
+      "title": "No Sprints to Review"
+    },
     "goal": "Goal:",
     "loading": "Loading sprint reviews...",
     "reviewStatus": {

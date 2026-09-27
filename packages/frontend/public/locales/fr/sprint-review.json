@@ -154,7 +154,7 @@
       "question": "Question",
       "suggestion": "Suggestion"
     },
-    "empty": "Aucun retour collecté. Cliquez sur \"Ajouter un retour\" pour ajouter le retour des parties prenantes.",
+    "empty": "Aucun retour des parties prenantes pour le moment. Ajoutez un retour pour consigner ce qu'elles ont soulevé.",
     "owner": "Propriétaire :",
     "title": "Retour des Parties prenantes"
   },
@@ -195,6 +195,10 @@
     "completedSprints_plural": "Sprints terminés",
     "createIncrement": "Créer un Increment",
     "createReview": "Créer la Sprint Review",
+    "emptyState": {
+      "description": "Une Revue de Sprint peut être tenue pour un Sprint actif ou terminé. Démarrez un Sprint dans le Sprint Planning pour commencer.",
+      "title": "Aucun Sprint à examiner"
+    },
     "goal": "Objectif :",
     "loading": "Chargement des Sprint Reviews...",
     "reviewStatus": {

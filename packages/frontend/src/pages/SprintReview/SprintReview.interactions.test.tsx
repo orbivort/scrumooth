@@ -964,7 +964,7 @@ describe('SprintReview - Feedback Display Tests', () => {
     fireEvent.click(feedbackTab);
 
     await waitFor(() => {
-      expect(screen.getByText(/No feedback collected yet/i)).toBeInTheDocument();
+      expect(screen.getByText(/No stakeholder feedback yet/i)).toBeInTheDocument();
     });
   });
 

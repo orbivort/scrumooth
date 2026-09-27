@@ -179,6 +179,10 @@
     "createConfirm": "Créer",
     "createRetrospective": "Créer une Retrospective",
     "creating": "Création...",
+    "emptyState": {
+      "description": "Une Rétrospective peut être tenue pour un Sprint actif ou terminé. Démarrez un Sprint dans le Sprint Planning pour commencer.",
+      "title": "Aucun Sprint pour la Rétrospective"
+    },
     "goal": "Objectif :",
     "items": "éléments",
     "loading": "Chargement des Retrospectives...",

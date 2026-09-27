@@ -179,6 +179,10 @@
     "createConfirm": "[Créàtééé]",
     "createRetrospective": "[Créàté Rétróspéctívééééééé]",
     "creating": "[CCrrééààttíínng...]",
+    "emptyState": {
+      "description": "[À Rétróspéctívé càn bé héld fór àn àctívé ór cómplétéd Sprínt. Stàrt à Sprínt ín Sprínt Plànníng tó bégínnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn.]",
+      "title": "[Nó Sprínts tó Réfléct Ónnnnnnnnn]"
+    },
     "goal": "[GGóóààl:]",
     "items": "[ítémsss]",
     "loading": "[Lóàdíng rétróspéctívésssssssss...]",

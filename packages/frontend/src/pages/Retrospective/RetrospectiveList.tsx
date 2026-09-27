@@ -404,7 +404,13 @@ export const RetrospectiveList: React.FC = () => {
       </header>
 
       {retroReviewableSprints.length === 0 ? (
-        <EmptyState type="no-completed-sprint" variant="default" />
+        <EmptyState
+          type="custom"
+          icon={<ClipboardListIcon size={64} />}
+          title={t('list.emptyState.title')}
+          description={t('list.emptyState.description')}
+          variant="default"
+        />
       ) : (
         <div className={styles.content}>
           {activeSprints.length > 0 && (

@@ -154,7 +154,7 @@
       "question": "Domanda",
       "suggestion": "Suggerimento"
     },
-    "empty": "Nessun feedback raccolto. Clicca su \"Aggiungi Feedback\" per aggiungere feedback degli stakeholders.",
+    "empty": "Ancora nessun feedback degli stakeholder. Aggiungi feedback per registrare ciò che hanno sollevato.",
     "owner": "Proprietario:",
     "title": "Feedback degli Stakeholders"
   },
@@ -195,6 +195,10 @@
     "completedSprints_plural": "Sprints completati",
     "createIncrement": "Crea Increment",
     "createReview": "Crea Sprint Review",
+    "emptyState": {
+      "description": "La Sprint Review può essere svolta per uno Sprint attivo o completato. Avvia uno Sprint in Sprint Planning per iniziare.",
+      "title": "Nessuno Sprint da revieware"
+    },
     "goal": "Goal:",
     "loading": "Caricamento Sprint Reviews...",
     "reviewStatus": {

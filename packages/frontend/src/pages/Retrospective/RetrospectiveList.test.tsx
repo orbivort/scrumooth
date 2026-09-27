@@ -1,5 +1,5 @@
 import React from 'react';
-import { screen, waitFor, renderWithProviders, initTestI18n } from '../../test-utils';
+import { screen, waitFor, renderWithProviders, initTestI18n, i18nT } from '../../test-utils';
 import userEvent from '@testing-library/user-event';
 import { useNavigate } from 'react-router';
 import { vi, describe, it, expect, beforeEach, beforeAll } from 'vitest';
@@ -509,7 +509,7 @@ describe('RetrospectiveList', () => {
   });
 
   describe('Empty State', () => {
-    it('should render no-completed-sprint empty state when no sprints', async () => {
+    it('should render the Retrospective empty state when no sprints exist', async () => {
       (apiService.getSprints as ReturnType<typeof vi.fn>).mockResolvedValue({
         success: true,
         data: [],
@@ -518,11 +518,14 @@ describe('RetrospectiveList', () => {
       renderWithProviders(<RetrospectiveList />);
 
       await waitFor(() => {
-        expect(screen.getByTestId('empty-state')).toBeInTheDocument();
+        expect(screen.getByText(i18nT('retrospective:list.emptyState.title'))).toBeInTheDocument();
+        expect(
+          screen.getByText(i18nT('retrospective:list.emptyState.description'))
+        ).toBeInTheDocument();
       });
     });
 
-    it('should render correct empty state type', async () => {
+    it('should not use the generic "No Completed Sprint" copy', async () => {
       (apiService.getSprints as ReturnType<typeof vi.fn>).mockResolvedValue({
         success: true,
         data: [],
@@ -533,6 +536,10 @@ describe('RetrospectiveList', () => {
       await waitFor(() => {
         expect(screen.getByTestId('empty-state')).toBeInTheDocument();
       });
+
+      expect(
+        screen.queryByText(i18nT('common:emptyState.noCompletedSprint.title'))
+      ).not.toBeInTheDocument();
     });
   });
 
