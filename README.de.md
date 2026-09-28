@@ -180,7 +180,7 @@ Die Tabellen oben sind der Anspruch an den Scrum Guide 2020, gruppiert danach, w
 - Sie möchten, dass jede Regel konfigurierbar ist. Scrumooth verweigert Konfigurationen, die den Scrum Guide verletzen.
 - Sie ein vollständig verwaltetes SaaS möchten. Scrumooth ist von Grund auf selbst gehostet.
 - Sie umfassendes Portfolio-Management, Ressourcenplanung oder Finanzverfolgung über viele unzusammenhängende Projekte hinweg benötigen.
-- Sie folgen ein skaliertes Framework, das den Guide für eine größere Organisation anpasst, oder Scrum ist noch nicht die Arbeitsweise Ihres Teams. Scrumooth setzt den Scrum Guide 2020 wortgetreu durch, für ein einzelnes Scrum Team.
+- Sie folgen einem skalierten Framework, das den Guide für eine größere Organisation anpasst, oder Scrum ist noch nicht die Arbeitsweise Ihres Teams. Scrumooth setzt den Scrum Guide 2020 wortgetreu durch, für ein einzelnes Scrum Team.
 
 <a id="why-you-can-trust-it"></a>
 

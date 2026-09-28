@@ -2,7 +2,7 @@
 
 **Giudica uno strumento Scrum dalle regole che rispetta, non dalle board che disegna.**
 
-**Scrumooth** è un'applicazione web self-hosted e open source per i team che fanno Scrum. È pensata per Scrum Master, Product Owner e team guidati dall'ingegneria che vogliono che il processo si misuri con la Guide. Trasforma le regole della **Scrum Guide 2020** in barriere che il backend applica ovunque uno strumento possa farlo — e dichiara i punti in cui deliberatamente non lo fa.
+**Scrumooth** è un'applicazione web self-hosted e open source per i team che fanno Scrum. È pensata per Scrum Master, Product Owner e team guidati dall'ingegneria che vogliono che il processo si conformi alla Guida. Trasforma le regole della **Scrum Guide 2020** in barriere che il backend applica ovunque uno strumento possa farlo — e dichiara i punti in cui deliberatamente non lo fa.
 
 **Non** è un sostituto del tuo strumento di tracciamento delle issue. Come livello di applicazione della Scrum Guide che il tuo strumento non ha, è proprietario del ciclo di vita dello Sprint, dei ruoli e delle barriere, e rifiuta che una violazione del processo passi in silenzio. Il tuo strumento conserva il tuo registro; questo conserva le tue regole. Ogni regola che applica è riassunta in [Cosa applica Scrumooth](#what-scrumooth-enforces) e catalogata codice per codice nel [catalogo delle barriere rifiutate](docs/api/README.md#gate-rejections) — e nessuna regola al di fuori di quel catalogo viene rivendicata.
 
@@ -86,7 +86,7 @@ Prova subito Scrumooth nel tuo browser, senza alcuna installazione. La demo vien
 >
 > **Scrumooth le tratta come regole.**
 >
-> La disciplina non è l'ingrediente mancante —se bastasse da sola, nessun team avrebbe mai chiuso uno Sprint senza la sua Sprint Retrospective. La Guide dice a un team cosa fare; non può accorgersi quando il team smette di farlo. Per questo integriamo la **Scrum Guide 2020** come codice eseguibile e la **facciamo rispettare** lato server, dove né l'interfaccia né una chiamata diretta all'API possono aggirarla. Siamo un **guardiano, non un annotatore**.
+> La disciplina non è l'ingrediente mancante —se bastasse da sola, nessun team avrebbe mai chiuso uno Sprint senza la sua Sprint Retrospective. La Guida dice a un team cosa fare; non può accorgersi quando il team smette di farlo. Per questo integriamo la **Scrum Guide 2020** come codice eseguibile e la **facciamo rispettare** lato server, dove né l'interfaccia né una chiamata diretta all'API possono aggirarla. Siamo un **guardiano, non un annotatore**.
 >
 > Meno dibattiti sui processi. Più tempo per consegnare software funzionante.
 
@@ -96,7 +96,7 @@ Prova subito Scrumooth nel tuo browser, senza alcuna installazione. La demo vien
 
 Queste sono barriere, non avvisi o suggerimenti. In tutti i casi seguenti la risposta è no — e ogni risposta vale nel livello di servizio del backend, così che una scorciatoia nel frontend non possa aggirarla.
 
-Ciascuna è un rifiuto distinto che il backend può restituire, e il contratto ne contiene **68**: 39 barriere della Guide, 5 barriere di pratiche complementari e 24 barriere di integrità del processo — contate da quel singolo contratto e verificate in CI, così che i totali qui non possano discostarsi da ciò che il codice applica.
+Ciascuna è un rifiuto distinto che il backend può restituire, e il contratto ne contiene **68**: 39 barriere della Guida, 5 barriere di pratiche complementari e 24 barriere di integrità del processo — contate da quel singolo contratto e verificate in CI, così che i totali qui non possano discostarsi da ciò che il codice applica.
 
 Le tabelle seguenti raggruppano le barriere in base a ciò che proteggono e indicano la regola principale che ciascuna applica. Il **catalogo completo, codice per codice** — ogni codice di rifiuto `GATE_*` con lo stato HTTP con cui viene restituito — è il [catalogo delle barriere rifiutate](docs/api/README.md#gate-rejections), che è l'unica fonte di verità. Questa sezione è una visita guidata di quel catalogo, non un suo sostituto.
 
@@ -131,7 +131,7 @@ Le tabelle seguenti raggruppano le barriere in base a ciò che proteggono e indi
 
 ### Pratiche complementari che anche Scrumooth applica
 
-Queste **non sono regole della Scrum Guide 2020** — i tre artefatti della Guide sono il Product Backlog, lo Sprint Backlog e l'Increment, e la Definition of Ready non è nessuno di essi. Sono aggiunte del prodotto stesso, etichettate come tali nell'interfaccia, ed elencate qui separatamente perché la tabella sopra continui a significare esattamente ciò che dice.
+Queste **non sono regole della Scrum Guide 2020** — i tre artefatti della Guida sono il Product Backlog, lo Sprint Backlog e l'Increment, e la Definition of Ready non è nessuno di essi. Sono aggiunte del prodotto stesso, etichettate come tali nell'interfaccia, ed elencate qui separatamente perché la tabella sopra continui a significare esattamente ciò che dice.
 
 | Una pratica che Scrumooth applica, posta come domanda                                               | La risposta di Scrumooth                                                                                                                                                                                                                                                                                                                                                                               |
 | --------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -140,11 +140,11 @@ Queste **non sono regole della Scrum Guide 2020** — i tre artefatti della Guid
 | Chi mantiene l'accordo sulla prontezza?                                                             | Solo lo Scrum Master del team. L'accordo sulla prontezza è la pratica dichiarata di un singolo ruolo anziché l'impegno condiviso dello Scrum Team, quindi spetta allo Scrum Master definirlo o ritirarlo ([API Definition of Ready](docs/api/definition-of-ready.md)).                                                                                                                                 |
 | Qualcuno esterno al team può leggere l'accordo sulla prontezza o registrare un verdetto su di esso? | No: leggerlo o registrare una verifica della prontezza richiede l'appartenenza al team che lo possiede ([API Definition of Ready](docs/api/definition-of-ready.md)).                                                                                                                                                                                                                                   |
 
-Vale la pena enunciare chiaramente due conseguenze. Poiché è una regola del prodotto anziché una regola della Guide, un team che non vuole una Definition of Ready la soddisfa comunque: Scrumooth crea sei criteri predefiniti ragionevoli la prima volta che l'accordo viene letto, e lo Scrum Master del team può definirli o ritirarli. E poiché rifiutare uno Sprint per un artefatto estraneo alla Guide è un vero compromesso, la checklist dichiara ciò che è con parole proprie — una pratica complementare, non un artefatto della Guide — invece di prendere in prestito l'autorità della Guide.
+Vale la pena enunciare chiaramente due conseguenze. Poiché è una regola del prodotto anziché una regola della Guida, un team che non vuole una Definition of Ready la soddisfa comunque: Scrumooth crea sei criteri predefiniti ragionevoli la prima volta che l'accordo viene letto, e lo Scrum Master del team può definirli o ritirarli. E poiché rifiutare uno Sprint per un artefatto estraneo alla Guida è un vero compromesso, la checklist dichiara ciò che è con parole proprie — una pratica complementare, non un artefatto della Guida — invece di prendere in prestito l'autorità della Guida.
 
 ### Barriere di integrità del processo e trasparenza
 
-Una terza classe non è né una barriera della Guide né una pratica complementare, ma la lettura che il prodotto dà della trasparenza e dell'autogestione della Guide: il lavoro di uno Scrum Team appartiene a quel team, e il materiale franco appartiene al ruolo che ne è responsabile. Sono elencate separatamente per lo stesso motivo delle pratiche sopra.
+Una terza classe non è né una barriera della Guida né una pratica complementare, ma la lettura che il prodotto dà della trasparenza e dell'autogestione della Guida: il lavoro di uno Scrum Team appartiene a quel team, e il materiale franco appartiene al ruolo che ne è responsabile. Sono elencate separatamente per lo stesso motivo delle pratiche sopra.
 
 | Un confine che Scrumooth applica, posta come domanda                                            | La risposta di Scrumooth                                                                                                                                                                                                                                                                                                                                                                                                 |
 | ----------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -153,13 +153,13 @@ Una terza classe non è né una barriera della Guide né una pratica complementa
 | Un impedimento può essere escalato in una barriera due volte, o da un altro team?               | No: una sola barriera per impedimento, sollevata solo dal team che ha sollevato l'impedimento, e solo lo Scrum Master del team può sollevarla, modificarla, risolverla o chiuderla — uno stato terminale richiede una risoluzione scritta ([API Organizational Barriers](docs/api/organizational-barriers.md)).                                                                                                          |
 | Un team può cambiare quale Definition of Done condivisa lo governa senza la sua leadership?     | No: aderire a un gruppo o lasciarlo decide l'impegno a cui il team è tenuto, quindi è decisione del Product Owner o dello Scrum Master del team; un team appartiene al massimo a un gruppo, e un gruppo che ha ancora team non può essere rimosso sotto i loro piedi ([API Team Groups](docs/api/team-groups.md)).                                                                                                       |
 
-**Dove Scrumooth deliberatamente non applica nulla:** la Prime Directive della Sprint Retrospective resta a chi facilita, e le timebox degli eventi vengono mostrate tramite un timer condiviso del team invece di terminare un evento con la forza. La Guide chiede l'autogestione esattamente in quei punti, quindi Scrumooth non decide al posto del team.
+**Dove Scrumooth deliberatamente non applica nulla:** la Prime Directive della Sprint Retrospective resta a chi facilita, e le timebox degli eventi vengono mostrate tramite un timer condiviso del team invece di terminare un evento con la forza. La Guida chiede l'autogestione esattamente in quei punti, quindi Scrumooth non decide al posto del team.
 
-**Come si presenta una barriera nella pratica.** È venerdì, lo Sprint deve concludersi, l'Increment è distribuito — e la Sprint Retrospective non è mai stata pianificata. Uno strumento di registrazione chiude lo Sprint e la Sprint Retrospective slitta alla settimana successiva, che è il fallimento che l'ultimo evento della Guide esiste per prevenire; Scrumooth rifiuta la chiusura finché entrambi gli eventi non sono registrati. Il team tiene allora la Sprint Retrospective, oppure si ferma e discute perché no —la versione di quella decisione che la Guide si aspetta che un team prenda consapevolmente.
+**Come si presenta una barriera nella pratica.** È venerdì, lo Sprint deve concludersi, l'Increment è distribuito — e la Sprint Retrospective non è mai stata pianificata. Uno strumento di registrazione chiude lo Sprint e la Sprint Retrospective slitta alla settimana successiva, che è il fallimento che l'ultimo evento della Guida esiste per prevenire; Scrumooth rifiuta la chiusura finché entrambi gli eventi non sono registrati. Il team tiene allora la Sprint Retrospective, oppure si ferma e discute perché no —la versione di quella decisione che la Guida si aspetta che un team prenda consapevolmente.
 
 Perché gli strumenti che già usi non aggiungono semplicemente tutto questo? A nostro avviso, perché una barriera che si può disattivare è un'impostazione, non una regola, e la configurabilità è il loro argomento di vendita e non una loro dimenticanza. Né un servizio ospitato può promettere facilmente che i tuoi dati di processo non lasceranno mai la tua infrastruttura. Scrumooth non è una funzionalità che manca loro; è un compromesso che hanno già preso nella direzione opposta.
 
-Le tabelle sopra sono la rivendicazione relativa alla Scrum Guide 2020, raggruppate per ciò che proteggono, e il [catalogo delle barriere rifiutate](docs/api/README.md#gate-rejections) è il catalogo completo, codice per codice, di ogni rifiuto che Scrumooth può restituire. Se una regola non è applicata in quel catalogo, Scrumooth non la applica — e poiché una configurazione che infrange la Guide non viene mai offerta, **il rifiuto è il prodotto.** Le pratiche complementari e le barriere di integrità del processo sono aggiunte del prodotto stesso, tenute in tabelle separate ed etichettate perché le tre non possano mai essere confuse tra loro — la classe di ciascuna barriera è dichiarata accanto al contratto, così che la separazione è verificata in CI anziché affermata qui.
+Le tabelle sopra sono la rivendicazione relativa alla Scrum Guide 2020, raggruppate per ciò che proteggono, e il [catalogo delle barriere rifiutate](docs/api/README.md#gate-rejections) è il catalogo completo, codice per codice, di ogni rifiuto che Scrumooth può restituire. Se una regola non è applicata in quel catalogo, Scrumooth non la applica — e poiché una configurazione che infrange la Guida non viene mai offerta, **il rifiuto è il prodotto.** Le pratiche complementari e le barriere di integrità del processo sono aggiunte del prodotto stesso, tenute in tabelle separate ed etichettate perché le tre non possano mai essere confuse tra loro — la classe di ciascuna barriera è dichiarata accanto al contratto, così che la separazione è verificata in CI anziché affermata qui.
 
 <a id="who-its-for"></a>
 
@@ -180,7 +180,7 @@ Le tabelle sopra sono la rivendicazione relativa alla Scrum Guide 2020, raggrupp
 - Vuoi che ogni regola sia configurabile. Scrumooth rifiuta le configurazioni che infrangono la Scrum Guide.
 - Vuoi un SaaS completamente gestito. Scrumooth è self-hosted per progettazione.
 - Hai bisogno di gestione di portafoglio, pianificazione delle risorse o monitoraggio finanziario approfonditi su molti progetti non correlati.
-- Segui un framework scalato che adatta la Guide per un'organizzazione più ampia, oppure Scrum non è ancora il modo di lavorare del tuo team. Scrumooth applica la Scrum Guide 2020 così com'è scritta, per un singolo Scrum Team.
+- Segui un framework scalato che adatta la Guida per un'organizzazione più ampia, oppure Scrum non è ancora il modo di lavorare del tuo team. Scrumooth applica la Scrum Guide 2020 così com'è scritta, per un singolo Scrum Team.
 
 <a id="why-you-can-trust-it"></a>
 
@@ -208,7 +208,7 @@ Le tabelle sopra sono la rivendicazione relativa alla Scrum Guide 2020, raggrupp
 
 ### Il flusso di lavoro Scrum
 
-Tutto ciò che serve per condurre lo Sprint — i cinque eventi, tre artefatti e tre impegni della Guide — con la regola che ciascuno sostiene. Le clausole in grassetto evidenziano le barriere di [Cosa applica Scrumooth](#what-scrumooth-enforces); il catalogo completo è il [catalogo delle barriere rifiutate](docs/api/README.md#gate-rejections).
+Tutto ciò che serve per condurre lo Sprint — i cinque eventi, tre artefatti e tre impegni della Guida — con la regola che ciascuno sostiene. Le clausole in grassetto evidenziano le barriere di [Cosa applica Scrumooth](#what-scrumooth-enforces); il catalogo completo è il [catalogo delle barriere rifiutate](docs/api/README.md#gate-rejections).
 
 - **Product Goal** - Allineamento strategico e monitoraggio degli obiettivi; l'impegno a cui serve il backlog; **solo il Product Owner ne crea o modifica uno, solo uno può essere `ACTIVE` alla volta, e non può completarsi senza prove registrate**
 - **Product Backlog** - Prioritizzazione MoSCoW (Must, Should, Could, Won't); **solo i Developers stimano il lavoro, e solo il Product Owner lo ordina e ne fissa la fascia**
@@ -393,7 +393,12 @@ Entrambi i file di esempio sono documentati per intero dai loro stessi commenti.
 | `JWT_SECRET`   | Chiave di firma, almeno 64 caratteri (`openssl rand -hex 64`) |
 | `CORS_ORIGIN`  | L'origine del frontend, ad es. `http://localhost:5173`        |
 
-Il frontend non richiede alcuna configurazione per lo sviluppo locale: `VITE_API_URL` viene risolto dal proxy di sviluppo. Per sviluppare senza alcun backend, imposta `VITE_USE_MOCK_API=true` ed esegui `pnpm run dev:frontend` — vedi [Sviluppare senza un backend](./CONTRIBUTING.md#developing-without-a-backend) e l'[architettura mock](./docs/architecture/frontend-mock-architecture.md). Ogni variabile rimanente è elencata in [`packages/backend/.env.example`](packages/backend/.env.example) e [`packages/frontend/.env.example`](packages/frontend/.env.example).
+Il frontend non richiede alcuna configurazione per lo sviluppo locale: `VITE_API_URL` viene risolto dal proxy di sviluppo.
+Per sviluppare senza alcun backend, imposta `VITE_USE_MOCK_API=true` ed esegui `pnpm run dev:frontend` —
+vedi [Sviluppare senza un backend](./CONTRIBUTING.md#developing-without-a-backend) e
+l'[architettura mock](./docs/architecture/frontend-mock-architecture.md). Ogni variabile rimanente è elencata in
+[`packages/backend/.env.example`](packages/backend/.env.example) e
+[`packages/frontend/.env.example`](packages/frontend/.env.example).
 
 ### 4. Configurazione del database
 
@@ -445,12 +450,12 @@ I comandi più comuni per lo sviluppo quotidiano:
 ## 🧪 Test
 
 ```bash
-pnpm run test              # Tutti i test
-pnpm run test:coverage     # Con report di copertura
-pnpm run test:unit         # Solo test unitari
-pnpm run test:integration  # Test di integrazione del backend
+pnpm run test              # All tests
+pnpm run test:coverage     # With coverage report
+pnpm run test:unit         # Unit tests only
+pnpm run test:integration  # Backend integration tests
 pnpm run test:e2e          # End-to-end (backend Vitest + frontend Playwright)
-pnpm run test:watch        # Modalità watch
+pnpm run test:watch        # Watch mode
 ```
 
 Soglie di copertura applicate: **80 % righe, funzioni, istruzioni e rami**.
@@ -489,10 +494,10 @@ Consulta [`CONTRIBUTING.md`](CONTRIBUTING.md) per il flusso di lavoro di svilupp
 ## 🗄 Gestione del database
 
 ```bash
-pnpm run db:generate     # Generare il client Prisma (dopo modifiche allo schema)
-pnpm run db:migrate      # Creare e applicare una migrazione (sviluppo)
-pnpm run db:migrate:prod # Applicare le migrazioni in produzione (non interattivo)
-pnpm run db:studio       # Aprire Prisma Studio (GUI del database)
+pnpm run db:generate     # Generate Prisma client (after schema changes)
+pnpm run db:migrate      # Create and apply a migration (development)
+pnpm run db:migrate:prod # Apply migrations in production (non-interactive)
+pnpm run db:studio       # Open Prisma Studio (database GUI)
 ```
 
 Ulteriori comandi per il database (`db:push`, `db:reset`, `db:validate`, `db:migrate:test`) sono documentati in [`CONTRIBUTING.md`](CONTRIBUTING.md).
@@ -623,7 +628,7 @@ Scrumooth è in fase di sviluppo attivo. Le priorità seguenti approfondiscono c
 
 - [ ] **Report di conformità alla Scrum Guide** — una dichiarazione per Sprint su quali regole si applicavano e come ciascuna è stata soddisfatta
 - [ ] **Pacchetto di evidenze dello Sprint esportabile** — un registro condivisibile per audit e revisioni di conformità
-- [ ] **Più regole applicabili** — le barriere del ciclo di vita dello Sprint, del Product Goal, dei gruppi di team, del health check e delle barriere organizzative consentono ora a uno Scrum Team di eseguire dall'inizio alla fine gli eventi, gli artefatti e gli impegni della Guide; l'ampliamento della superficie coperta continua
+- [ ] **Più regole applicabili** — le barriere del ciclo di vita dello Sprint, del Product Goal, dei gruppi di team, del health check e delle barriere organizzative consentono ora a uno Scrum Team di eseguire dall'inizio alla fine gli eventi, gli artefatti e gli impegni della Guida; l'ampliamento della superficie coperta continua
 - [ ] **Automazione più profonda di Definition of Done / Definition of Ready**
 - [ ] **Report che fanno emergere la deriva di processo**, non solo le metriche di consegna
 - [ ] **Integrazioni e webhook**, così che Scrumooth possa affiancarsi agli strumenti che già usi
