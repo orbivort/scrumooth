@@ -15,6 +15,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { formatChartDate } from '@scrumooth/shared';
 
+import type { BurndownData } from '../../../types';
 import { useI18nStore } from '../../../i18n/useI18nStore';
 import { logger } from '../../../utils/logger';
 
@@ -28,12 +29,6 @@ ChartJS.register(
   Legend,
   Filler
 );
-
-interface BurndownData {
-  dates: string[];
-  ideal: number[];
-  actual: (number | null)[];
-}
 
 interface BurndownChartProps {
   data: BurndownData | null | undefined;

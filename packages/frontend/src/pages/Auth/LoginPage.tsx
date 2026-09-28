@@ -3,6 +3,8 @@ import { useNavigate, Link } from 'react-router';
 import { useTranslation } from 'react-i18next';
 
 import styles from './LoginPage.module.css';
+import { PersonaQuickSignIn } from './components/PersonaQuickSignIn';
+import type { PersonaCard } from './components/personaCards';
 
 import {
   EyeIcon,
@@ -17,11 +19,19 @@ import { apiService } from '@/services';
 import { useAuthStore, useSessionStore, useTeamStore } from '@/store';
 import { logger } from '@/utils/logger';
 import { getCurrentPath } from '@/utils/navigation';
-import type { LoginCredentials, RegistrationPolicy } from '@/types';
+import type { LoginCredentials, RegistrationPolicy, User } from '@/types';
 import { getUserFriendlyErrorMessage, type ErrorDetails } from '@/utils/authErrors';
 import { syncLocaleFromUser, useI18nStore } from '@/i18n/useI18nStore';
 
 type PasswordStrength = 'weak' | 'fair' | 'good' | 'strong';
+
+/** The session limits the API returns alongside a successful sign-in. */
+type AuthenticatedSessionInfo = {
+  expiresAt: string;
+  idleTimeoutMs: number;
+  absoluteTimeoutMs: number;
+  warningThresholdMs: number;
+};
 
 function getPasswordStrength(password: string): PasswordStrength {
   if (!password) return 'weak';
@@ -94,13 +104,95 @@ export const LoginPage: React.FC = () => {
     }
   }, [isAuthenticated, navigate]);
 
-  // Auto-populate credentials in mock mode (demo/development only)
-  useEffect(() => {
-    if (import.meta.env.VITE_USE_MOCK_API !== 'false') {
-      setEmail('demo@example.com');
-      setPassword('demo123456');
-    }
-  }, []);
+  /**
+   * Whether the demo persona panel is available.
+   *
+   * Tested inline rather than through `mocks/config.ts` so the bundler folds it to
+   * a literal and drops the panel, and the persona catalogue with it, from a
+   * production build. See the same note in `src/main.tsx`.
+   */
+  const demoPanelAvailable = import.meta.env.VITE_USE_MOCK_API === 'true';
+
+  const [pendingPersona, setPendingPersona] = useState<string | null>(null);
+
+  /** Everything that has to happen once the API says who the visitor is. */
+  const applyAuthenticatedSession = useCallback(
+    (user: User, sessionInfo: AuthenticatedSessionInfo) => {
+      setUser(user);
+      if (user.locale) {
+        syncLocaleFromUser(user.locale);
+      }
+      initializeSession({
+        expiresAt: new Date(sessionInfo.expiresAt),
+        idleTimeoutMs: sessionInfo.idleTimeoutMs,
+        absoluteTimeoutMs: sessionInfo.absoluteTimeoutMs,
+        warningThresholdMs: sessionInfo.warningThresholdMs,
+      });
+    },
+    [setUser, initializeSession]
+  );
+
+  /** Loads the visitor's teams and selects the first one, then moves on. */
+  const selectTeamsAfterSignIn = useCallback(
+    async (emptyPath: string) => {
+      try {
+        const teamsResponse = await apiService.getMyTeams();
+        if (teamsResponse.success && teamsResponse.data && teamsResponse.data.length > 0) {
+          setUserTeamsWithRoles(teamsResponse.data);
+
+          const firstTeam = teamsResponse.data[0];
+          if (firstTeam?.id) {
+            const { userRole, ...teamData } = firstTeam;
+            setCurrentTeam(teamData);
+            setUserRoleInCurrentTeam(userRole);
+          }
+          void navigate('/dashboard');
+        } else {
+          void navigate(emptyPath);
+        }
+      } catch (error) {
+        logger.warn('Failed to fetch teams', undefined, { error });
+        void navigate(emptyPath);
+      }
+    },
+    [navigate, setCurrentTeam, setUserRoleInCurrentTeam, setUserTeamsWithRoles]
+  );
+
+  /**
+   * Signs in as a demo persona.
+   *
+   * Runs the ordinary sign-in and then selects the team the card stands for,
+   * before the teams are read, so the role the interface resolves is the one
+   * printed on the card. That is what makes the same person resolve as the
+   * Product Owner on one card and the Scrum Master on another.
+   */
+  const handlePersonaSignIn = useCallback(
+    async (card: PersonaCard, password: string) => {
+      setPendingPersona(card.key);
+      setError(null);
+      setErrorType('error');
+
+      try {
+        const response = await apiService.login({ email: card.email, password });
+
+        if (!response.success || !response.data) {
+          const userFriendlyMessage = getUserFriendlyErrorMessage(response.error?.message, 'login');
+          setError(userFriendlyMessage);
+          return;
+        }
+
+        await apiService.selectTeam(card.teamId);
+        applyAuthenticatedSession(response.data.user, response.data.sessionInfo);
+        await selectTeamsAfterSignIn('/team');
+      } catch (err) {
+        setError(handleError(err, t('login.loginFailed') as string));
+        setErrorType('error');
+      } finally {
+        setPendingPersona(null);
+      }
+    },
+    [applyAuthenticatedSession, selectTeamsAfterSignIn, handleError, t]
+  );
 
   // Fetch the registration policy when entering register mode so the form can
   // reflect the domain restriction (cosmetic guidance only; never the boundary).
@@ -136,39 +228,8 @@ export const LoginPage: React.FC = () => {
         const response = await apiService.login(credentials);
 
         if (response.success && response.data) {
-          const { user, sessionInfo } = response.data;
-
-          setUser(user);
-          if (user.locale) {
-            syncLocaleFromUser(user.locale);
-          }
-
-          initializeSession({
-            expiresAt: new Date(sessionInfo.expiresAt),
-            idleTimeoutMs: sessionInfo.idleTimeoutMs,
-            absoluteTimeoutMs: sessionInfo.absoluteTimeoutMs,
-            warningThresholdMs: sessionInfo.warningThresholdMs,
-          });
-
-          try {
-            const teamsResponse = await apiService.getMyTeams();
-            if (teamsResponse.success && teamsResponse.data && teamsResponse.data.length > 0) {
-              setUserTeamsWithRoles(teamsResponse.data);
-
-              const firstTeam = teamsResponse.data[0];
-              if (firstTeam?.id) {
-                const { userRole, ...teamData } = firstTeam;
-                setCurrentTeam(teamData);
-                setUserRoleInCurrentTeam(userRole);
-              }
-              void navigate('/dashboard');
-            } else {
-              void navigate('/team');
-            }
-          } catch (error) {
-            logger.warn('Failed to fetch teams', undefined, { error });
-            void navigate('/team');
-          }
+          applyAuthenticatedSession(response.data.user, response.data.sessionInfo);
+          await selectTeamsAfterSignIn('/team');
         } else {
           const backendMessage = response.error?.message;
           const userFriendlyMessage = getUserFriendlyErrorMessage(backendMessage, 'login');
@@ -217,18 +278,7 @@ export const LoginPage: React.FC = () => {
         setIsLoading(false);
       }
     },
-    [
-      email,
-      password,
-      navigate,
-      setUser,
-      initializeSession,
-      setCurrentTeam,
-      setUserRoleInCurrentTeam,
-      setUserTeamsWithRoles,
-      handleError,
-      t,
-    ]
+    [email, password, applyAuthenticatedSession, selectTeamsAfterSignIn, handleError, t]
   );
 
   const handleRegister = useCallback(
@@ -251,17 +301,7 @@ export const LoginPage: React.FC = () => {
         if (response.success && response.data) {
           const { user, sessionInfo } = response.data;
 
-          setUser(user);
-          if (user.locale) {
-            syncLocaleFromUser(user.locale);
-          }
-
-          initializeSession({
-            expiresAt: new Date(sessionInfo.expiresAt),
-            idleTimeoutMs: sessionInfo.idleTimeoutMs,
-            absoluteTimeoutMs: sessionInfo.absoluteTimeoutMs,
-            warningThresholdMs: sessionInfo.warningThresholdMs,
-          });
+          applyAuthenticatedSession(user, sessionInfo);
 
           setCurrentTeam(null);
 
@@ -336,8 +376,7 @@ export const LoginPage: React.FC = () => {
       firstName,
       lastName,
       navigate,
-      setUser,
-      initializeSession,
+      applyAuthenticatedSession,
       setCurrentTeam,
       handleError,
       t,
@@ -616,6 +655,16 @@ export const LoginPage: React.FC = () => {
             {isRegisterMode ? t('login.alreadyHaveAccount') : t('login.noAccountYet')}
           </button>
         </div>
+
+        {/* One-click demo personas. Rendered only in mock mode, so a real
+            deployment never shows a card and never ships the catalogue. */}
+        {demoPanelAvailable && !isRegisterMode && (
+          <PersonaQuickSignIn
+            onSignIn={handlePersonaSignIn}
+            pendingKey={pendingPersona}
+            disabled={isLoading}
+          />
+        )}
       </div>
     </div>
   );

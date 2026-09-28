@@ -2,7 +2,7 @@ import { test, expect, clearMockAuthState } from '../fixtures';
 import { generateInvalidCredentials } from '../fixtures/dataFactory';
 
 test.describe('Authentication Flow', () => {
-  test('TC-AUTH-001: User Registration @smoke', async ({ loginPage, page, mockApi }) => {
+  test('TC-AUTH-001: User Registration @smoke', async ({ loginPage, page }) => {
     const timestamp = Date.now();
     const random = Math.floor(Math.random() * 10000);
     const testUser = {
@@ -56,11 +56,7 @@ test.describe('Authentication Flow', () => {
     });
   });
 
-  test('TC-AUTH-002: User Login with Valid Credentials @smoke', async ({
-    loginPage,
-    page,
-    mockApi,
-  }) => {
+  test('TC-AUTH-002: User Login with Valid Credentials @smoke', async ({ loginPage, page }) => {
     const timestamp = Date.now();
     const random = Math.floor(Math.random() * 10000);
     const testUser = {
@@ -118,7 +114,7 @@ test.describe('Authentication Flow', () => {
     });
   });
 
-  test('TC-AUTH-003: User Login with Invalid Credentials', async ({ loginPage, page, mockApi }) => {
+  test('TC-AUTH-003: User Login with Invalid Credentials', async ({ loginPage, page }) => {
     const invalidCredentials = generateInvalidCredentials();
 
     await test.step('Navigate to login page', async () => {
@@ -147,7 +143,7 @@ test.describe('Authentication Flow', () => {
     });
   });
 
-  test('TC-AUTH-004: Session Persistence', async ({ loginPage, page, mockApi }) => {
+  test('TC-AUTH-004: Session Persistence', async ({ loginPage, page }) => {
     const timestamp = Date.now();
     const random = Math.floor(Math.random() * 10000);
     const testUser = {
@@ -200,7 +196,7 @@ test.describe('Authentication Flow', () => {
     });
   });
 
-  test.skip('TC-AUTH-005: User Logout (Requires Backend)', async ({ loginPage, page, mockApi }) => {
+  test.skip('TC-AUTH-005: User Logout (Requires Backend)', async ({ loginPage, page }) => {
     test.skip(true, 'Logout test requires backend server for proper session management');
 
     const timestamp = Date.now();
@@ -260,7 +256,7 @@ test.describe('Authentication Flow', () => {
 });
 
 test.describe('Registration Validation', () => {
-  test('should show validation errors for empty fields', async ({ loginPage, page, mockApi }) => {
+  test('should show validation errors for empty fields', async ({ loginPage, page }) => {
     await loginPage.goto();
     await loginPage.switchToRegisterMode();
 
@@ -272,7 +268,7 @@ test.describe('Registration Validation', () => {
     expect(hasValidationErrors).toBe(true);
   });
 
-  test('should show error for invalid email format', async ({ loginPage, page, mockApi }) => {
+  test('should show error for invalid email format', async ({ loginPage, page }) => {
     await loginPage.goto();
     await loginPage.switchToRegisterMode();
 
@@ -290,11 +286,7 @@ test.describe('Registration Validation', () => {
     await expect(emailInput).toHaveAttribute('type', 'email');
   });
 
-  test('should disable submit button when terms not accepted', async ({
-    loginPage,
-    page,
-    mockApi,
-  }) => {
+  test('should disable submit button when terms not accepted', async ({ loginPage, page }) => {
     await loginPage.goto();
     await loginPage.switchToRegisterMode();
 
@@ -310,7 +302,7 @@ test.describe('Registration Validation', () => {
     expect(isDisabled).toBe(true);
   });
 
-  test('should toggle password visibility', async ({ loginPage, page, mockApi }) => {
+  test('should toggle password visibility', async ({ loginPage, page }) => {
     await loginPage.goto();
 
     await loginPage.passwordInput.fill('testpassword');
@@ -325,7 +317,7 @@ test.describe('Registration Validation', () => {
 });
 
 test.describe('Password Strength Indicator', () => {
-  test('should show weak password strength', async ({ loginPage, page, mockApi }) => {
+  test('should show weak password strength', async ({ loginPage, page }) => {
     await loginPage.goto();
     await loginPage.switchToRegisterMode();
 
@@ -335,7 +327,7 @@ test.describe('Password Strength Indicator', () => {
     expect(strength?.toLowerCase()).toContain('weak');
   });
 
-  test('should show strong password strength', async ({ loginPage, page, mockApi }) => {
+  test('should show strong password strength', async ({ loginPage, page }) => {
     await loginPage.goto();
     await loginPage.switchToRegisterMode();
 

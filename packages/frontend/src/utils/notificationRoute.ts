@@ -29,10 +29,17 @@ const STATIC_ROUTES: Partial<Record<NotificationType, string>> = {
   TEAM_REMOVAL: '/team',
   TASK_ASSIGNMENT: '/sprint',
   IMPEDIMENT_ASSIGNMENT: '/impediments',
+  // The register the escalation is about: the Scrum Master acts on the impediment itself.
+  IMPEDIMENT_ESCALATION: '/impediments',
+  DAILY_SCRUM_SIGNAL: '/daily-scrum',
   TEAM_CREATED: '/settings/team-management',
   TEAM_UPDATED: '/settings/team-management',
   TEAM_DELETED: '/settings/team-management',
   DIRECT_MESSAGE: '/team',
+  // Both deletion notices land where the answer is: who holds the Product Owner role.
+  ACCOUNT_DELETION_SCHEDULED: '/settings/team-management',
+  ACCOUNT_DELETION_CANCELLED: '/settings/team-management',
+  ORGANIZATIONAL_BARRIER: '/organizational-barriers',
   // Replaced below by the Sprint Backlog Manager deep link, which carries the notification's data.
   SPRINT_BACKLOG_CHANGE_PENDING: '/sprint',
 };

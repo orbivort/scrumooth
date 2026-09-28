@@ -51,6 +51,8 @@
   },
   "impedimentAssigned": "Nuovo Impediment assegnato: \"{{impedimentTitle}}\"",
   "impedimentAssignedMessage": "Segnalato da {{reporterName}}",
+  "impedimentEscalation": "L'impediment richiede la tua azione: \"{{impedimentTitle}}\"",
+  "impedimentEscalationMessage": "Questo impediment non è risolto da {{ageDays}} giorni. Come Scrum Master sei responsabile di far rimuovere l'ostacolo.",
   "loading": {
     "ariaLabel": "Caricamento notifiche",
     "title": "Caricamento notifiche..."
@@ -59,6 +61,8 @@
   "marking": "Contrassegno in corso...",
   "newTaskAssignedMessage": "Nello sprint \"{{sprintName}}\"",
   "newTaskAssignedTitle": "Nuova attività assegnata: \"{{taskTitle}}\"",
+  "organizationalBarrierRaised": "Barriera organizzativa assegnata: \"{{barrierTitle}}\"",
+  "organizationalBarrierRaisedMessage": "Questa barriera è esterna al team Scrum. Sei responsabile di rimuoverla perché il team possa proseguire.",
   "pagination": {
     "next": "Successiva",
     "pageInfo": "Pagina {{current}} di {{total}}",

@@ -18,7 +18,7 @@ import { WorkingAgreementStatus } from '@scrumooth/shared';
 
 import { WorkingAgreements } from './WorkingAgreements';
 import { workingAgreementsService } from '../../services';
-import { mockWorkingAgreements } from '../../services/mockFacilitationData';
+import { mockWorkingAgreements } from '../../__mocks__/facilitationData';
 
 vi.mock('../../services');
 vi.mock('./WorkingAgreements.module.css', () => ({

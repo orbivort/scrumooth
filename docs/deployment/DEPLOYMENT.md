@@ -351,10 +351,15 @@ The frontend's Vite environment variables are compiled into the JavaScript bundl
 | --------------------------------- | --------------------------------- |
 | `VITE_BASE_PATH`                  | `/scrumooth/`                     |
 | `VITE_API_URL`                    | `/api/v1`                         |
-| `VITE_USE_MOCK_API`               | `false`                           |
+| `VITE_USE_MOCK_API`               | unset (mock mode off)             |
 | `VITE_BACKLOG_ITEM_LIMIT`         | `100`                             |
 | `VITE_BACKLOG_MAX_ITEMS_PER_GOAL` | `200`                             |
 | `VITE_LOG_LEVEL`                  | `info`                            |
+
+Published images talk to a real backend: mock mode is never enabled in a release
+build. It is an explicit opt-in (`VITE_USE_MOCK_API=true`) that a production-mode
+Vite build refuses, so a demo build is produced only through `--mode demo` — see the
+[deployment workflow](../architecture/frontend-mock-architecture.md#bootstrap-and-the-production-boundary).
 
 These defaults assume the standard nginx `/api` → backend proxy and a `/scrumooth/` base path. To use different values, you must **build the frontend image locally** from source (e.g. via the repo's `docker-compose.yml`) rather than pulling a pre-built image. See the [deployment script notes](../../scripts/deployment/README.md) for a worked example.
 

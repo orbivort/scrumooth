@@ -853,17 +853,6 @@ export interface RetroAttendee {
   attended: boolean;
 }
 
-export interface Notification {
-  id: string;
-  userId: string;
-  type: 'task_assigned' | 'mention' | 'sprint_update' | 'impediment' | 'direct_message' | 'system';
-  title: string;
-  message: string;
-  data?: Record<string, string>;
-  isRead: boolean;
-  createdAt: string;
-}
-
 // API Response types
 export interface ApiResponse<T> {
   success: boolean;
@@ -889,11 +878,19 @@ export interface PaginatedResponse<T> {
   };
 }
 
-// Chart data types
+/**
+ * One Sprint's burndown, in the shape the API serves it and both charts read it.
+ *
+ * `dates` are ISO calendar dates for the Sprint's working days and `ideal` is the
+ * straight-line forecast over the same days, both in estimated hours. `actual` is
+ * the remaining work observed on each of those days; a working day the Sprint has
+ * not reached yet carries `null` rather than a sentinel value, which is how the
+ * charts know to stop the actual line at today.
+ */
 export interface BurndownData {
-  date: string;
-  ideal: number;
-  actual: number;
+  dates: string[];
+  ideal: number[];
+  actual: (number | null)[];
 }
 
 /**
@@ -1229,3 +1226,8 @@ export interface BulkCreateResponseData {
 
 // Re-export auth types
 export type { TeamMembership, DeletionEligibilityResult, PendingDeletion } from './auth.types';
+
+// The notification contract, re-exported so there is exactly one description of it. The interface
+// used to be declared twice -- here and in `notification.types.ts` -- and the mock was typed against
+// this copy, which is how it drifted from the API without `tsc` saying a word.
+export * from './notification.types';

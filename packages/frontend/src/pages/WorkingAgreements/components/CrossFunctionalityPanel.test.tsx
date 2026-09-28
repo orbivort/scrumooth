@@ -11,7 +11,7 @@ import { describe, it, expect, vi, beforeAll } from 'vitest';
 import { SkillCoverage } from '@scrumooth/shared';
 
 import { renderWithProviders, initTestI18n, screen, waitFor } from '../../../test-utils';
-import { mockCrossFunctionality } from '../../../services/mockFacilitationData';
+import { mockCrossFunctionality } from '../../../__mocks__/facilitationData';
 
 import { CrossFunctionalityPanel } from './CrossFunctionalityPanel';
 

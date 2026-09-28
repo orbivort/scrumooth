@@ -18,10 +18,15 @@ const getNotificationIcon = (type: NotificationType): string => {
     TEAM_REMOVAL: '🚫',
     TASK_ASSIGNMENT: '✅',
     IMPEDIMENT_ASSIGNMENT: '🚧',
+    IMPEDIMENT_ESCALATION: '🔺',
+    DAILY_SCRUM_SIGNAL: '🕘',
     TEAM_CREATED: '🏢',
     TEAM_UPDATED: '✏️',
     TEAM_DELETED: '🗑️',
     DIRECT_MESSAGE: '💬',
+    ACCOUNT_DELETION_SCHEDULED: '⏳',
+    ACCOUNT_DELETION_CANCELLED: '🛡️',
+    ORGANIZATIONAL_BARRIER: '🧱',
     SPRINT_BACKLOG_CHANGE_PENDING: '⚠️',
   };
   return icons[type] || '📌';

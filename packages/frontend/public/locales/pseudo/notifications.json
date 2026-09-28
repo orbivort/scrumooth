@@ -51,6 +51,8 @@
   },
   "impedimentAssigned": "[Néw ímpédímént àssígnéddddddddd: \"{{impedimentTitle}}\"]",
   "impedimentAssignedMessage": "[Répórtéd byyyyy {{reporterName}}]",
+  "impedimentEscalation": "[Ímpédímént nééds yóúr àctíónnnnnnnnnnn: \"{{impedimentTitle}}\"]",
+  "impedimentEscalationMessage": "[Thís ímpédímént hàs góné únrésólvéd fórrrrrrrrrrrrr {{ageDays}} dàys. Às Scrúm Màstér yóú àré àccóúntàblé fór càúsíng íts rémóvàllllllllllllllllllllll.]",
   "loading": {
     "ariaLabel": "[Lóàdíng nótífícàtíónssssssss]",
     "title": "[Lóàdíng nótífícàtíónsssssssss...]"
@@ -59,6 +61,8 @@
   "marking": "[Màrkíngggg...]",
   "newTaskAssignedMessage": "[ÍÍnn sspprríínnt \"{{sprintName}}\"]",
   "newTaskAssignedTitle": "[Néw tàsk àssígnéddddddd: \"{{taskTitle}}\"]",
+  "organizationalBarrierRaised": "[Órgànízàtíónàl bàrríér àssígnédddddddddddd: \"{{barrierTitle}}\"]",
+  "organizationalBarrierRaisedMessage": "[Thís bàrríér líés óútsídé thé Scrúm Téàm. Yóú àré àccóúntàblé fór rémóvíng ít, só thé téàm càn cóntínúééééééééééééééééééééééééééééééééé.]",
   "pagination": {
     "next": "[NNééxxt]",
     "pageInfo": "[PPààggé {{current}} óóff {{total}}]",

@@ -2,80 +2,53 @@ import { test, expect } from '../fixtures';
 import type { Page } from '@playwright/test';
 import type { LoginPage } from '../pages';
 
+import {
+  DEMO_PASSWORD,
+  MEMBERSHIP_SEEDS,
+  PEOPLE_SEEDS,
+  TEAM_SEEDS,
+} from '../../src/mocks/fixtures/personas';
+
 /**
  * The facilitation lens is the second tab of the Dashboard module, and it is offered only to the
- * Scrum Master of the team on screen. The harness actor is a Developer, so each describe below says
- * which role it is exercising.
+ * Scrum Master of the team on screen.
+ *
+ * The role is the demo universe's, reached by signing in as the person who holds it: the suite runs
+ * against the same mock backend `pnpm dev` uses, so the identity a spec acts as is a real sign-in
+ * rather than an API stub that could drift from the product.
  */
-type HarnessRole = 'developers' | 'scrum_master';
-
-const CURRENT_TEAM_PATH = '**/api/v1/teams/my-teams';
-const SELECT_TEAM_PATH = '**/api/v1/teams/select-team**';
+type HarnessRole = 'DEVELOPERS' | 'SCRUM_MASTER';
 
 const FACILITATION_ADDRESS = '/dashboard?tab=facilitation';
 
-function currentTeam(userRole: HarnessRole) {
-  const now = new Date().toISOString();
-  return {
-    id: 'team-1',
-    name: 'Test Team',
-    slug: 'test-team',
-    description: 'A test team for E2E testing',
-    createdBy: 'test-user-id',
-    createdAt: now,
-    updatedAt: now,
-    userRole,
-  };
+/** The demo universe's first team, which every persona below belongs to. */
+const TEAM = TEAM_SEEDS[0];
+
+/** The account holding a role in that team. */
+function accountFor(role: HarnessRole): { email: string; password: string } {
+  const membership = MEMBERSHIP_SEEDS.find(
+    (candidate) => candidate.teamId === TEAM?.id && candidate.role === role
+  );
+  const person = PEOPLE_SEEDS.find((candidate) => candidate.id === membership?.userId);
+  if (!person) {
+    throw new Error(`The demo universe has nobody holding ${role} in ${TEAM?.name ?? 'the team'}`);
+  }
+  return { email: person.email, password: DEMO_PASSWORD };
 }
 
-/**
- * Change the role the harness actor holds in the current team. These routes are registered after the
- * harness has registered its own, and Playwright resolves the most recently registered matching
- * route first -- so everything else keeps being served by the harness handlers.
- */
-async function actAs(page: Page, userRole: HarnessRole): Promise<void> {
-  const team = currentTeam(userRole);
-
-  await page.route(CURRENT_TEAM_PATH, (route) =>
-    route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({ success: true, data: [team] }),
-    })
-  );
-
-  await page.route(SELECT_TEAM_PATH, (route) =>
-    route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({ success: true, data: team }),
-    })
-  );
-}
-
-async function registerAndLand(page: Page, loginPage: LoginPage): Promise<void> {
-  const timestamp = Date.now();
-
+/** Sign in as the person holding the given role, which lands them in their own team. */
+async function actAs(page: Page, loginPage: LoginPage, role: HarnessRole): Promise<void> {
+  const account = accountFor(role);
   await loginPage.goto();
-  await loginPage.register({
-    firstName: 'SM',
-    lastName: 'User',
-    email: `smdash_${timestamp}@example.com`,
-    password: 'TestPass123!@#',
-    acceptTerms: true,
-  });
-  await page.waitForURL(/\/team/, { timeout: 30000 });
+  await loginPage.login(account.email, account.password);
+  await page.waitForURL(/\/dashboard/, { timeout: 30000 });
   await page.waitForTimeout(500);
 }
 
 test.describe('Scrum Master Dashboard', () => {
   test.describe('as the Scrum Master of the current team', () => {
-    test.beforeEach(async ({ loginPage, page, mockApi }) => {
-      // Requesting the fixture installs the harness's mocked API routes; the role override below
-      // has to be registered after it, because the most recently registered match wins.
-      void mockApi;
-      await actAs(page, 'scrum_master');
-      await registerAndLand(page, loginPage);
+    test.beforeEach(async ({ loginPage, page }) => {
+      await actAs(page, loginPage, 'SCRUM_MASTER');
 
       await page.goto(FACILITATION_ADDRESS, {
         waitUntil: 'domcontentloaded',
@@ -230,12 +203,8 @@ test.describe('Scrum Master Dashboard', () => {
   });
 
   test.describe('as a member without the facilitation lens', () => {
-    test.beforeEach(async ({ loginPage, page, mockApi }) => {
-      // Requesting the fixture installs the harness's mocked API routes; the role override below
-      // has to be registered after it, because the most recently registered match wins.
-      void mockApi;
-      await actAs(page, 'developers');
-      await registerAndLand(page, loginPage);
+    test.beforeEach(async ({ loginPage, page }) => {
+      await actAs(page, loginPage, 'DEVELOPERS');
 
       await page.goto(FACILITATION_ADDRESS, {
         waitUntil: 'domcontentloaded',
@@ -267,12 +236,8 @@ test.describe('Scrum Master Dashboard', () => {
   });
 
   test.describe('the retired address', () => {
-    test.beforeEach(async ({ loginPage, page, mockApi }) => {
-      // Requesting the fixture installs the harness's mocked API routes; the role override below
-      // has to be registered after it, because the most recently registered match wins.
-      void mockApi;
-      await actAs(page, 'scrum_master');
-      await registerAndLand(page, loginPage);
+    test.beforeEach(async ({ loginPage, page }) => {
+      await actAs(page, loginPage, 'SCRUM_MASTER');
     });
 
     test('TC-SMDASH-009: Resolve /scrum-master-dashboard to the facilitation lens', async ({

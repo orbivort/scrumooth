@@ -16,6 +16,7 @@ Please read our [Code of Conduct](./CODE_OF_CONDUCT.md) before participating.
   - [Prerequisites](#prerequisites)
   - [Local Development Setup](#local-development-setup)
 - [Development Workflow](#development-workflow)
+  - [Developing without a backend](#developing-without-a-backend)
   - [Branches](#branches)
   - [Commit Messages](#commit-messages)
 - [Code Quality Standards](#code-quality-standards)
@@ -83,11 +84,59 @@ pnpm run db:migrate
 pnpm run dev
 ```
 
-> **Tip:** To run the frontend without a backend, set `VITE_USE_MOCK_API=true` in `packages/frontend/.env`.
+> **Tip:** To run the frontend without a backend, set `VITE_USE_MOCK_API=true` in `packages/frontend/.env`, then `pnpm run dev:frontend`. See [Developing without a backend](#developing-without-a-backend) below.
 
 ---
 
 ## Development Workflow
+
+### Developing without a backend
+
+Mock mode is a self-contained demo environment: Mock Service Worker answers the
+application's own HTTP requests, so every screen, guard and workflow runs as it does
+against the real API — including the axios interceptors, the CSRF handshake and the
+401 refresh flow. There is no second implementation of the product's rules in the
+app bundle.
+
+```bash
+# The committed .env already enables it; start only the frontend
+pnpm run dev:frontend
+
+# Or, without touching your .env
+VITE_USE_MOCK_API=true pnpm --filter=@scrumooth/frontend run dev
+```
+
+On the login page you can then pick one of the persona cards and sign in with one
+click. Every card is a role in a team: the Product Owner of one team, that same
+person as the Scrum Master of the other, and the Developers of both. Switching team
+changes the role, and therefore the menus, gates and available actions.
+
+**When you change the product, change the mock with it.** The mock layer answers the
+endpoints the app calls, so an endpoint added to a domain service needs a handler:
+four layers, one file each.
+
+| Layer               | Where                   | Change it when                           |
+| ------------------- | ----------------------- | ---------------------------------------- |
+| Fictional seed      | `src/mocks/fixtures/`   | demo content changes                     |
+| Working copy        | `src/mocks/store/db.ts` | a new collection must be read or written |
+| Endpoint responders | `src/mocks/handlers/`   | an endpoint contract changes             |
+| Shared plumbing     | `src/mocks/support/`    | envelope, latency, ids, gate refusals    |
+
+Refusals must carry the gate contract: `gate(GATE_CODES.X, …)` reads the HTTP status
+from `GATE_DEFINITIONS`, the same table the backend throws from, so the interface can
+present the rule, the Guide clause and the recovery action. A gate the mock does not
+model is a gate the real API does not have either — inventing one here would make the
+demo refuse something the product allows.
+
+The mock layer is opt-in, is dropped from normal production bundles and cannot be
+enabled in a production-mode build (see the guard in `vite.config.ts`). A build with
+mocks enabled is a **demo build**, produced only through `--mode demo` and the
+committed `.env.demo`.
+
+- Working guide: [`packages/frontend/src/mocks/README.md`](./packages/frontend/src/mocks/README.md)
+- Architecture: [`docs/architecture/frontend-mock-architecture.md`](./docs/architecture/frontend-mock-architecture.md)
+- Contract tests: `packages/frontend/src/__tests__/msw-contract.test.ts` — the suite
+  that proves the handlers answer the shapes the application parses.
 
 ### Branches
 
@@ -152,6 +201,11 @@ pnpm run test:coverage     # With coverage
 - Write tests following the AAA (Arrange/Act/Assert) pattern.
 - Mock external dependencies and clean up test data in `afterEach`.
 - Add tests for new features and bug fixes.
+- The frontend suite runs against the mock backend: `setupTests.ts` starts the same
+  handler registry `pnpm dev` uses and resets the store, session and any armed
+  failure scenario between tests, so no test leaks state. The mock layer's own
+  fidelity is covered by `src/__tests__/msw-contract.test.ts`, which makes real
+  requests over `fetch` rather than mocking a service.
 
 ---
 

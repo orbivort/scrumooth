@@ -984,6 +984,34 @@ describe('Dashboard Component', () => {
       });
     });
 
+    it('reads the insight from the last day the Sprint has a reading for', async () => {
+      (apiService.getActiveSprint as ReturnType<typeof vi.fn>).mockResolvedValue({
+        success: true,
+        data: mockSprint,
+      });
+      (apiService.getImpediments as ReturnType<typeof vi.fn>).mockResolvedValue({
+        success: true,
+        data: mockImpediments,
+      });
+      // The tail of `actual` is the Sprint's future, so those days carry no reading.
+      (apiService.getBurndownData as ReturnType<typeof vi.fn>).mockResolvedValue({
+        success: true,
+        data: {
+          dates: ['2026-02-02', '2026-02-03', '2026-02-04', '2026-02-05'],
+          ideal: [40, 30, 20, 10],
+          actual: [40, 32, null, null],
+        },
+      });
+
+      renderWithProviders(<Dashboard />);
+
+      // 32 hours remain where the forecast expects 30, so the team is behind; the
+      // empty tail must not be read as an observation of its own.
+      await waitFor(() => {
+        expect(screen.getByText(i18nT('dashboard:burndownInsight.behind'))).toBeInTheDocument();
+      });
+    });
+
     it('should show error message when burndown data fails', async () => {
       (apiService.getActiveSprint as ReturnType<typeof vi.fn>).mockResolvedValue({
         success: true,

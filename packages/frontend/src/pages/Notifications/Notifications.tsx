@@ -19,6 +19,11 @@ import {
   MessageSquareIcon,
   EditIcon,
   TrashIcon,
+  WarningIcon,
+  ClockIcon,
+  HourglassIcon,
+  ShieldIcon,
+  BuildingIcon,
 } from '../../components/common/Icons';
 import { useI18nStore } from '../../i18n/useI18nStore';
 import { getNotificationTitle, getNotificationMessage } from '../../utils/notificationTranslation';
@@ -36,6 +41,10 @@ const getNotificationIcon = (type: NotificationType | string): React.ReactNode =
       return <FileCheckIcon size={20} />;
     case NotificationType.IMPEDIMENT_ASSIGNMENT:
       return <AlertTriangleIcon size={20} />;
+    case NotificationType.IMPEDIMENT_ESCALATION:
+      return <WarningIcon size={20} />;
+    case NotificationType.DAILY_SCRUM_SIGNAL:
+      return <ClockIcon size={20} />;
     case NotificationType.TEAM_CREATED:
       return <UsersIcon size={20} />;
     case NotificationType.TEAM_UPDATED:
@@ -44,6 +53,12 @@ const getNotificationIcon = (type: NotificationType | string): React.ReactNode =
       return <TrashIcon size={20} />;
     case NotificationType.DIRECT_MESSAGE:
       return <MessageSquareIcon size={20} />;
+    case NotificationType.ACCOUNT_DELETION_SCHEDULED:
+      return <HourglassIcon size={20} />;
+    case NotificationType.ACCOUNT_DELETION_CANCELLED:
+      return <ShieldIcon size={20} />;
+    case NotificationType.ORGANIZATIONAL_BARRIER:
+      return <BuildingIcon size={20} />;
     case NotificationType.SPRINT_BACKLOG_CHANGE_PENDING:
       return <AlertTriangleIcon size={20} />;
     default:

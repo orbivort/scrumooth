@@ -123,6 +123,17 @@ describe('getNotificationRoute', () => {
     );
   });
 
+  it('leads every type the API can send somewhere, never to the root fallback', () => {
+    for (const type of Object.values(NotificationType)) {
+      // A type with no route is a notification the reader cannot act on, which is
+      // how every seeded notification behaved while the mock spoke a vocabulary the
+      // route table did not know.
+      expect(getNotificationRoute(createNotification({ type })), `${type} routes nowhere`).not.toBe(
+        '/'
+      );
+    }
+  });
+
   it('falls back to the home route for a type the interface does not know', () => {
     expect(
       getNotificationRoute(createNotification({ type: 'UNKNOWN_TYPE' as NotificationType }))

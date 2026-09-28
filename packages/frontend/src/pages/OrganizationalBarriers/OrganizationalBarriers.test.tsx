@@ -30,7 +30,7 @@ import {
 import { OrganizationalBarriers } from './OrganizationalBarriers';
 import { organizationalBarriersService } from '../../services';
 import { useTeamStore } from '../../store';
-import { mockBarrierStats, mockBarriers } from '../../services/mockFacilitationData';
+import { mockBarrierStats, mockBarriers } from '../../__mocks__/facilitationData';
 
 vi.mock('../../services');
 vi.mock('../../store', () => ({

@@ -1,0 +1,259 @@
+/* ========================================
+   Persona quick sign-in — demo affordance
+   Sits below the real form, visually
+   subordinate to it, and is only rendered
+   when mock mode is on.
+   ======================================== */
+
+.panel {
+  margin-top: var(--space-8);
+}
+
+/* --- Labelled divider --- */
+.divider {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-5);
+}
+
+.divider::before,
+.divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background-color: var(--color-gray-200);
+}
+
+.divider-label {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-gray-500);
+  text-align: center;
+  white-space: nowrap;
+}
+
+/* --- Heading --- */
+.heading {
+  margin: 0 0 var(--space-1);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-gray-900);
+  text-align: center;
+}
+
+.subheading {
+  margin: 0 0 var(--space-4);
+  font-size: var(--font-size-xs);
+  line-height: var(--line-height-relaxed);
+  color: var(--color-gray-500);
+  text-align: center;
+}
+
+/* --- Groups --- */
+.group + .group {
+  margin-top: var(--space-4);
+}
+
+.group-label {
+  display: block;
+  margin-bottom: var(--space-2);
+  font-size: var(--font-size-2xs);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-gray-400);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  gap: var(--space-2);
+}
+
+/* --- Card --- */
+.card {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2-5);
+  width: 100%;
+  padding: var(--space-2-5) var(--space-3);
+  border-width: var(--border-width-1);
+  border-style: solid;
+  border-color: var(--color-gray-200);
+  border-top-width: var(--border-width-2);
+  border-radius: var(--radius-lg);
+  background-color: var(--color-background-card);
+  text-align: start;
+  cursor: pointer;
+  transition:
+    transform var(--transition-fast),
+    box-shadow var(--transition-fast),
+    border-color var(--transition-fast);
+}
+
+.card:disabled {
+  cursor: not-allowed;
+  opacity: var(--opacity-60);
+}
+
+.card:focus-visible {
+  outline: 2px solid var(--color-primary-500);
+  outline-offset: 2px;
+}
+
+.card:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+/* Role accents: the chip, the top border and the hover state share one colour,
+   so the three roles are told apart at a glance. */
+.card-po {
+  border-top-color: var(--color-primary-500);
+}
+
+.card-sm {
+  border-top-color: var(--color-accent-indigo-500);
+}
+
+.card-dev {
+  border-top-color: var(--color-emerald-500);
+}
+
+.card-po:hover:not(:disabled) {
+  border-color: var(--color-primary-200);
+  border-top-color: var(--color-primary-600);
+}
+
+.card-sm:hover:not(:disabled) {
+  border-color: var(--color-accent-indigo-500);
+}
+
+.card-dev:hover:not(:disabled) {
+  border-color: var(--color-emerald-400);
+}
+
+.card-pending {
+  border-color: var(--color-primary-300);
+  background-color: var(--color-primary-50);
+}
+
+/* --- Avatar --- */
+.avatar {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-full);
+  background-color: var(--color-gray-100);
+  color: var(--color-gray-700);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.02em;
+}
+
+.card-po .avatar {
+  background-color: var(--color-primary-50);
+  color: var(--color-primary-700);
+}
+
+.card-sm .avatar {
+  background-color: var(--color-accent-indigo-500);
+  color: var(--color-white, #fff);
+}
+
+.card-dev .avatar {
+  background-color: var(--color-emerald-50);
+  color: var(--color-emerald-800);
+}
+
+/* --- Card text --- */
+.card-body {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.card-name {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-gray-900);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.card-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1-5);
+  min-width: 0;
+}
+
+.chip {
+  flex-shrink: 0;
+  padding: 1px var(--space-1-5);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-3xs);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.chip-po {
+  background-color: var(--color-primary-100);
+  color: var(--color-primary-800);
+}
+
+.chip-sm {
+  background-color: var(--color-accent-purple-100);
+  color: var(--color-accent-purple-800);
+}
+
+.chip-dev {
+  background-color: var(--color-emerald-50);
+  color: var(--color-emerald-800);
+}
+
+.card-team {
+  font-size: var(--font-size-3xs);
+  color: var(--color-gray-500);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.spinner {
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+  color: var(--color-primary-600);
+  animation: persona-spin 0.8s linear infinite;
+}
+
+@keyframes persona-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card,
+  .spinner {
+    transition: none;
+    animation: none;
+  }
+}
+
+/* --- Footnote --- */
+.footnote {
+  margin: var(--space-4) 0 0;
+  font-size: var(--font-size-3xs);
+  line-height: var(--line-height-relaxed);
+  color: var(--color-gray-400);
+  text-align: center;
+}

@@ -1,7 +1,7 @@
 import { test, expect } from '../fixtures';
 
 test.describe('Increment Integration Verification', () => {
-  test.beforeEach(async ({ loginPage, page, mockApi }) => {
+  test.beforeEach(async ({ loginPage, page }) => {
     const timestamp = Date.now();
     const testUser = {
       email: `incint_${timestamp}@example.com`,
@@ -34,10 +34,7 @@ test.describe('Increment Integration Verification', () => {
       .catch(() => {});
   };
 
-  test('TC-INCINT-001: Display Increment integration verification status', async ({
-    page,
-    mockApi,
-  }) => {
+  test('TC-INCINT-001: Display Increment integration verification status', async ({ page }) => {
     await gotoIncrementDetail(page);
 
     await test.step('Verify increment detail page loads', async () => {
@@ -58,10 +55,7 @@ test.describe('Increment Integration Verification', () => {
     });
   });
 
-  test('TC-INCINT-002: Display integration tests list with pass/fail results', async ({
-    page,
-    mockApi,
-  }) => {
+  test('TC-INCINT-002: Display integration tests list with pass/fail results', async ({ page }) => {
     await gotoIncrementDetail(page);
 
     await test.step('Verify integration tests section renders', async () => {
@@ -80,7 +74,7 @@ test.describe('Increment Integration Verification', () => {
     });
   });
 
-  test('TC-INCINT-003: Display increment dependency chain', async ({ page, mockApi }) => {
+  test('TC-INCINT-003: Display increment dependency chain', async ({ page }) => {
     await gotoIncrementDetail(page);
 
     await test.step('Verify the increment chain is rendered', async () => {
@@ -99,7 +93,7 @@ test.describe('Increment Integration Verification', () => {
     });
   });
 
-  test('TC-INCINT-004: Trigger integration verification', async ({ page, mockApi }) => {
+  test('TC-INCINT-004: Trigger integration verification', async ({ page }) => {
     await gotoIncrementDetail(page);
 
     await test.step('Click the verify now button', async () => {
@@ -118,10 +112,7 @@ test.describe('Increment Integration Verification', () => {
     });
   });
 
-  test('TC-INCINT-005: Display what the integration verification rests on', async ({
-    page,
-    mockApi,
-  }) => {
+  test('TC-INCINT-005: Display what the integration verification rests on', async ({ page }) => {
     await gotoIncrementDetail(page);
 
     await test.step('Verify the verification basis is stated, not a bare "verified" badge', async () => {

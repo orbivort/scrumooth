@@ -5,7 +5,7 @@ import { persist } from 'zustand/middleware';
 import type { QueryClient } from '@tanstack/react-query';
 import type { Locale } from '@scrumooth/shared';
 
-import type { User, Team, Notification } from '../types';
+import type { User, Team } from '../types';
 import type { DeletionEligibilityResult } from '../types/auth.types';
 import { apiService, sessionManager } from '../services';
 import type { SessionConfig } from '../services/sessionManager';
@@ -342,64 +342,6 @@ export const useUIStore = create<UIState>()(
     }
   )
 );
-
-interface NotificationState {
-  notifications: Notification[];
-  unreadCount: number;
-  addNotification: (notification: Notification) => void;
-  markAsRead: (notificationId: string) => void;
-  markAllAsRead: () => void;
-  removeNotification: (notificationId: string) => void;
-  clearNotifications: () => void;
-  setNotifications: (notifications: Notification[]) => void;
-}
-
-export const useNotificationStore = create<NotificationState>()((set, get) => ({
-  notifications: [],
-  unreadCount: 0,
-
-  addNotification: (notification) =>
-    set({
-      notifications: [notification, ...get().notifications],
-      unreadCount: get().unreadCount + (notification.isRead ? 0 : 1),
-    }),
-
-  markAsRead: (notificationId) =>
-    set({
-      notifications: get().notifications.map((n) =>
-        n.id === notificationId ? { ...n, isRead: true } : n
-      ),
-      unreadCount: Math.max(0, get().unreadCount - 1),
-    }),
-
-  markAllAsRead: () =>
-    set({
-      notifications: get().notifications.map((n) => ({ ...n, isRead: true })),
-      unreadCount: 0,
-    }),
-
-  removeNotification: (notificationId) =>
-    set({
-      notifications: get().notifications.filter((n) => n.id !== notificationId),
-      unreadCount: Math.max(
-        0,
-        get().unreadCount -
-          (get().notifications.find((n) => n.id === notificationId)?.isRead ? 0 : 1)
-      ),
-    }),
-
-  clearNotifications: () =>
-    set({
-      notifications: [],
-      unreadCount: 0,
-    }),
-
-  setNotifications: (notifications) =>
-    set({
-      notifications,
-      unreadCount: notifications.filter((n) => !n.isRead).length,
-    }),
-}));
 
 /**
  * Team State Interface

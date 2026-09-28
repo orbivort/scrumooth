@@ -51,6 +51,8 @@
   },
   "impedimentAssigned": "Neues Impediment zugewiesen: \"{{impedimentTitle}}\"",
   "impedimentAssignedMessage": "Gemeldet von {{reporterName}}",
+  "impedimentEscalation": "Impediment erfordert Ihre Aktion: \"{{impedimentTitle}}\"",
+  "impedimentEscalationMessage": "Dieses Impediment ist seit {{ageDays}} Tagen ungelöst. Als Scrum Master sind Sie dafür verantwortlich, seine Beseitigung zu bewirken.",
   "loading": {
     "ariaLabel": "Benachrichtigungen laden",
     "title": "Benachrichtigungen werden geladen..."
@@ -59,6 +61,8 @@
   "marking": "Markieren...",
   "newTaskAssignedMessage": "Im Sprint \"{{sprintName}}\"",
   "newTaskAssignedTitle": "Neue Aufgabe zugewiesen: \"{{taskTitle}}\"",
+  "organizationalBarrierRaised": "Organisatorische Barriere zugewiesen: \"{{barrierTitle}}\"",
+  "organizationalBarrierRaisedMessage": "Diese Barriere liegt außerhalb des Scrum Teams. Sie sind dafür verantwortlich, sie zu beseitigen, damit das Team weiterarbeiten kann.",
   "pagination": {
     "next": "Nächste",
     "pageInfo": "Seite {{current}} von {{total}}",

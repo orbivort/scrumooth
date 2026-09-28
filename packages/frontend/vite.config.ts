@@ -1,5 +1,5 @@
+import { existsSync, readFileSync, rmSync } from 'fs';
 import path from 'path';
-import { readFileSync } from 'fs';
 
 import { defineConfig, type Plugin, type PluginOption, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
@@ -20,16 +20,60 @@ const htmlVersionPlugin = (): Plugin => ({
   },
 });
 
+/**
+ * Drops the mock service worker from builds that cannot use it.
+ *
+ * `public/` is copied verbatim, so without this the worker would ship in every
+ * production image even though mock mode is disabled there. The demo build keeps
+ * it, because that is the build that serves mocked traffic.
+ */
+const stripMockWorkerPlugin = (keepWorker: boolean): Plugin => {
+  let outDir = '';
+
+  return {
+    name: 'strip-mock-worker',
+    apply: 'build',
+    configResolved(config) {
+      outDir = path.resolve(config.root, config.build.outDir);
+    },
+    closeBundle() {
+      if (keepWorker) {
+        return;
+      }
+      const workerPath = path.join(outDir, 'mockServiceWorker.js');
+      if (existsSync(workerPath)) {
+        rmSync(workerPath);
+      }
+    },
+  };
+};
+
 export default defineConfig(({ mode }) => {
   // Load env file based on mode
   const env = loadEnv(mode, process.cwd(), '');
+
+  // Mock mode must never reach a real production build: a deployment that silently
+  // serves fabricated data is far worse than a failed build, and mocking is an
+  // explicit opt-in (`VITE_USE_MOCK_API === 'true'`) precisely so this can be
+  // enforced. The backend-free demo is the only supported way to ship mocks, and
+  // it uses `vite build --mode demo` (see `.env.demo`).
+  if (env.VITE_USE_MOCK_API === 'true' && mode === 'production') {
+    throw new Error(
+      'Refusing to build: VITE_USE_MOCK_API=true in production mode. A production ' +
+        'build is served to real users and must talk to the real backend. Run ' +
+        '`pnpm run build:demo` (vite build --mode demo) for the backend-free demo instead.'
+    );
+  }
 
   // Read configuration from environment variables with defaults
   const port = parseInt(env.VITE_DEV_PORT || '5173', 10);
   const apiUrl = env.VITE_API_URL || 'http://localhost:5001/api/v1';
 
-  // Extract base URL for proxy (remove /api/v1 suffix if present)
-  const proxyTarget = apiUrl.replace(/\/api\/v1\/?$/, '');
+  // Extract base URL for proxy (remove /api/v1 suffix if present).
+  // A same-origin API URL (`/api/v1`) is how mock mode is served: the service
+  // worker answers the traffic so the proxy is never used, but the real-backend
+  // case still needs a target, so fall back to the default dev server.
+  const proxyTarget = apiUrl.replace(/\/api\/v1\/?$/, '') || 'http://localhost:5001';
 
   // Base path for GitHub Pages deployment
   // For username.github.io, base is '/'
@@ -39,7 +83,12 @@ export default defineConfig(({ mode }) => {
   // Bundle analysis is opt-in via `vite build --mode analyze` (see build:analyze).
   const isAnalyze = mode === 'analyze';
 
-  const plugins: PluginOption[] = [htmlVersionPlugin(), react()];
+  const plugins: PluginOption[] = [
+    htmlVersionPlugin(),
+    // Only a build that can actually serve mock traffic keeps the worker script.
+    stripMockWorkerPlugin(env.VITE_USE_MOCK_API === 'true'),
+    react(),
+  ];
   if (isAnalyze) {
     plugins.push(
       visualizer({

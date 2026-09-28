@@ -1,7 +1,7 @@
 import { test, expect } from '../fixtures';
 
 test.describe('Daily Scrum Page', () => {
-  test.beforeEach(async ({ loginPage, page, mockApi }) => {
+  test.beforeEach(async ({ loginPage, page }) => {
     const timestamp = Date.now();
     const testUser = {
       email: `dailyscrum_${timestamp}@example.com`,
@@ -122,7 +122,7 @@ test.describe('Daily Scrum Page', () => {
 });
 
 test.describe('Daily Scrum - Responsive Design', () => {
-  test.beforeEach(async ({ loginPage, page, mockApi }) => {
+  test.beforeEach(async ({ loginPage, page }) => {
     const timestamp = Date.now();
     const testUser = {
       email: `daily_mobile_${timestamp}@example.com`,

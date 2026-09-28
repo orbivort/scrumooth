@@ -43,6 +43,10 @@ allowBuilds:
   esbuild: true
   unrs-resolver: true
   '@swc/core': true
+  # MSW's postinstall is inert unless `msw.workerDirectory` is set in package.json.
+  # packages/frontend sets it, so this only re-runs `msw init` to keep
+  # public/mockServiceWorker.js in sync with the installed MSW version.
+  msw: true
 
 strictPeerDependencies: false
 

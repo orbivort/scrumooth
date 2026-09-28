@@ -223,6 +223,15 @@ The positions the product commits to, and the ones it deliberately declines:
 - The Definition of Ready as a complementary practice maintained by the Scrum Master
 - The organization-wide minimum Definition of Done, documented as out of scope
 
+### 9. [Frontend Mock Architecture](./frontend-mock-architecture.md)
+
+How the frontend runs without a backend, and why the mock sits at the HTTP boundary:
+
+- MSW handlers, a frozen fictional seed and a mutable working copy, in separate layers
+- Identity resolved from the request context, so one person can hold a different role per team
+- The three guarantees that keep mock mode out of a real deployment
+- What the layer costs, and how to extend it
+
 ## Quick Navigation
 
 ### For Developers
@@ -231,6 +240,7 @@ The positions the product commits to, and the ones it deliberately declines:
 - **API Documentation**: [API Docs](../api/README.md)
 - **Development Guide**: [AGENTS.md](../../AGENTS.md)
 - **Internationalization**: [i18n Architecture](./i18n-architecture.md)
+- **Developing without a backend**: [Frontend Mock Architecture](./frontend-mock-architecture.md)
 
 ### For Architects
 

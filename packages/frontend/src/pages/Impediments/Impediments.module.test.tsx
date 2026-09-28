@@ -23,7 +23,7 @@ import { useSearchParams } from 'react-router';
 
 import { useTeamStore } from '../../store';
 import { apiService, organizationalBarriersService } from '../../services';
-import { mockBarrierStats, mockBarriers } from '../../services/mockFacilitationData';
+import { mockBarrierStats, mockBarriers } from '../../__mocks__/facilitationData';
 import { ImpedimentStatus, SprintStatus } from '../../types';
 
 import { Impediments } from './Impediments';

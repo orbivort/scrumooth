@@ -125,6 +125,10 @@ services:
         VITE_BASE_PATH: "${VITE_BASE_PATH:-/scrumooth/}"
         # Use relative URL for API - nginx proxies /api to backend:5010
         VITE_API_URL: "${VITE_API_URL:-/api/v1}"
+        # Mock mode is off by default and stays off in a release build: `vite build`
+        # refuses VITE_USE_MOCK_API=true outside demo mode. A backend-free demo image
+        # is built from the committed `packages/frontend/.env.demo` (--mode demo)
+        # rather than by flipping this here.
         VITE_USE_MOCK_API: "${VITE_USE_MOCK_API:-false}"
         VITE_BACKLOG_ITEM_LIMIT: "${VITE_BACKLOG_ITEM_LIMIT:-100}"
         VITE_BACKLOG_MAX_ITEMS_PER_GOAL: "${VITE_BACKLOG_MAX_ITEMS_PER_GOAL:-200}"

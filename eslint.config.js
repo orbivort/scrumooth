@@ -5,11 +5,19 @@ import eslintConfigPrettier from 'eslint-config-prettier';
 import react from 'eslint-plugin-react';
 import reactHooks from 'eslint-plugin-react-hooks';
 import reactRefresh from 'eslint-plugin-react-refresh';
-import importX from 'eslint-plugin-import-x';
+import importX, { createNodeResolver } from 'eslint-plugin-import-x';
 import unicorn from 'eslint-plugin-unicorn';
 import iconRules from './scripts/utility/eslint-plugin-icon-rules.js';
 import i18nSecurity from './scripts/utility/eslint-plugin-i18n-security.js';
 import noLiteralJsxString from './scripts/utility/eslint-plugin-no-literal-jsx-string.js';
+
+// Resolver for import-x. Without one, rules that walk the module graph
+// (import-x/no-cycle) cannot traverse a package whose export map declares a
+// `"node": null` condition - `msw/browser` is browser-only by design - and fail
+// with an internal resolver error instead of reporting anything useful.
+const importResolverSettings = {
+  'import-x/resolver-next': [createNodeResolver()],
+};
 
 export default tseslint.config(
   {
@@ -93,6 +101,7 @@ export default tseslint.config(
       },
     },
     settings: {
+      ...importResolverSettings,
       'import-x/parsers': {
         '@typescript-eslint/parser': ['.ts', '.tsx'],
       },
@@ -184,6 +193,7 @@ export default tseslint.config(
       },
     },
     settings: {
+      ...importResolverSettings,
       react: {
         version: 'detect',
       },
@@ -241,6 +251,7 @@ export default tseslint.config(
       'packages/frontend/src/pages/**/index.ts',
       'packages/frontend/src/config/index.ts',
       'packages/frontend/src/hooks/index.ts',
+      'packages/frontend/src/services/index.ts',
       'packages/frontend/src/styles/index.ts',
     ],
     rules: {

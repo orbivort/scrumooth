@@ -31,6 +31,17 @@ export default defineConfig({
     setupFiles: ['./src/setupTests.ts'],
     env: {
       VITE_LOG_LEVEL: 'debug',
+      // Mock mode is what answers the HTTP layer in tests (see src/setupTests.ts).
+      // Set here rather than left to a developer's `.env`, so a run is the same in
+      // CI as it is locally.
+      VITE_USE_MOCK_API: 'true',
+      // Same-origin: the mock worker intercepts the app's own traffic, so the
+      // handlers match without an absolute origin baked into the suite.
+      VITE_API_URL: '/api/v1',
+      VITE_BASE_PATH: '/',
+      // No artificial delay: a test is not watching a loading state, and the
+      // default latency would only make the suite slower.
+      VITE_MOCK_LATENCY_MS: '0',
     },
     include: ['src/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}'],
     exclude: [
@@ -55,10 +66,10 @@ export default defineConfig({
         'src/setupTests.ts',
         'src/test-utils.tsx',
         'src/__mocks__/',
-        'src/services/mockApi.ts',
-        'src/services/mockData.ts',
-        'src/services/mock*.service.ts',
-        'src/services/mock*.ts',
+        // The mock backend is a development and test fixture, not product code:
+        // it ships in no production bundle and its fidelity is asserted by its own
+        // contract tests rather than by the product's coverage number.
+        'src/mocks/**',
         'src/i18n/testConfig.ts',
         'src/test-utils/i18nHelpers.ts',
         '**/*.css',
@@ -70,15 +81,15 @@ export default defineConfig({
         //
         // Deliberately NOT 'src/**/index.ts' (or '**/index.ts'): the following index files
         // hold real runtime logic and must stay in the report —
-        //   src/store/index.ts    (Zustand stores + persisted-state migrate/partialize)
-        //   src/services/index.ts (VITE_USE_MOCK_API-based mock/real service selection)
-        //   src/types/index.ts    (enums and `as const` runtime constants)
+        //   src/store/index.ts (Zustand stores + persisted-state migrate/partialize)
+        //   src/types/index.ts (enums and `as const` runtime constants)
         // The barrel globs below are kept in sync with the `no-restricted-syntax` guard in
         // eslint.config.js, which fails lint if one of these files gains runtime code.
         'src/components/**/index.ts',
         'src/pages/**/index.ts',
         'src/config/index.ts',
         'src/hooks/index.ts',
+        'src/services/index.ts',
         'src/styles/index.ts',
       ],
       // NOTE: `all` was removed in Vitest 4, so it no longer has any effect (it also fails

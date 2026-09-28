@@ -1,12 +1,26 @@
+/**
+ * The notification types the API can store on `notifications.type`.
+ *
+ * Kept in lockstep with `NOTIFICATION_TYPES` in `@scrumooth/shared`, which is kept
+ * in lockstep with the Prisma `NotificationType` enum: a value the server can send
+ * has to be representable here, or the interface silently falls back to a default
+ * icon, an unfiltered list and a dead link instead of showing the notification.
+ * `notificationTypes.test.ts` fails when the two drift apart.
+ */
 export enum NotificationType {
   TEAM_INVITATION = 'TEAM_INVITATION',
   TEAM_REMOVAL = 'TEAM_REMOVAL',
   TASK_ASSIGNMENT = 'TASK_ASSIGNMENT',
   IMPEDIMENT_ASSIGNMENT = 'IMPEDIMENT_ASSIGNMENT',
+  IMPEDIMENT_ESCALATION = 'IMPEDIMENT_ESCALATION',
+  DAILY_SCRUM_SIGNAL = 'DAILY_SCRUM_SIGNAL',
   TEAM_CREATED = 'TEAM_CREATED',
   TEAM_UPDATED = 'TEAM_UPDATED',
   TEAM_DELETED = 'TEAM_DELETED',
   DIRECT_MESSAGE = 'DIRECT_MESSAGE',
+  ACCOUNT_DELETION_SCHEDULED = 'ACCOUNT_DELETION_SCHEDULED',
+  ACCOUNT_DELETION_CANCELLED = 'ACCOUNT_DELETION_CANCELLED',
+  ORGANIZATIONAL_BARRIER = 'ORGANIZATIONAL_BARRIER',
   SPRINT_BACKLOG_CHANGE_PENDING = 'SPRINT_BACKLOG_CHANGE_PENDING',
 }
 

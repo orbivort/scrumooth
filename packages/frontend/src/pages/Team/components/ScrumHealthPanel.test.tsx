@@ -20,7 +20,7 @@ import { SkillCoverage } from '@scrumooth/shared';
 import { ScrumHealthPanel } from './ScrumHealthPanel';
 import { crossFunctionalityService, healthCheckService } from '../../../services';
 import { useTeamStore } from '../../../store';
-import { mockCrossFunctionality } from '../../../services/mockFacilitationData';
+import { mockCrossFunctionality } from '../../../__mocks__/facilitationData';
 
 vi.mock('../../../services');
 vi.mock('../../../store', () => ({

@@ -51,6 +51,8 @@
   },
   "impedimentAssigned": "New impediment assigned: \"{{impedimentTitle}}\"",
   "impedimentAssignedMessage": "Reported by {{reporterName}}",
+  "impedimentEscalation": "Impediment needs your action: \"{{impedimentTitle}}\"",
+  "impedimentEscalationMessage": "This impediment has gone unresolved for {{ageDays}} days. As Scrum Master you are accountable for causing its removal.",
   "loading": {
     "ariaLabel": "Loading notifications",
     "title": "Loading notifications..."
@@ -59,6 +61,8 @@
   "marking": "Marking...",
   "newTaskAssignedMessage": "In sprint \"{{sprintName}}\"",
   "newTaskAssignedTitle": "New task assigned: \"{{taskTitle}}\"",
+  "organizationalBarrierRaised": "Organizational barrier assigned: \"{{barrierTitle}}\"",
+  "organizationalBarrierRaisedMessage": "This barrier lies outside the Scrum Team. You are accountable for removing it, so the team can continue.",
   "pagination": {
     "next": "Next",
     "pageInfo": "Page {{current}} of {{total}}",

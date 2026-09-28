@@ -440,26 +440,33 @@
   color: var(--color-primary-600);
 }
 
-/* Icon type variants */
+/* Icon type variants. Every type the API can store is listed, so no notification
+   falls back to the untinted icon merely because its type is newer than this file. */
 .notification-icon[data-type='TEAM_INVITATION'],
 .notification-icon[data-type='TEAM_CREATED'],
 .notification-icon[data-type='TEAM_UPDATED'],
-.notification-icon[data-type='TEAM_DELETED'] {
+.notification-icon[data-type='TEAM_DELETED'],
+.notification-icon[data-type='DAILY_SCRUM_SIGNAL'] {
   background: linear-gradient(135deg, var(--color-primary-100) 0%, var(--color-primary-50) 100%);
   color: var(--color-primary-600);
 }
 
-.notification-icon[data-type='TASK_ASSIGNMENT'] {
+.notification-icon[data-type='TASK_ASSIGNMENT'],
+.notification-icon[data-type='ACCOUNT_DELETION_CANCELLED'] {
   background: linear-gradient(135deg, var(--color-success-100) 0%, var(--color-success-50) 100%);
   color: var(--color-success-600);
 }
 
-.notification-icon[data-type='IMPEDIMENT_ASSIGNMENT'] {
+.notification-icon[data-type='IMPEDIMENT_ASSIGNMENT'],
+.notification-icon[data-type='IMPEDIMENT_ESCALATION'],
+.notification-icon[data-type='ORGANIZATIONAL_BARRIER'],
+.notification-icon[data-type='SPRINT_BACKLOG_CHANGE_PENDING'] {
   background: linear-gradient(135deg, var(--color-warning-100) 0%, var(--color-warning-50) 100%);
   color: var(--color-warning-600);
 }
 
-.notification-icon[data-type='TEAM_REMOVAL'] {
+.notification-icon[data-type='TEAM_REMOVAL'],
+.notification-icon[data-type='ACCOUNT_DELETION_SCHEDULED'] {
   background: linear-gradient(135deg, var(--color-error-100) 0%, var(--color-error-50) 100%);
   color: var(--color-error-600);
 }

@@ -3,6 +3,7 @@ import type {
   Sprint,
   ProductBacklogItem,
   ApiResponse,
+  BurndownData,
   SprintPlanningAttendee,
   SprintPlanningCapacityEntry,
   SprintPlanningParticipation,
@@ -203,9 +204,7 @@ class SprintService {
     return data;
   }
 
-  async getBurndownData(
-    sprintId: string
-  ): Promise<ApiResponse<{ dates: string[]; ideal: number[]; actual: number[] }>> {
+  async getBurndownData(sprintId: string): Promise<ApiResponse<BurndownData>> {
     const { data } = await this.api.get(`/sprints/${sprintId}/burndown`);
     return data;
   }

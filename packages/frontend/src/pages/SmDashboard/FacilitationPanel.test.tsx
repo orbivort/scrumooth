@@ -32,7 +32,7 @@ import { vi, beforeAll, beforeEach } from 'vitest';
 import { FacilitationPanel } from './FacilitationPanel';
 import { smDashboardService, healthCheckService } from '../../services';
 import { useTeamContext } from '../../contexts/TeamContext';
-import { mockSmDashboardData } from '../../services/mockSmDashboardData';
+import { mockSmDashboardData } from '../../__mocks__/smDashboardData';
 
 // Mocks
 vi.mock('../../services');

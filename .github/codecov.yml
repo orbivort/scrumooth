@@ -46,22 +46,19 @@ ignore:
   - '**/e2e/**'
   - '**/playwright-report/**'
   - '**/test-results/**'
-  - 'packages/frontend/src/services/mockApi.ts'
-  - 'packages/frontend/src/services/mockData.ts'
-  - 'packages/frontend/src/services/mockDataUtils.ts'
-  - 'packages/frontend/src/services/mockErrorSimulation.ts'
-  - 'packages/frontend/src/services/mockResponseUtils.ts'
-  - 'packages/frontend/src/services/mock*.service.ts'
-  - 'packages/frontend/src/services/mock*.ts'
+  # The mock backend is a development and test fixture, not product code: it ships in no
+  # production bundle, and its fidelity is asserted by its own contract tests.
+  - 'packages/frontend/src/mocks/**'
   # Barrel (facade) index files: re-exports and type-only declarations, no runtime code.
   # Mirrors the coverage.exclude globs in packages/frontend/vitest.config.ts.
-  # Deliberately NOT '**/index.ts': packages/frontend/src/store/index.ts,
-  # packages/frontend/src/services/index.ts and packages/frontend/src/types/index.ts
-  # contain runtime logic (Zustand stores, mock/real service selection, enums/constants).
+  # Deliberately NOT '**/index.ts': packages/frontend/src/store/index.ts and
+  # packages/frontend/src/types/index.ts contain runtime logic (Zustand stores,
+  # enums and `as const` constants).
   - 'packages/frontend/src/components/**/index.ts'
   - 'packages/frontend/src/pages/**/index.ts'
   - 'packages/frontend/src/config/index.ts'
   - 'packages/frontend/src/hooks/index.ts'
+  - 'packages/frontend/src/services/index.ts'
   - 'packages/frontend/src/styles/index.ts'
 
 component_management:

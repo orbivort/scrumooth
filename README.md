@@ -36,7 +36,7 @@ Try Scrumooth instantly in your browser — no installation required. The demo r
   </a>
 </p>
 
-> **Note:** The demo uses in‑memory mock data — any changes you make are local to your browser session and reset on refresh. For persistent data and multi‑user collaboration, follow the [Installation](#installation) guide to self‑host your own instance.
+> **Note:** The demo runs entirely in your browser, on a fictional universe of invented people, teams and products — no real names, employers or data appear anywhere in it. Sign in with one click from the persona cards on the sign-in page, and pick a role to see what that role may do (one person deliberately holds a different role in each team). Requests are answered by a mock backend, so anything you change lasts for your session and resets on refresh. For persistent data and multi-user collaboration, follow the [Installation](#installation) guide to self-host your own instance.
 
 ---
 
@@ -374,12 +374,29 @@ REGISTRATION_ALLOWED_EMAIL_DOMAINS=example.com,example.eu
 **Frontend** (`packages/frontend/.env`):
 
 ```env
-# Backend API URL
-VITE_API_URL=http://localhost:5001/api/v1
+# Backend API URL. The dev server proxies /api to the backend, so a same-origin
+# path is the simplest local value.
+VITE_API_URL=/api/v1
 
-# Use mock API (set to false for real backend)
-VITE_USE_MOCK_API=false
+# Mock mode. Explicit opt-in: only the exact string 'true' enables it. Leave it
+# out to talk to the backend above.
+# VITE_USE_MOCK_API=true
+
+# Simulated latency per mocked response, in milliseconds. 0 disables it.
+# VITE_MOCK_LATENCY_MS=60
 ```
+
+| Variable               | Default | Effect                                                                                  |
+| ---------------------- | ------- | --------------------------------------------------------------------------------------- |
+| `VITE_API_URL`         | —       | API base. A same-origin path (`/api/v1`) works both behind the dev proxy and under MSW. |
+| `VITE_USE_MOCK_API`    | unset   | `'true'` runs the app on the mock backend. Anything else leaves it off.                 |
+| `VITE_MOCK_LATENCY_MS` | `60`    | Latency added to every mocked response. `0` makes the demo instant.                     |
+| `VITE_BASE_PATH`       | `/`     | Deployment sub-path, e.g. `/scrumooth/` on GitHub Pages.                                |
+| `VITE_LOG_LEVEL`       | —       | `debug` \| `info` \| `warn` \| `error`.                                                 |
+
+To develop without a backend at all, set `VITE_USE_MOCK_API=true` and run
+`pnpm run dev:frontend`. See [Developing without a backend](./CONTRIBUTING.md#developing-without-a-backend)
+and the [mock architecture](./docs/architecture/frontend-mock-architecture.md).
 
 ### 4. Database Setup
 

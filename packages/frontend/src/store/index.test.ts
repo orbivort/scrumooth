@@ -2,7 +2,6 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { act } from '@testing-library/react';
 
 import {
-  useNotificationStore,
   useUIStore,
   useTeamStore,
   useSessionStore,
@@ -11,7 +10,7 @@ import {
   setQueryClient,
   initializeStoreSideEffects,
 } from './index';
-import type { Notification, Team, User } from '../types';
+import type { Team, User } from '../types';
 
 vi.mock('../services', () => ({
   apiService: {
@@ -33,15 +32,6 @@ vi.mock('../services', () => ({
   },
 }));
 
-const createMockNotification = (id: string, isRead = false): Notification => ({
-  id,
-  type: 'INFO',
-  title: `Notification ${id}`,
-  message: `Message for notification ${id}`,
-  isRead,
-  createdAt: '2024-01-01T00:00:00Z',
-});
-
 const createMockTeam = (id: string, name: string): Team => ({
   id,
   name,
@@ -58,161 +48,6 @@ const createMockUser = (id: string, email: string): User => ({
   lastName: 'User',
   createdAt: '2024-01-01T00:00:00Z',
   updatedAt: '2024-01-01T00:00:00Z',
-});
-
-describe('useNotificationStore', () => {
-  beforeEach(() => {
-    act(() => {
-      useNotificationStore.getState().clearNotifications();
-    });
-  });
-
-  describe('addNotification', () => {
-    it('should add a notification to the beginning of the list', () => {
-      const notification = createMockNotification('1');
-
-      act(() => {
-        useNotificationStore.getState().addNotification(notification);
-      });
-
-      const state = useNotificationStore.getState();
-      expect(state.notifications).toHaveLength(1);
-      expect(state.notifications[0]).toEqual(notification);
-    });
-
-    it('should increment unread count for unread notification', () => {
-      const notification = createMockNotification('1', false);
-
-      act(() => {
-        useNotificationStore.getState().addNotification(notification);
-      });
-
-      expect(useNotificationStore.getState().unreadCount).toBe(1);
-    });
-
-    it('should not increment unread count for read notification', () => {
-      const notification = createMockNotification('1', true);
-
-      act(() => {
-        useNotificationStore.getState().addNotification(notification);
-      });
-
-      expect(useNotificationStore.getState().unreadCount).toBe(0);
-    });
-  });
-
-  describe('markAsRead', () => {
-    it('should mark notification as read', () => {
-      const notification = createMockNotification('1', false);
-
-      act(() => {
-        useNotificationStore.getState().addNotification(notification);
-        useNotificationStore.getState().markAsRead('1');
-      });
-
-      const state = useNotificationStore.getState();
-      expect(state.notifications[0].isRead).toBe(true);
-      expect(state.unreadCount).toBe(0);
-    });
-
-    it('should decrement unread count', () => {
-      const notification1 = createMockNotification('1', false);
-      const notification2 = createMockNotification('2', false);
-
-      act(() => {
-        useNotificationStore.getState().addNotification(notification1);
-        useNotificationStore.getState().addNotification(notification2);
-      });
-
-      expect(useNotificationStore.getState().unreadCount).toBe(2);
-
-      act(() => {
-        useNotificationStore.getState().markAsRead('1');
-      });
-
-      expect(useNotificationStore.getState().unreadCount).toBe(1);
-    });
-  });
-
-  describe('markAllAsRead', () => {
-    it('should mark all notifications as read', () => {
-      const notification1 = createMockNotification('1', false);
-      const notification2 = createMockNotification('2', false);
-
-      act(() => {
-        useNotificationStore.getState().addNotification(notification1);
-        useNotificationStore.getState().addNotification(notification2);
-        useNotificationStore.getState().markAllAsRead();
-      });
-
-      const state = useNotificationStore.getState();
-      expect(state.notifications.every((n) => n.isRead)).toBe(true);
-      expect(state.unreadCount).toBe(0);
-    });
-  });
-
-  describe('removeNotification', () => {
-    it('should remove notification from list', () => {
-      const notification1 = createMockNotification('1');
-      const notification2 = createMockNotification('2');
-
-      act(() => {
-        useNotificationStore.getState().addNotification(notification1);
-        useNotificationStore.getState().addNotification(notification2);
-        useNotificationStore.getState().removeNotification('1');
-      });
-
-      const state = useNotificationStore.getState();
-      expect(state.notifications).toHaveLength(1);
-      expect(state.notifications[0].id).toBe('2');
-    });
-
-    it('should decrement unread count for unread notification', () => {
-      const notification = createMockNotification('1', false);
-
-      act(() => {
-        useNotificationStore.getState().addNotification(notification);
-        useNotificationStore.getState().removeNotification('1');
-      });
-
-      expect(useNotificationStore.getState().unreadCount).toBe(0);
-    });
-  });
-
-  describe('clearNotifications', () => {
-    it('should clear all notifications', () => {
-      const notification1 = createMockNotification('1');
-      const notification2 = createMockNotification('2');
-
-      act(() => {
-        useNotificationStore.getState().addNotification(notification1);
-        useNotificationStore.getState().addNotification(notification2);
-        useNotificationStore.getState().clearNotifications();
-      });
-
-      const state = useNotificationStore.getState();
-      expect(state.notifications).toHaveLength(0);
-      expect(state.unreadCount).toBe(0);
-    });
-  });
-
-  describe('setNotifications', () => {
-    it('should set notifications and calculate unread count', () => {
-      const notifications = [
-        createMockNotification('1', false),
-        createMockNotification('2', true),
-        createMockNotification('3', false),
-      ];
-
-      act(() => {
-        useNotificationStore.getState().setNotifications(notifications);
-      });
-
-      const state = useNotificationStore.getState();
-      expect(state.notifications).toHaveLength(3);
-      expect(state.unreadCount).toBe(2);
-    });
-  });
 });
 
 describe('useUIStore', () => {

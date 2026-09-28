@@ -60,12 +60,6 @@ interface SprintStats {
   totalTasks: number;
 }
 
-interface BurndownData {
-  dates: string[];
-  ideal: number[];
-  actual: number[];
-}
-
 export const DashboardOverviewPanel: React.FC<DashboardPanelProps> = ({ registerRefresh }) => {
   const { t } = useTranslation('dashboard');
   const { currentTeam } = useTeamStore();
@@ -204,17 +198,27 @@ export const DashboardOverviewPanel: React.FC<DashboardPanelProps> = ({ register
     const { ideal, actual } = burndownData.data;
     if (!ideal.length || !actual.length) return null;
 
-    const lastForecast = ideal[ideal.length - 1] ?? 0;
-    const lastActual = actual[actual.length - 1] ?? 0;
+    // The most recent day the Sprint has a reading for, which is today while the
+    // Sprint runs. The tail of `actual` stays empty until those days happen, so
+    // reading the last element would compare the forecast's final point with a day
+    // nobody has worked and report a variance the team never produced.
+    const observedIndex = actual.reduce(
+      (lastIndex: number, value, index) => (value !== null ? index : lastIndex),
+      -1
+    );
+    if (observedIndex < 0) return null;
+
+    const observedForecast = ideal[observedIndex] ?? 0;
+    const observedActual = actual[observedIndex] ?? 0;
     const startPoints = ideal[0] ?? 0;
 
     // Percentage variance against the forecast start.
     // Positive = remaining work is below the forecast, negative = above it.
-    const diff = lastForecast - lastActual;
+    const diff = observedForecast - observedActual;
     const percentageDiff = startPoints > 0 ? Math.round((diff / startPoints) * 100) : 0;
 
-    // Within +/-10% of the forecast is treated as level with it.
-    const tenPercentOfForecast = lastForecast * 0.1;
+    // Within +/-10% of the forecast for the observed day is treated as level with it.
+    const tenPercentOfForecast = observedForecast * 0.1;
 
     let status: BurndownStatus;
     let message: string;
@@ -440,7 +444,7 @@ export const DashboardOverviewPanel: React.FC<DashboardPanelProps> = ({ register
             <Suspense
               fallback={<LoadingState variant="skeleton-chart" label={t('loadingBurndownChart')} />}
             >
-              <BurndownChart data={burndownData.data as BurndownData | undefined} />
+              <BurndownChart data={burndownData.data} />
             </Suspense>
           </div>
           {/* Task 3.4: Burndown insight indicator */}

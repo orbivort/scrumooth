@@ -199,25 +199,38 @@ export const definitionService: Record<string, Mock<AnyFn>> = {
 export const notificationApi: Record<string, Mock<AnyFn>> = {
   getNotifications: vi.fn(),
   getConfig: vi.fn(),
-  updateConfig: vi.fn(),
+  getUnreadCount: vi.fn(),
   markAsRead: vi.fn(),
   markAllAsRead: vi.fn(),
   deleteNotification: vi.fn(),
-  deleteAllNotifications: vi.fn(),
+  sendDirectMessage: vi.fn(),
 };
 
+/**
+ * The envelope the API answers with, mirroring `src/types/index.ts`.
+ *
+ * Kept in step with the real types on purpose: a test that mocks a service and
+ * returns `{ success: false, error: 'nope' }` would type-check against a stale
+ * shape and then fail against the real one, which is the opposite of what a mock
+ * is for.
+ */
 export type ApiResponse<T = unknown> = {
   success: boolean;
   data?: T;
-  error?: string;
-  message?: string;
+  error?: {
+    code: string;
+    message: string;
+    details?: Array<{ field: string; message: string }>;
+  };
 };
 
 export type PaginatedResponse<T = unknown> = {
   success: boolean;
   data: T[];
-  total: number;
-  page: number;
-  pageSize: number;
-  hasMore: boolean;
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
 };

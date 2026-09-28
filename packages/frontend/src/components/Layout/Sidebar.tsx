@@ -366,11 +366,14 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
           />
         )}
 
-        {/* Sidebar footer with app version */}
+        {/* Sidebar footer with app version, and the demonstration marker when the mock
+            backend is serving the session. Tested inline, like the other mock-mode checks,
+            so the bundler folds it to a literal and nothing mock-related is referenced from
+            an application module. */}
         <div className={styles['sidebar-footer']}>
           <span className={styles['version-badge']}>
             v{__APP_VERSION__}
-            {import.meta.env.VITE_USE_MOCK_API !== 'false' ? ' (DEMO)' : ''}
+            {import.meta.env.VITE_USE_MOCK_API === 'true' ? ' (DEMO)' : ''}
           </span>
         </div>
       </aside>

@@ -52,6 +52,8 @@ packages/*/.env
 packages/*/.env.*
 !packages/*/.env.example
 !packages/*/.env.production.example
+# Demo build flags: no secrets, and the CI demo build needs them committed.
+!packages/frontend/.env.demo
 
 # K6 environment files
 !k6/.env.k6.example

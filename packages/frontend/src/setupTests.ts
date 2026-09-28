@@ -1,40 +1,43 @@
 import '@testing-library/jest-dom';
 import 'vi-axe/extend-expect';
-import { vi, afterEach } from 'vitest';
+import { vi, afterEach, afterAll, beforeAll } from 'vitest';
 import { cleanup } from '@testing-library/react';
+
+import { MOCK_TEST_ON_UNHANDLED_REQUEST } from './mocks/config';
+import { server } from './mocks/server';
+import { resetMockState } from './mocks/store';
 
 // Extend Vitest expect with vi-axe matchers
 
 // i18n is initialized globally in src/globalSetup.ts before all tests run
 
-// Auto-cleanup after each test to prevent memory leaks
-afterEach(() => {
-  cleanup();
+/**
+ * The mock backend answers the HTTP layer for every test.
+ *
+ * One registry serves `pnpm dev`, the demo build and this file, so a request a
+ * test makes is answered exactly as the browser would have it answered — which is
+ * the point of mocking at the HTTP boundary rather than substituting services.
+ * A test that mocks a service directly still works: it never reaches this.
+ *
+ * `error` on an unmatched request is deliberate. A test that reaches the network
+ * would otherwise pass or fail depending on whether somebody happened to have a
+ * backend running.
+ */
+beforeAll(() => {
+  server.listen({ onUnhandledRequest: MOCK_TEST_ON_UNHANDLED_REQUEST });
 });
 
-// Mock import.meta.env for Vite - must be done before any imports
-const globalImport = globalThis as { import?: { meta: { env: Record<string, string> } } };
-if (typeof globalImport.import === 'undefined') {
-  globalImport.import = { meta: { env: {} } };
-}
+afterEach(() => {
+  cleanup();
+  // Any handler overridden by a test goes back to the shared one.
+  server.resetHandlers();
+  // Data, session and any armed failure scenario return to how they started, so
+  // one test cannot leak state into the next.
+  resetMockState();
+});
 
-Object.defineProperty(globalThis, 'import.meta', {
-  value: {
-    env: {
-      VITE_USE_MOCK_API: 'true',
-      VITE_API_BASE_URL: 'http://localhost:3000/api',
-      VITE_LOG_LEVEL: 'debug',
-      VITE_BASE_PATH: '/',
-      MODE: 'test',
-      DEV: false,
-      PROD: false,
-      SSR: false,
-      BASE_URL: '/',
-    },
-    hot: undefined,
-  },
-  writable: true,
-  configurable: true,
+afterAll(() => {
+  server.close();
 });
 
 // Window-dependent mocks are skipped in non-DOM (e.g. node/SSR) test environments
