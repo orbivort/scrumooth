@@ -31,6 +31,9 @@ Replace `<your-domain>` with the hostname of your own instance. For local
 development, the backend listens on port `5001` by default (override it with
 `PORT` in `packages/backend/.env`).
 
+Throughout this reference, `api.example.com` is a reserved placeholder domain
+used in example requests — it is not a real Scrumooth endpoint.
+
 ### Content Type
 
 All API requests and responses use JSON format. Ensure you set the appropriate headers:
@@ -259,6 +262,15 @@ GET /api/v1/teams?page=1&limit=20&sort=createdAt&order=desc
 GET /api/v1/backlog?status=IN_PROGRESS&priority=MUST_HAVE&sort=priority&order=desc
 ```
 
+### Idempotency
+
+`GET`, `PUT`, and `DELETE` are idempotent: repeating them leaves the same end state. `POST` is not —
+repeating a create (register, create a team, add a backlog item, record a Daily Scrum) creates a
+second resource. Gate rules are re-evaluated on every write, so a retried request that a gate
+refused is refused again with the same `GATE_*` code rather than partially applied. When retrying
+after a timeout, re-read the resource first, and treat `409 Conflict` as "already exists" rather
+than as a transport failure to retry blindly.
+
 ## Error Handling
 
 ### HTTP Status Codes
@@ -289,6 +301,9 @@ GET /api/v1/backlog?status=IN_PROGRESS&priority=MUST_HAVE&sort=priority&order=de
 | `RATE_LIMIT_EXCEEDED`      | Too many requests                      |
 | `SESSION_IDLE_TIMEOUT`     | Session expired due to inactivity      |
 | `SESSION_ABSOLUTE_TIMEOUT` | Session expired (max duration reached) |
+
+Scrum Guide gate refusals are not listed in the table above: each carries its own stable `GATE_*`
+code so a client can branch on it directly. The complete catalogue follows.
 
 ### Gate Rejections
 
@@ -613,5 +628,5 @@ See [CHANGELOG.md](../../CHANGELOG.md) for API version history and changes.
 
 ---
 
-**Last Updated**: 2026-08-16  
+**Last Updated**: 2026-09-28  
 **API Version**: v1

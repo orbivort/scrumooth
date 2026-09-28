@@ -8,6 +8,8 @@
  *
  * Adding a gate means adding a code here first — the backend throw sites and the
  * frontend refusal presentation both read this module, so the contract cannot drift.
+ * A new gate must also declare which class of rule it enforces in `gateOrigins.ts`,
+ * whose `Record<GateCode, GateOrigin>` makes that classification exhaustive.
  */
 
 export const GATE_CODES = {
@@ -360,8 +362,11 @@ export const GATE_CODE_PREFIX = 'GATE_';
 
 /**
  * i18n namespace holding the gate refusal copy in the frontend locale files
- * (`public/locales/<locale>/gate.json`). Each code resolves to the sub-tree named
- * by its definition's `i18nKey`, containing `rule`, `guideClause` and `recovery`.
+ * (`public/locales/<locale>/gate.json`). A code whose definition's `i18nKey` has a sub-tree
+ * here is presented with its `rule`, `guideClause` and `recovery`. The namespace is
+ * deliberately partial: the gates the commitment surfaces can provoke have copy, and any
+ * other code falls back to the server's already-localized message rather than explaining
+ * nothing. Extending it is additive content, with no code change.
  */
 export const GATE_I18N_NAMESPACE = 'gate';
 

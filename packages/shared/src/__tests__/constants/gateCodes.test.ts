@@ -10,8 +10,18 @@ import {
 } from '../../constants/gateCodes.js';
 
 describe('gateCodes', () => {
-  it('should define sixty-two gates', () => {
-    expect(GATE_CODE_LIST).toHaveLength(62);
+  /**
+   * No numeral is asserted here on purpose: this test once named the count of the day and went
+   * stale the moment a gate was added, failing while the contract itself was perfectly consistent.
+   * The invariants below cannot rot, and the totals the README prints are verified against the
+   * contract by `scripts/maintenance/verify-gate-catalogue.mjs`.
+   */
+  it('should define every gate code exactly once', () => {
+    expect(new Set(GATE_CODE_LIST).size).toBe(GATE_CODE_LIST.length);
+  });
+
+  it('should define a contract entry for every gate code, and no others', () => {
+    expect(Object.keys(GATE_DEFINITIONS).sort()).toEqual([...GATE_CODE_LIST].sort());
   });
 
   it('should prefix every gate code with GATE_', () => {

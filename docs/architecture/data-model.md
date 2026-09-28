@@ -404,9 +404,9 @@ The database schema is organized into logical groups:
 
 **Purpose**: Hold the two agreements a team works to. The Definition of Done is the Increment's
 commitment and is owned by a team or by the team group that shares a product; the Definition of Ready
-is the team's own readiness practice, maintained by its Scrum Master. See
-[Scrum Guide Conformance](./scrum-guide-conformance.md) for why the two differ in authority and why
-the Definition of Done has no organization scope.
+is the team's own readiness practice, maintained by its Scrum Master alone, and is never group-scoped.
+Neither agreement has an organization scope: an organization-wide minimum Definition of Done is not
+modelled.
 
 **Fields (DoD/DoR)**:
 

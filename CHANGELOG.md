@@ -7,40 +7,210 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Breaking Changes
+
+- **Gate refusals are now machine-readable**: whenever Scrumooth refuses an action because it
+  would violate the Scrum Guide, the response carries a stable `GATE_*` code in `error.code`
+  (68 codes, canonical list in `docs/api/README.md`). Integrators that branched on HTTP status
+  codes or message text must switch to the gate codes.
+- **Team groups own a shared Definition of Done**: teams collaborating on one product can adopt a
+  single group-owned Definition of Done. While a team belongs to a group it can no longer edit its
+  own Definition of Done (`GATE_DOD_GROUP_GOVERNED`), and `definition_of_done."teamId"` is no
+  longer mandatory now that a Definition of Done may instead belong to a group.
+
 ### Added
 
-- **Sprint Planning records participation and capacity as first-class facts** and enforces them
-  when a Sprint opens, closing the four Major conformance gaps recorded for the module:
-  - New `SprintPlanningAttendee` and `SprintCapacity` records (migration
-    `20260921120000_add_sprint_planning_attendance_and_capacity`). Planning attendance is managed
-    through `GET|POST|PUT|DELETE /api/v1/sprints/:id/planning-attendees`; capacity is persisted
-    with the planning draft (`PUT /api/v1/sprints/:id/backlog/draft`). Both are returned by
-    `GET /api/v1/sprints/:id/planning-draft`, and the planning page gains a **Planning
-    Participation** panel plus a capacity card that reports whether the figures are recorded.
-  - `POST /api/v1/sprints/:id/start` now refuses with `GATE_PLANNING_PARTICIPATION_REQUIRED`
-    (400) unless the recorded planning attendance includes the Product Owner and at least one
-    Developer, and with `GATE_CAPACITY_EXCEEDED` (400) when the planned task hours exceed the
-    recorded capacity by more than the new `SPRINT_CAPACITY_TOLERANCE_PCT` setting (default 10%).
-    The capacity check is skipped when no capacity was recorded, so existing plans are not
-    stranded.
+#### Scrum Guide Gate Contract
+
+- **Stable gate codes**: add 68 `GATE_*` codes backed by a single shared registry
+  (`@scrumooth/shared`), each mapped to an HTTP status (400/403/409) and a localized
+  rule/Guide-clause/recovery message, so the backend throw sites and the frontend refusal
+  presentation cannot drift
+- **Server-enforced gates across the lifecycle**: Sprint container rules (duration, overlap,
+  contiguity, goal lock, PO-only cancellation), Sprint close (`SPRINT_EVENTS_MISSING`,
+  `IMPEDIMENTS_UNRESOLVED`), Definition of Done/Ready, Product Goal, role and team-size rules,
+  Increment integrity, Review/Retrospective ordering, and the new facilitation, team-group and
+  health-check families
+- **Gate taxonomy**: every gate now declares which class of rule it enforces — a 2020 Scrum Guide
+  rule, a complementary practice (the Definition of Ready), or a process-integrity boundary — in an
+  exhaustive `GATE_ORIGINS` map, so a new gate cannot be added unclassified and the README's three
+  enforcement tables are counted rather than asserted
+- **Gate catalogue guard**: `pnpm run gates:verify`, run in CI, checks that every gate code is
+  classified, published in the gate rejections reference with the status the contract declares, and
+  counted identically in the README, and that the rule-level README names no individual code
+
+#### Product Goal
+
+- **Single active Product Goal**: a team can pursue only one Product Goal at a time
+  (`GATE_PRODUCT_GOAL_ALREADY_ACTIVE`), authored exclusively by the Product Owner
+- **Product Goal required to start work**: a Sprint cannot start and a new Product Backlog item
+  cannot be added without an active Product Goal
+  (`GATE_PRODUCT_GOAL_REQUIRED`, `GATE_PRODUCT_GOAL_REQUIRED_FOR_BACKLOG`)
+- **Evidence to complete a Product Goal**: completing a Product Goal requires recorded evidence of
+  progress (`GATE_PRODUCT_GOAL_EVIDENCE_REQUIRED`)
+
+#### Product Backlog
+
+- **Product Backlog ordering**: add a dense `rank` to Product Backlog items and a reorder endpoint,
+  making the backlog a genuinely ordered list with MoSCoW rendered on top; ordering remains the
+  Product Owner's accountability (`GATE_PRODUCT_OWNER_ONLY_BACKLOG_ORDER`)
+
+#### Sprint Planning & Sprint Backlog
+
+- **Sprint Planning participation gate**: a Sprint cannot open unless planning participation is
+  recorded and includes the Product Owner and at least one Developer
+  (`GATE_PLANNING_PARTICIPATION_REQUIRED`)
+- **Sprint capacity planning**: record team capacity during Sprint Planning; opening a Sprint that
+  exceeds the recorded capacity (beyond the configured tolerance) is refused
+  (`GATE_CAPACITY_EXCEEDED`)
+- **Two-phase scope change**: a Sprint Backlog change declared as goal-endangering stays pending
+  until the Product Owner acknowledges it (`GATE_SPRINT_SCOPE_CHANGE_NEEDS_PO`), with protection
+  against duplicate pending changes
+
+#### Definition of Done & Definition of Ready
+
+- **Seeded definition defaults**: new teams are seeded with five Definition of Done and six
+  Definition of Ready criteria, each carrying a stable `defaultKey` so built-in criteria can be
+  translated and still be edited
+- **Immutable version history**: every Definition of Done and Definition of Ready change appends a
+  superseded version snapshot, giving teams an auditable commitment history
+- **Retrospective DoD reflection**: the Retrospective records an explicit keep/change/retire
+  reflection before Definition of Done changes can be applied
+  (`GATE_RETROSPECTIVE_DOD_CHANGES_MISSING`)
+- **Definition of Ready is enforced at the Sprint boundary**: a team with no active readiness
+  agreement can no longer commit or open a Sprint (`GATE_DOR_REQUIRED`), and an item that has not
+  been verified against the agreement cannot enter one
+  (`GATE_PBI_NOT_READY`, `GATE_DOR_NOT_VERIFIED`). New teams are seeded with six default criteria,
+  but an existing team whose items do not satisfy its own readiness bar will now be blocked.
+
+#### Increment Integrity
+
+- **Integration verification basis**: `integrationVerified` now records whether the Increment was
+  exempt as the first Increment or verified against all prior Increments
+- **Usability attestation**: an Increment cannot be verified or delivered without a written,
+  attributed attestation that it is usable (`GATE_INCREMENT_USABILITY_ATTESTATION_REQUIRED`)
+- **Delivery method required**: delivering an Increment records how value reached users
+  (`GATE_INCREMENT_DELIVERY_METHOD_REQUIRED`), and delivered or archived Increments become
+  terminal (`GATE_INCREMENT_LOCKED`)
+- **Sprint completion snapshots**: sprint completion now records observed points with provenance
+  (recorded / reconstructed / in progress / not available) so reports never render a missing
+  observation as zero
+
+#### Daily Scrum
+
+- **Daily Scrum schedule**: record a team's standing Daily Scrum commitment (time, IANA timezone,
+  place or URL, and ISO working days) plus dated non-working-day exceptions; the schedule informs
+  cadence but deliberately does not gate
+- **Cadence reporting**: a per-Sprint cadence payload reports expected versus missed Daily Scrums
+  and "Sprint day X of Y" using the team's working-day calendar
+- **Daily Scrum adaptation is mandatory**: a Daily Scrum record must declare at least one Sprint
+  Backlog adjustment or explicitly acknowledge that none was needed
+  (`GATE_DAILY_SCRUM_ADAPTATION_REQUIRED`). The previously optional adaptation outcome is now
+  part of the event's contract.
+- **Adaptation verification**: the system derives, from server-side snapshots, whether each
+  declared adaptation was actually reflected in the Sprint Backlog (reflected / pending)
+
+#### Sprint Review & Retrospective
+
+- **Sprint Goal outcome is the team's verdict**: a Review of a Sprint with a Goal cannot be
+  completed without the team recording achieved / partially achieved / not achieved; the outcome is
+  never inferred from item completion
+- **Event ordering and dates**: a Retrospective cannot complete before its Review
+  (`GATE_SPRINT_RETROSPECTIVE_REQUIRES_REVIEW`), and neither event can complete before the Sprint's
+  end date (`GATE_SPRINT_EVENT_BEFORE_END_DATE`)
+- **Scrum Master notes revision history**: Sprint, Review and Retrospective SM notes keep a
+  revision history, readable and writable only by the team's Scrum Master
+
+#### Scrum Master Facilitation
+
+- **Organizational barriers**: add a register of blockers the team cannot remove itself, with
+  escalation from an impediment (one barrier per impediment), recorded stakeholder actions,
+  Scrum-Master-only lifecycle, and mandatory written resolution
+  (`GATE_ORGANIZATIONAL_BARRIER_*`)
+- **Working agreements**: capture the team's own "how we work" agreements; retiring an agreement
+  replaces deletion so the team's history stays visible
+- **Coaching log**: add Scrum-Master-private coaching notes (self-management, cross-functionality,
+  other); entries are recorded in the audit log by length only, never by body
+- **Cross-functionality assessment**: record team-level skill coverage (none / partial / covered) as
+  append-only snapshots, without any per-person skill inventory
+- **Scrum Values health checks**: run health-check surveys, with results readable only by the owning
+  team's Scrum Master (`GATE_HEALTH_CHECK_RESULTS_SM_OF_TEAM_ONLY`)
+
+#### Team Groups
+
+- **Team groups**: multiple Scrum Teams working on one product can form a group that owns a single
+  shared Definition of Done; joining records the adopted DoD version, leaving copies the criteria
+  back onto the team, and a non-empty group cannot be dissolved
+  (`GATE_TEAM_GROUP_*`)
+
+#### Reports
+
+- **Redesigned team reports**: add read-only, team-scoped reporting endpoints for velocity, sprint
+  history, team metrics and insights, each enforced by `GATE_REPORTS_TEAM_MEMBERS_ONLY`
+
+#### Development & Demo
+
+- **Mock Service Worker backend**: the frontend mock now runs at the HTTP boundary (real client,
+  interceptors, CSRF and session refresh exercised), with one handler registry shared by
+  development, Vitest and Playwright
+- **Supported demo build**: add `--mode demo` with a committed `.env.demo` and one-click demo
+  personas; this is the only supported backend-free build and is used by the GitHub Pages demo
+- **Dev-only pseudo-locales**: add `pseudo` and `pseudo-rtl` locales for string-expansion and RTL
+  testing; production locales remain en, de, es, fr and it
 
 ### Changed
 
-- Sprint Planning velocity is now the server-computed, per-Sprint velocity from
-  `GET /api/v1/reports/velocity`, averaged over **completed** Sprints only (the reports payload
-  now carries a `statuses` array so consumers can tell the in-flight Sprint apart). It is
-  presented as a descriptive average rather than a planning target. The page-local calculation
-  that mapped every historical Sprint to the currently `DONE` items has been removed.
-- The capacity card and the Start Sprint dialog align their over-commitment state with the
-  server tolerance: over capacity within the tolerance is a caution, beyond it is a refusal.
-- **Sprint Planning attendance may be recorded by the whole Scrum Team, not only the Developers.**
-  The participation record is the evidence that the Sprint Backlog was "created by the collaborative
-  work of the entire Scrum Team", so the Product Owner and the Scrum Master may now add, correct,
-  and remove it — matching the Sprint Review and the Retrospective, whose attendance was already
-  open to every member of the team. Writes are refused with `GATE_SPRINT_TEAM_MEMBERS_ONLY` (403)
-  for a caller outside the team, replacing the misapplied `GATE_DEVELOPER_ONLY_SPRINT_BACKLOG`. The
-  Sprint Backlog and its capacity remain Developers-only, and the planning page's participation
-  panel is now gated on the Sprint still being planned rather than on the caller's role.
+- **Navigation redesigned around the Guide**: the sidebar is regrouped into `product` and
+  `scrumEvents` sections and settings into `process` and `teamsAndGroups`, with labels that state
+  their scope ("My Team" versus "Team")
+- **Scrum Master dashboard relocated**: moved to the facilitation tab of the main Dashboard
+  (`/dashboard?tab=facilitation`); the previous `/scrum-master-dashboard` URL redirects
+- **Definition of Done and Definition of Ready consolidated**: both now live on the Team module's
+  Definition tab; the previous `/settings/team-definitions` and `/settings/definition-of-done`
+  routes redirect
+- **Privacy & data relocated**: moved from Settings to `/privacy-data`; the previous
+  `/settings/privacy-data` URL redirects
+- **Mock mode is explicit opt-in**: mocks are enabled only when `VITE_USE_MOCK_API` is exactly
+  `true`, replacing the previous fail-open check that enabled mocks for any value but `false`
+- **Definition criteria survive renaming**: built-in Definition of Done/Ready criteria are matched
+  by a stable key rather than by their English description, so renaming or translating a criterion
+  no longer detaches it from its default
+- **Team menu labels renamed** to distinguish the user's own team from team management and groups
+- **Facilitation records and the data export**: barrier stakeholder actions, working agreements,
+  coaching entries and cross-functionality assessments are documented as team facilitation records
+  and are excluded from the GDPR personal-data export
+
+### Deprecated
+
+- **Legacy routes**: the former Scrum Master dashboard, organizational barriers, working agreements,
+  DoD/DoR settings and privacy-data routes are retained only as redirects; use the new locations
+  listed under **Changed**
+
+### Removed
+
+- **Legacy in-app mock API**: remove the service-layer mock implementation
+  (`mockApi.ts`, `mockData.ts`, `mockDataUtils.ts`, `mockErrorSimulation.ts`,
+  `mockResponseUtils.ts`, `mockSmDashboard.service.ts`) in favor of the Mock Service Worker
+  handlers, removing the mock layer from production bundles
+
+### Fixed
+
+- **Mock data no longer leaks into production builds**: the mock layer and its service worker are
+  stripped from builds that do not enable mocks, removing a verified 40 KB gzip leak from
+  production output
+- **Missing report observations are no longer reported as zero**: sprint completion snapshots carry
+  provenance, so an unrecorded observation is distinguished from a genuine zero
+- **Sprint Review and Retrospective empty states** now explain the gates that must be satisfied
+  before the events can be completed
+
+### Security
+
+- **Production build guard**: a production `vite build` now fails if mocks are requested, so a build
+  that serves fabricated data to real users cannot ship
+- **Tighter team-scoped access**: Sprint, Sprint Review, Retrospective, Increment, Impediment,
+  Report, facilitation and health-check endpoints now enforce team membership, and Scrum Master
+  notes, the coaching log and health-check results are restricted to the owning team's Scrum Master
+  (`GATE_*_TEAM_MEMBERS_ONLY`, `GATE_*_SM_ONLY`)
 
 ## [3.0.2] - 2026-09-13
 

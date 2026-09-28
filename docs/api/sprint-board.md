@@ -37,21 +37,7 @@ The board presents tasks in three status columns: **TODO**, **IN_PROGRESS**, and
 
 ## Authentication
 
-All sprint board endpoints require authentication. Include the access token in your request:
-
-**Using Cookies (Recommended)**
-
-```http
-GET /api/v1/sprints/:sprintId/tasks
-Cookie: accessToken=eyJhbGc...
-```
-
-**Using Bearer Token**
-
-```http
-GET /api/v1/sprints/:sprintId/tasks
-Authorization: Bearer eyJhbGc...
-```
+All sprint board endpoints require authentication. See [Authentication](./README.md#authentication) for the cookie and bearer-token forms.
 
 ## Board Layout
 
@@ -170,7 +156,7 @@ const groupedTasks = tasks.reduce(
 **Example Request**
 
 ```bash
-curl -X GET https://api.scrumooth.dev/api/v1/sprints/660e8400-e29b-41d4-a716-446655440000/tasks \
+curl -X GET https://api.example.com/api/v1/sprints/660e8400-e29b-41d4-a716-446655440000/tasks \
   -b cookies.txt
 ```
 
@@ -256,7 +242,7 @@ Content-Type: application/json
 **Example Request**
 
 ```bash
-curl -X PUT https://api.scrumooth.dev/api/v1/sprints/660e8400-e29b-41d4-a716-446655440000/tasks/990e8400-e29b-41d4-a716-446655440001 \
+curl -X PUT https://api.example.com/api/v1/sprints/660e8400-e29b-41d4-a716-446655440000/tasks/990e8400-e29b-41d4-a716-446655440001 \
   -H "Content-Type: application/json" \
   -b cookies.txt \
   -d '{
@@ -358,7 +344,7 @@ Content-Type: application/json
 **Example Request**
 
 ```bash
-curl -X POST https://api.scrumooth.dev/api/v1/sprints/660e8400-e29b-41d4-a716-446655440000/tasks \
+curl -X POST https://api.example.com/api/v1/sprints/660e8400-e29b-41d4-a716-446655440000/tasks \
   -H "Content-Type: application/json" \
   -b cookies.txt \
   -d '{
@@ -446,7 +432,7 @@ Content-Type: application/json
 **Example Request**
 
 ```bash
-curl -X PUT https://api.scrumooth.dev/api/v1/sprints/660e8400-e29b-41d4-a716-446655440000/tasks/990e8400-e29b-41d4-a716-446655440001 \
+curl -X PUT https://api.example.com/api/v1/sprints/660e8400-e29b-41d4-a716-446655440000/tasks/990e8400-e29b-41d4-a716-446655440001 \
   -H "Content-Type: application/json" \
   -b cookies.txt \
   -d '{
@@ -522,7 +508,7 @@ Content-Type: application/json
 **Example Request**
 
 ```bash
-curl -X DELETE https://api.scrumooth.dev/api/v1/sprints/660e8400-e29b-41d4-a716-446655440000/tasks/990e8400-e29b-41d4-a716-446655440001 \
+curl -X DELETE https://api.example.com/api/v1/sprints/660e8400-e29b-41d4-a716-446655440000/tasks/990e8400-e29b-41d4-a716-446655440001 \
   -b cookies.txt
 ```
 
@@ -607,7 +593,7 @@ Content-Type: application/json
 **Example Request**
 
 ```bash
-curl -X POST https://api.scrumooth.dev/api/v1/sprints/660e8400-e29b-41d4-a716-446655440000/backlog-items \
+curl -X POST https://api.example.com/api/v1/sprints/660e8400-e29b-41d4-a716-446655440000/backlog-items \
   -H "Content-Type: application/json" \
   -b cookies.txt \
   -d '{
@@ -699,7 +685,7 @@ Content-Type: application/json
 **Example Request**
 
 ```bash
-curl -X DELETE https://api.scrumooth.dev/api/v1/sprints/660e8400-e29b-41d4-a716-446655440000/backlog-items/880e8400-e29b-41d4-a716-446655440003 \
+curl -X DELETE https://api.example.com/api/v1/sprints/660e8400-e29b-41d4-a716-446655440000/backlog-items/880e8400-e29b-41d4-a716-446655440003 \
   -H "Content-Type: application/json" \
   -b cookies.txt \
   -d '{
@@ -782,7 +768,7 @@ Content-Type: application/json
 **Example Request**
 
 ```bash
-curl -X GET https://api.scrumooth.dev/api/v1/sprints/660e8400-e29b-41d4-a716-446655440000/burndown \
+curl -X GET https://api.example.com/api/v1/sprints/660e8400-e29b-41d4-a716-446655440000/burndown \
   -b cookies.txt
 ```
 
@@ -862,7 +848,7 @@ Content-Type: application/json
 **Example Request**
 
 ```bash
-curl -X GET https://api.scrumooth.dev/api/v1/sprints/660e8400-e29b-41d4-a716-446655440000/dod-compliance \
+curl -X GET https://api.example.com/api/v1/sprints/660e8400-e29b-41d4-a716-446655440000/dod-compliance \
   -b cookies.txt
 ```
 

@@ -173,29 +173,41 @@ Scrumooth implements a three-role RBAC model with hierarchical permissions:
 
 ### Role Permission Matrix
 
-| Permission                         | Product Owner | Scrum Master | Developers |
-| ---------------------------------- | :-----------: | :----------: | :--------: |
-| Manage users/teams                 |      Yes      |      No      |     No     |
-| Configure system settings          |      Yes      |      No      |     No     |
-| Create/edit product goals          |      Yes      |      No      |     No     |
-| Create/edit backlog items          |      Yes      |     Yes      |    Yes     |
-| Size backlog items (story points)  |      No       |      No      |    Yes     |
-| Prioritize backlog (MoSCoW)        |      Yes      |      No      |     No     |
-| Plan sprints / save Sprint Backlog |      No       |      No      |    Yes     |
-| Start/complete sprint              |      Yes      |     Yes      |    Yes     |
-| Cancel sprint (ACTIVE only)        |      Yes      |      No      |     No     |
-| Manage sprint board / task status  |      No       |      No      |    Yes     |
-| Log impediments                    |      Yes      |     Yes      |    Yes     |
-| Resolve impediments                |      Yes      |     Yes      |    Yes     |
-| Conduct retrospectives             |      Yes      |     Yes      |    Yes     |
-| Author the Daily Scrum record      |     No \*     |    No \*     |    Yes     |
-| View dashboards/reports            |      Yes      |     Yes      |    Yes     |
-| Export data                        |      Yes      |      No      |     No     |
-| Delete data                        |      Yes      |      No      |     No     |
+| Permission                                         | Product Owner | Scrum Master | Developers |
+| -------------------------------------------------- | :-----------: | :----------: | :--------: |
+| Manage users/teams                                 |      Yes      |      No      |     No     |
+| Configure system settings                          |      Yes      |      No      |     No     |
+| Create/edit product goals                          |      Yes      |      No      |     No     |
+| Create/edit backlog items                          |      Yes      |     Yes      |    Yes     |
+| Size backlog items (story points)                  |      No       |      No      |    Yes     |
+| Prioritize backlog (MoSCoW)                        |      Yes      |      No      |     No     |
+| Plan sprints / save Sprint Backlog                 |      No       |      No      |    Yes     |
+| Start/complete sprint                              |      Yes      |     Yes      |    Yes     |
+| Cancel sprint (ACTIVE only)                        |      Yes      |      No      |     No     |
+| Manage sprint board / task status                  |      No       |      No      |    Yes     |
+| Log impediments                                    |      Yes      |     Yes      |    Yes     |
+| Resolve impediments                                |      Yes      |     Yes      |    Yes     |
+| Conduct retrospectives                             |      Yes      |     Yes      |    Yes     |
+| Author the Daily Scrum record                      |     No \*     |    No \*     |    Yes     |
+| View dashboards/reports                            |      Yes      |     Yes      |    Yes     |
+| Export data                                        |      Yes      |      No      |     No     |
+| Delete data                                        |      Yes      |      No      |     No     |
+| Maintain the Definition of Ready                   |      No       |     Yes      |     No     |
+| Read/write the Scrum Master's notes                |      No       |     Yes      |     No     |
+| Read the coaching log / cross-functionality record |      No       |     Yes      |     No     |
+| Read Scrum Values health-check results             |      No       |     Yes      |     No     |
+| Raise/resolve organizational barriers              |      No       |     Yes      |     No     |
+| Join/leave a team group                            |      Yes      |     Yes      |     No     |
 
 > \* The Product Owner and Scrum Master may attend and observe the Daily Scrum, but only the Developers can author or edit the shared team record (Scrum Guide 2020).
 >
 > **Note:** This matrix reflects the roles enforced in the backend service layer, which is the authoritative source. The Scrum Guide rules that Scrumooth gates — sizing, saving the Sprint Backlog, authoring the Daily Scrum, cancelling a Sprint, and the Sprint-closure gates — are enforced there, so neither the interface nor a direct API call can bypass them. Where a row and the service layer disagree, the service layer wins.
+>
+> The rows above are a role summary. The team-scoped boundaries (every team's artifacts are readable
+> only by its members) and the Scrum Master's own material (notes, coaching log, cross-functionality
+> record, health-check results, and the Definition of Ready) are enforced by the same service layer;
+> the complete, code-by-code catalogue of every authorization refusal is the
+> [gate rejections reference](../api/README.md#gate-rejections).
 
 ### Authorization Enforcement
 
@@ -390,7 +402,7 @@ Cross-Origin Resource Sharing is strictly controlled:
 ```typescript
 app.use(
   cors({
-    origin: config.cors.origin, // Explicit whitelist (no wildcard)
+    origin: config.cors.origin, // Explicit allowlist (no wildcard)
     credentials: true, // Allow cookies with cross-origin requests
   })
 );
@@ -805,7 +817,7 @@ Before deploying to production:
 | Cryptographic Failures      | bcrypt, SHA-256 hashing, HTTPS/TLS enforcement        |
 | Injection                   | Prisma parameterized queries, Zod input validation    |
 | Insecure Design             | Layered architecture, security reviews                |
-| Security Misconfiguration   | Helmet headers, CORS whitelist, CSP                   |
+| Security Misconfiguration   | Helmet headers, CORS allowlist, CSP                   |
 | Vulnerable Components       | Automated dependency auditing, Dependabot             |
 | Auth Failures               | JWT + refresh rotation, session limits, rate limiting |
 | Software/Data Integrity     | Frozen lockfile, CodeQL, artifact integrity           |
@@ -831,7 +843,7 @@ Only the latest stable release receives security updates. Users should upgrade p
 
 ---
 
-**Last Updated**: 2026-05-10
+**Last Updated**: 2026-09-28
 
 **Related Documentation**:
 

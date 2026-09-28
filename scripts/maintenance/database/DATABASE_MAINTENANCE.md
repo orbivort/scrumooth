@@ -193,9 +193,9 @@ Volume backups create a complete snapshot of the PostgreSQL data files. This is 
 
 | Platform                 | SQL Backup | Volume Backup | Notes                        |
 | ------------------------ | ---------- | ------------- | ---------------------------- |
-| Linux                    | �?Full     | �?Full        | Both methods work natively   |
-| macOS                    | �?Full     | �?Full        | Both methods work natively   |
-| Windows (Docker Desktop) | �?Full     | ⚠️ Limited    | Use SQL backup (recommended) |
+| Linux                    | Full       | Full          | Both methods work natively   |
+| macOS                    | Full       | Full          | Both methods work natively   |
+| Windows (Docker Desktop) | Full       | Limited       | Use SQL backup (recommended) |
 
 ### Volume Backup Script
 
@@ -229,12 +229,12 @@ ls -la ./backups/volumes/postgres_volume_*.tar.gz
 
 | Aspect                    | SQL Backup (pg_dump)        | Volume Backup (tar)                  |
 | ------------------------- | --------------------------- | ------------------------------------ |
-| **Portability**           | �?High - SQL is universal   | �?Low - tied to PostgreSQL version   |
-| **Size**                  | �?Smaller (compressed)      | �?Larger (all data files)            |
-| **Speed**                 | �?Slower for large DBs      | �?Faster for large DBs               |
-| **Granularity**           | �?Table-level restore       | �?All-or-nothing                     |
-| **Version compatibility** | �?Works across versions     | �?Same version required              |
-| **Windows support**       | �?Full support              | ⚠️ Limited (Docker Desktop)          |
+| **Portability**           | High - SQL is universal     | Low - tied to PostgreSQL version     |
+| **Size**                  | Smaller (compressed)        | Larger (all data files)              |
+| **Speed**                 | Slower for large DBs        | Faster for large DBs                 |
+| **Granularity**           | Table-level restore         | All-or-nothing                       |
+| **Version compatibility** | Works across versions       | Same version required                |
+| **Windows support**       | Full support                | Limited (Docker Desktop)             |
 | **Use case**              | Regular backups, migrations | Disaster recovery, large DBs (Linux) |
 
 ### Recommended Backup Strategy
@@ -242,13 +242,13 @@ ls -la ./backups/volumes/postgres_volume_*.tar.gz
 ```
 ./backups/
 ├── sql/                          # SQL dumps (daily)
-�?  ├── daily/
-�?  �?  ├── scrumooth_backup_20250427_020000.sql.gz
-�?  �?  └── scrumooth_backup_20250428_020000.sql.gz
-�?  ├── weekly/
-�?  �?  └── scrumooth_backup_20250427_020000.sql.gz
-�?  └── monthly/
-�?      └── scrumooth_backup_20250401_020000.sql.gz
+│   ├── daily/
+│   │   ├── scrumooth_backup_20250427_020000.sql.gz
+│   │   └── scrumooth_backup_20250428_020000.sql.gz
+│   ├── weekly/
+│   │   └── scrumooth_backup_20250427_020000.sql.gz
+│   └── monthly/
+│       └── scrumooth_backup_20250401_020000.sql.gz
 └── volumes/                      # Volume backups (weekly)
     └── postgres_volume_20250427_030000.tar.gz
 ```
@@ -339,8 +339,11 @@ PgBouncer is a lightweight connection pooler for PostgreSQL that improves perfor
 ### Architecture
 
 ```
-┌─────────────�?    ┌─────────────�?    ┌─────────────�?�? Backend    │────▶│  PgBouncer  │────▶│  PostgreSQL �?�? (Prisma)   �?    �?  :6432     �?    �?  :5432     �?└─────────────�?    └─────────────�?    └─────────────�?                           �?                    Connection Pool
-                    (min: 5, max: 20)
+┌─────────────┐    ┌─────────────┐    ┌─────────────┐
+│  Backend    │───▶│  PgBouncer  │───▶│  PostgreSQL │
+│  (Prisma)   │    │   :6432     │    │   :5432     │
+└─────────────┘    └─────────────┘    └─────────────┘
+                    connection pool (min: 5, max: 20)
 ```
 
 ### Configuration

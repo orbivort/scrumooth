@@ -31,21 +31,7 @@ All notification endpoints are subject to a dedicated rate limit of **200 reques
 
 ## Authentication
 
-All notification endpoints require authentication. Include the access token in your request:
-
-**Using Cookies (Recommended)**
-
-```http
-GET /api/v1/notifications
-Cookie: accessToken=eyJhbGc...
-```
-
-**Using Bearer Token**
-
-```http
-GET /api/v1/notifications
-Authorization: Bearer eyJhbGc...
-```
+All notification endpoints require authentication. See [Authentication](./README.md#authentication) for the cookie and bearer-token forms.
 
 ## Notification Types
 
@@ -178,7 +164,7 @@ Content-Type: application/json
 **Example Request**
 
 ```bash
-curl -X GET "https://api.scrumooth.dev/api/v1/notifications?type=TASK_ASSIGNMENT&isRead=false" \
+curl -X GET "https://api.example.com/api/v1/notifications?type=TASK_ASSIGNMENT&isRead=false" \
   -b cookies.txt
 ```
 
@@ -219,7 +205,7 @@ endpoint: the interface reads `data.count`.
 **Example Request**
 
 ```bash
-curl -X GET https://api.scrumooth.dev/api/v1/notifications/unread-count \
+curl -X GET https://api.example.com/api/v1/notifications/unread-count \
   -b cookies.txt
 ```
 
@@ -314,7 +300,7 @@ an addressable resource.
 **Example Request**
 
 ```bash
-curl -X POST https://api.scrumooth.dev/api/v1/notifications/send-message \
+curl -X POST https://api.example.com/api/v1/notifications/send-message \
   -H "Content-Type: application/json" \
   -b cookies.txt \
   -d '{
@@ -383,7 +369,7 @@ Content-Type: application/json
 **Example Request**
 
 ```bash
-curl -X PATCH https://api.scrumooth.dev/api/v1/notifications/550e8400-e29b-41d4-a716-446655440010/read \
+curl -X PATCH https://api.example.com/api/v1/notifications/550e8400-e29b-41d4-a716-446655440010/read \
   -b cookies.txt
 ```
 
@@ -430,7 +416,7 @@ Content-Type: application/json
 Mark all notifications as read:
 
 ```bash
-curl -X PATCH https://api.scrumooth.dev/api/v1/notifications/mark-all-read \
+curl -X PATCH https://api.example.com/api/v1/notifications/mark-all-read \
   -H "Content-Type: application/json" \
   -b cookies.txt
 ```
@@ -438,7 +424,7 @@ curl -X PATCH https://api.scrumooth.dev/api/v1/notifications/mark-all-read \
 Mark specific notifications as read:
 
 ```bash
-curl -X PATCH https://api.scrumooth.dev/api/v1/notifications/mark-all-read \
+curl -X PATCH https://api.example.com/api/v1/notifications/mark-all-read \
   -H "Content-Type: application/json" \
   -b cookies.txt \
   -d '{
@@ -501,7 +487,7 @@ Content-Type: application/json
 **Example Request**
 
 ```bash
-curl -X DELETE https://api.scrumooth.dev/api/v1/notifications/550e8400-e29b-41d4-a716-446655440010 \
+curl -X DELETE https://api.example.com/api/v1/notifications/550e8400-e29b-41d4-a716-446655440010 \
   -b cookies.txt
 ```
 

@@ -79,21 +79,7 @@ Scrumooth enforces the agreement as the team's own commitment. Committing a Spri
 
 ## Authorization
 
-All DoR endpoints require authentication. Include the access token in your request:
-
-**Using Cookies (Recommended)**
-
-```http
-GET /api/v1/teams/:teamId/definition-of-ready
-Cookie: accessToken=eyJhbGc...
-```
-
-**Using Bearer Token**
-
-```http
-GET /api/v1/teams/:teamId/definition-of-ready
-Authorization: Bearer eyJhbGc...
-```
+All DoR endpoints require authentication. See [Authentication](./README.md#authentication) for the cookie and bearer-token forms.
 
 **Who may do what.** The agreement belongs to the team it describes, so every operation is scoped to
 the caller's role _in that team_ — never to a role held in some other team:
@@ -199,7 +185,7 @@ Content-Type: application/json
 **Example Request**
 
 ```bash
-curl -X GET https://api.scrumooth.dev/api/v1/teams/550e8400-e29b-41d4-a716-446655440000/definition-of-ready \
+curl -X GET https://api.example.com/api/v1/teams/550e8400-e29b-41d4-a716-446655440000/definition-of-ready \
   -b cookies.txt
 ```
 
@@ -347,7 +333,7 @@ Content-Type: application/json
 **Example Request**
 
 ```bash
-curl -X PUT https://api.scrumooth.dev/api/v1/teams/550e8400-e29b-41d4-a716-446655440000/definition-of-ready \
+curl -X PUT https://api.example.com/api/v1/teams/550e8400-e29b-41d4-a716-446655440000/definition-of-ready \
   -H "Content-Type: application/json" \
   -b cookies.txt \
   -d '{
@@ -472,7 +458,7 @@ exactly as written. The field is absent from snapshots written before it existed
 **Example Request**
 
 ```bash
-curl -X GET https://api.scrumooth.dev/api/v1/teams/550e8400-e29b-41d4-a716-446655440000/definition-of-ready/history \
+curl -X GET https://api.example.com/api/v1/teams/550e8400-e29b-41d4-a716-446655440000/definition-of-ready/history \
   -b cookies.txt
 ```
 
@@ -597,7 +583,7 @@ Content-Type: application/json
 **Example Request**
 
 ```bash
-curl -X POST https://api.scrumooth.dev/api/v1/product-backlog/550e8400-e29b-41d4-a716-446655440150/verify-dor \
+curl -X POST https://api.example.com/api/v1/product-backlog/550e8400-e29b-41d4-a716-446655440150/verify-dor \
   -H "Content-Type: application/json" \
   -b cookies.txt \
   -d '{
@@ -698,7 +684,7 @@ unrecorded criterion is what the Sprint boundary treats as unmet.
 **Example Request**
 
 ```bash
-curl -X GET https://api.scrumooth.dev/api/v1/product-backlog/550e8400-e29b-41d4-a716-446655440150/dor-verifications \
+curl -X GET https://api.example.com/api/v1/product-backlog/550e8400-e29b-41d4-a716-446655440150/dor-verifications \
   -b cookies.txt
 ```
 

@@ -17,23 +17,25 @@ Welcome to Scrumooth, the self-hosted Scrum Guide enforcement layer. This guide 
 
 ## What is Scrumooth?
 
-Scrumooth is a self-hosted, open-source web application for teams that run Scrum. It turns the rules of the 2020 Scrum Guide into gates the backend enforces — a Sprint cannot be closed before its Review and its Retrospective, only Developers size the work, and "Done" means the Definition of Done has been met. It provides tools for:
+Scrumooth is a self-hosted, open-source web application for teams that run Scrum. It turns the rules of the 2020 Scrum Guide into gates the backend enforces — a Sprint cannot be closed before its Review and its Sprint Retrospective, only Developers size the work, and "Done" means the Definition of Done has been met. It provides tools for:
 
-- **Product Goals** - Define and track strategic objectives
-- **Product Backlog** - Manage and prioritize work items
-- **Sprint Planning** - Plan iterations with capacity management
-- **Sprint Execution** - Track progress with Kanban boards
-- **Daily Scrum** - Coordinate daily standups
-- **Sprint Reviews** - Gather feedback and demonstrate work
-- **Retrospectives** - Reflect and improve processes
+- **Product Goal** - Define the long-term objective the backlog serves
+- **Product Backlog** - Manage and order work items
+- **Sprint Planning** - Plan the Sprint with capacity management
+- **Sprint Board** - Track progress with a Kanban board
+- **Daily Scrum** - Inspect and adapt daily
+- **Impediment** - Track and remove what blocks the team
+- **Increment** - Compose, verify and deliver usable value
+- **Sprint Review** - Demonstrate the Increment and gather feedback
+- **Sprint Retrospective** - Reflect and improve the process
 
 ### Who Should Use This Guide?
 
 This guide is designed for:
 
-- **Product Owners** - Who will manage the product backlog and goals
-- **Scrum Masters** - Who will facilitate ceremonies and remove impediments
-- **Developers** - Who will execute the work
+- **Product Owners** - Who own the Product Goal and order the Product Backlog
+- **Scrum Masters** - Who facilitate events and own unassigned Impediments
+- **Developers** - Who execute the work and deliver the Increment
 
 ---
 
@@ -146,11 +148,11 @@ Once your team is created, invite members to join:
 
 3. **Member Roles**
 
-   | Role              | Permissions                                                                                                                 |
-   | ----------------- | --------------------------------------------------------------------------------------------------------------------------- |
-   | **Product Owner** | Manage backlog, goals, reviews, team settings, cancel a Sprint                                                              |
-   | **Scrum Master**  | Facilitate ceremonies, retrospectives, and own unassigned impediments; notified when one ages past the escalation threshold |
-   | **Developers**    | Size work, save the Sprint Backlog, update tasks, author the Daily Scrum                                                    |
+   | Role              | Permissions                                                                                                                           |
+   | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+   | **Product Owner** | Order the Product Backlog, own the Product Goal, run the Sprint Review, manage team settings, cancel a Sprint                         |
+   | **Scrum Master**  | Facilitate events, maintain the Definition of Ready, own unassigned Impediments; notified when one ages past the escalation threshold |
+   | **Developers**    | Size work, save the Sprint Backlog, update tasks, author the Daily Scrum, verify and deliver the Increment                            |
 
 4. **Invitation Process**
    - Invited members receive an email with registration instructions
@@ -169,7 +171,7 @@ If you're a member of multiple teams:
 
 ## Step 3: Create Your First Product Goal
 
-Product goals provide strategic direction for your team's work. They help align backlog items with business objectives.
+The Product Goal provides strategic direction for your team's work. It helps align Product Backlog items with business objectives.
 
 ### What is a Product Goal?
 
@@ -182,9 +184,9 @@ A Product Goal:
 
 ### Creating a Product Goal
 
-1. **Navigate to Product Goals**
-   - Click "Product Goals" in the sidebar navigation
-   - The Product Goals page displays
+1. **Navigate to Product Goal**
+   - Click "Product Goal" in the sidebar navigation
+   - The Product Goal page displays
 
 2. **Create New Goal**
    - Click the "Create Goal" or "New Goal" button
@@ -201,11 +203,11 @@ A Product Goal:
 
 4. **Save the Goal**
    - Click "Create" or "Save"
-   - The goal appears in your Product Goals list
+   - The goal appears in your Product Goal list
 
 ### Goal Statuses
 
-Product goals progress through these states:
+A Product Goal progresses through these states:
 
 | Status        | Meaning                                 |
 | ------------- | --------------------------------------- |
@@ -268,7 +270,7 @@ Scrumooth uses MoSCoW prioritization to help focus on what matters most:
    - **Priority**: Select MoSCoW priority
    - **Story Points**: Estimate effort (optional, can refine later)
    - **Labels**: Add relevant tags
-   - **Product Goal** (optional): Link to a product goal
+   - **Product Goal** (optional): Link to the Product Goal
 
 4. **Save the Item**
    - Click "Create" or "Save"
@@ -400,38 +402,42 @@ Congratulations! You've completed the basic setup. Here's what to do next:
 
 ### Daily Activities
 
-1. **Daily Scrum** - Hold daily standups to synchronize the team
+1. **Daily Scrum** - Inspect progress and adapt the plan
    - Navigate to "Daily Scrum" in the sidebar
-   - Each member shares: What I did, What I'll do, Blockers
+   - Record progress toward the Sprint Goal, the Sprint Backlog adjustments agreed, and the plan for the next day
 
-2. **Sprint Board** - Track progress throughout the sprint
-   - Use the Kanban board to move items through workflow
+2. **Sprint Board** - Track progress throughout the Sprint
+   - Use the Kanban board to move items through the workflow
    - Update task status as work progresses
 
-3. **Impediments** - Track and resolve blockers
+3. **Impediment** - Track and remove blockers
    - Navigate to "Impediments" to log and manage blockers for the active Sprint
    - Set a priority (Critical, High, Medium, Low) and an optional target date, so the Scrum Master knows what to remove first
-   - Assign an owner: leave it blank and the impediment defaults to the team's Scrum Master, who is notified
-   - Both **Resolved** and **Closed** require written resolution text. An unresolved impediment blocks the Sprint from closing, and the Scrum Master is notified when one ages past the escalation threshold
-   - Only the reporter, the owner, or the Scrum Master can delete an impediment, and every impediment is scoped to the team that raised it
+   - Assign an owner: leave it blank and the Impediment defaults to the team's Scrum Master, who is notified
+   - Both **Resolved** and **Closed** require written resolution text. An unresolved Impediment blocks the Sprint from closing, and the Scrum Master is notified when one ages past the escalation threshold
+   - Only the reporter, the owner, or the Scrum Master can delete an Impediment, and every Impediment is scoped to the team that raised it
 
 ### End of Sprint
 
-1. **Sprint Review** - Demonstrate completed work
+1. **Increment** - Compose and deliver the Sprint's usable value
+   - Create the Increment from the Product Backlog items that are Done
+   - Verify the integration with prior Increments and attest the usable condition in writing
+   - Deliver it through the Sprint Review or as an Early Release
+
+2. **Sprint Review** - Inspect the Increment with stakeholders
    - Navigate to "Sprint Review"
-   - Record attendees, feedback, and backlog adjustments
+   - Record attendees, feedback, backlog adjustments, and the Sprint Goal outcome
 
-2. **Retrospective** - Reflect and improve
-   - Navigate to "Retrospectives"
-   - Discuss what went well, what to improve, action items
+3. **Sprint Retrospective** - Reflect and improve the process
+   - Navigate to "Sprint Retrospective"
+   - Discuss what went well, what to improve, and agree action items
 
-3. **Next Sprint** - Repeat the planning process
+4. **Next Sprint** - Repeat the planning process
 
-### Explore More Features
+### Explore the Feature Guides
 
-- **Reports** - View velocity, burndown charts, and metrics
-- **Notifications** - Stay updated on team activities
-- **Settings** - Configure workflow, team groups, and more
+The [Core Feature Guides](../core-features/README.md) cover the Product Goal, Product Backlog, Sprint
+Planning, Sprint Board, Daily Scrum, Impediment, Increment, Sprint Review and Sprint Retrospective.
 
 ### Getting Help
 

@@ -61,21 +61,7 @@ The per-endpoint examples below focus on the payload each endpoint is about, so 
 
 ## Authentication
 
-All product backlog endpoints require authentication. Include the access token in your request:
-
-**Using Cookies (Recommended)**
-
-```http
-GET /api/v1/product-backlog
-Cookie: accessToken=eyJhbGc...
-```
-
-**Using Bearer Token**
-
-```http
-GET /api/v1/product-backlog
-Authorization: Bearer eyJhbGc...
-```
+All product backlog endpoints require authentication. See [Authentication](./README.md#authentication) for the cookie and bearer-token forms.
 
 ## PBI Statuses
 
@@ -131,13 +117,14 @@ The first is the canonical form and must contain **every** item of the team's ba
 
 Scrumooth enforces the Scrum Guide's accountabilities server-side, so the same rules hold when you call the API directly as when you use the interface:
 
-| Action                                               | Who may do it   | Refusal on misuse                           |
-| ---------------------------------------------------- | --------------- | ------------------------------------------- |
-| Create / update / delete a PBI, workflow transitions | Any team member | `403 AUTHORIZATION_ERROR` (not a member)    |
-| Set or change `storyPoints`                          | Developers      | `403 GATE_DEVELOPER_ONLY_SIZING`            |
-| Change the MoSCoW `priority`, or reorder the backlog | Product Owner   | `403 GATE_PRODUCT_OWNER_ONLY_BACKLOG_ORDER` |
-| Save the Sprint Backlog / plan items into a Sprint   | Developers      | `403 GATE_DEVELOPER_ONLY_SPRINT_BACKLOG`    |
-| Enter a Sprint with an item that is not `READY`      | Nobody          | `400 GATE_PBI_NOT_READY`                    |
+| Action                                               | Who may do it   | Refusal on misuse                                                                |
+| ---------------------------------------------------- | --------------- | -------------------------------------------------------------------------------- |
+| Create / update / delete a PBI, workflow transitions | Any team member | `403 AUTHORIZATION_ERROR` (not a member)                                         |
+| Set or change `storyPoints`                          | Developers      | `403 GATE_DEVELOPER_ONLY_SIZING`                                                 |
+| Change the MoSCoW `priority`, or reorder the backlog | Product Owner   | `403 GATE_PRODUCT_OWNER_ONLY_BACKLOG_ORDER`                                      |
+| Save the Sprint Backlog / plan items into a Sprint   | Developers      | `403 GATE_DEVELOPER_ONLY_SPRINT_BACKLOG`                                         |
+| Enter a Sprint with an item that is not `READY`      | Nobody          | `400 GATE_PBI_NOT_READY`                                                         |
+| Add an item / link it to a Product Goal              | Any team member | `400 GATE_PRODUCT_GOAL_REQUIRED_FOR_BACKLOG`, `409 GATE_PRODUCT_GOAL_NOT_ACTIVE` |
 
 Refusals that encode a Scrum Guide gate carry a stable `error.code` so a client can branch on them without parsing the localized message; the full list is in [Gate Rejections](./README.md#gate-rejections).
 
@@ -252,7 +239,7 @@ Content-Type: application/json
 **Example Request**
 
 ```bash
-curl -X GET "https://api.scrumooth.dev/api/v1/product-backlog?teamId=550e8400-e29b-41d4-a716-446655440000&status=READY&limit=10" \
+curl -X GET "https://api.example.com/api/v1/product-backlog?teamId=550e8400-e29b-41d4-a716-446655440000&status=READY&limit=10" \
   -b cookies.txt
 ```
 
@@ -261,6 +248,8 @@ curl -X GET "https://api.scrumooth.dev/api/v1/product-backlog?teamId=550e8400-e2
 ### Create PBI
 
 Create a new product backlog item. Any Scrum Team member may create one: the item is appended to the end of the team's backlog order and anchored to the team's active Product Goal. Only the story-point estimate is reserved to the Developers.
+
+Because the Product Backlog is the emergent expression of the Product Goal, the item must have a goal to serve: a team with no `ACTIVE` Product Goal is refused with `400 GATE_PRODUCT_GOAL_REQUIRED_FOR_BACKLOG`, and a caller-supplied `goalId` that is not that goal is refused with `409 GATE_PRODUCT_GOAL_NOT_ACTIVE`. An omitted `goalId` adopts the team's single `ACTIVE` goal.
 
 **Endpoint**
 
@@ -372,7 +361,7 @@ Content-Type: application/json
 **Example Request**
 
 ```bash
-curl -X POST https://api.scrumooth.dev/api/v1/product-backlog \
+curl -X POST https://api.example.com/api/v1/product-backlog \
   -H "Content-Type: application/json" \
   -b cookies.txt \
   -d '{
@@ -459,7 +448,7 @@ Content-Type: application/json
 **Example Request**
 
 ```bash
-curl -X GET https://api.scrumooth.dev/api/v1/product-backlog/880e8400-e29b-41d4-a716-446655440000 \
+curl -X GET https://api.example.com/api/v1/product-backlog/880e8400-e29b-41d4-a716-446655440000 \
   -b cookies.txt
 ```
 
@@ -624,7 +613,7 @@ Content-Type: application/json
 **Example Request**
 
 ```bash
-curl -X PUT https://api.scrumooth.dev/api/v1/product-backlog/880e8400-e29b-41d4-a716-446655440000 \
+curl -X PUT https://api.example.com/api/v1/product-backlog/880e8400-e29b-41d4-a716-446655440000 \
   -H "Content-Type: application/json" \
   -b cookies.txt \
   -d '{
@@ -741,7 +730,7 @@ Content-Type: application/json
 **Example Request**
 
 ```bash
-curl -X PUT https://api.scrumooth.dev/api/v1/product-backlog/880e8400-e29b-41d4-a716-446655440000/priority \
+curl -X PUT https://api.example.com/api/v1/product-backlog/880e8400-e29b-41d4-a716-446655440000/priority \
   -H "Content-Type: application/json" \
   -b cookies.txt \
   -d '{
@@ -817,7 +806,7 @@ Content-Type: application/json
 **Example Request**
 
 ```bash
-curl -X DELETE https://api.scrumooth.dev/api/v1/product-backlog/880e8400-e29b-41d4-a716-446655440000 \
+curl -X DELETE https://api.example.com/api/v1/product-backlog/880e8400-e29b-41d4-a716-446655440000 \
   -b cookies.txt
 ```
 
@@ -897,7 +886,7 @@ Content-Type: application/json
 **Example Request**
 
 ```bash
-curl -X GET https://api.scrumooth.dev/api/v1/product-backlog/880e8400-e29b-41d4-a716-446655440000/tasks \
+curl -X GET https://api.example.com/api/v1/product-backlog/880e8400-e29b-41d4-a716-446655440000/tasks \
   -b cookies.txt
 ```
 
@@ -1040,7 +1029,7 @@ Content-Type: application/json
 Reorder the whole backlog:
 
 ```bash
-curl -X POST https://api.scrumooth.dev/api/v1/product-backlog/reorder \
+curl -X POST https://api.example.com/api/v1/product-backlog/reorder \
   -H "Content-Type: application/json" \
   -b cookies.txt \
   -d '{
@@ -1055,7 +1044,7 @@ curl -X POST https://api.scrumooth.dev/api/v1/product-backlog/reorder \
 Move one item directly before another (works from a filtered or paginated view):
 
 ```bash
-curl -X POST https://api.scrumooth.dev/api/v1/product-backlog/reorder \
+curl -X POST https://api.example.com/api/v1/product-backlog/reorder \
   -H "Content-Type: application/json" \
   -b cookies.txt \
   -d '{
@@ -1191,7 +1180,7 @@ Content-Type: application/json
 **Example Request**
 
 ```bash
-curl -X POST https://api.scrumooth.dev/api/v1/product-backlog/880e8400-e29b-41d4-a716-446655440000/verify-dod \
+curl -X POST https://api.example.com/api/v1/product-backlog/880e8400-e29b-41d4-a716-446655440000/verify-dod \
   -H "Content-Type: application/json" \
   -b cookies.txt \
   -d '{
@@ -1294,7 +1283,7 @@ Content-Type: application/json
 **Example Request**
 
 ```bash
-curl -X GET https://api.scrumooth.dev/api/v1/product-backlog/880e8400-e29b-41d4-a716-446655440000/dod-verifications \
+curl -X GET https://api.example.com/api/v1/product-backlog/880e8400-e29b-41d4-a716-446655440000/dod-verifications \
   -b cookies.txt
 ```
 
@@ -1424,7 +1413,7 @@ Content-Type: application/json
 **Example Request**
 
 ```bash
-curl -X POST https://api.scrumooth.dev/api/v1/product-backlog/880e8400-e29b-41d4-a716-446655440000/verify-dor \
+curl -X POST https://api.example.com/api/v1/product-backlog/880e8400-e29b-41d4-a716-446655440000/verify-dor \
   -H "Content-Type: application/json" \
   -b cookies.txt \
   -d '{
@@ -1527,7 +1516,7 @@ Content-Type: application/json
 **Example Request**
 
 ```bash
-curl -X GET https://api.scrumooth.dev/api/v1/product-backlog/880e8400-e29b-41d4-a716-446655440000/dor-verifications \
+curl -X GET https://api.example.com/api/v1/product-backlog/880e8400-e29b-41d4-a716-446655440000/dor-verifications \
   -b cookies.txt
 ```
 
@@ -1535,20 +1524,22 @@ curl -X GET https://api.scrumooth.dev/api/v1/product-backlog/880e8400-e29b-41d4-
 
 ## Error Codes
 
-| Code                                    | HTTP Status | Description                                                                    |
-| --------------------------------------- | ----------- | ------------------------------------------------------------------------------ |
-| `VALIDATION_ERROR`                      | 400         | Request validation failed                                                      |
-| `BAD_REQUEST`                           | 400         | The request is well-formed but refused (e.g. an incomplete reorder)            |
-| `AUTHENTICATION_ERROR`                  | 401         | Authentication required                                                        |
-| `AUTHORIZATION_ERROR`                   | 403         | Insufficient permissions                                                       |
-| `NOT_FOUND`                             | 404         | Product backlog item not found                                                 |
-| `CONFLICT`                              | 409         | Resource conflict                                                              |
-| `GATE_PRODUCT_OWNER_ONLY_BACKLOG_ORDER` | 403         | Only the Product Owner orders the backlog (position and MoSCoW band)           |
-| `GATE_PBI_NOT_READY`                    | 400         | A Product Backlog item must be `READY` before it can enter a Sprint            |
-| `GATE_DEVELOPER_ONLY_SIZING`            | 403         | Only Developers set story points                                               |
-| `GATE_DOD_REQUIRED`                     | 400         | The team must keep at least one active DoD item before work can be marked Done |
-| `GATE_DOD_NOT_VERIFIED`                 | 400         | An item cannot be marked Done until every active DoD item is verified for it   |
-| `GATE_DOD_TEAM_MEMBERS_ONLY`            | 403         | Reading or changing a team's DoD, or verifying against it, requires membership |
+| Code                                     | HTTP Status | Description                                                                    |
+| ---------------------------------------- | ----------- | ------------------------------------------------------------------------------ |
+| `VALIDATION_ERROR`                       | 400         | Request validation failed                                                      |
+| `BAD_REQUEST`                            | 400         | The request is well-formed but refused (e.g. an incomplete reorder)            |
+| `AUTHENTICATION_ERROR`                   | 401         | Authentication required                                                        |
+| `AUTHORIZATION_ERROR`                    | 403         | Insufficient permissions                                                       |
+| `NOT_FOUND`                              | 404         | Product backlog item not found                                                 |
+| `CONFLICT`                               | 409         | Resource conflict                                                              |
+| `GATE_PRODUCT_OWNER_ONLY_BACKLOG_ORDER`  | 403         | Only the Product Owner orders the backlog (position and MoSCoW band)           |
+| `GATE_PBI_NOT_READY`                     | 400         | A Product Backlog item must be `READY` before it can enter a Sprint            |
+| `GATE_DEVELOPER_ONLY_SIZING`             | 403         | Only Developers set story points                                               |
+| `GATE_DOD_REQUIRED`                      | 400         | The team must keep at least one active DoD item before work can be marked Done |
+| `GATE_DOD_NOT_VERIFIED`                  | 400         | An item cannot be marked Done until every active DoD item is verified for it   |
+| `GATE_DOD_TEAM_MEMBERS_ONLY`             | 403         | Reading or changing a team's DoD, or verifying against it, requires membership |
+| `GATE_PRODUCT_GOAL_REQUIRED_FOR_BACKLOG` | 400         | The team has no `ACTIVE` Product Goal, so a new item cannot be anchored        |
+| `GATE_PRODUCT_GOAL_NOT_ACTIVE`           | 409         | An item can only be linked to the team's single `ACTIVE` Product Goal          |
 
 The `GATE_*` codes are the Scrum Guide gates described in [Authorization Model](#authorization-model); the complete, canonical list lives in [Gate Rejections](./README.md#gate-rejections).
 

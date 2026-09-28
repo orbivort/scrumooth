@@ -109,6 +109,9 @@ jobs:
       - name: i18n check
         run: pnpm run i18n:check
 
+      - name: Gate catalogue check
+        run: pnpm run gates:verify
+
       - name: i18n glossary
         run: pnpm run i18n:glossary
 

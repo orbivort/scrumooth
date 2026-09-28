@@ -34,21 +34,7 @@ The Teams API provides comprehensive team management capabilities including:
 
 ## Authentication
 
-All team endpoints require authentication. Include the access token in your request:
-
-**Using Cookies (Recommended)**
-
-```http
-GET /api/v1/teams
-Cookie: accessToken=eyJhbGc...
-```
-
-**Using Bearer Token**
-
-```http
-GET /api/v1/teams
-Authorization: Bearer eyJhbGc...
-```
+All team endpoints require authentication. See [Authentication](./README.md#authentication) for the cookie and bearer-token forms.
 
 ## Team Roles
 
@@ -139,7 +125,7 @@ Content-Type: application/json
 **Example Request**
 
 ```bash
-curl -X GET https://api.scrumooth.dev/api/v1/teams \
+curl -X GET https://api.example.com/api/v1/teams \
   -b cookies.txt
 ```
 
@@ -184,7 +170,7 @@ Content-Type: application/json
 **Example Request**
 
 ```bash
-curl -X GET https://api.scrumooth.dev/api/v1/teams/my-teams \
+curl -X GET https://api.example.com/api/v1/teams/my-teams \
   -b cookies.txt
 ```
 
@@ -277,7 +263,7 @@ Content-Type: application/json
 **Example Request**
 
 ```bash
-curl -X POST https://api.scrumooth.dev/api/v1/teams \
+curl -X POST https://api.example.com/api/v1/teams \
   -H "Content-Type: application/json" \
   -b cookies.txt \
   -d '{
@@ -372,7 +358,7 @@ Content-Type: application/json
 **Example Request**
 
 ```bash
-curl -X GET https://api.scrumooth.dev/api/v1/teams/550e8400-e29b-41d4-a716-446655440000 \
+curl -X GET https://api.example.com/api/v1/teams/550e8400-e29b-41d4-a716-446655440000 \
   -b cookies.txt
 ```
 
@@ -442,7 +428,7 @@ Content-Type: application/json
 **Example Request**
 
 ```bash
-curl -X PUT https://api.scrumooth.dev/api/v1/teams/550e8400-e29b-41d4-a716-446655440000 \
+curl -X PUT https://api.example.com/api/v1/teams/550e8400-e29b-41d4-a716-446655440000 \
   -H "Content-Type: application/json" \
   -b cookies.txt \
   -d '{
@@ -503,7 +489,7 @@ Content-Type: application/json
 **Example Request**
 
 ```bash
-curl -X DELETE https://api.scrumooth.dev/api/v1/teams/550e8400-e29b-41d4-a716-446655440000 \
+curl -X DELETE https://api.example.com/api/v1/teams/550e8400-e29b-41d4-a716-446655440000 \
   -b cookies.txt
 ```
 
@@ -607,7 +593,7 @@ The Scrum Team has reached its configured maximum number of members (default `10
 **Example Request**
 
 ```bash
-curl -X POST https://api.scrumooth.dev/api/v1/teams/550e8400-e29b-41d4-a716-446655440000/members \
+curl -X POST https://api.example.com/api/v1/teams/550e8400-e29b-41d4-a716-446655440000/members \
   -H "Content-Type: application/json" \
   -b cookies.txt \
   -d '{
@@ -681,7 +667,7 @@ Content-Type: application/json
 **Example Request**
 
 ```bash
-curl -X DELETE https://api.scrumooth.dev/api/v1/teams/550e8400-e29b-41d4-a716-446655440000/members/550e8400-e29b-41d4-a716-446655440003 \
+curl -X DELETE https://api.example.com/api/v1/teams/550e8400-e29b-41d4-a716-446655440000/members/550e8400-e29b-41d4-a716-446655440003 \
   -b cookies.txt
 ```
 
@@ -739,7 +725,7 @@ Content-Type: application/json
 **Example Request**
 
 ```bash
-curl -X PUT https://api.scrumooth.dev/api/v1/teams/550e8400-e29b-41d4-a716-446655440000/members/550e8400-e29b-41d4-a716-446655440003 \
+curl -X PUT https://api.example.com/api/v1/teams/550e8400-e29b-41d4-a716-446655440000/members/550e8400-e29b-41d4-a716-446655440003 \
   -H "Content-Type: application/json" \
   -b cookies.txt \
   -d '{
@@ -792,7 +778,7 @@ Content-Type: application/json
 **Example Request**
 
 ```bash
-curl -X GET https://api.scrumooth.dev/api/v1/teams/550e8400-e29b-41d4-a716-446655440000/my-role \
+curl -X GET https://api.example.com/api/v1/teams/550e8400-e29b-41d4-a716-446655440000/my-role \
   -b cookies.txt
 ```
 
@@ -841,7 +827,7 @@ Content-Type: application/json
 **Example Request**
 
 ```bash
-curl -X POST https://api.scrumooth.dev/api/v1/teams/select-team \
+curl -X POST https://api.example.com/api/v1/teams/select-team \
   -H "Content-Type: application/json" \
   -b cookies.txt \
   -d '{

@@ -34,21 +34,7 @@ All endpoints are scoped under `/api/v1/impediments`.
 
 ## Authentication
 
-All impediment endpoints require authentication. Include the access token in your request:
-
-**Using Cookies (Recommended)**
-
-```http
-GET /api/v1/impediments?teamId=550e8400-e29b-41d4-a716-446655440099
-Cookie: accessToken=eyJhbGc...
-```
-
-**Using Bearer Token**
-
-```http
-GET /api/v1/impediments?teamId=550e8400-e29b-41d4-a716-446655440099
-Authorization: Bearer eyJhbGc...
-```
+All impediment endpoints require authentication. See [Authentication](./README.md#authentication) for the cookie and bearer-token forms.
 
 ## Authorization
 
@@ -76,7 +62,7 @@ Impediments follow a defined status lifecycle:
 | **RESOLVED**    | The impediment has been resolved (requires resolution text)                |
 | **CLOSED**      | The impediment is closed and no longer relevant (requires resolution text) |
 
-`RESOLVED` and `CLOSED` are both terminal for the Sprint-close gate: a Sprint cannot be completed while any of its impediments is still `OPEN` or `IN_PROGRESS`. Because a bare `CLOSED` would otherwise lift that gate while saying nothing about removal, **both terminal states require written resolution text**. A terminal transition without it is refused with `400 GATE_IMPEDIMENT_TERMINAL_RESOLUTION_REQUIRED`. Reopening an impediment (moving it back to `OPEN` or `IN_PROGRESS`) clears `resolvedAt` and makes the Sprint-close gate block again.
+`RESOLVED` and `CLOSED` are both terminal for the Sprint-close gate: a Sprint cannot be completed while any of its impediments is still `OPEN` or `IN_PROGRESS` — the refusal is `400 GATE_IMPEDIMENTS_UNRESOLVED`, raised by the [Sprints API](./sprints.md). Because a bare `CLOSED` would otherwise lift that gate while saying nothing about removal, **both terminal states require written resolution text**. A terminal transition without it is refused with `400 GATE_IMPEDIMENT_TERMINAL_RESOLUTION_REQUIRED`. Reopening an impediment (moving it back to `OPEN` or `IN_PROGRESS`) clears `resolvedAt` and makes the Sprint-close gate block again.
 
 ### Status Transitions
 
@@ -174,7 +160,7 @@ Content-Type: application/json
 **Example Request**
 
 ```bash
-curl -X GET "https://api.scrumooth.dev/api/v1/impediments?teamId=550e8400-e29b-41d4-a716-446655440099" \
+curl -X GET "https://api.example.com/api/v1/impediments?teamId=550e8400-e29b-41d4-a716-446655440099" \
   -b cookies.txt
 ```
 
@@ -232,7 +218,7 @@ Content-Type: application/json
 **Example Request**
 
 ```bash
-curl -X GET "https://api.scrumooth.dev/api/v1/impediments/stats?teamId=550e8400-e29b-41d4-a716-446655440099" \
+curl -X GET "https://api.example.com/api/v1/impediments/stats?teamId=550e8400-e29b-41d4-a716-446655440099" \
   -b cookies.txt
 ```
 
@@ -332,7 +318,7 @@ Content-Type: application/json
 **Example Request**
 
 ```bash
-curl -X GET "https://api.scrumooth.dev/api/v1/impediments/550e8400-e29b-41d4-a716-446655440020?teamId=550e8400-e29b-41d4-a716-446655440099" \
+curl -X GET "https://api.example.com/api/v1/impediments/550e8400-e29b-41d4-a716-446655440020?teamId=550e8400-e29b-41d4-a716-446655440099" \
   -b cookies.txt
 ```
 
@@ -444,7 +430,7 @@ Content-Type: application/json
 **Example Request**
 
 ```bash
-curl -X POST https://api.scrumooth.dev/api/v1/impediments \
+curl -X POST https://api.example.com/api/v1/impediments \
   -H "Content-Type: application/json" \
   -b cookies.txt \
   -d '{
@@ -593,7 +579,7 @@ Content-Type: application/json
 **Example Request**
 
 ```bash
-curl -X PUT https://api.scrumooth.dev/api/v1/impediments/550e8400-e29b-41d4-a716-446655440020 \
+curl -X PUT https://api.example.com/api/v1/impediments/550e8400-e29b-41d4-a716-446655440020 \
   -H "Content-Type: application/json" \
   -b cookies.txt \
   -d '{
@@ -682,7 +668,7 @@ Content-Type: application/json
 **Example Request**
 
 ```bash
-curl -X DELETE "https://api.scrumooth.dev/api/v1/impediments/550e8400-e29b-41d4-a716-446655440020?teamId=550e8400-e29b-41d4-a716-446655440099" \
+curl -X DELETE "https://api.example.com/api/v1/impediments/550e8400-e29b-41d4-a716-446655440020?teamId=550e8400-e29b-41d4-a716-446655440099" \
   -b cookies.txt
 ```
 
@@ -698,6 +684,11 @@ curl -X DELETE "https://api.scrumooth.dev/api/v1/impediments/550e8400-e29b-41d4-
 | `NOT_FOUND`                                    | 404         | Impediment not found (including an id that belongs to another team)                    |
 | `GATE_IMPEDIMENT_TEAM_MEMBERS_ONLY`            | 403         | The caller is not a member of the team that raised the impediment                      |
 | `GATE_IMPEDIMENT_TERMINAL_RESOLUTION_REQUIRED` | 400         | A terminal transition (`RESOLVED`/`CLOSED`) was attempted without a written resolution |
+
+`GATE_IMPEDIMENTS_UNRESOLVED` (400) is the mirror of the resolution gate: it is raised by the
+[Sprints API](./sprints.md) when a Sprint is completed while one of its impediments is still `OPEN`
+or `IN_PROGRESS`. The complete, canonical list of gate codes lives in
+[Gate Rejections](./README.md#gate-rejections).
 
 ## Best Practices
 

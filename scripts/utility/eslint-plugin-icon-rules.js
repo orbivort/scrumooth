@@ -20,7 +20,7 @@ const plugin = {
           description: 'Disallow inline SVG elements in favor of shared icon components',
           category: 'Best Practices',
           recommended: true,
-          url: 'https://github.com/orbivort/scrumooth/blob/main/docs/development/icon-usage-guidelines.md',
+          url: 'https://github.com/orbivort/scrumooth/tree/main/packages/frontend/src/components/common/Icons',
         },
         fixable: null,
         schema: [
@@ -39,7 +39,7 @@ const plugin = {
         ],
         messages: {
           noInlineSvg:
-            'Inline SVGs are not allowed. Use a shared icon component from @/components/common/Icons instead. See docs/development/icon-usage-guidelines.md',
+            'Inline SVGs are not allowed. Use a shared icon component from @/components/common/Icons instead.',
         },
       },
 

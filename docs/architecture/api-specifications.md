@@ -104,9 +104,12 @@ Scrumooth uses **URL-based versioning** to manage API evolution. The version is 
 The current version is `v1`:
 
 ```
-Production:  https://api.scrumooth.dev/api/v1/{resource}
-Development: http://localhost:3000/api/v1/{resource}
+Example:     https://api.example.com/api/v1/{resource}
+Development: http://localhost:5001/api/v1/{resource}
 ```
+
+`api.example.com` is a reserved placeholder domain. Replace it with the hostname of your
+own deployment; Scrumooth is self-hosted, so there is no public API endpoint.
 
 ### Version Configuration
 

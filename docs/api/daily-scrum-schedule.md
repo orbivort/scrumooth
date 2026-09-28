@@ -34,28 +34,12 @@ Consumers: the cadence payload is composed by [`GET /api/v1/daily-scrums/:sprint
 
 ## Authentication
 
-All endpoints require authentication. Every request must name the team — `teamId` in the query string for `GET`/`DELETE`, in the body for `POST`/`PUT`, or via the `X-Team-Id` header. The team-context middleware accepts any of these, then looks the caller up as a member of the named team before the request reaches a handler, so a caller cannot read or write another team's schedule by supplying a different identifier.
+All endpoints require authentication, and every request must name the team — `teamId` in the query string for `GET`/`DELETE`, in the body for `POST`/`PUT`, or via the `X-Team-Id` header. The team-context middleware accepts any of these, then looks the caller up as a member of the named team before the request reaches a handler, so a caller cannot read or write another team's schedule by supplying a different identifier. See [Authentication](./README.md#authentication) for the cookie and bearer-token forms.
 
 There are two permission levels:
 
 - **Reading** (`GET`) is open to any member of the team. A cadence nobody can see is not a commitment.
 - **Writing** (`PUT`, `POST`, `DELETE`) requires the **Scrum Master** role in that team, because the Scrum Master is accountable for ensuring the Scrum events take place. A Developer or Product Owner attempting a write receives `403 Forbidden`.
-
-**Using Cookies (Recommended)**
-
-```http
-GET /api/v1/daily-scrum-schedule
-Cookie: accessToken=eyJhbGc...
-X-Team-Id: 550e8400-e29b-41d4-a716-446655440001
-```
-
-**Using Bearer Token**
-
-```http
-GET /api/v1/daily-scrum-schedule
-Authorization: Bearer eyJhbGc...
-X-Team-Id: 550e8400-e29b-41d4-a716-446655440001
-```
 
 ## Schedule Endpoints
 

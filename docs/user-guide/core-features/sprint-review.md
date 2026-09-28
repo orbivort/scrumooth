@@ -1,108 +1,130 @@
 # Sprint Review
 
-The Sprint Review is held at the end of the Sprint to inspect the Increment and adapt the Product Backlog if needed.
+The Sprint Review is held at the end of the Sprint to **inspect the Increment** and **adapt the
+Product Backlog** if needed. It is a collaborative working session with stakeholders, not a sign-off
+or a presentation.
+
+> **Enforced by Scrumooth:** The Review is the Scrum Team's own event, so recording attendance,
+> leaving feedback, adjusting the Product Backlog and completing the Review all require membership of
+> the team that owns it. Completing the Review also requires two things the Guide implies: if the
+> Sprint has a Sprint Goal, the team must record its own **verdict on whether the Goal was met** — the
+> tool will not infer attainment from item completion — and the Review **cannot be completed before
+> the day the Sprint's end date names**. A Sprint cannot be closed until its Review has been recorded.
 
 ## Table of Contents
 
-- [Overview](#overview)
-- [Before the Review](#before-the-review)
-- [Conducting the Review](#conducting-the-review)
-- [Demonstrating Work](#demonstrating-work)
-- [Gathering Feedback](#gathering-feedback)
-- [Backlog Adjustments](#backlog-adjustments)
-- [Review Documentation](#review-documentation)
+- [Purpose](#purpose)
+- [Key Concepts](#key-concepts)
+- [Practical Guidance](#practical-guidance)
+- [Gates and Enforcement](#gates-and-enforcement)
 - [Best Practices](#best-practices)
+- [Related Topics](#related-topics)
 
 ---
 
-## Overview
-
-### Purpose of Sprint Review
+## Purpose
 
 The Sprint Review is used to:
 
-1. **Inspect** the Product Increment delivered
-2. **Demonstrate** completed work to stakeholders
-3. **Collaborate** on what to do next
-4. **Adapt** the Product Backlog based on feedback
+1. **Inspect** the Increment delivered.
+2. **Demonstrate** completed work to stakeholders.
+3. **Collaborate** on what to do next.
+4. **Adapt** the Product Backlog based on feedback.
 
-### What It Is NOT
-
-The Sprint Review is **not**:
-
-- A "sign-off" meeting
-- A presentation only
-- A status meeting
-- A gate to pass
-
-> **Note**: "Not a gate" describes the Review's nature — a collaborative working session, not an approval checkpoint for the Increment. It does not mean the Review is optional in Scrumooth: the Sprint cannot be closed until the Sprint Review has been recorded.
-
-### Key Characteristics
+It is **not** a "sign-off" meeting, a presentation only, a status meeting, or a gate to pass. "Not a
+gate" describes the Review's nature — a collaborative working session, not an approval checkpoint for
+the Increment. It does not mean the Review is optional: the Sprint cannot be closed until the Review
+has been recorded.
 
 | Aspect           | Guideline                           |
 | ---------------- | ----------------------------------- |
-| **Duration**     | Maximum 2 hours for 2-week sprint   |
-| **Participants** | Scrum Team + Stakeholders           |
+| **Duration**     | Maximum 2 hours for a 2-week Sprint |
+| **Participants** | Scrum Team + stakeholders           |
 | **Focus**        | Increment inspection and adaptation |
 | **Outcome**      | Updated Product Backlog             |
 
 ---
 
-## Before the Review
+## Key Concepts
 
-### Preparation Checklist
+### What the Review inspects
 
-**Developers:**
+The Review inspects the [Increment](./increment.md) — the sum of the Product Backlog items completed
+during the Sprint that are in usable condition. Only work that meets the Definition of Done is
+demonstrated; incomplete work and internal refactoring are not, unless the latter is relevant to
+stakeholders.
 
-- [ ] All "Done" items are ready to demonstrate
-- [ ] Demo environment is prepared
-- [ ] Demo script/story is clear
-- [ ] Technical issues resolved
+### The team's verdict on the Sprint Goal
 
-**Product Owner:**
+The Review records the Scrum Team's own assessment of whether the Sprint Goal was met. The tool will
+not infer attainment from the number of completed items, because "we finished the checklist" and "we
+achieved the objective" are different claims.
 
-- [ ] Stakeholders invited
-- [ ] Sprint Goal reviewed
-- [ ] Backlog items prepared for discussion
-- [ ] Next sprint priorities identified
+### Feedback and backlog adaptation
 
-**Scrum Master:**
+Feedback gathered during the Review is the input to Product Backlog adaptation. Scrumooth categorises
+it so it can be acted on:
 
-- [ ] Meeting scheduled and room prepared
-- [ ] Stakeholders confirmed attendance
-- [ ] Previous review notes available
+| Type               | Example                          | Action                       |
+| ------------------ | -------------------------------- | ---------------------------- |
+| **Positive**       | "This is exactly what we needed" | Note for team morale         |
+| **Change request** | "Can we also add...?"            | Add to the Product Backlog   |
+| **Concern**        | "This might confuse users"       | Discuss; may create an item  |
+| **New idea**       | "What if we could...?"           | Add to the Product Backlog   |
+| **Priority shift** | "We need X sooner than Y"        | Re-order the Product Backlog |
 
-### Items to Demonstrate
+### The Review record
 
-Prepare demonstrations for:
+The Review is stored as a record with these fields:
 
-- Completed backlog items (meeting DoD)
-- New features
-- Bug fixes
-- Technical improvements (if relevant to stakeholders)
+| Field                   | Description                                                                                          |
+| ----------------------- | ---------------------------------------------------------------------------------------------------- |
+| **Sprint**              | Which Sprint was reviewed                                                                            |
+| **Date**                | When the Review occurred                                                                             |
+| **Attendees**           | Who participated, with name, email, role and attendance status                                       |
+| **Summary**             | The overall outcome, including items demonstrated and next steps                                     |
+| **Feedback**            | Stakeholder input, categorised as positive, negative, suggestion or question                         |
+| **Backlog adjustments** | Changes made to the Product Backlog based on the Review                                              |
+| **Sprint Goal outcome** | The team's recorded verdict on whether the Sprint Goal was met (required when the Sprint has a Goal) |
 
-### Items NOT to Demonstrate
+The Increment delivered during the Sprint is automatically linked to the Review record.
 
-Don't demonstrate:
+### The Scrum Master's notes
 
-- Incomplete items
-- Items not meeting DoD
-- Internal refactoring (unless relevant)
-- Work in progress
+The Review carries a separate notes field for the Scrum Master's coaching observations about the
+event. It is readable and writable only by the team's Scrum Master and is omitted from every other
+caller's view.
 
 ---
 
-## Conducting the Review
+## Practical Guidance
 
-### Accessing Sprint Review
+### Before the Review
 
-1. Navigate to "Sprint Review" in the sidebar
-2. Select the completed sprint
-3. The review interface displays
+**Developers:**
 
-### Review Agenda
+- All "Done" items are ready to demonstrate, and the demo environment is prepared.
+- The demo script or story is clear, and technical issues are resolved.
 
-A typical Sprint Review follows this structure:
+**Product Owner:**
+
+- Stakeholders are invited, the Sprint Goal is reviewed, and Product Backlog items are prepared for
+  discussion.
+- Next Sprint priorities are identified.
+
+**Scrum Master:**
+
+- The event is scheduled and the room is prepared; stakeholder attendance is confirmed.
+- Previous Review notes are available.
+
+### Open the Review
+
+1. Click **Sprint Review** in the sidebar and select the completed Sprint.
+2. Click **Create Sprint Review** and record the basic details: the Sprint, the date, the facilitator
+   (usually the Scrum Master) and the attendees.
+3. Save to create the record.
+
+### Run the agenda
 
 ```
 ┌─────────────────────────────────────────────────────────┐
@@ -129,147 +151,36 @@ A typical Sprint Review follows this structure:
 └─────────────────────────────────────────────────────────┘
 ```
 
-### Creating a Sprint Review Record
+### Demonstrate the Increment
 
-1. Click "Create Sprint Review"
-2. Fill in basic details:
-   - **Sprint**: Select the completed sprint
-   - **Date**: Review date
-   - **Facilitator**: Usually Scrum Master
-   - **Attendees**: Add participants
+- **Prepare** — test the demo beforehand, have a backup plan, prepare demo data and know the
+  acceptance criteria.
+- **During the demo** — start with the Sprint Goal, show the user journey, let stakeholders try it and
+  answer questions.
+- **If the demo fails** — stay calm, explain what it should do, show screenshots or video if
+  available, note it as an Impediment to fix, and move on.
 
-3. Save to create the review record
+### Gather feedback
 
----
+1. **Encourage questions** — "What do you think?", "Does this meet your needs?", "Any concerns?"
+2. **Document feedback** — note all comments, capture who said what, and record suggestions.
+3. **Clarify understanding** — repeat back what you heard, ask follow-ups and confirm alignment.
+4. In the interface, click **Add Feedback** and record **From**, **Content**, **Type** and the
+   **Action** to take, then save.
 
-## Demonstrating Work
+### Record the Sprint Goal outcome
 
-### Demo Best Practices
+Record the team's verdict on whether the Sprint Goal was met. If the Sprint has a Goal, the Review
+cannot be completed without it.
 
-**Preparation:**
+### Adapt the Product Backlog
 
-- Test the demo beforehand
-- Have a backup plan if demo fails
-- Prepare demo data
-- Know the acceptance criteria
-
-**During Demo:**
-
-- Start with the Sprint Goal
-- Show the user journey
-- Let stakeholders try it
-- Answer questions
-
-**Demo Script Example:**
-
-```
-1. Introduction
-   "Today we'll show the user authentication features
-    we completed this sprint."
-
-2. Demo Flow
-   "First, let me show the new registration flow..."
-   [Demonstrate registration]
-
-   "Now, here's the password reset feature..."
-   [Demonstrate password reset]
-
-3. Stakeholder Participation
-   "Would you like to try the registration yourself?"
-
-4. Q&A
-   "Any questions about what you've seen?"
-```
-
-### Handling Demo Issues
-
-If the demo doesn't work:
-
-- Stay calm
-- Explain what it should do
-- Show screenshots/video if available
-- Note it as an impediment to fix
-- Move to next item
-
----
-
-## Gathering Feedback
-
-### Feedback Collection
-
-During and after demonstrations:
-
-1. **Encourage Questions**
-   - "What do you think?"
-   - "Does this meet your needs?"
-   - "Any concerns?"
-
-2. **Document Feedback**
-   - Note all comments
-   - Capture who said what
-   - Record suggestions
-
-3. **Clarify Understanding**
-   - Repeat back what you heard
-   - Ask follow-up questions
-   - Ensure alignment
-
-### Feedback Types
-
-| Type               | Example                          | Action                           |
-| ------------------ | -------------------------------- | -------------------------------- |
-| **Positive**       | "This is exactly what we needed" | Note for team morale             |
-| **Change Request** | "Can we also add...?"            | Add to backlog                   |
-| **Concern**        | "This might confuse users"       | Discuss, may create item         |
-| **New Idea**       | "What if we could...?"           | Add to backlog for consideration |
-| **Priority Shift** | "We need X sooner than Y"        | Re-prioritize backlog            |
-
-### Recording Feedback
-
-In the Sprint Review interface:
-
-1. Click "Add Feedback"
-2. Enter details:
-   - **From**: Who provided the feedback
-   - **Content**: The feedback itself
-   - **Type**: Suggestion, concern, change request, etc.
-   - **Action**: What to do with it
-
-3. Save the feedback
-
----
-
-## Backlog Adjustments
-
-### Why Adjust the Backlog?
-
-Based on review feedback, you might:
-
-- Add new items
-- Remove items no longer needed
-- Re-prioritize existing items
-- Update item descriptions
-- Change release plans
-
-### Making Adjustments
-
-1. **During the Review**:
-   - Discuss proposed changes
-   - Get stakeholder agreement
-   - Note changes to make
-
-2. **After the Review**:
-   - Navigate to Product Backlog
-   - Make agreed adjustments:
-     - Add new items
-     - Update priorities
-     - Modify descriptions
-
-3. **Document Changes**:
-   - In the review record
-   - Note rationale for changes
-
-### Backlog Adjustment Example
+1. **During the Review** — discuss proposed changes, get stakeholder agreement, and note the changes
+   to make: add items, remove items no longer needed, re-order existing items, update descriptions, or
+   change release plans.
+2. **After the Review** — open the [Product Backlog](./product-backlog.md) and make the agreed
+   adjustments.
+3. **Document the changes** — record them in the Review, with the rationale.
 
 ```
 Based on review feedback:
@@ -286,45 +197,22 @@ Re-prioritized:
 - "Email templates" moved from Should to Must Have
 ```
 
+### Document the Review
+
+Capture the Sprint summary (planned versus delivered, Sprint Goal achievement, key metrics), the
+demonstration notes, the feedback summary and the backlog changes. Details about items demonstrated
+and next steps belong in the **Summary** field.
+
 ---
 
-## Review Documentation
+## Gates and Enforcement
 
-### Creating Review Notes
-
-Document the review for future reference:
-
-1. **Sprint Summary**
-   - What was planned vs. delivered
-   - Sprint Goal achievement
-   - Key metrics (velocity, etc.)
-
-2. **Demonstration Notes**
-   - What was shown
-   - How it was received
-   - Any issues during demo
-
-3. **Feedback Summary**
-   - All feedback collected
-   - Action items from feedback
-   - Who is responsible
-
-4. **Backlog Changes**
-   - Items added/removed/changed
-   - Rationale for changes
-
-### Review Record Fields
-
-| Field                   | Description                                                                    |
-| ----------------------- | ------------------------------------------------------------------------------ |
-| **Sprint**              | Which sprint was reviewed                                                      |
-| **Date**                | When the review occurred                                                       |
-| **Attendees**           | Who participated (tracked with name, email, role, attendance status)           |
-| **Summary**             | Overall outcome including items demonstrated and next steps                    |
-| **Feedback**            | Stakeholder input (categorized as Positive, Negative, Suggestion, or Question) |
-| **Backlog Adjustments** | Changes made to the backlog based on review                                    |
-
-> **Note**: Details about items demonstrated and next steps should be captured in the **Summary** field. The Increment delivered during the sprint is automatically linked to the review record.
+| Refusal                                             | What it means                                                    | What to do                                        |
+| --------------------------------------------------- | ---------------------------------------------------------------- | ------------------------------------------------- |
+| _Only the Scrum Team can change this Review_        | A non-member tried to record attendance, feedback or adjustments | Ask a member of the team to make the change       |
+| _Record the Sprint Goal outcome_                    | The Sprint has a Goal and no verdict was recorded                | Record whether the Goal was met                   |
+| _The Review cannot complete before the Sprint ends_ | The Sprint's end date has not arrived                            | Hold the Review on or after the Sprint's end date |
+| _A Sprint cannot close without its Review_          | The Sprint is being closed with no Review recorded               | Conduct and record the Sprint Review              |
 
 ---
 
@@ -332,62 +220,23 @@ Document the review for future reference:
 
 ### For Product Owners
 
-**Before:**
-
-- Invite relevant stakeholders
-- Prepare the agenda
-- Know what was delivered
-
-**During:**
-
-- Facilitate stakeholder engagement
-- Capture feedback
-- Guide backlog discussions
-
-**After:**
-
-- Update the backlog
-- Communicate changes to stakeholders
-- Prepare for next sprint
+- **Before** — invite relevant stakeholders, prepare the agenda, and know what was delivered.
+- **During** — facilitate stakeholder engagement, capture feedback and guide backlog discussions.
+- **After** — update the Product Backlog, communicate the changes and prepare for the next Sprint.
 
 ### For Developers
 
-**Before:**
+- **Before** — prepare demos, test the demo environment and know the acceptance criteria.
+- **During** — demonstrate confidently, answer technical questions and listen to feedback.
+- **After** — incorporate feedback and mark the achievement.
 
-- Prepare demos
-- Test the demo environment
-- Know the acceptance criteria
+### For stakeholders
 
-**During:**
+Attend and participate actively, provide constructive feedback, ask questions and collaborate on
+priorities. Come prepared with questions, focus on value rather than implementation, be specific, and
+understand the constraints.
 
-- Demonstrate confidently
-- Answer technical questions
-- Listen to feedback
-
-**After:**
-
-- Incorporate feedback
-- Celebrate achievements
-
-### For Stakeholders
-
-**Your Role:**
-
-- Attend and participate actively
-- Provide constructive feedback
-- Ask questions
-- Collaborate on priorities
-
-**Tips:**
-
-- Come prepared with questions
-- Focus on value, not implementation
-- Be specific in feedback
-- Understand constraints
-
----
-
-## Common Mistakes to Avoid
+### Common mistakes
 
 | Mistake                 | Impact                 | Solution                      |
 | ----------------------- | ---------------------- | ----------------------------- |
@@ -395,62 +244,20 @@ Document the review for future reference:
 | Demo-only format        | No collaboration       | Encourage discussion          |
 | Showing incomplete work | False expectations     | Only show "Done" items        |
 | No backlog updates      | Wasted feedback        | Act on feedback immediately   |
-| Too long                | Stakeholders disengage | Stay within time box          |
+| Too long                | Stakeholders disengage | Stay within the time box      |
+
+### Example
+
+A team reviews Sprint 5 with the Sprint Goal "enable customers to save items for later purchase". Five
+of six items are delivered; "Share wishlist" is not. Stakeholders ask for social sharing and multiple
+wishlists, and the Product Owner re-orders "Share wishlist" to Must Have and adds the others to the
+Product Backlog. The team records that the Sprint Goal was met.
 
 ---
 
-## Example Sprint Review
+## Related Topics
 
-### Scenario: E-commerce Team
-
-**Sprint 5 Review**
-
-**Attendees:**
-
-- Scrum Team (5)
-- Product Manager
-- Marketing Lead
-- Customer Support Lead
-
-**Sprint Goal:** "Enable customers to save items for later purchase"
-
-**Delivered:**
-
-- ✅ Save to wishlist
-- ✅ View wishlist
-- ✅ Remove from wishlist
-- ✅ Wishlist count badge
-- ✅ Move to cart
-- ❌ Share wishlist (not completed)
-
-**Demonstration:**
-
-1. Showed adding items to wishlist from product page
-2. Demonstrated wishlist management page
-3. Let stakeholders try the feature
-4. Showed wishlist badge in header
-
-**Feedback:**
-
-- Marketing: "Love it! Can we add social sharing?"
-- Support: "Users will want to create multiple wishlists"
-- PM: "Move to cart is smooth, good UX"
-
-**Backlog Adjustments:**
-
-- Added: "Share wishlist" (re-prioritized to Must Have)
-- Added: "Multiple wishlists" (Should Have)
-- Added: "Wishlist analytics" (Could Have)
-
-**Next Sprint Preview:**
-
-- Payment integration
-- Share wishlist (carry over)
-
----
-
-**Related Topics**:
-
-- [Sprint Planning](./sprint-planning.md) - Plan the next sprint
-- [Retrospectives](./retrospectives.md) - Improve the process
-- [Product Backlog](./product-backlog.md) - Manage work items
+- [Increment](./increment.md) — the artifact the Review inspects
+- [Sprint Planning](./sprint-planning.md) — where the next Sprint is planned
+- [Sprint Retrospective](./sprint-retrospective.md) — where the process is improved
+- [Product Backlog](./product-backlog.md) — where the Review's feedback lands

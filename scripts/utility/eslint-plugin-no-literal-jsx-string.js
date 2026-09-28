@@ -34,7 +34,7 @@ const plugin = {
             'Disallow hardcoded user-facing strings in JSX — use i18n translation keys instead',
           category: 'Best Practices',
           recommended: true,
-          url: 'https://github.com/orbivort/scrumooth/blob/main/docs/architecture/i18n-architecture-review.md',
+          url: 'https://github.com/orbivort/scrumooth/blob/main/docs/architecture/i18n-architecture.md',
         },
         fixable: null,
         schema: [

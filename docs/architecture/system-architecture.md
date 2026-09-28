@@ -323,7 +323,7 @@ const team = await prisma.team.findUnique({
 
 ```http
 POST /api/v1/teams HTTP/1.1
-Host: api.scrumooth.dev
+Host: api.example.com
 Content-Type: application/json
 Authorization: Bearer <token>
 Cookie: accessToken=<token>

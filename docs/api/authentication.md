@@ -163,7 +163,7 @@ Content-Type: application/json
 **Example Request**
 
 ```bash
-curl -X POST https://api.scrumooth.dev/api/v1/auth/register \
+curl -X POST https://api.example.com/api/v1/auth/register \
   -H "Content-Type: application/json" \
   -d '{
     "email": "john.doe@example.com",
@@ -258,7 +258,7 @@ Content-Type: application/json
 **Example Request**
 
 ```bash
-curl -X POST https://api.scrumooth.dev/api/v1/auth/login \
+curl -X POST https://api.example.com/api/v1/auth/login \
   -H "Content-Type: application/json" \
   -c cookies.txt \
   -d '{
@@ -306,7 +306,7 @@ Content-Type: application/json
 **Example Request**
 
 ```bash
-curl -X POST https://api.scrumooth.dev/api/v1/auth/logout \
+curl -X POST https://api.example.com/api/v1/auth/logout \
   -b cookies.txt
 ```
 
@@ -348,7 +348,7 @@ Content-Type: application/json
 **Example Request**
 
 ```bash
-curl -X POST https://api.scrumooth.dev/api/v1/auth/logout-all \
+curl -X POST https://api.example.com/api/v1/auth/logout-all \
   -b cookies.txt
 ```
 
@@ -404,7 +404,7 @@ Content-Type: application/json
 **Example Request**
 
 ```bash
-curl -X POST https://api.scrumooth.dev/api/v1/auth/refresh \
+curl -X POST https://api.example.com/api/v1/auth/refresh \
   -b cookies.txt
 ```
 
@@ -446,7 +446,7 @@ Content-Type: application/json
 **Example Request**
 
 ```bash
-curl -X POST https://api.scrumooth.dev/api/v1/auth/activity \
+curl -X POST https://api.example.com/api/v1/auth/activity \
   -b cookies.txt
 ```
 
@@ -491,7 +491,7 @@ Content-Type: application/json
 **Example Request**
 
 ```bash
-curl -X GET https://api.scrumooth.dev/api/v1/auth/me \
+curl -X GET https://api.example.com/api/v1/auth/me \
   -b cookies.txt
 ```
 
@@ -545,7 +545,7 @@ Content-Type: application/json
 **Example Request**
 
 ```bash
-curl -X PUT https://api.scrumooth.dev/api/v1/auth/me/profile \
+curl -X PUT https://api.example.com/api/v1/auth/me/profile \
   -H "Content-Type: application/json" \
   -b cookies.txt \
   -d '{
@@ -610,7 +610,7 @@ Content-Type: application/json
 **Example Request**
 
 ```bash
-curl -X PUT https://api.scrumooth.dev/api/v1/auth/me/password \
+curl -X PUT https://api.example.com/api/v1/auth/me/password \
   -H "Content-Type: application/json" \
   -b cookies.txt \
   -d '{
@@ -672,7 +672,7 @@ Content-Type: application/json
 **Example Request**
 
 ```bash
-curl -X GET https://api.scrumooth.dev/api/v1/auth/sessions \
+curl -X GET https://api.example.com/api/v1/auth/sessions \
   -b cookies.txt
 ```
 
@@ -727,7 +727,7 @@ Content-Type: application/json
 **Example Request**
 
 ```bash
-curl -X DELETE https://api.scrumooth.dev/api/v1/auth/sessions/550e8400-e29b-41d4-a716-446655440002 \
+curl -X DELETE https://api.example.com/api/v1/auth/sessions/550e8400-e29b-41d4-a716-446655440002 \
   -b cookies.txt
 ```
 

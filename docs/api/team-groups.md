@@ -41,8 +41,8 @@ interface cannot provoke `409 GATE_DOD_GROUP_GOVERNED`, and the API keeps enforc
 group's teams, marks the teams that have not re-adopted a change, and links to where the commitment is
 authored.
 
-See the [Team Groups user guide](../user-guide/core-features/team-groups.md) for the same rules told
-from a user's point of view.
+The rules are told here from an integrator's point of view; the same behaviour is what a team's
+Product Owner or Scrum Master sees when they manage the commitment.
 
 ## Authentication
 

@@ -73,21 +73,7 @@ The DoD is the Increment's commitment, so the API holds five rules around it rat
 
 ## Authentication
 
-All DoD endpoints require authentication. Include the access token in your request:
-
-**Using Cookies (Recommended)**
-
-```http
-GET /api/v1/teams/:teamId/definition-of-done
-Cookie: accessToken=eyJhbGc...
-```
-
-**Using Bearer Token**
-
-```http
-GET /api/v1/teams/:teamId/definition-of-done
-Authorization: Bearer eyJhbGc...
-```
+All DoD endpoints require authentication. See [Authentication](./README.md#authentication) for the cookie and bearer-token forms.
 
 ## Endpoints
 
@@ -178,7 +164,7 @@ Content-Type: application/json
 **Example Request**
 
 ```bash
-curl -X GET https://api.scrumooth.dev/api/v1/teams/550e8400-e29b-41d4-a716-446655440000/definition-of-done \
+curl -X GET https://api.example.com/api/v1/teams/550e8400-e29b-41d4-a716-446655440000/definition-of-done \
   -b cookies.txt
 ```
 
@@ -324,7 +310,7 @@ Content-Type: application/json
 **Example Request**
 
 ```bash
-curl -X PUT https://api.scrumooth.dev/api/v1/teams/550e8400-e29b-41d4-a716-446655440000/definition-of-done \
+curl -X PUT https://api.example.com/api/v1/teams/550e8400-e29b-41d4-a716-446655440000/definition-of-done \
   -H "Content-Type: application/json" \
   -b cookies.txt \
   -d '{
@@ -439,7 +425,7 @@ matching the sentence.
 **Example Request**
 
 ```bash
-curl -X GET https://api.scrumooth.dev/api/v1/teams/550e8400-e29b-41d4-a716-446655440000/definition-of-done/history \
+curl -X GET https://api.example.com/api/v1/teams/550e8400-e29b-41d4-a716-446655440000/definition-of-done/history \
   -b cookies.txt
 ```
 
@@ -555,7 +541,7 @@ Content-Type: application/json
 **Example Request**
 
 ```bash
-curl -X POST https://api.scrumooth.dev/api/v1/product-backlog/550e8400-e29b-41d4-a716-446655440050/verify-dod \
+curl -X POST https://api.example.com/api/v1/product-backlog/550e8400-e29b-41d4-a716-446655440050/verify-dod \
   -H "Content-Type: application/json" \
   -b cookies.txt \
   -d '{
@@ -658,7 +644,7 @@ Content-Type: application/json
 **Example Request**
 
 ```bash
-curl -X GET https://api.scrumooth.dev/api/v1/product-backlog/550e8400-e29b-41d4-a716-446655440050/dod-verifications \
+curl -X GET https://api.example.com/api/v1/product-backlog/550e8400-e29b-41d4-a716-446655440050/dod-verifications \
   -b cookies.txt
 ```
 
@@ -740,7 +726,7 @@ Content-Type: application/json
 **Example Request**
 
 ```bash
-curl -X GET https://api.scrumooth.dev/api/v1/sprints/550e8400-e29b-41d4-a716-446655440060/dod-compliance \
+curl -X GET https://api.example.com/api/v1/sprints/550e8400-e29b-41d4-a716-446655440060/dod-compliance \
   -b cookies.txt
 ```
 
@@ -826,8 +812,7 @@ and the version each team adopted, and replace the commitment every team in it c
 Joining and leaving stay on the team, under **Team → Scrum Health → Shared Definition of Done**,
 because that decision is the team's own.
 
-See [Team Groups API](./team-groups.md) and
-[Team Groups and the Shared Definition of Done](../user-guide/core-features/team-groups.md).
+See the [Team Groups API](./team-groups.md).
 
 ---
 

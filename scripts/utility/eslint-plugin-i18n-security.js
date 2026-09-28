@@ -24,15 +24,15 @@ const plugin = {
             'Disallow i18n translated content (t() output) in dangerouslySetInnerHTML without sanitization',
           category: 'Security',
           recommended: true,
-          url: 'https://github.com/orbivort/scrumooth/blob/main/docs/architecture/i18n-architecture-review.md',
+          url: 'https://github.com/orbivort/scrumooth/blob/main/docs/architecture/i18n-architecture.md',
         },
         fixable: null,
         schema: [],
         messages: {
           noDangerousI18n:
-            'Using i18n t() output in dangerouslySetInnerHTML is a potential XSS vector. Sanitize with DOMPurify.sanitize() or use <Trans> component instead. See docs/architecture/i18n-architecture-review.md Issue 5.4',
+            'Using i18n t() output in dangerouslySetInnerHTML is a potential XSS vector. Sanitize with DOMPurify.sanitize() or use <Trans> component instead. See docs/architecture/i18n-architecture.md',
           noDangerousInnerHTML:
-            'Using dangerouslySetInnerHTML is discouraged. If content comes from i18n t(), sanitize with DOMPurify.sanitize() first. See docs/architecture/i18n-architecture-review.md Issue 5.4',
+            'Using dangerouslySetInnerHTML is discouraged. If content comes from i18n t(), sanitize with DOMPurify.sanitize() first. See docs/architecture/i18n-architecture.md',
         },
       },
 
