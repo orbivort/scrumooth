@@ -378,5 +378,72 @@ describe('ListView', () => {
       expect(screen.getAllByLabelText(/^Position \d+ in the Product Backlog$/)).toHaveLength(3);
       expect(screen.queryByLabelText(/^Move /)).not.toBeInTheDocument();
     });
+
+    it('should move an item up one position for the Product Owner', async () => {
+      const user = userEvent.setup();
+      const onMove = vi.fn();
+
+      renderWithProviders(
+        <ListView items={mockItems} onItemClick={mockOnItemClick} onMove={onMove} canOrder />
+      );
+
+      await user.click(
+        screen.getByLabelText(i18nT('backlog:order.moveUpAria', { title: 'Feature B' }))
+      );
+
+      expect(onMove).toHaveBeenCalledWith('pbi-2', 'up');
+    });
+  });
+
+  describe('Virtualized body', () => {
+    const buildVirtualItems = () =>
+      Array.from({ length: 60 }, (_, i) =>
+        createMockBacklogItem({
+          id: `pbi-${i}`,
+          title: `Feature ${i}`,
+          priority: MoSCoWPriority.MUST_HAVE,
+          status: (i === 0 ? 'UNKNOWN' : ItemStatus.NEW) as never,
+          businessValue: i === 0 ? undefined : 5,
+          storyPoints: i === 0 ? undefined : 3,
+          labels: i === 0 ? ['a', 'b', 'c', 'd'] : ['x'],
+        })
+      );
+
+    it('should render fallbacks and support row click plus move controls', async () => {
+      const user = userEvent.setup();
+      const onMove = vi.fn();
+
+      renderWithProviders(
+        <ListView
+          items={buildVirtualItems()}
+          onItemClick={mockOnItemClick}
+          onMove={onMove}
+          canOrder
+        />
+      );
+
+      // Unknown status falls back to the raw value; missing value/estimate render a dash and
+      // more than two labels collapse into a "+N" overflow indicator.
+      expect(screen.getByText('UNKNOWN')).toBeInTheDocument();
+      expect(screen.getAllByText('-').length).toBeGreaterThanOrEqual(2);
+      expect(screen.getByText('+2')).toBeInTheDocument();
+
+      // Clicking a virtualized row opens the item.
+      await user.click(screen.getByText('Feature 0'));
+      expect(mockOnItemClick).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'pbi-0', title: 'Feature 0' })
+      );
+
+      // Move controls in the virtualized body.
+      await user.click(
+        screen.getByLabelText(i18nT('backlog:order.moveUpAria', { title: 'Feature 1' }))
+      );
+      await user.click(
+        screen.getByLabelText(i18nT('backlog:order.moveDownAria', { title: 'Feature 1' }))
+      );
+
+      expect(onMove).toHaveBeenCalledWith('pbi-1', 'up');
+      expect(onMove).toHaveBeenCalledWith('pbi-1', 'down');
+    });
   });
 });

@@ -1,4 +1,32 @@
 import { test, expect } from '../fixtures';
+import type { Page } from '@playwright/test';
+import { IncrementStatus } from '../../src/types';
+import { INCREMENTS } from '../../src/mocks/fixtures';
+import { TEAM_SEEDS } from '../../src/mocks/fixtures/personas';
+
+/**
+ * The Increment whose integration verification these cases inspect.
+ *
+ * The sign-up form joins every account this suite registers to the demo universe's first team, so the
+ * Increment under test is that team's open one -- the Increment its Active Sprint is assembling. Its
+ * delivered sibling is the team's *first* Increment, so its verification is the "first Increment"
+ * exemption with nothing before it to test against; the open one is the only Increment of the team
+ * that has an Increment before it, which is what makes tests against a prior Increment possible at
+ * all.
+ */
+const TEAM = TEAM_SEEDS[0];
+
+const UNDER_TEST = INCREMENTS.filter(
+  (increment) => increment.teamId === TEAM?.id && increment.status === IncrementStatus.DRAFT
+).sort((left, right) => right.createdAt.localeCompare(left.createdAt))[0];
+
+if (!UNDER_TEST) {
+  throw new Error(
+    `The demo universe holds no open Increment for ${TEAM?.name ?? 'the first team'}`
+  );
+}
+
+const INCREMENT_ADDRESS = `/increment/${UNDER_TEST.id}`;
 
 test.describe('Increment Integration Verification', () => {
   test.beforeEach(async ({ loginPage, page }) => {
@@ -22,8 +50,8 @@ test.describe('Increment Integration Verification', () => {
     await page.waitForTimeout(500);
   });
 
-  const gotoIncrementDetail = async (page: import('@playwright/test').Page) => {
-    await page.goto('/increment/inc-current', {
+  const gotoIncrementDetail = async (page: Page) => {
+    await page.goto(INCREMENT_ADDRESS, {
       waitUntil: 'domcontentloaded',
       timeout: 30000,
     });
@@ -32,6 +60,25 @@ test.describe('Increment Integration Verification', () => {
     await page
       .waitForSelector('[data-testid="increment-detail"], h1', { timeout: 10000 })
       .catch(() => {});
+  };
+
+  /**
+   * Records a result against the Increment before this one, through the panel's own form.
+   *
+   * The universe cannot hand a recorded result over: the team's delivered Increment is its first (so
+   * there is nothing for it to have been tested against) and the open one has neither gate walked.
+   * Reaching the state the way a team reaches it is also the stronger case -- the form, the write it
+   * sends and the row the panel reads back are all exercised -- and it is what the suite's own rule
+   * asks for: a spec that needs a state the demo does not hold reaches it through the interface.
+   *
+   * The result select defaults to "Passed", so what this records is the pass the cases below read.
+   */
+  const recordIntegrationTest = async (page: Page): Promise<void> => {
+    await page.getByRole('combobox', { name: 'Prior Increment' }).selectOption({ index: 1 });
+    await page.getByRole('button', { name: 'Add Integration Test' }).click();
+
+    // The row is the panel's own read-back of the record, so waiting for it is waiting for the write.
+    await expect(page.locator('text=Prior Increment:').first()).toBeVisible({ timeout: 10000 });
   };
 
   test('TC-INCINT-001: Display Increment integration verification status', async ({ page }) => {
@@ -58,6 +105,10 @@ test.describe('Increment Integration Verification', () => {
   test('TC-INCINT-002: Display integration tests list with pass/fail results', async ({ page }) => {
     await gotoIncrementDetail(page);
 
+    await test.step('Record a passed result against the prior Increment', async () => {
+      await recordIntegrationTest(page);
+    });
+
     await test.step('Verify integration tests section renders', async () => {
       await page.waitForSelector('text=Integration Tests', { timeout: 10000 }).catch(() => {});
       const section = page.locator('text=Integration Tests').first();
@@ -76,6 +127,10 @@ test.describe('Increment Integration Verification', () => {
 
   test('TC-INCINT-003: Display increment dependency chain', async ({ page }) => {
     await gotoIncrementDetail(page);
+
+    await test.step('Record a passed result against the prior Increment', async () => {
+      await recordIntegrationTest(page);
+    });
 
     await test.step('Verify the increment chain is rendered', async () => {
       await page.waitForSelector('text=Increment Chain', { timeout: 10000 }).catch(() => {});
@@ -97,11 +152,9 @@ test.describe('Increment Integration Verification', () => {
     await gotoIncrementDetail(page);
 
     await test.step('Click the verify now button', async () => {
-      const verifyButton = page.locator('button:has-text("Verify Now")').first();
-      const hasButton = await verifyButton.isVisible().catch(() => false);
-      if (hasButton) {
-        await verifyButton.click();
-      }
+      // The panel's own label for the action. The Increment under test is open, so the action is
+      // offered; the panel answers either with the verdict or with the gate that refuses it.
+      await page.getByRole('button', { name: 'Verify Integration' }).click();
     });
 
     await test.step('Verify the increment still renders after verification', async () => {

@@ -1,5 +1,5 @@
 import React from 'react';
-import { screen, renderWithProviders, waitFor } from '../../../test-utils';
+import { screen, renderWithProviders, waitFor, fireEvent } from '../../../test-utils';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, beforeEach, beforeAll, vi } from 'vitest';
 
@@ -594,6 +594,126 @@ describe('EditItemModal', () => {
         expect(screen.getByText(/provide a brief, descriptive title/i)).toBeInTheDocument();
         expect(screen.getByText(/explain the context, purpose/i)).toBeInTheDocument();
       });
+    });
+  });
+
+  describe('Field errors', () => {
+    const SetFormErrors: React.FC<{ errors: Record<string, string> }> = ({ errors }) => {
+      const { setFormErrors } = useBacklogContext();
+      React.useEffect(() => {
+        setFormErrors(errors);
+      }, []);
+      return null;
+    };
+
+    it('should render the error message for every field', async () => {
+      renderWithProviders(
+        <BacklogProvider>
+          <SetSelectedItem item={mockItem} />
+          <SetFormErrors
+            errors={{
+              title: 'Title error',
+              description: 'Description error',
+              moscowPriority: 'Priority error',
+              businessValue: 'Business value error',
+              estimate: 'Estimate error',
+              labels: 'Labels error',
+              acceptanceCriteria: 'Criteria error',
+            }}
+          />
+          <EditItemModal isOpen={true} onClose={vi.fn()} onSubmit={vi.fn()} isSubmitting={false} />
+        </BacklogProvider>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText('Title error')).toBeInTheDocument();
+      });
+      expect(screen.getByText('Description error')).toBeInTheDocument();
+      expect(screen.getByText('Priority error')).toBeInTheDocument();
+      expect(screen.getByText('Business value error')).toBeInTheDocument();
+      expect(screen.getByText('Estimate error')).toBeInTheDocument();
+      expect(screen.getByText('Labels error')).toBeInTheDocument();
+      expect(screen.getByText('Criteria error')).toBeInTheDocument();
+    });
+  });
+
+  describe('Clearing values and Meta interactions', () => {
+    it('should clear the business value and estimate selections', async () => {
+      renderEditModal();
+
+      await waitFor(() => expect(screen.getByLabelText(/business value/i)).toBeInTheDocument());
+
+      const businessValue = screen.getByLabelText(/business value/i) as HTMLSelectElement;
+      await userEvent.selectOptions(businessValue, '8');
+      await userEvent.selectOptions(businessValue, '');
+
+      const estimate = screen.getByLabelText(/estimate/i) as HTMLSelectElement;
+      await userEvent.selectOptions(estimate, '13');
+      await userEvent.selectOptions(estimate, '');
+    });
+
+    it('should close when the overlay background is clicked', async () => {
+      const onClose = vi.fn();
+      renderEditModal({ onClose });
+
+      await waitFor(() => {
+        expect(document.querySelector('[role="dialog"]')).toBeInTheDocument();
+      });
+
+      const overlay = document.querySelector('[class*="modal-overlay"]');
+      expect(overlay).not.toBeNull();
+      fireEvent.click(overlay!);
+
+      expect(onClose).toHaveBeenCalledTimes(1);
+    });
+
+    it('should change priority and support keyboard navigation for the Product Owner', async () => {
+      vi.spyOn(teamContextModule, 'useTeamContext').mockReturnValue({
+        userRole: 'PRODUCT_OWNER',
+      } as never);
+      renderEditModal();
+
+      await waitFor(() => expect(screen.getByText('Should Have')).toBeInTheDocument());
+
+      const radios = document.querySelectorAll<HTMLElement>('[role="radio"]');
+      await userEvent.click(radios[1]!);
+      fireEvent.keyDown(radios[1]!, { key: 'ArrowRight' });
+      fireEvent.keyDown(radios[1]!, { key: 'ArrowLeft' });
+    });
+  });
+
+  describe('Unsaved changes prompt actions', () => {
+    it('should confirm leaving and call onClose', async () => {
+      const onClose = vi.fn();
+      renderEditModal({ onClose });
+
+      await waitFor(() => expect(screen.getByLabelText(/title/i)).toBeInTheDocument());
+
+      await userEvent.type(screen.getByLabelText(/title/i), ' Modified');
+      await userEvent.click(screen.getByRole('button', { name: /cancel/i }));
+
+      await userEvent.click(await screen.findByRole('button', { name: /discard changes/i }));
+
+      await waitFor(() => {
+        expect(onClose).toHaveBeenCalled();
+      });
+    });
+
+    it('should dismiss the prompt without closing the modal', async () => {
+      const onClose = vi.fn();
+      renderEditModal({ onClose });
+
+      await waitFor(() => expect(screen.getByLabelText(/title/i)).toBeInTheDocument());
+
+      await userEvent.type(screen.getByLabelText(/title/i), ' Modified');
+      await userEvent.click(screen.getByRole('button', { name: /cancel/i }));
+
+      await userEvent.click(await screen.findByRole('button', { name: /go back/i }));
+
+      await waitFor(() => {
+        expect(screen.queryByText(/discard changes/i)).not.toBeInTheDocument();
+      });
+      expect(onClose).not.toHaveBeenCalled();
     });
   });
 });

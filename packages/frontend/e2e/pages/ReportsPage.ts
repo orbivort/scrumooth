@@ -17,7 +17,7 @@ export class ReportsPage extends BasePage {
     this.pageHeader = page.locator('[class*="reports"], h1:has-text("Report")').first();
     this.velocityChart = page.locator('[class*="velocity-chart"], [class*="velocity"]').first();
     this.burndownChart = page.locator('[class*="burndown-chart"], [class*="burndown"]').first();
-    this.sprintMetrics = page.locator('[class*="sprint-metrics"], [class*="metrics"]');
+    this.sprintMetrics = page.locator('[class*="sprint-metrics"], [class*="metrics"]').first();
     this.teamMetrics = page.locator('[class*="team-metrics"]');
     this.dateRangeSelector = page.locator('[class*="date-range"], [class*="date-picker"]');
     this.teamFilter = page.locator('[class*="team-filter"], [name="team"]');

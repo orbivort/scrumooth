@@ -91,6 +91,12 @@ export default defineConfig({
         'src/hooks/index.ts',
         'src/services/index.ts',
         'src/styles/index.ts',
+        // Type-only declaration files. Like the barrels above, this module erases to nothing at
+        // run time: it declares only `interface`s, so v8 sees an empty module and reports 0/0/0/0
+        // however many tests import its types. There is no behaviour to assert, so it is listed
+        // explicitly rather than by a `*.types.ts` glob — `src/types/notification.types.ts` shares
+        // the suffix but holds runtime constants and is covered, and must stay in the report.
+        'src/pages/Backlog/types/backlog.types.ts',
       ],
       // NOTE: `all` was removed in Vitest 4, so it no longer has any effect (it also fails
       // type checking). Coverage therefore only reports modules loaded by the tests. To also
@@ -101,6 +107,8 @@ export default defineConfig({
         functions: 80,
         branches: 80,
         statements: 80,
+        // The gate is per file, not only on the aggregate
+        perFile: true,
       },
     },
   },

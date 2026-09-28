@@ -11,7 +11,7 @@
  */
 
 import React from 'react';
-import { screen, fireEvent, renderWithProviders, initTestI18n } from '../../test-utils';
+import { screen, fireEvent, renderWithProviders, initTestI18n, i18nT } from '../../test-utils';
 import { vi, describe, it, expect, beforeEach, afterEach, beforeAll } from 'vitest';
 
 import { CreateActionItemModal } from './CreateActionItemModal';
@@ -432,5 +432,140 @@ describe('CreateActionItemModal', () => {
       renderModal();
       expect(screen.getByText('optional')).toBeInTheDocument();
     });
+  });
+});
+
+describe('CreateActionItemModal - unsaved changes and keyboard handling', () => {
+  const onClose = vi.fn();
+  const onSubmit = vi.fn();
+  const onFieldChange = vi.fn();
+  const onFieldBlur = vi.fn();
+  const validateField = vi.fn();
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    validateField.mockReturnValue(undefined);
+  });
+
+  // A controlled harness so editing the form actually changes `formData`, which is what the
+  // component compares against the snapshot it took when the modal opened.
+  const renderHarness = () => {
+    const Harness: React.FC = () => {
+      const [formData, setFormData] = React.useState({ ...defaultFormData });
+      return (
+        <CreateActionItemModal
+          isOpen
+          formData={formData}
+          errors={defaultErrors}
+          touched={defaultTouched}
+          teamMembers={defaultTeamMembers}
+          isLoadingTeam={false}
+          isPending={false}
+          onClose={onClose}
+          onSubmit={onSubmit}
+          onFieldChange={(field, value) => {
+            onFieldChange(field, value);
+            setFormData((prev) => ({ ...prev, [field]: value }));
+          }}
+          onFieldBlur={onFieldBlur}
+          validateField={validateField}
+        />
+      );
+    };
+    return renderWithProviders(<Harness />);
+  };
+
+  const makeDirty = () =>
+    fireEvent.change(screen.getByPlaceholderText('Enter action item title'), {
+      target: { value: 'Changed title' },
+    });
+
+  it('should close on Escape when here are no unsaved changes', () => {
+    renderHarness();
+
+    fireEvent.keyDown(document, { key: 'Escape' });
+
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('should warn before discarding unsaved changes', () => {
+    renderHarness();
+    makeDirty();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    expect(screen.getByText(i18nT('common:unsavedChanges.attentionRequired'))).toBeInTheDocument();
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it('should close when the user confirms discarding unsaved changes', () => {
+    renderHarness();
+    makeDirty();
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    fireEvent.click(
+      screen.getByRole('button', { name: i18nT('common:unsavedChanges.discardChanges') })
+    );
+
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('should return to editing when the user cancels the unsaved-changes dialog', () => {
+    renderHarness();
+    makeDirty();
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    fireEvent.click(screen.getByRole('button', { name: i18nT('common:unsavedChanges.goBack') }));
+
+    expect(onClose).not.toHaveBeenCalled();
+    expect(
+      screen.queryByText(i18nT('common:unsavedChanges.attentionRequired'))
+    ).not.toBeInTheDocument();
+  });
+
+  it('should trap Tab focus within the dialog', () => {
+    renderHarness();
+
+    const dialog = screen.getByRole('dialog');
+    const focusables = dialog.querySelectorAll<HTMLElement>(
+      'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+    );
+    const first = focusables[0];
+    const last = focusables[focusables.length - 1];
+
+    last.focus();
+    fireEvent.keyDown(document, { key: 'Tab' });
+    expect(document.activeElement).toBe(first);
+
+    first.focus();
+    fireEvent.keyDown(document, { key: 'Tab', shiftKey: true });
+    expect(document.activeElement).toBe(last);
+  });
+
+  it('should re-apply the title value when validation fails on blur', () => {
+    validateField.mockReturnValue('required');
+    renderHarness();
+
+    fireEvent.blur(screen.getByPlaceholderText('Enter action item title'));
+
+    expect(onFieldChange).toHaveBeenCalledWith('title', '');
+  });
+
+  it('should re-apply the owner value when validation fails on blur', () => {
+    validateField.mockReturnValue('required');
+    renderHarness();
+
+    fireEvent.blur(screen.getByRole('combobox', { name: /Owner/i }));
+
+    expect(onFieldChange).toHaveBeenCalledWith('ownerId', '');
+  });
+
+  it('should re-apply the due date value when validation fails on blur', () => {
+    validateField.mockReturnValue('required');
+    renderHarness();
+
+    fireEvent.blur(screen.getByLabelText(/Due Date/i));
+
+    expect(onFieldChange).toHaveBeenCalledWith('dueDate', '');
   });
 });

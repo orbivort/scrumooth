@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach, beforeAll } from 'vitest';
-import { renderWithProviders, screen, initTestI18n } from '../test-utils';
+import { renderWithProviders, screen, initTestI18n, waitFor, act } from '../test-utils';
 import userEvent from '@testing-library/user-event';
 
 import { TeamProvider, TeamInitializer, useTeamContext } from './TeamContext';
@@ -545,5 +545,133 @@ describe('TeamInitializer edge cases', () => {
     expect(screen.getByText('Select a Team')).toBeInTheDocument();
     expect(screen.getByText('UNKNOWN_ROLE')).toBeInTheDocument();
     expect(screen.getByText('Scrum Master')).toBeInTheDocument();
+  });
+});
+
+describe('TeamInitializer team selection interactions', () => {
+  const mockSwitchTeam = vi.fn();
+  const mockRefreshTeams = vi.fn();
+
+  beforeAll(async () => {
+    await initTestI18n();
+  });
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    useAuthStore.setState({ isAuthenticated: true, user: null, isLoading: false, error: null });
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  const renderWithTeams = () => {
+    const teams = [
+      createMockTeam('team-1', 'Team 1', 'PRODUCT_OWNER'),
+      createMockTeam('team-2', 'Team 2', 'DEVELOPERS'),
+    ];
+
+    vi.mocked(useTeamStateModule.useTeamState).mockReturnValue({
+      teams,
+      teamsLoading: false,
+      teamsError: null,
+      currentTeam: null,
+      userRoleInCurrentTeam: null,
+      switchTeam: mockSwitchTeam,
+      refreshTeams: mockRefreshTeams,
+    });
+
+    return renderWithProviders(
+      <TeamProvider>
+        <TeamInitializer>
+          <div data-testid="child">Content</div>
+        </TeamInitializer>
+      </TeamProvider>
+    );
+  };
+
+  it('switches team and navigates to the dashboard when a team card is chosen', async () => {
+    const user = userEvent.setup();
+    mockSwitchTeam.mockResolvedValue(undefined);
+    const { container } = renderWithTeams();
+
+    const card = container.querySelector('.team-card') as HTMLButtonElement;
+    expect(card).not.toBeNull();
+
+    await user.click(card);
+
+    await waitFor(() => expect(mockSwitchTeam).toHaveBeenCalledWith('team-1'));
+    await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith('/dashboard'));
+    // Choosing a team dismisses the selection overlay.
+    expect(screen.queryByText('Select a Team')).not.toBeInTheDocument();
+  });
+
+  it('hides the team selection overlay when the close button is clicked', async () => {
+    const user = userEvent.setup();
+    const { container } = renderWithTeams();
+
+    expect(screen.getByText('Select a Team')).toBeInTheDocument();
+
+    const closeButton = container.querySelector('.close-button') as HTMLButtonElement;
+    expect(closeButton).not.toBeNull();
+
+    await user.click(closeButton);
+
+    await waitFor(() => expect(screen.queryByText('Select a Team')).not.toBeInTheDocument());
+  });
+});
+
+describe('TeamInitializer loading timeout', () => {
+  const mockSwitchTeam = vi.fn();
+  const mockRefreshTeams = vi.fn();
+
+  beforeAll(async () => {
+    await initTestI18n();
+  });
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    useAuthStore.setState({ isAuthenticated: true, user: null, isLoading: false, error: null });
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+  });
+
+  it('forces completion and logs a warning once the loading timeout elapses', async () => {
+    vi.useFakeTimers();
+    const { logger } = await import('../utils/logger');
+
+    vi.mocked(useTeamStateModule.useTeamState).mockReturnValue({
+      teams: [],
+      teamsLoading: true,
+      teamsError: null,
+      currentTeam: null,
+      userRoleInCurrentTeam: null,
+      switchTeam: mockSwitchTeam,
+      refreshTeams: mockRefreshTeams,
+    });
+
+    renderWithProviders(
+      <TeamProvider>
+        <TeamInitializer>
+          <div data-testid="child">Content</div>
+        </TeamInitializer>
+      </TeamProvider>
+    );
+
+    // While loading (and before the timeout) the loading screen is shown.
+    expect(screen.getByText('Initializing team context...')).toBeInTheDocument();
+
+    act(() => {
+      vi.advanceTimersByTime(5000);
+    });
+
+    expect(vi.mocked(logger.warn)).toHaveBeenCalledWith(
+      'Team context loading timeout - forcing completion'
+    );
+    // The timeout forces the initializer to render its children.
+    expect(screen.getByTestId('child')).toBeInTheDocument();
   });
 });

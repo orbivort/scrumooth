@@ -319,4 +319,225 @@ describe('SprintService', () => {
       expect(result.data).toHaveLength(1);
     });
   });
+
+  describe('saveSprintBacklog', () => {
+    it('should save sprint backlog items and tasks', async () => {
+      const backlogData = {
+        items: [{ pbiId: 'pbi-1' }],
+        tasks: [
+          {
+            pbiId: 'pbi-1',
+            title: 'Task 1',
+            description: 'Description',
+            assigneeId: 'user-1',
+            estimatedHours: 4,
+            remainingHours: 2,
+          },
+        ],
+      };
+      const mockResponse = {
+        data: {
+          success: true,
+          data: { sprintId: '1', backlogItems: ['sbi-1'], taskIds: ['task-1'] },
+        },
+      };
+      vi.mocked(mockApi.post).mockResolvedValue(mockResponse);
+
+      const result = await sprintService.saveSprintBacklog('1', backlogData);
+
+      expect(mockApi.post).toHaveBeenCalledWith('/sprints/1/backlog', backlogData);
+      expect(result.success).toBe(true);
+      expect(result.data?.backlogItems).toEqual(['sbi-1']);
+      expect(result.data?.taskIds).toEqual(['task-1']);
+    });
+  });
+
+  describe('saveSprintPlanningDraft', () => {
+    it('should save the sprint planning draft', async () => {
+      const draftData = {
+        items: [{ pbiId: 'pbi-1' }],
+        tasks: [
+          {
+            id: 'task-1',
+            pbiId: 'pbi-1',
+            title: 'Task 1',
+            assigneeId: null,
+            estimatedHours: 4,
+            remainingHours: 4,
+          },
+        ],
+        sprintGoal: 'Ship the increment',
+        capacity: [{ userId: 'user-1', hours: 20 }],
+        attendees: [{ name: 'Ada', email: 'ada@example.com', role: 'DEVELOPER', attended: true }],
+      };
+      const mockResponse = {
+        data: {
+          success: true,
+          data: { sprintId: '1', sprintGoal: 'Ship the increment' },
+        },
+      };
+      vi.mocked(mockApi.put).mockResolvedValue(mockResponse);
+
+      const result = await sprintService.saveSprintPlanningDraft('1', draftData);
+
+      expect(mockApi.put).toHaveBeenCalledWith('/sprints/1/backlog/draft', draftData);
+      expect(result.success).toBe(true);
+      expect(result.data?.sprintGoal).toBe('Ship the increment');
+    });
+
+    it('should save an empty draft with a null goal', async () => {
+      const mockResponse = {
+        data: {
+          success: true,
+          data: { sprintId: '1', sprintGoal: null },
+        },
+      };
+      vi.mocked(mockApi.put).mockResolvedValue(mockResponse);
+
+      const result = await sprintService.saveSprintPlanningDraft('1', {});
+
+      expect(mockApi.put).toHaveBeenCalledWith('/sprints/1/backlog/draft', {});
+      expect(result.data?.sprintGoal).toBeNull();
+    });
+  });
+
+  describe('getSprintPlanningDraft', () => {
+    it('should load an existing planning draft including capacity and participation', async () => {
+      const mockResponse = {
+        data: {
+          success: true,
+          data: {
+            sprintId: '1',
+            sprintGoal: 'Goal',
+            items: [{ pbiId: 'pbi-1' }],
+            tasks: [
+              {
+                id: 'task-1',
+                pbiId: 'pbi-1',
+                title: 'Task 1',
+                description: null,
+                assigneeId: null,
+                estimatedHours: null,
+                remainingHours: null,
+              },
+            ],
+            capacity: [{ userId: 'user-1', hours: 20 }],
+            attendees: [{ name: 'Ada', role: 'DEVELOPER', attended: true }],
+            participation: { attendees: 1, required: 2, ready: false },
+            conflicts: [{ pbiId: 'pbi-9', sprintName: 'Sprint 9' }],
+          },
+        },
+      };
+      vi.mocked(mockApi.get).mockResolvedValue(mockResponse);
+
+      const result = await sprintService.getSprintPlanningDraft('1');
+
+      expect(mockApi.get).toHaveBeenCalledWith('/sprints/1/planning-draft');
+      expect(result.success).toBe(true);
+      expect(result.data?.sprintGoal).toBe('Goal');
+      expect(result.data?.conflicts).toEqual([{ pbiId: 'pbi-9', sprintName: 'Sprint 9' }]);
+    });
+
+    it('should tolerate a server that omits capacity and participation', async () => {
+      const mockResponse = {
+        data: {
+          success: true,
+          data: {
+            sprintId: null,
+            sprintGoal: null,
+            items: [],
+            tasks: [],
+            conflicts: [],
+          },
+        },
+      };
+      vi.mocked(mockApi.get).mockResolvedValue(mockResponse);
+
+      const result = await sprintService.getSprintPlanningDraft('1');
+
+      expect(result.data?.capacity).toBeUndefined();
+      expect(result.data?.participation).toBeUndefined();
+      expect(result.data?.attendees).toBeUndefined();
+    });
+  });
+
+  describe('getPlanningParticipation', () => {
+    it('should read the recorded planning participation', async () => {
+      const mockResponse = {
+        data: {
+          success: true,
+          data: { attendees: 3, required: 4, ready: false },
+        },
+      };
+      vi.mocked(mockApi.get).mockResolvedValue(mockResponse);
+
+      const result = await sprintService.getPlanningParticipation('1');
+
+      expect(mockApi.get).toHaveBeenCalledWith('/sprints/1/planning-attendees');
+      expect(result.success).toBe(true);
+      expect(result.data?.attendees).toBe(3);
+      expect(result.data?.ready).toBe(false);
+    });
+  });
+
+  describe('addPlanningAttendee', () => {
+    it('should record a planning attendee', async () => {
+      const attendee = {
+        name: 'Ada',
+        email: 'ada@example.com',
+        role: 'DEVELOPER',
+        attended: true,
+      };
+      const mockResponse = {
+        data: {
+          success: true,
+          data: { id: 'attendee-1', ...attendee },
+        },
+      };
+      vi.mocked(mockApi.post).mockResolvedValue(mockResponse);
+
+      const result = await sprintService.addPlanningAttendee('1', attendee);
+
+      expect(mockApi.post).toHaveBeenCalledWith('/sprints/1/planning-attendees', attendee);
+      expect(result.success).toBe(true);
+      expect(result.data?.id).toBe('attendee-1');
+    });
+  });
+
+  describe('updatePlanningAttendee', () => {
+    it('should update a recorded planning attendee', async () => {
+      const updates = { attended: false, role: 'STAKEHOLDER' };
+      const mockResponse = {
+        data: {
+          success: true,
+          data: { id: 'attendee-1', name: 'Ada', attended: false, role: 'STAKEHOLDER' },
+        },
+      };
+      vi.mocked(mockApi.put).mockResolvedValue(mockResponse);
+
+      const result = await sprintService.updatePlanningAttendee('1', 'attendee-1', updates);
+
+      expect(mockApi.put).toHaveBeenCalledWith('/sprints/1/planning-attendees/attendee-1', updates);
+      expect(result.success).toBe(true);
+      expect(result.data?.attended).toBe(false);
+    });
+  });
+
+  describe('deletePlanningAttendee', () => {
+    it('should remove a recorded planning attendee', async () => {
+      const mockResponse = {
+        data: {
+          success: true,
+          data: { message: 'Attendee removed' },
+        },
+      };
+      vi.mocked(mockApi.delete).mockResolvedValue(mockResponse);
+
+      const result = await sprintService.deletePlanningAttendee('1', 'attendee-1');
+
+      expect(mockApi.delete).toHaveBeenCalledWith('/sprints/1/planning-attendees/attendee-1');
+      expect(result.success).toBe(true);
+      expect(result.data?.message).toBe('Attendee removed');
+    });
+  });
 });

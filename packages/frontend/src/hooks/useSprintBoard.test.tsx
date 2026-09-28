@@ -488,4 +488,39 @@ describe('useSprintBoard', () => {
       });
     });
   });
+
+  describe('optional field fallbacks (branch coverage)', () => {
+    it('handles PBIs without story points and tasks without hour estimates', async () => {
+      const items = [
+        { ...createMockPbi('1', 'DONE'), storyPoints: undefined },
+        { ...createMockPbi('2', 'IN_PROGRESS'), storyPoints: undefined },
+      ];
+      const tasks = [
+        { ...createMockTask('1', 'TODO'), estimatedHours: 4, remainingHours: undefined },
+        { ...createMockTask('2', 'TODO'), estimatedHours: undefined, remainingHours: undefined },
+      ];
+      const mockSprint = createMockSprint('sprint-1', '2024-01-01', '2024-01-14', tasks, items);
+
+      vi.mocked(apiService.getActiveSprint).mockResolvedValue({
+        success: true,
+        data: mockSprint,
+      });
+
+      const { result } = renderHook(() => useSprintBoard({ teamId: mockTeamId }), {
+        wrapper: AllProviders,
+      });
+
+      await waitFor(() => {
+        expect(result.current.sprint).not.toBeNull();
+      });
+
+      // Missing story points fall back to 0 → progress percentage takes the `else` branch.
+      expect(result.current.sprintStats.totalStoryPoints).toBe(0);
+      expect(result.current.sprintStats.completedStoryPoints).toBe(0);
+      expect(result.current.sprintStats.progressPercentage).toBe(0);
+      // Missing remainingHours falls back to estimatedHours, then to 0.
+      expect(result.current.sprintStats.totalEstimatedHours).toBe(4);
+      expect(result.current.sprintStats.totalRemainingHours).toBe(4);
+    });
+  });
 });

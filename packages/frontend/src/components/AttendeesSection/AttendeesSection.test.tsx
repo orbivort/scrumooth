@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach, beforeAll } from 'vitest';
-import { screen, waitFor, renderWithProviders, initTestI18n } from '../../test-utils';
+import { screen, waitFor, fireEvent, renderWithProviders, initTestI18n } from '../../test-utils';
 import userEvent from '@testing-library/user-event';
 
 import {
@@ -821,6 +821,301 @@ describe('AttendeesSection Component', () => {
       expect(addAttendee.mock.calls[0]![0]).toEqual(
         expect.objectContaining({ userId: null, name: 'External Person' })
       );
+    });
+  });
+
+  describe('Attendance Status Toggle Tests', () => {
+    it('calls onToggleAttendance with false when marking an attendee absent', async () => {
+      const user = userEvent.setup();
+      const onToggleAttendance = vi.fn();
+
+      renderWithProviders(
+        <AttendeesSection
+          {...defaultProps}
+          attendees={[mockAttendees[0]!]}
+          onToggleAttendance={onToggleAttendance}
+        />
+      );
+
+      await user.click(screen.getByRole('button', { name: /mark as absent/i }));
+
+      expect(onToggleAttendance).toHaveBeenCalledWith('attendee-1', false);
+    });
+  });
+
+  describe('Modal Keyboard Tests', () => {
+    it('closes the add attendee modal when Escape is pressed', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<AttendeesSection {...defaultProps} />);
+
+      await user.click(screen.getByRole('button', { name: /add attendees/i }));
+      expect(screen.getByRole('heading', { name: 'Add Attendee' })).toBeInTheDocument();
+
+      await user.keyboard('{Escape}');
+
+      await waitFor(() => {
+        expect(screen.queryByRole('heading', { name: 'Add Attendee' })).not.toBeInTheDocument();
+      });
+    });
+  });
+
+  describe('Update Attendee Tests', () => {
+    it('submits updated attendee data and closes the modal', async () => {
+      const user = userEvent.setup();
+      const updateAttendee = vi.fn().mockResolvedValue({});
+
+      renderWithProviders(
+        <AttendeesSection
+          {...defaultProps}
+          attendees={[mockAttendees[1]!]}
+          apiConfig={{ ...defaultProps.apiConfig, updateAttendee }}
+        />
+      );
+
+      await user.click(screen.getByRole('button', { name: /edit attendee/i }));
+      expect(screen.getByRole('heading', { name: 'Edit Attendee' })).toBeInTheDocument();
+
+      await user.selectOptions(screen.getByLabelText(/role/i), 'scrum_master');
+      // mockAttendees[1] starts absent, so checking the box flips it to attended.
+      await user.click(screen.getByLabelText(/^attended$/i));
+
+      await user.click(screen.getByRole('button', { name: /^update$/i }));
+
+      await waitFor(() => {
+        expect(updateAttendee).toHaveBeenCalled();
+      });
+      expect(updateAttendee.mock.calls[0]![0]).toBe('attendee-2');
+      expect(updateAttendee.mock.calls[0]![1]).toEqual(
+        expect.objectContaining({
+          name: 'Jane Smith',
+          email: 'jane@example.com',
+          role: 'scrum_master',
+          attended: true,
+        })
+      );
+
+      await waitFor(() => {
+        expect(screen.queryByRole('heading', { name: 'Edit Attendee' })).not.toBeInTheDocument();
+      });
+    });
+  });
+
+  describe('Delete Confirmation Flow Tests', () => {
+    it('deletes the attendee when the confirmation is accepted', async () => {
+      const user = userEvent.setup();
+      const deleteAttendee = vi.fn().mockResolvedValue({});
+
+      renderWithProviders(
+        <AttendeesSection
+          {...defaultProps}
+          attendees={[mockAttendees[0]!]}
+          apiConfig={{ ...defaultProps.apiConfig, deleteAttendee }}
+        />
+      );
+
+      await user.click(screen.getByRole('button', { name: /remove attendee/i }));
+      expect(screen.getByText('Remove Attendee')).toBeInTheDocument();
+
+      await user.click(screen.getByRole('button', { name: 'Remove' }));
+
+      await waitFor(() => {
+        expect(deleteAttendee).toHaveBeenCalledWith('attendee-1');
+      });
+      await waitFor(() => {
+        expect(screen.queryByText('Remove Attendee')).not.toBeInTheDocument();
+      });
+    });
+
+    it('dismisses the confirmation without deleting when cancelled', async () => {
+      const user = userEvent.setup();
+      const deleteAttendee = vi.fn().mockResolvedValue({});
+
+      renderWithProviders(
+        <AttendeesSection
+          {...defaultProps}
+          attendees={[mockAttendees[0]!]}
+          apiConfig={{ ...defaultProps.apiConfig, deleteAttendee }}
+        />
+      );
+
+      await user.click(screen.getByRole('button', { name: /remove attendee/i }));
+      await user.click(screen.getByRole('button', { name: 'Cancel' }));
+
+      await waitFor(() => {
+        expect(screen.queryByText('Remove Attendee')).not.toBeInTheDocument();
+      });
+      expect(deleteAttendee).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('Attendee Filtering Tests', () => {
+    it('shows only team attendees when the Team filter is selected', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(
+        <AttendeesSection
+          {...defaultProps}
+          attendees={mockAttendees}
+          teamMembers={mockTeamMembers}
+        />
+      );
+
+      await user.click(screen.getByRole('radio', { name: /team/i }));
+
+      expect(screen.getByText('John Doe')).toBeInTheDocument();
+      expect(screen.queryByText('Jane Smith')).not.toBeInTheDocument();
+      expect(screen.queryByText('Bob Wilson')).not.toBeInTheDocument();
+    });
+  });
+
+  describe('Form Field Interaction Tests', () => {
+    it('sends the selected role for a new attendee', async () => {
+      const user = userEvent.setup();
+      const addAttendee = vi.fn().mockResolvedValue({});
+
+      renderWithProviders(
+        <AttendeesSection
+          {...defaultProps}
+          apiConfig={{ ...defaultProps.apiConfig, addAttendee }}
+        />
+      );
+
+      await user.click(screen.getByRole('button', { name: /add attendees/i }));
+      await user.type(screen.getByLabelText(/name/i), 'New Person');
+      await user.selectOptions(screen.getByLabelText(/role/i), 'developers');
+      await user.click(screen.getByRole('button', { name: /^add attendee$/i }));
+
+      await waitFor(() => {
+        expect(addAttendee).toHaveBeenCalled();
+      });
+      expect(addAttendee.mock.calls[0]![0]).toEqual(
+        expect.objectContaining({ name: 'New Person', role: 'developers', attended: true })
+      );
+    });
+
+    it('unlinks a registered user and re-enables the free-text fields', async () => {
+      const user = userEvent.setup();
+
+      renderWithProviders(<AttendeesSection {...defaultProps} teamMembers={mockTeamMembers} />);
+
+      await user.click(screen.getByRole('button', { name: /add attendees/i }));
+
+      const linkSelect = screen.getByLabelText(/registered user/i);
+      await user.selectOptions(linkSelect, 'user-2');
+      expect(screen.getByLabelText(/name/i)).toHaveValue('Alice Johnson');
+      expect(screen.getByLabelText(/name/i)).toBeDisabled();
+
+      await user.selectOptions(linkSelect, '');
+
+      expect(screen.getByLabelText(/name/i)).not.toBeDisabled();
+      expect(screen.getByLabelText(/email/i)).not.toBeDisabled();
+    });
+
+    it('keeps the current values when a linked profile has no name, email, or role', async () => {
+      const user = userEvent.setup();
+      const minimalMember: TeamMember = {
+        id: 'team-min',
+        userId: 'user-min',
+        user: { id: 'user-min' },
+      };
+
+      renderWithProviders(<AttendeesSection {...defaultProps} teamMembers={[minimalMember]} />);
+
+      await user.click(screen.getByRole('button', { name: /add attendees/i }));
+      await user.selectOptions(screen.getByLabelText(/registered user/i), 'user-min');
+
+      const nameInput = screen.getByLabelText(/name/i);
+      expect(nameInput).toHaveValue('');
+      expect(nameInput).toBeDisabled();
+      expect(screen.getByLabelText(/role/i)).toHaveValue('stakeholder');
+    });
+  });
+
+  describe('Save Error Tests', () => {
+    it('shows an error message when the add request fails', async () => {
+      const user = userEvent.setup();
+      const addAttendee = vi.fn().mockRejectedValue(new Error('network down'));
+
+      renderWithProviders(
+        <AttendeesSection
+          {...defaultProps}
+          apiConfig={{ ...defaultProps.apiConfig, addAttendee }}
+        />
+      );
+
+      await user.click(screen.getByRole('button', { name: /add attendees/i }));
+      await user.type(screen.getByLabelText(/name/i), 'Failing Person');
+      await user.click(screen.getByRole('button', { name: /^add attendee$/i }));
+
+      expect(
+        await screen.findByText('Failed to save attendee. Please try again.')
+      ).toBeInTheDocument();
+    });
+  });
+
+  describe('Validation Edge Cases', () => {
+    it('shows an error when the name exceeds 100 characters', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<AttendeesSection {...defaultProps} />);
+
+      await user.click(screen.getByRole('button', { name: /add attendees/i }));
+      await user.type(screen.getByLabelText(/name/i), 'a'.repeat(101));
+      await user.click(screen.getByRole('button', { name: /^add attendee$/i }));
+
+      expect(screen.getByText('Name must be 100 characters or less')).toBeInTheDocument();
+    });
+
+    it('shows an error when the role is empty', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<AttendeesSection {...defaultProps} />);
+
+      await user.click(screen.getByRole('button', { name: /add attendees/i }));
+      await user.type(screen.getByLabelText(/name/i), 'No Role Person');
+
+      // The role select offers no empty option, so drive the value directly to clear it.
+      fireEvent.change(screen.getByLabelText(/role/i), { target: { value: '' } });
+      await user.click(screen.getByRole('button', { name: /^add attendee$/i }));
+
+      expect(screen.getByText('Role is required')).toBeInTheDocument();
+    });
+  });
+
+  describe('Team Member Classification Tests', () => {
+    it('classifies an attendee as a team member by matching email', () => {
+      const attendeeLinkedByEmail: Attendee = {
+        id: 'attendee-email',
+        name: 'Alice J',
+        email: 'alice@example.com',
+        role: 'developers',
+        attended: true,
+      };
+
+      renderWithProviders(
+        <AttendeesSection
+          {...defaultProps}
+          attendees={[attendeeLinkedByEmail]}
+          teamMembers={mockTeamMembers}
+        />
+      );
+
+      expect(screen.getByRole('button', { name: /team members cannot be edited/i })).toBeDisabled();
+    });
+
+    it('falls back to a generic label when an unmarked member has no role', () => {
+      const memberWithoutRole: TeamMember = {
+        id: 'team-9',
+        userId: 'user-9',
+        user: {
+          id: 'user-9',
+          firstName: 'No',
+          lastName: 'Role',
+        },
+      };
+
+      renderWithProviders(
+        <AttendeesSection {...defaultProps} attendees={[]} teamMembers={[memberWithoutRole]} />
+      );
+
+      expect(screen.getByText('Team Member')).toBeInTheDocument();
     });
   });
 });

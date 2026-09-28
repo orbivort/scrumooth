@@ -7,7 +7,13 @@
  * stay the content of the section.
  */
 import React from 'react';
-import { screen, fireEvent, renderWithProviders, initTestI18n } from '../../../../test-utils';
+import {
+  screen,
+  fireEvent,
+  waitFor,
+  renderWithProviders,
+  initTestI18n,
+} from '../../../../test-utils';
 import { vi } from 'vitest';
 
 import { definitionService } from '../../../../services';
@@ -36,7 +42,38 @@ vi.mock('../../../../services', () => ({
 }));
 
 vi.mock('./DefinitionEditor', () => ({
-  DefinitionEditor: () => <div data-testid="definition-editor">Definition Editor</div>,
+  DefinitionEditor: ({
+    onSave,
+    onCancel,
+  }: {
+    onSave: (items: unknown[]) => Promise<void>;
+    onCancel: () => void;
+  }) => (
+    <div data-testid="definition-editor">
+      Definition Editor
+      <button
+        type="button"
+        onClick={() =>
+          // The refusal is surfaced through the section's own mutation `onError`; swallowing the
+          // rejected promise here only stops the stand-in from leaking an unhandled rejection.
+          void onSave([
+            {
+              id: 'item-1',
+              description: 'Saved criterion',
+              category: 'clarity',
+              isActive: true,
+              order: 0,
+            },
+          ]).catch(() => undefined)
+        }
+      >
+        save-editor
+      </button>
+      <button type="button" onClick={onCancel}>
+        cancel-editor
+      </button>
+    </div>
+  ),
 }));
 
 vi.mock('./VersionHistoryPopover', () => ({
@@ -249,5 +286,107 @@ describe('DefinitionOfReadySection', () => {
     expect(
       screen.getByText("The team's Scrum Master maintains this agreement.")
     ).toBeInTheDocument();
+  });
+});
+
+describe('DefinitionOfReadySection - save and recovery flows', () => {
+  let useTeamStoreMock: ReturnType<typeof vi.fn>;
+
+  beforeAll(() => {
+    initTestI18n();
+  });
+
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    useTeamStoreMock = (await import('../../../../store')).default;
+    useTeamStoreMock.mockReturnValue({ userRoleInCurrentTeam: 'SCRUM_MASTER' });
+  });
+
+  it('saves the readiness agreement and closes the editor on success', async () => {
+    (definitionService.getDefinitionOfReady as vi.Mock).mockResolvedValue({
+      success: true,
+      data: withItems(),
+    });
+    (definitionService.updateDefinitionOfReady as vi.Mock).mockResolvedValue({
+      success: true,
+      data: withItems(),
+    });
+
+    renderWithProviders(<DefinitionOfReadySection teamId={TEAM_ID} isActive />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Edit DoR' }));
+    fireEvent.click(screen.getByText('save-editor'));
+
+    await waitFor(() => {
+      expect(definitionService.updateDefinitionOfReady).toHaveBeenCalledWith(
+        TEAM_ID,
+        expect.any(Array)
+      );
+    });
+  });
+
+  it('leaves the editor without saving when the edit is cancelled', async () => {
+    (definitionService.getDefinitionOfReady as vi.Mock).mockResolvedValue({
+      success: true,
+      data: withItems(),
+    });
+
+    renderWithProviders(<DefinitionOfReadySection teamId={TEAM_ID} isActive />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Edit DoR' }));
+    fireEvent.click(screen.getByText('cancel-editor'));
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('definition-editor')).not.toBeInTheDocument();
+    });
+    expect(definitionService.updateDefinitionOfReady).not.toHaveBeenCalled();
+  });
+
+  it('retries a read that failed', async () => {
+    (definitionService.getDefinitionOfReady as vi.Mock).mockRejectedValue(new Error('Failed'));
+
+    renderWithProviders(<DefinitionOfReadySection teamId={TEAM_ID} isActive />);
+
+    const retry = await screen.findByRole('button', { name: 'Retry' });
+    fireEvent.click(retry);
+
+    await waitFor(() => {
+      expect(definitionService.getDefinitionOfReady).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  it('opens the editor from an unconfigured agreement', async () => {
+    (definitionService.getDefinitionOfReady as vi.Mock).mockResolvedValue({
+      success: true,
+      data: withItems({ items: [] }),
+    });
+
+    renderWithProviders(<DefinitionOfReadySection teamId={TEAM_ID} isActive />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Configure DoR' }));
+
+    expect(screen.getByTestId('definition-editor')).toBeInTheDocument();
+  });
+
+  it('renders a save refusal in place and lets it be dismissed', async () => {
+    (definitionService.getDefinitionOfReady as vi.Mock).mockResolvedValue({
+      success: true,
+      data: withItems(),
+    });
+    (definitionService.updateDefinitionOfReady as vi.Mock).mockRejectedValue(
+      new Error('Only the Scrum Master may change this.')
+    );
+
+    renderWithProviders(<DefinitionOfReadySection teamId={TEAM_ID} isActive />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Edit DoR' }));
+    fireEvent.click(screen.getByText('save-editor'));
+
+    const dismiss = await screen.findByRole('button', { name: 'Dismiss' });
+    fireEvent.click(dismiss);
+
+    await waitFor(() => {
+      expect(screen.queryByRole('button', { name: 'Dismiss' })).not.toBeInTheDocument();
+    });
   });
 });

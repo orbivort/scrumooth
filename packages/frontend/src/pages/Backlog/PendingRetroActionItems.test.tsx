@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, beforeEach, beforeAll, vi } from 'vitest';
 
@@ -206,6 +206,165 @@ describe('PendingRetroActionItems', () => {
           status: 'COMPLETED',
         });
       });
+    });
+  });
+
+  describe('Filters, meta and fallbacks', () => {
+    const richItems = [
+      { ...pendingItem },
+      {
+        ...pendingItem,
+        id: 'action-2',
+        title: 'Polish the release',
+        status: 'IN_PROGRESS' as const,
+        dueDate: '2024-02-01T00:00:00Z',
+        sprint: { name: 'Sprint 3' },
+      },
+      {
+        ...pendingItem,
+        id: 'action-3',
+        title: 'Unknown state improvement',
+        status: 'WEIRD' as never,
+      },
+    ];
+
+    it('should filter by status, show due date/sprint and fall back for an unknown status', async () => {
+      mockItems(richItems);
+
+      renderWithProviders(<PendingRetroActionItems />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Polish the release')).toBeInTheDocument();
+      });
+
+      // Due date + sprint rendered, unknown status falls back to the PENDING config.
+      expect(screen.getByText('Due:')).toBeInTheDocument();
+      expect(screen.getByText('Sprint 3')).toBeInTheDocument();
+      expect(screen.getByText('Unknown state improvement')).toBeInTheDocument();
+
+      await userEvent.click(screen.getByRole('button', { name: /^In Progress \(/ }));
+      await waitFor(() => {
+        expect(screen.queryByText('Improve CI pipeline')).not.toBeInTheDocument();
+      });
+
+      await userEvent.click(screen.getByRole('button', { name: /^All \(/ }));
+      await waitFor(() => {
+        expect(screen.getByText('Improve CI pipeline')).toBeInTheDocument();
+      });
+    });
+
+    it('should collapse when the header is clicked', async () => {
+      mockItems([pendingItem]);
+
+      renderWithProviders(<PendingRetroActionItems />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Improve CI pipeline')).toBeInTheDocument();
+      });
+
+      await userEvent.click(screen.getByText('Pending Action from Retrospective'));
+
+      await waitFor(() => {
+        expect(screen.queryByText('Improve CI pipeline')).not.toBeInTheDocument();
+      });
+    });
+  });
+
+  describe('Link picker and failures', () => {
+    it('should guard an empty selection and cancel clears the picker', async () => {
+      mockItems([pendingItem]);
+
+      renderWithProviders(<PendingRetroActionItems />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Improve CI pipeline')).toBeInTheDocument();
+      });
+
+      await userEvent.click(screen.getByText('Link existing item'));
+      await screen.findByLabelText('Choose a backlog item');
+
+      fireEvent.click(screen.getByText('Link'));
+      expect(apiService.linkActionItemToPbi).not.toHaveBeenCalled();
+
+      await userEvent.click(screen.getByText('Cancel'));
+
+      await waitFor(() => {
+        expect(screen.queryByLabelText('Choose a backlog item')).not.toBeInTheDocument();
+      });
+    });
+
+    it('should surface a link failure', async () => {
+      mockItems([pendingItem]);
+      (apiService.linkActionItemToPbi as ReturnType<typeof vi.fn>).mockRejectedValue(
+        new Error('gate')
+      );
+
+      renderWithProviders(<PendingRetroActionItems />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Improve CI pipeline')).toBeInTheDocument();
+      });
+
+      await userEvent.click(screen.getByText('Link existing item'));
+      await userEvent.selectOptions(screen.getByLabelText('Choose a backlog item'), 'pbi-1');
+      await userEvent.click(screen.getByText('Link'));
+
+      expect(await screen.findByRole('alert')).toHaveTextContent('The item could not be linked.');
+    });
+
+    it('should surface a mark-added failure', async () => {
+      mockItems([pendingItem]);
+      (apiService.updateActionItem as ReturnType<typeof vi.fn>).mockRejectedValue(
+        new Error('gate')
+      );
+
+      renderWithProviders(<PendingRetroActionItems />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Improve CI pipeline')).toBeInTheDocument();
+      });
+
+      await userEvent.click(screen.getByText('Mark Added'));
+
+      expect(await screen.findByRole('alert')).toHaveTextContent(
+        'The improvement could not be marked as added.'
+      );
+    });
+  });
+
+  describe('Pending mutation states', () => {
+    it('should show progress while materialising', async () => {
+      mockItems([pendingItem]);
+      (apiService.materializeActionItem as ReturnType<typeof vi.fn>).mockReturnValue(
+        new Promise(() => {})
+      );
+
+      renderWithProviders(<PendingRetroActionItems />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Improve CI pipeline')).toBeInTheDocument();
+      });
+
+      await userEvent.click(screen.getByText('Create Item'));
+
+      expect(await screen.findByText('Updating...')).toBeInTheDocument();
+    });
+
+    it('should show progress while marking as added', async () => {
+      mockItems([pendingItem]);
+      (apiService.updateActionItem as ReturnType<typeof vi.fn>).mockReturnValue(
+        new Promise(() => {})
+      );
+
+      renderWithProviders(<PendingRetroActionItems />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Improve CI pipeline')).toBeInTheDocument();
+      });
+
+      await userEvent.click(screen.getByText('Mark Added'));
+
+      expect(await screen.findByText('Updating...')).toBeInTheDocument();
     });
   });
 });

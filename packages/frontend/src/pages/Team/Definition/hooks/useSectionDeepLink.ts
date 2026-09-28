@@ -56,6 +56,16 @@ const ANCHOR_GAP_PX = 16;
 /** Two pixels of slack, because fractional scroll positions never land exactly on the last pixel. */
 const SCROLL_END_TOLERANCE_PX = 2;
 
+/**
+ * How far below the sticky line a heading may still be and count as entered.
+ *
+ * The line the navigation marks a section by and the line `scrollIntoView` leaves a heading on are the
+ * same line, so a heading the reader has just navigated to sits exactly at the offset -- and layout is
+ * fractional, so "exactly" arrives as a fraction of a pixel either side of zero. Without the slack the
+ * one section the reader asked for would be the one section the navigation refuses to mark.
+ */
+const CROSSING_TOLERANCE_PX = 2;
+
 /** What the reader sees before anything is measured, and when no section can be resolved. */
 const DEFAULT_SECTION_ID = 'definition-of-done';
 
@@ -108,7 +118,7 @@ export function resolveActiveSection(
   let active = first.id;
 
   for (const heading of headings) {
-    if (heading.top - offsetPx <= 0) {
+    if (heading.top - offsetPx <= CROSSING_TOLERANCE_PX) {
       active = heading.id;
     }
   }
@@ -268,9 +278,29 @@ export function useSectionDeepLink(): DefinitionSectionsHandle {
       typeof window.matchMedia === 'function' &&
       window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
+    /**
+     * Whether the reader is working in this page's own section navigation.
+     *
+     * The reveal moves focus to the heading so a keyboard reader continues from the section a link
+     * promised. That is right for a cold deep link, where focus is nowhere in particular -- and wrong
+     * for the strip, which is made of links to these same sections: taking focus off the entry the
+     * reader just activated would answer their next Tab or Enter with a jump they did not ask for,
+     * and the section they asked for would never arrive.
+     */
+    const readerIsInSectionNav = (): boolean => {
+      const active = document.activeElement;
+      return active instanceof Element && active.closest(`#${DEFINITION_NAV_ID}`) !== null;
+    };
+
     const reveal = (scrollBehaviour: ScrollBehavior): void => {
+      // Read before the scroll, because moving the page can move focus with it.
+      const keepFocusWhereItIs = readerIsInSectionNav();
+
       heading.scrollIntoView({ behavior: scrollBehaviour, block: 'start' });
-      heading.focus({ preventScroll: true });
+
+      if (!keepFocusWhereItIs) {
+        heading.focus({ preventScroll: true });
+      }
     };
 
     reveal(prefersReducedMotion ? 'auto' : 'smooth');

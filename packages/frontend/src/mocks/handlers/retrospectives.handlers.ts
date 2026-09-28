@@ -264,7 +264,7 @@ export const retrospectiveHandlers: RequestHandler[] = [
 
       const body = await bodyOf<{ pbiId: string }>(request);
       const pbi = database().backlogItems.find((item) => item.id === body.pbiId);
-      if (!pbi || pbi.teamId !== retro.teamId) {
+      if (pbi?.teamId !== retro.teamId) {
         return problems.validation('That item is not one of this team’s', 'pbiId');
       }
 
@@ -390,7 +390,7 @@ export const retrospectiveHandlers: RequestHandler[] = [
     // The Review is the event before it: a Retrospective cannot be opened before
     // the Review the Guide orders ahead of it has been recorded.
     const review = database().reviews.find((candidate) => candidate.sprintId === sprint.id);
-    if (!review || review.status !== 'completed') {
+    if (review?.status !== 'completed') {
       return gate(
         GATE_CODES.SPRINT_RETROSPECTIVE_REQUIRES_REVIEW,
         'The Sprint Retrospective follows the Sprint Review: record the Review first'
@@ -446,7 +446,7 @@ export const retrospectiveHandlers: RequestHandler[] = [
 
     if (updates.status === COMPLETED) {
       const review = database().reviews.find((candidate) => candidate.sprintId === retro.sprintId);
-      if (!review || review.status !== 'completed') {
+      if (review?.status !== 'completed') {
         return gate(
           GATE_CODES.SPRINT_RETROSPECTIVE_REQUIRES_REVIEW,
           'The Sprint Retrospective concludes the Sprint, after its Review'
@@ -454,7 +454,7 @@ export const retrospectiveHandlers: RequestHandler[] = [
       }
 
       const sprint = sprintOf(retro.sprintId);
-      if (sprint && sprint.status === 'active') {
+      if (sprint?.status === 'active') {
         const endDay = new Date(sprint.endDate).toISOString().slice(0, 10);
         const today = new Date().toISOString().slice(0, 10);
         if (today < endDay) {

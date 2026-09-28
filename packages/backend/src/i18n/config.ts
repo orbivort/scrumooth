@@ -115,6 +115,10 @@ export const i18nInstance: I18nType = i18next.createInstance({
   },
   parseMissingKeyHandler: (key) => {
     const parts = key.split(/[:.]/);
+    // `String.prototype.split` always returns at least one element, so the last element can
+    // never be `undefined`; the fallback only satisfies `noUncheckedIndexedAccess` and is
+    // therefore unreachable at runtime.
+    /* v8 ignore next */
     return parts[parts.length - 1] ?? key;
   },
 });

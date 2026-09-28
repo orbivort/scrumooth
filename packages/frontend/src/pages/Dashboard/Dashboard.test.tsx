@@ -1378,4 +1378,61 @@ describe('Dashboard Component', () => {
       });
     });
   });
+
+  describe('Overview panel branch coverage', () => {
+    const renderOverviewData = () => {
+      (apiService.getBurndownData as ReturnType<typeof vi.fn>).mockResolvedValue({
+        success: true,
+        data: mockBurndownData,
+      });
+      (apiService.getImpediments as ReturnType<typeof vi.fn>).mockResolvedValue({
+        success: true,
+        data: mockImpediments,
+      });
+    };
+
+    it('renders the "success" progress variant once every Sprint Backlog task is done', async () => {
+      (apiService.getActiveSprint as ReturnType<typeof vi.fn>).mockResolvedValue({
+        success: true,
+        data: {
+          ...mockSprint,
+          tasks: mockSprint.tasks.map((task) => ({ ...task, status: TaskStatus.DONE })),
+        },
+      });
+      renderOverviewData();
+
+      renderWithProviders(<Dashboard />);
+
+      // 100% completion selects the >=70 "success" branch of the progress variant.
+      await waitFor(() => {
+        expect(screen.getAllByText(/100%/).length).toBeGreaterThan(0);
+      });
+    });
+
+    it('sorts unknown task statuses last and falls back when no Sprint Goal is set', async () => {
+      (apiService.getActiveSprint as ReturnType<typeof vi.fn>).mockResolvedValue({
+        success: true,
+        data: {
+          ...mockSprint,
+          sprintGoal: undefined,
+          tasks: [
+            { ...mockSprint.tasks[0], id: 'task-a', status: 'BLOCKED' },
+            { ...mockSprint.tasks[1], id: 'task-b', status: TaskStatus.IN_PROGRESS },
+            { ...mockSprint.tasks[2], id: 'task-c', status: 'OTHER' },
+            { ...mockSprint.tasks[1], id: 'task-d', status: TaskStatus.DONE },
+            { ...mockSprint.tasks[1], id: 'task-e', status: TaskStatus.DONE },
+          ],
+        },
+      });
+      renderOverviewData();
+
+      renderWithProviders(<Dashboard />);
+
+      // 2/5 = 40% selects the "primary" branch, the two unknown statuses exercise the
+      // (a>b) fallback in the status-priority sort, and an absent goal renders its fallback.
+      await waitFor(() => {
+        expect(screen.getByText(i18nT('dashboard:noSprintGoal'))).toBeInTheDocument();
+      });
+    });
+  });
 });

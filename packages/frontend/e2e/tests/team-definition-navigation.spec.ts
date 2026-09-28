@@ -130,9 +130,16 @@ test.describe('Team Definition — in-page navigation', () => {
 
     // Far enough down that the strip would be gone if it were not stuck, and not so far that its own
     // containing block has scrolled past it.
-    await page.evaluate(() => window.scrollTo(0, 700));
-
-    await expect.poll(() => page.evaluate(() => Math.round(window.scrollY))).toBe(700);
+    //
+    // Scrolled inside the poll rather than once before it: the sections read their agreements
+    // asynchronously, so the page is still growing, and a scroll asked for while it is short clamps
+    // at the height it had then -- a position the page does not revisit when it grows under it.
+    await expect
+      .poll(async () => {
+        await page.evaluate(() => window.scrollTo(0, 700));
+        return page.evaluate(() => Math.round(window.scrollY));
+      })
+      .toBe(700);
 
     const navY = await nav.evaluate((element) => element.getBoundingClientRect().top);
 

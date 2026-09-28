@@ -9,8 +9,8 @@
  */
 import React from 'react';
 import { MemoryRouter } from 'react-router';
-import { render, screen, initTestI18n, i18nT } from '../test-utils';
-import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { act, render, screen, initTestI18n, i18nT } from '../test-utils';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ProtectedRoute } from './ProtectedRoute';
 import { useAuthStore } from '../store';
@@ -49,6 +49,10 @@ describe('ProtectedRoute', () => {
   beforeEach(() => {
     vi.mocked(useAuthStore).mockReturnValue(authState());
     vi.mocked(useTeamContext).mockReturnValue(teamState());
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it('should render the page for a role the entry names', () => {
@@ -106,5 +110,39 @@ describe('ProtectedRoute', () => {
 
     expect(screen.queryByText('guarded page')).not.toBeInTheDocument();
     expect(screen.queryByTestId('access-denied')).not.toBeInTheDocument();
+  });
+
+  it('should stop waiting for auth after the timeout rather than spin forever', () => {
+    // A stuck session check would otherwise leave the reader on the loading screen for good: the
+    // bound turns the spinner into a decision, and an authenticated reader then gets the page.
+    vi.useFakeTimers();
+    vi.mocked(useAuthStore).mockReturnValue(authState({ isLoading: true }));
+
+    renderGuard(['PRODUCT_OWNER']);
+
+    expect(screen.getByText(i18nT('common:loading'))).toBeInTheDocument();
+
+    act(() => {
+      vi.advanceTimersByTime(5000);
+    });
+
+    expect(screen.getByText('guarded page')).toBeInTheDocument();
+  });
+
+  it('should stop waiting for the role after the timeout rather than spin forever', () => {
+    // The same bound applies to the role lookup: once it lapses the gate has to decide, and a
+    // reader whose role has since arrived is admitted instead of being left on the spinner.
+    vi.useFakeTimers();
+    vi.mocked(useTeamContext).mockReturnValue(teamState({ isLoading: true }));
+
+    renderGuard(['PRODUCT_OWNER']);
+
+    expect(screen.getByText(i18nT('common:loading'))).toBeInTheDocument();
+
+    act(() => {
+      vi.advanceTimersByTime(5000);
+    });
+
+    expect(screen.getByText('guarded page')).toBeInTheDocument();
   });
 });

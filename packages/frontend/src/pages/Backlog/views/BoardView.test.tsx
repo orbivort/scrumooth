@@ -1,4 +1,4 @@
-import { screen, renderWithProviders } from '../../../test-utils';
+import { screen, renderWithProviders, fireEvent } from '../../../test-utils';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, beforeEach, beforeAll, vi } from 'vitest';
 
@@ -437,6 +437,104 @@ describe('BoardView', () => {
       expect(document.querySelectorAll('[data-order-locked="true"]')).toHaveLength(
         mockItems.length
       );
+    });
+  });
+
+  describe('Drag and drop interactions', () => {
+    const dataTransfer = () => ({
+      setData: vi.fn(),
+      getData: vi.fn().mockReturnValue('pbi-1'),
+      dropEffect: '',
+      effectAllowed: '',
+    });
+
+    it('should drop on a column and reorder onto a neighbouring card', () => {
+      renderWithProviders(
+        <BoardView
+          itemsByMoscow={mockItemsByMoscow}
+          onItemClick={mockOnItemClick}
+          onReorder={mockOnReorder}
+          onPriorityChange={mockOnPriorityChange}
+          canOrder
+        />
+      );
+
+      // Drop straight onto the column (empty space) -> band-only target.
+      const column = screen.getByRole('list', { name: /Must Have column/i });
+      fireEvent.drop(column, { dataTransfer: dataTransfer() });
+
+      // Grab a card so a drop can name a position relative to a neighbour.
+      const cards = screen.getAllByRole('listitem');
+      fireEvent.dragStart(cards[0]!, { dataTransfer: dataTransfer() });
+
+      const zones = document.querySelectorAll('[data-drop-zone]');
+      // Hover "after" twice (second time keeps the same indicator) then "before".
+      fireEvent.dragOver(zones[1]!, { dataTransfer: dataTransfer(), clientY: 5 });
+      fireEvent.dragOver(zones[1]!, { dataTransfer: dataTransfer(), clientY: 5 });
+      fireEvent.dragOver(zones[1]!, { dataTransfer: dataTransfer(), clientY: -5 });
+
+      fireEvent.drop(zones[1]!, { dataTransfer: dataTransfer(), clientY: 5 });
+
+      expect(mockOnReorder).toHaveBeenCalled();
+    });
+
+    it('should ignore a hover over the card that is being dragged', () => {
+      renderWithProviders(
+        <BoardView
+          itemsByMoscow={mockItemsByMoscow}
+          onItemClick={mockOnItemClick}
+          onReorder={mockOnReorder}
+          onPriorityChange={mockOnPriorityChange}
+          canOrder
+        />
+      );
+
+      const cards = screen.getAllByRole('listitem');
+      fireEvent.dragStart(cards[0]!, { dataTransfer: dataTransfer() });
+
+      const zones = document.querySelectorAll('[data-drop-zone]');
+      // Hovering the dragged card itself clears the indicator instead of setting one.
+      fireEvent.dragOver(zones[0]!, { dataTransfer: dataTransfer(), clientY: 5 });
+
+      expect(mockOnReorder).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('Virtualized card interactions', () => {
+    const manyItems = Array(60)
+      .fill(null)
+      .map((_, i) =>
+        createMockBacklogItem({
+          id: `pbi-must-${i}`,
+          title: `Must Have Item ${i}`,
+          priority: MoSCoWPriority.MUST_HAVE,
+        })
+      );
+
+    it('should support drag start, drag end and click on virtualized cards', async () => {
+      renderWithProviders(
+        <BoardView
+          itemsByMoscow={{
+            [MoSCoWPriority.MUST_HAVE]: manyItems,
+            [MoSCoWPriority.SHOULD_HAVE]: [],
+            [MoSCoWPriority.COULD_HAVE]: [],
+            [MoSCoWPriority.WONT_HAVE]: [],
+          }}
+          onItemClick={mockOnItemClick}
+          onReorder={mockOnReorder}
+          onPriorityChange={mockOnPriorityChange}
+          canOrder
+        />
+      );
+
+      const cards = screen.getAllByRole('listitem');
+      fireEvent.dragStart(cards[0]!, {
+        dataTransfer: { setData: vi.fn(), effectAllowed: '' },
+      });
+      fireEvent.dragEnd(cards[0]!);
+      await userEvent.click(cards[0]!);
+
+      expect(mockOnItemClick).toHaveBeenCalled();
     });
   });
 });

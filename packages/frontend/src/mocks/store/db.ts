@@ -44,6 +44,7 @@ import type { Notification } from '../../types/notification.types';
 import * as fixtures from '../fixtures';
 import type { SprintCadence } from '../fixtures/cadence';
 import { fixtureId } from '../support/ids';
+import { readKey, writeKey } from '../support/storage';
 
 /**
  * The mutable working copy of the demo universe.
@@ -279,9 +280,111 @@ function seededSprintConfigurations(): StoredSprintConfiguration[] {
   }));
 }
 
+/** A team membership, as the teams endpoints serve it. */
+export type TeamMembership = NonNullable<Team['members']>[number];
+
+const SIGNUPS_KEY = 'signups';
+
+/**
+ * An account created at the sign-up form, the credential it was created with, and the membership it
+ * was given.
+ *
+ * Held together because they are one act: the form creates a person, gives them a secret and puts
+ * them in a team, and an account restored without either would be one nobody could sign in to.
+ *
+ * The credential is the plaintext the visitor typed. The real API stores a hash, which this layer
+ * has no server-side place for, and the alternative -- accepting any password for an account the
+ * browser created -- would make a wrong password succeed, which is the one thing a sign-in mock must
+ * not do. Mock mode cannot be enabled in a production build (see `vite.config.ts`), so what is
+ * stored here never leaves a demo running in the visitor's own browser.
+ */
+export interface MockSignup {
+  user: User;
+  password: string;
+  membership: TeamMembership | null;
+}
+
+/**
+ * The accounts created through the sign-up form.
+ *
+ * They are persisted rather than left in the working copy, because that copy is rebuilt from the
+ * frozen fixtures on every page load. Without this, the account a visitor had just registered would
+ * be gone by the next reload: `GET /auth/me` would answer 401 and the sign-up form's own promise --
+ * register, then sign in with what you just typed -- could never come true, in the demo or in a spec
+ * that drives it. Everything else the demo holds still resets with the page; an account is the one
+ * record a database keeps.
+ */
+export function signedUpAccounts(): MockSignup[] {
+  const raw = readKey(SIGNUPS_KEY);
+  if (!raw) {
+    return [];
+  }
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    return Array.isArray(parsed) ? (parsed as MockSignup[]) : [];
+  } catch {
+    // A corrupted value must not wedge the mock backend.
+    return [];
+  }
+}
+
+/** Records an account created at the sign-up form, replacing any earlier record of it. */
+export function rememberSignedUpAccount(signup: MockSignup): void {
+  const kept = signedUpAccounts().filter((candidate) => candidate.user.id !== signup.user.id);
+  writeKey(SIGNUPS_KEY, JSON.stringify([...kept, signup]));
+}
+
+/**
+ * The password an account created at the sign-up form registered with, or `null` when the address
+ * belongs to no such account.
+ *
+ * Seeded accounts answer with the demo's published password instead; one that was signed up here
+ * answers with what it was signed up with, so a wrong password is still a failed sign-in.
+ */
+export function signedUpCredential(email: string): string | null {
+  const wanted = email.trim().toLowerCase();
+  const signup = signedUpAccounts().find(
+    (candidate) => candidate.user.email.toLowerCase() === wanted
+  );
+
+  return signup?.password ?? null;
+}
+
+/** Puts the accounts created at the sign-up form back into a freshly seeded working copy. */
+function withSignedUpAccounts(seeded: MockDb): MockDb {
+  for (const signup of signedUpAccounts()) {
+    if (!seeded.users.some((user) => user.id === signup.user.id)) {
+      seeded.users.push(signup.user);
+    }
+
+    const membership = signup.membership;
+    if (!membership) {
+      continue;
+    }
+
+    const team = seeded.teams.find((candidate) => candidate.id === membership.teamId);
+    if (!team) {
+      continue;
+    }
+
+    const members = team.members ?? [];
+    if (members.some((member) => member.userId === membership.userId)) {
+      continue;
+    }
+
+    // The denormalised `user` the teams endpoints serve is read from the working copy, so it is
+    // re-attached here rather than trusted from the stored record.
+    members.push({ ...membership, user: signup.user });
+    team.members = members;
+    team.memberCount = members.length;
+  }
+
+  return seeded;
+}
+
 /** A fresh copy of the seeded universe. */
 export function createDb(): MockDb {
-  return {
+  return withSignedUpAccounts({
     users: clone(fixtures.USERS),
     teams: clone(fixtures.TEAMS),
     productGoals: clone(fixtures.PRODUCT_GOALS),
@@ -308,6 +411,10 @@ export function createDb(): MockDb {
     // so the per-item view reads that rather than a second, divergent copy.
     dodVerifications: fixtures.INCREMENTS.flatMap((increment) => clone(increment.dodVerifications)),
     dorVerifications: [],
+    // Empty on purpose: the demo's Increments are the first of their team (so their integration
+    // verification is the "first Increment" exemption) and the one its Active Sprint is assembling
+    // (which has neither gate walked). Recording tests is what the panel's own form is for, and
+    // `addIntegrationTest` writes them here.
     integrationTests: [],
     healthChecks: clone(fixtures.HEALTH_CHECKS),
     healthCheckResponses: clone(fixtures.HEALTH_CHECK_RESPONSES),
@@ -320,7 +427,7 @@ export function createDb(): MockDb {
     sprintConfigurations: seededSprintConfigurations(),
     smNotesRevisions: seededNotesRevisions(),
     exportJobs: [],
-  };
+  });
 }
 
 let db: MockDb = createDb();

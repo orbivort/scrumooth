@@ -176,4 +176,25 @@ describe('IncrementCard', () => {
     screen.getByRole('button', { name: /Retry loading Increment/i }).click();
     expect(onRetry).toHaveBeenCalledTimes(1);
   });
+
+  it('falls back to neutral styling and zeroed counts for unknown statuses and absent totals', () => {
+    // Exercises the defensive `?? ''` / `?? 0` fallbacks: an unrecognised status has no
+    // STATUS_CLASS entry and a summary may omit its Sprint totals.
+    renderWithProviders(
+      <IncrementCard
+        group={makeGroup({
+          latest: {
+            ...deliveredIncrement,
+            status: 'SOMETHING' as unknown as IncrementStatus,
+          },
+          total: undefined as unknown as number,
+          delivered: undefined as unknown as number,
+        })}
+        onRetry={vi.fn()}
+      />
+    );
+
+    // The status label still renders (translation key fallback) and the counts collapse to 0.
+    expect(screen.getByText('This Sprint: 0 in total, 0 delivered')).toBeInTheDocument();
+  });
 });

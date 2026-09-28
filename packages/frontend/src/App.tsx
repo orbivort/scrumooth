@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { isAxiosError } from 'axios';
 import { useTranslation } from 'react-i18next';
 
 import { ErrorBoundary, PageErrorBoundary } from './components/ErrorBoundary';
@@ -88,6 +89,20 @@ const queryClient = new QueryClient({
   },
 });
 
+/**
+ * Whether the server refused the session, rather than never answering.
+ *
+ * Reading the session is what decides whether the persisted one is still real, and only an answer can
+ * decide that. A request that was dropped, timed out or aborted because the page was on its way out
+ * has no answer at all, and a server that failed (5xx) says nothing about the session either. Signing
+ * out on any of those would end a session nobody ended — and it would clear the very record the page
+ * that renders next reads, which is how a reload lands a signed-in visitor on the sign-in screen.
+ */
+function wasRefused(error: unknown): boolean {
+  const status = isAxiosError(error) ? error.response?.status : undefined;
+  return typeof status === 'number' && status >= 400 && status < 500;
+}
+
 // Auth Callback Initializer Component
 const AuthInitializer: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { t } = useTranslation('common');
@@ -133,8 +148,14 @@ const AuthInitializer: React.FC<{ children: React.ReactNode }> = ({ children }) 
               }
             }
           }
-        } catch {
-          void logout();
+        } catch (error) {
+          if (wasRefused(error)) {
+            void logout();
+          } else {
+            // The read failed without an answer, so the session stands: the interface reports what
+            // it cannot load, and the next read settles whether the session is still real.
+            logger.debug('Session not confirmed, leaving it as it stands', undefined, { error });
+          }
         }
       }
 

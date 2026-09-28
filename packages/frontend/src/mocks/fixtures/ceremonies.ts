@@ -310,8 +310,14 @@ const DELIVERED_INCREMENTS: readonly Increment[] = REVIEW_SEEDS.map((seed) => {
     totalStoryPoints: storyPoints,
     status: IncrementStatus.DELIVERED,
     integrationVerified: true,
-    integrationVerificationBasis: IntegrationVerificationBasis.PRIOR_INCREMENTS,
-    integrationVerifiedPriorCount: 1,
+    /*
+     * The team's first Increment, so its verification is the exemption rather than a pass against
+     * anything: there was no earlier Increment of this team to test it against. The basis field
+     * exists exactly so the badge cannot say "verified" for two different facts, and a team whose
+     * history starts here is the first of them.
+     */
+    integrationVerificationBasis: IntegrationVerificationBasis.FIRST_INCREMENT_EXEMPT,
+    integrationVerifiedPriorCount: 0,
     usabilityVerified: true,
     usabilityEvidence:
       'Demonstrated to the stakeholders at the Sprint Review and used on the following shift.',

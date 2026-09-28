@@ -31,11 +31,13 @@ export function resetMockData(): void {
 
 /** Re-seeds the data, ends the session and clears any armed scenario. */
 export function resetMockState(): void {
+  // Storage first, seed second: re-seeding re-applies the accounts created at the sign-up form,
+  // which are read back from storage, so clearing afterwards would leave those records in place.
+  clearAllKeys();
+  setScenario('none');
   resetDatabase();
   clearTimeboxes();
   endSession();
-  setScenario('none');
-  clearAllKeys();
 }
 
 /** A named snapshot of the current data, for tests that rewind. */

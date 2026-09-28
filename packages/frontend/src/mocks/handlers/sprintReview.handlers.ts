@@ -282,7 +282,7 @@ export const sprintReviewHandlers: RequestHandler[] = [
 
       const body = await bodyOf<{ pbiId: string }>(request);
       const pbi = database().backlogItems.find((item) => item.id === body.pbiId);
-      if (!pbi || pbi.teamId !== teamId) {
+      if (pbi?.teamId !== teamId) {
         return problems.validation('That item is not one of this team’s', 'pbiId');
       }
 
@@ -546,7 +546,7 @@ export const sprintReviewHandlers: RequestHandler[] = [
       // Both events sit inside the Sprint, so the Review cannot close the
       // container before the day the Sprint ends. Day-granular: the time of day
       // an end date stores must not decide whether the team may hold its Review.
-      if (sprint && sprint.status === 'active') {
+      if (sprint?.status === 'active') {
         const endDay = new Date(sprint.endDate).toISOString().slice(0, 10);
         const today = new Date().toISOString().slice(0, 10);
         if (today < endDay) {

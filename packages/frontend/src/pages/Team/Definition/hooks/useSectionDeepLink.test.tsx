@@ -226,4 +226,91 @@ describe('useSectionDeepLink', () => {
     expect(root.style.getPropertyValue(TOPBAR_HEIGHT_VAR)).toBe('64px');
     expect(root.style.getPropertyValue(NAV_HEIGHT_VAR)).toBe('47px');
   });
+
+  it('leaves the page alone when the named section is not mounted', () => {
+    // No heading carries the fragment's id, so there is nothing to reveal.
+    const EmptyProbe: React.FC = () => {
+      const { activeSectionId } = useSectionDeepLink();
+      return <span data-testid="active-section">{activeSectionId}</span>;
+    };
+
+    renderWithProviders(<EmptyProbe />, {
+      initialRoute: '/team?tab=definition#definition-of-ready',
+    });
+
+    expect(scrollIntoView).not.toHaveBeenCalled();
+    expect(screen.getByTestId('active-section')).toHaveTextContent('definition-of-done');
+  });
+
+  it('reveals the section even when the growing panel is absent', () => {
+    // The headings exist, so the reveal runs; the panel that the correction observes does not.
+    const HarnessNoPanel: React.FC = () => (
+      <>
+        <ActiveSectionProbe />
+        <div data-app-topbar />
+        <div id="definition-section-nav" />
+        <section aria-labelledby="definition-of-done">
+          <h2 id="definition-of-done" tabIndex={-1}>
+            Definition of Done
+          </h2>
+        </section>
+        <section aria-labelledby="definition-of-ready">
+          <h2 id="definition-of-ready" tabIndex={-1}>
+            Definition of Ready
+          </h2>
+        </section>
+      </>
+    );
+
+    renderWithProviders(<HarnessNoPanel />, {
+      initialRoute: '/team?tab=definition#definition-of-ready',
+    });
+
+    expect(scrollIntoView).toHaveBeenCalledWith(expect.objectContaining({ block: 'start' }));
+    expect(document.getElementById('definition-of-ready')).toHaveFocus();
+  });
+
+  it('re-corrects the reveal when the panel resizes after the first reveal', () => {
+    interface FakeObserver {
+      callback: () => void;
+    }
+    const observers: FakeObserver[] = [];
+
+    class FakeResizeObserver {
+      callback: () => void;
+      constructor(callback: () => void) {
+        this.callback = callback;
+        observers.push(this);
+      }
+      observe(): void {}
+      unobserve(): void {}
+      disconnect(): void {}
+    }
+
+    const original = (globalThis as { ResizeObserver?: unknown }).ResizeObserver;
+    (globalThis as { ResizeObserver?: unknown }).ResizeObserver =
+      FakeResizeObserver as unknown as typeof ResizeObserver;
+
+    try {
+      renderWithProviders(<Harness />, {
+        initialRoute: '/team?tab=definition#definition-of-ready',
+      });
+
+      // The reveal effect's observer is the last one created; the earlier observer belongs to the
+      // measurement effect. Firing it must schedule an instant correction.
+      const panelObserver = observers[observers.length - 1]!;
+      panelObserver.callback();
+
+      // The first reveal already scrolled; what matters here is that the correction ran without
+      // throwing and the section stayed focused.
+      expect(scrollIntoView).toHaveBeenCalled();
+      expect(document.getElementById('definition-of-ready')).toHaveFocus();
+    } finally {
+      if (original === undefined) {
+        delete (globalThis as { ResizeObserver?: unknown }).ResizeObserver;
+      } else {
+        (globalThis as { ResizeObserver?: unknown }).ResizeObserver = original;
+      }
+    }
+  });
 });

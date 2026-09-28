@@ -1,9 +1,9 @@
 import React from 'react';
-import { screen, waitFor, fireEvent } from '@testing-library/react';
+import { screen, waitFor, fireEvent, act, within } from '@testing-library/react';
 import { vi, describe, it, expect, beforeEach, afterEach, beforeAll } from 'vitest';
 import userEvent from '@testing-library/user-event';
 
-import { renderWithProviders, initTestI18n } from '../../test-utils';
+import { renderWithProviders, initTestI18n, i18nT } from '../../test-utils';
 
 import { SprintPlanning } from './SprintPlanning';
 
@@ -147,21 +147,40 @@ vi.mock('../../hooks/useToast', () => ({
   }),
 }));
 
-// Mock child components
+// Mock child components (capturing their props so their callbacks can be driven directly).
+const sprModalProps = vi.hoisted(() => ({
+  addTask: null as unknown as any,
+  capacity: null as unknown as any,
+  start: null as unknown as any,
+  goal: null as unknown as any,
+}));
+
 vi.mock('./components/AddTaskModal', () => ({
-  AddTaskModal: vi.fn(() => null),
+  AddTaskModal: vi.fn((props: unknown) => {
+    sprModalProps.addTask = props;
+    return null;
+  }),
 }));
 
 vi.mock('./components/TeamCapacityModal', () => ({
-  TeamCapacityModal: vi.fn(() => null),
+  TeamCapacityModal: vi.fn((props: unknown) => {
+    sprModalProps.capacity = props;
+    return null;
+  }),
 }));
 
 vi.mock('./components/StartSprintModal', () => ({
-  StartSprintModal: vi.fn(() => null),
+  StartSprintModal: vi.fn((props: unknown) => {
+    sprModalProps.start = props;
+    return null;
+  }),
 }));
 
 vi.mock('./components/EditSprintGoalModal', () => ({
-  EditSprintGoalModal: vi.fn(() => null),
+  EditSprintGoalModal: vi.fn((props: unknown) => {
+    sprModalProps.goal = props;
+    return null;
+  }),
 }));
 
 // Mock store and services
@@ -5007,5 +5026,1646 @@ describe('SprintPlanning Integration Tests', () => {
         screen.queryByRole('button', { name: /Remove PO Remove Item from sprint/i })
       ).not.toBeInTheDocument();
     });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Supplementary coverage: the interactive handler paths.
+// ---------------------------------------------------------------------------
+
+describe('SprintPlanning handler coverage', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    resetMockIdCounter();
+    mockStore(useTeamStore, {
+      currentTeam: createMockTeam(),
+      userRoleInCurrentTeam: 'DEVELOPERS',
+    });
+    mockStore(useAuthStore, createMockAuthStoreState());
+    mockApiMethod(
+      apiService.getProductGoals,
+      createMockApiResponse({ data: [createMockProductGoal()] })
+    );
+    mockApiMethod(
+      apiService.getSprintPlanningDraft,
+      createMockApiResponse({
+        data: {
+          sprintId: null,
+          sprintGoal: null,
+          items: [],
+          tasks: [],
+          capacity: [],
+          attendees: [],
+          participation: {
+            attendees: [],
+            hasProductOwner: false,
+            developerCount: 0,
+            isReadyToStart: false,
+          },
+          conflicts: [],
+        },
+      })
+    );
+    mockApiMethod(
+      apiService.getVelocityData,
+      createMockApiResponse({ data: { sprints: [], planned: [], completed: [], statuses: [] } })
+    );
+    mockApiMethod(
+      apiService.getPlanningParticipation,
+      createMockApiResponse({
+        data: {
+          attendees: [
+            {
+              id: 'pa-po',
+              name: 'Product Owner',
+              email: null,
+              role: 'product_owner',
+              attended: true,
+            },
+            { id: 'pa-dev', name: 'Developer', email: null, role: 'developers', attended: true },
+          ],
+          hasProductOwner: true,
+          developerCount: 1,
+          isReadyToStart: true,
+        },
+      })
+    );
+  });
+
+  const baseSprint = () => createMockGeneratedSprint({ sprintGoal: 'Goal', status: 'PLANNED' });
+
+  const renderPage = async (opts: { sprint?: any; backlog?: any[]; draft?: any } = {}) => {
+    const sprint = opts.sprint ?? baseSprint();
+    mockApiMethod(apiService.getGeneratedSprints, createMockApiResponse({ data: [sprint] }));
+    mockApiMethod(
+      apiService.getProductBacklog,
+      createMockApiResponse({ data: opts.backlog ?? [] })
+    );
+    mockApiMethod(apiService.getTeam, createMockApiResponse({ data: createMockTeam() }));
+    mockApiMethod(apiService.getSprintTasks, createMockApiResponse({ data: [] }));
+    mockApiMethod(apiService.saveSprintBacklog, createMockApiResponse({ success: true }));
+    mockApiMethod(apiService.startSprint, createMockApiResponse({ success: true }));
+    mockApiMethod(apiService.updateGeneratedSprint, createMockApiResponse({ success: true }));
+    mockApiMethod(apiService.addPlanningAttendee, createMockApiResponse({ success: true }));
+    mockApiMethod(apiService.updatePlanningAttendee, createMockApiResponse({ success: true }));
+    mockApiMethod(apiService.deletePlanningAttendee, createMockApiResponse({ success: true }));
+    if (opts.draft) {
+      mockApiMethod(apiService.getSprintPlanningDraft, createMockApiResponse({ data: opts.draft }));
+    }
+
+    renderWithProviders(<SprintPlanning />);
+    await waitFor(() => expect(screen.getByTestId('sprint-select')).toBeInTheDocument());
+    fireEvent.change(screen.getByTestId('sprint-select'), { target: { value: sprint.id } });
+    return sprint;
+  };
+
+  const addFirstItem = async (title: string) => {
+    await waitFor(() => expect(screen.getByText(title)).toBeInTheDocument());
+    fireEvent.click(screen.getByText(title));
+  };
+
+  it('adds an item, decomposes it into tasks and saves the backlog', async () => {
+    await renderPage({ backlog: [createMockBacklogItem({ title: 'Item A', status: 'READY' })] });
+    await addFirstItem('Item A');
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', {
+          name: i18nT('sprint:sprintPlanning.addTaskToItemAria', { title: 'Item A' }),
+        })
+      ).toBeInTheDocument()
+    );
+
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: i18nT('sprint:sprintPlanning.addTaskToItemAria', { title: 'Item A' }),
+      })
+    );
+    expect(sprModalProps.addTask).toBeTruthy();
+    await act(async () => {
+      sprModalProps.addTask.onSubmit({
+        title: 'Task One',
+        estimatedHours: 4,
+        assigneeId: 'user-1',
+      });
+    });
+
+    const assigneeSelect = screen.getByRole('combobox', {
+      name: i18nT('sprint:sprintPlanning.taskAssigneeAria', { title: 'Task One' }),
+    });
+    fireEvent.change(assigneeSelect, { target: { value: '' } });
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: i18nT('sprint:sprintPlanning.removeTaskAria', { title: 'Task One' }),
+      })
+    );
+
+    fireEvent.click(
+      screen.getByRole('button', { name: i18nT('sprint:sprintPlanning.saveSprintBacklog') })
+    );
+    await waitFor(() => expect(apiService.saveSprintBacklog).toHaveBeenCalled());
+
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: i18nT('sprint:sprintPlanning.removeItemAria', { title: 'Item A' }),
+      })
+    );
+    // Removing from the Sprint returns the item to the Product Backlog pool.
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('button', {
+          name: i18nT('sprint:sprintPlanning.removeItemAria', { title: 'Item A' }),
+        })
+      ).not.toBeInTheDocument()
+    );
+  });
+
+  it('starts the sprint through the confirmation dialog', async () => {
+    await renderPage({ backlog: [createMockBacklogItem({ title: 'Item B', status: 'READY' })] });
+    await addFirstItem('Item B');
+
+    fireEvent.click(
+      screen.getByRole('button', { name: i18nT('sprint:sprintPlanning.saveSprintBacklog') })
+    );
+    await waitFor(() => expect(apiService.saveSprintBacklog).toHaveBeenCalled());
+
+    const startButton = screen.getByRole('button', {
+      name: new RegExp(i18nT('sprint:sprintPlanning.startSprint'), 'i'),
+    });
+    await waitFor(() => expect(startButton).not.toBeDisabled());
+    fireEvent.click(startButton);
+    await waitFor(() => expect(sprModalProps.start?.isOpen).toBe(true));
+
+    await act(async () => {
+      sprModalProps.start.onConfirm();
+    });
+    await waitFor(() => expect(apiService.startSprint).toHaveBeenCalledWith(expect.anything(), {}));
+
+    await act(async () => {
+      sprModalProps.start.onClose();
+      sprModalProps.start.onOpenDefinitions();
+    });
+  });
+
+  it('edits and clears the sprint goal', async () => {
+    await renderPage();
+    await waitFor(() => expect(screen.getByText('Goal')).toBeInTheDocument());
+
+    fireEvent.click(
+      screen.getByRole('button', { name: i18nT('sprint:sprintPlanning.editSprintGoalAria') })
+    );
+    await waitFor(() => expect(sprModalProps.goal?.isOpen).toBe(true));
+
+    await act(async () => {
+      sprModalProps.goal.onSave('New Goal');
+    });
+    await waitFor(() =>
+      expect(apiService.updateGeneratedSprint).toHaveBeenCalledWith(expect.anything(), {
+        sprintGoal: 'New Goal',
+      })
+    );
+
+    await act(async () => {
+      sprModalProps.goal.onSave('   ');
+      sprModalProps.goal.onClose();
+    });
+  });
+
+  it('opens and saves the capacity modal', async () => {
+    await renderPage();
+
+    const capacityCard = screen
+      .getByText(i18nT('sprint:sprintPlanning.teamCapacity'))
+      .closest('[role="button"]');
+    expect(capacityCard).toBeTruthy();
+    fireEvent.click(capacityCard as HTMLElement);
+    await waitFor(() => expect(sprModalProps.capacity?.isOpen).toBe(true));
+
+    await act(async () => {
+      sprModalProps.capacity.onSave([
+        { memberId: 'member-1', userId: 'user-1', memberName: 'John', availableHours: 20 },
+      ]);
+      sprModalProps.capacity.onClose();
+    });
+  });
+
+  it('resumes a saved planning draft', async () => {
+    const item = createMockBacklogItem({ title: 'Resumed Item', status: 'READY' });
+    const sprint = baseSprint();
+    await renderPage({
+      sprint,
+      backlog: [item],
+      draft: {
+        sprintId: sprint.id,
+        sprintGoal: 'Goal',
+        items: [{ pbiId: item.id }],
+        tasks: [{ id: 'task-1', pbiId: item.id, title: 'Saved Task', estimatedHours: 3 }],
+        capacity: [{ memberId: 'member-1', userId: 'user-1', availableHours: 30 }],
+        attendees: [],
+        conflicts: [{ pbiId: item.id, sprintName: 'Other Sprint' }],
+      },
+    });
+
+    await waitFor(() => expect(screen.getByText('Resumed Item')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText('Saved Task')).toBeInTheDocument());
+  });
+
+  it('supports drag and keyboard movement of backlog items', async () => {
+    await renderPage({ backlog: [createMockBacklogItem({ title: 'Drag Item', status: 'READY' })] });
+    await waitFor(() => expect(screen.getByText('Drag Item')).toBeInTheDocument());
+
+    const itemEl = screen.getByText('Drag Item').closest('[role="option"]') as HTMLElement;
+    const dataTransfer = {
+      setData: vi.fn(),
+      getData: vi.fn(() => ''),
+      effectAllowed: '',
+      dropEffect: '',
+    };
+
+    fireEvent.dragStart(itemEl, { dataTransfer });
+    fireEvent.dragEnd(itemEl, { dataTransfer });
+    fireEvent.dragOver(itemEl, { dataTransfer });
+    fireEvent.dragLeave(itemEl, { dataTransfer, relatedTarget: document.body });
+
+    // Keyboard grab, navigate and cancel.
+    fireEvent.keyDown(itemEl, { key: 'Enter' });
+    fireEvent.keyDown(itemEl, { key: 'ArrowDown' });
+    fireEvent.keyDown(itemEl, { key: 'ArrowUp' });
+    fireEvent.keyDown(itemEl, { key: 'Escape' });
+
+    expect(mockAnnounce).toHaveBeenCalled();
+  });
+});
+
+describe('SprintPlanning branch coverage', () => {
+  const dayOffset = (n: number) => {
+    const d = new Date();
+    d.setDate(d.getDate() + n);
+    return d.toISOString().split('T')[0];
+  };
+  const mk = (over: Record<string, unknown>) => ({ ...createMockGeneratedSprint(), ...over });
+
+  const setupStore = () => {
+    vi.clearAllMocks();
+    resetMockIdCounter();
+    mockStore(useTeamStore, {
+      currentTeam: createMockTeam(),
+      userRoleInCurrentTeam: 'DEVELOPERS',
+    });
+    mockStore(useAuthStore, createMockAuthStoreState());
+    mockApiMethod(
+      apiService.getProductGoals,
+      createMockApiResponse({ data: [createMockProductGoal()] })
+    );
+    mockApiMethod(
+      apiService.getSprintPlanningDraft,
+      createMockApiResponse({
+        data: {
+          sprintId: null,
+          sprintGoal: null,
+          items: [],
+          tasks: [],
+          capacity: [],
+          attendees: [],
+          participation: {
+            attendees: [],
+            hasProductOwner: false,
+            developerCount: 0,
+            isReadyToStart: false,
+          },
+          conflicts: [],
+        },
+      })
+    );
+    mockApiMethod(
+      apiService.getVelocityData,
+      createMockApiResponse({ data: { sprints: [], planned: [], completed: [], statuses: [] } })
+    );
+    mockApiMethod(
+      apiService.getPlanningParticipation,
+      createMockApiResponse({
+        data: {
+          attendees: [],
+          hasProductOwner: true,
+          developerCount: 1,
+          isReadyToStart: true,
+        },
+      })
+    );
+    mockApiMethod(apiService.saveSprintBacklog, createMockApiResponse({ success: true }));
+    mockApiMethod(apiService.startSprint, createMockApiResponse({ success: true }));
+    mockApiMethod(apiService.updateGeneratedSprint, createMockApiResponse({ success: true }));
+  };
+
+  const renderPage = async (
+    opts: {
+      sprint?: any;
+      sprints?: any[];
+      backlog?: any[];
+      velocity?: any;
+    } = {}
+  ) => {
+    const sprint = opts.sprint ?? mk({ id: 's-current', sprintGoal: 'Goal', status: 'PLANNED' });
+    mockApiMethod(
+      apiService.getGeneratedSprints,
+      createMockApiResponse({ data: opts.sprints ?? [sprint] })
+    );
+    mockApiMethod(
+      apiService.getProductBacklog,
+      createMockApiResponse({ data: opts.backlog ?? [] })
+    );
+    mockApiMethod(apiService.getTeam, createMockApiResponse({ data: createMockTeam() }));
+    mockApiMethod(apiService.getSprintTasks, createMockApiResponse({ data: [] }));
+    if (opts.velocity) {
+      mockApiMethod(apiService.getVelocityData, createMockApiResponse({ data: opts.velocity }));
+    }
+    renderWithProviders(<SprintPlanning />);
+    await waitFor(() => expect(screen.getByTestId('sprint-select')).toBeInTheDocument());
+    fireEvent.change(screen.getByTestId('sprint-select'), { target: { value: sprint.id } });
+    return sprint;
+  };
+
+  beforeEach(setupStore);
+
+  it('reports observed velocity with its range and unrecorded sprints', async () => {
+    await renderPage({
+      velocity: {
+        sprints: [],
+        planned: [],
+        statuses: [],
+        points: [
+          { status: 'COMPLETED', completedPoints: 5 },
+          { status: 'COMPLETED', completedPoints: null },
+          { status: 'ACTIVE', completedPoints: 9 },
+        ],
+      },
+    });
+
+    await waitFor(() =>
+      expect(document.querySelector('[class*="velocity-indicator"]')).toBeTruthy()
+    );
+  });
+
+  it('categorizes sprints and skips cancelled, past and dateless ones', async () => {
+    const current = mk({
+      id: 's-current',
+      sprintGoal: 'Goal',
+      status: 'PLANNED',
+      startDate: dayOffset(-1),
+      endDate: dayOffset(13),
+    });
+    const sprints = [
+      mk({ id: 's-cancelled', status: 'CANCELLED' }),
+      mk({ id: 's-past', startDate: '2020-01-01', endDate: '2020-01-14' }),
+      current,
+      mk({ id: 's-future', startDate: dayOffset(30), endDate: dayOffset(43) }),
+      mk({ id: 's-missing', startDate: '', endDate: '' }),
+    ];
+
+    await renderPage({ sprint: current, sprints });
+
+    const select = screen.getByTestId('sprint-select') as HTMLSelectElement;
+    const optionValues = Array.from(select.querySelectorAll('option')).map((o) => o.value);
+    expect(optionValues).toContain(current.id);
+    expect(optionValues).not.toContain('s-cancelled');
+    expect(optionValues).not.toContain('s-past');
+    expect(optionValues).toContain('s-future');
+  });
+
+  it('locks the backlog of an already-active sprint and keeps it navigable', async () => {
+    const sprint = mk({
+      id: 's-locked',
+      status: 'ACTIVE',
+      sprintGoal: 'Goal',
+      startDate: dayOffset(-5),
+      endDate: dayOffset(5),
+    });
+    await renderPage({ sprint });
+
+    await waitFor(() =>
+      expect(
+        screen.getByText(i18nT('sprint:sprintPlanning.backlogLockedNotice'))
+      ).toBeInTheDocument()
+    );
+
+    const region = screen.getByRole('region', {
+      name: new RegExp(i18nT('sprint:sprintPlanning.sprintBacklog'), 'i'),
+    });
+    fireEvent.keyDown(region, { key: 'ArrowDown' });
+    fireEvent.keyDown(region, { key: 'ArrowUp' });
+  });
+
+  it('surfaces a refusal from the start endpoint', async () => {
+    mockApiMethod(
+      apiService.startSprint,
+      createMockApiResponse({
+        success: false,
+        error: { message: 'Refused', code: 'GATE_DOR_REQUIRED' },
+      })
+    );
+    await renderPage({ backlog: [createMockBacklogItem({ title: 'Item R', status: 'READY' })] });
+    await waitFor(() => expect(screen.getByText('Item R')).toBeInTheDocument());
+    fireEvent.click(screen.getByText('Item R'));
+    fireEvent.click(
+      screen.getByRole('button', { name: i18nT('sprint:sprintPlanning.saveSprintBacklog') })
+    );
+    await waitFor(() => expect(apiService.saveSprintBacklog).toHaveBeenCalled());
+
+    const startButton = screen.getByRole('button', { name: /Start Sprint/i });
+    await waitFor(() => expect(startButton).not.toBeDisabled());
+    fireEvent.click(startButton);
+    await act(async () => {
+      sprModalProps.start.onConfirm();
+    });
+
+    await waitFor(() => expect(sprModalProps.start.error).toBe('Refused'));
+
+    // Following the refusal routes to the readiness agreement.
+    await act(async () => {
+      sprModalProps.start.onOpenDefinitions();
+    });
+  });
+
+  it('surfaces a thrown start error', async () => {
+    (apiService.startSprint as unknown as ReturnType<typeof vi.fn>).mockRejectedValue(
+      new Error('boom')
+    );
+    await renderPage({ backlog: [createMockBacklogItem({ title: 'Item E', status: 'READY' })] });
+    await waitFor(() => expect(screen.getByText('Item E')).toBeInTheDocument());
+    fireEvent.click(screen.getByText('Item E'));
+    fireEvent.click(
+      screen.getByRole('button', { name: i18nT('sprint:sprintPlanning.saveSprintBacklog') })
+    );
+    await waitFor(() => expect(apiService.saveSprintBacklog).toHaveBeenCalled());
+
+    const startButton = screen.getByRole('button', { name: /Start Sprint/i });
+    await waitFor(() => expect(startButton).not.toBeDisabled());
+    fireEvent.click(startButton);
+    await act(async () => {
+      sprModalProps.start.onConfirm();
+    });
+
+    await waitFor(() => expect(sprModalProps.start.error).toBeTruthy());
+  });
+
+  it('keeps the plan unsaved when the backlog save is refused', async () => {
+    mockApiMethod(
+      apiService.saveSprintBacklog,
+      createMockApiResponse({ success: false, error: { message: 'no' } })
+    );
+    await renderPage({ backlog: [createMockBacklogItem({ title: 'Item S', status: 'READY' })] });
+    await waitFor(() => expect(screen.getByText('Item S')).toBeInTheDocument());
+    fireEvent.click(screen.getByText('Item S'));
+    fireEvent.click(
+      screen.getByRole('button', { name: i18nT('sprint:sprintPlanning.saveSprintBacklog') })
+    );
+
+    await waitFor(() => expect(apiService.saveSprintBacklog).toHaveBeenCalled());
+    // The backlog is not marked persisted, so Start stays blocked.
+    expect(screen.getByRole('button', { name: /Start Sprint/i })).toBeDisabled();
+  });
+
+  it('keeps the goal dialog open when the update is refused', async () => {
+    mockApiMethod(
+      apiService.updateGeneratedSprint,
+      createMockApiResponse({ success: false, error: { message: 'no' } })
+    );
+    await renderPage();
+    await waitFor(() => expect(screen.getByText('Goal')).toBeInTheDocument());
+
+    fireEvent.click(
+      screen.getByRole('button', { name: i18nT('sprint:sprintPlanning.editSprintGoalAria') })
+    );
+    await act(async () => {
+      sprModalProps.goal.onSave('New Goal');
+    });
+
+    await waitFor(() => expect(apiService.updateGeneratedSprint).toHaveBeenCalled());
+    expect(sprModalProps.goal.isOpen).toBe(true);
+  });
+
+  it('accepts a grabbed backlog item dropped on the sprint backlog', async () => {
+    const item = createMockBacklogItem({ title: 'Drop Item', status: 'READY' });
+    await renderPage({ backlog: [item] });
+    await waitFor(() => expect(screen.getByText('Drop Item')).toBeInTheDocument());
+
+    const region = screen.getByRole('region', {
+      name: new RegExp(i18nT('sprint:sprintPlanning.sprintBacklog'), 'i'),
+    });
+    const dataTransfer = {
+      setData: vi.fn(),
+      getData: vi.fn(() => item.id),
+      effectAllowed: '',
+      dropEffect: '',
+    };
+
+    await act(async () => {
+      fireEvent.drop(region, { dataTransfer });
+    });
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', {
+          name: i18nT('sprint:sprintPlanning.removeItemAria', { title: 'Drop Item' }),
+        })
+      ).toBeInTheDocument()
+    );
+  });
+
+  it('autosaves the plan while editing and flushes on unload', async () => {
+    (apiService.saveSprintPlanningDraft as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({
+      success: true,
+    });
+    await renderPage({
+      backlog: [
+        createMockBacklogItem({ title: 'Auto Item', status: 'READY' }),
+        createMockBacklogItem({ title: 'Auto Item 2', status: 'READY' }),
+      ],
+    });
+    await waitFor(() => expect(screen.getByText('Auto Item')).toBeInTheDocument());
+
+    // Adding an item marks the plan dirty and schedules the debounced autosave.
+    fireEvent.click(screen.getByText('Auto Item'));
+
+    await waitFor(() => expect(apiService.saveSprintPlanningDraft).toHaveBeenCalled(), {
+      timeout: 3000,
+    });
+
+    // A second, still-pending change is flushed on unload.
+    fireEvent.click(screen.getByText('Auto Item 2'));
+    await act(async () => {
+      window.dispatchEvent(new Event('beforeunload'));
+    });
+  });
+
+  it('surfaces a thrown backlog save error', async () => {
+    (apiService.saveSprintBacklog as unknown as ReturnType<typeof vi.fn>).mockRejectedValue(
+      new Error('save boom')
+    );
+    await renderPage({ backlog: [createMockBacklogItem({ title: 'Item SE', status: 'READY' })] });
+    await waitFor(() => expect(screen.getByText('Item SE')).toBeInTheDocument());
+    fireEvent.click(screen.getByText('Item SE'));
+    fireEvent.click(
+      screen.getByRole('button', { name: i18nT('sprint:sprintPlanning.saveSprintBacklog') })
+    );
+
+    await waitFor(() => expect(apiService.saveSprintBacklog).toHaveBeenCalled());
+  });
+
+  it('surfaces a thrown goal update error', async () => {
+    (apiService.updateGeneratedSprint as unknown as ReturnType<typeof vi.fn>).mockRejectedValue(
+      new Error('goal boom')
+    );
+    await renderPage();
+    await waitFor(() => expect(screen.getByText('Goal')).toBeInTheDocument());
+
+    fireEvent.click(
+      screen.getByRole('button', { name: i18nT('sprint:sprintPlanning.editSprintGoalAria') })
+    );
+    await act(async () => {
+      sprModalProps.goal.onSave('New Goal');
+    });
+
+    await waitFor(() => expect(apiService.updateGeneratedSprint).toHaveBeenCalled());
+  });
+
+  it('shows an incomplete participation state', async () => {
+    mockApiMethod(
+      apiService.getPlanningParticipation,
+      createMockApiResponse({
+        data: {
+          attendees: [],
+          hasProductOwner: false,
+          developerCount: 0,
+          isReadyToStart: false,
+        },
+      })
+    );
+    await renderPage();
+    await waitFor(() =>
+      expect(
+        screen.getByText(i18nT('sprint:sprintPlanning.participation.incomplete'))
+      ).toBeInTheDocument()
+    );
+  });
+
+  it('reports a failed draft load', async () => {
+    (apiService.getSprintPlanningDraft as unknown as ReturnType<typeof vi.fn>).mockRejectedValue(
+      new Error('draft boom')
+    );
+    await renderPage();
+    await waitFor(() =>
+      expect(screen.getByText(i18nT('sprint:sprintPlanning.draftFailedNotice'))).toBeInTheDocument()
+    );
+  });
+
+  it('ignores dragging within a locked sprint', async () => {
+    const sprint = mk({
+      id: 's-locked2',
+      status: 'ACTIVE',
+      sprintGoal: 'Goal',
+      startDate: dayOffset(-5),
+      endDate: dayOffset(5),
+    });
+    await renderPage({
+      sprint,
+      backlog: [createMockBacklogItem({ title: 'Locked Drag', status: 'READY' })],
+    });
+    await waitFor(() => expect(screen.getByText('Locked Drag')).toBeInTheDocument());
+
+    const itemEl = screen.getByText('Locked Drag').closest('[role="option"]') as HTMLElement;
+    const dataTransfer = {
+      setData: vi.fn(),
+      getData: vi.fn(() => ''),
+      effectAllowed: '',
+      dropEffect: '',
+    };
+    fireEvent.dragStart(itemEl, { dataTransfer });
+    fireEvent.keyDown(itemEl, { key: 'Enter' });
+  });
+
+  it('adds a task with a default assignee and no estimate', async () => {
+    await renderPage({ backlog: [createMockBacklogItem({ title: 'Item T', status: 'READY' })] });
+    await waitFor(() => expect(screen.getByText('Item T')).toBeInTheDocument());
+    fireEvent.click(screen.getByText('Item T'));
+
+    const addTaskButton = await screen.findByRole('button', {
+      name: i18nT('sprint:sprintPlanning.addTaskToItemAria', { title: 'Item T' }),
+    });
+    fireEvent.click(addTaskButton);
+
+    await act(async () => {
+      sprModalProps.addTask.onSubmit({ title: 'Loose Task', estimatedHours: 0, assigneeId: '' });
+    });
+
+    await waitFor(() => expect(screen.getByText('Loose Task')).toBeInTheDocument());
+  });
+
+  it('ignores a task submission with no selected item', async () => {
+    await renderPage();
+    await waitFor(() => expect(sprModalProps.addTask).toBeTruthy());
+
+    // No item selected: the handler returns early without adding anything.
+    await act(async () => {
+      sprModalProps.addTask.onSubmit({ title: 'Orphan', estimatedHours: 2, assigneeId: 'user-1' });
+    });
+
+    expect(screen.queryByText('Orphan')).not.toBeInTheDocument();
+  });
+
+  it('accepts an item without estimates', async () => {
+    await renderPage({
+      backlog: [
+        createMockBacklogItem({ title: 'No Pts', status: 'READY', storyPoints: undefined }),
+      ],
+    });
+    await waitFor(() => expect(screen.getByText('No Pts')).toBeInTheDocument());
+    fireEvent.click(screen.getByText('No Pts'));
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', {
+          name: i18nT('sprint:sprintPlanning.removeItemAria', { title: 'No Pts' }),
+        })
+      ).toBeInTheDocument()
+    );
+  });
+
+  it('sorts multiple current sprints', async () => {
+    const s1 = mk({
+      id: 's-c1',
+      sprintGoal: 'Goal',
+      status: 'PLANNED',
+      startDate: dayOffset(1),
+      endDate: dayOffset(12),
+    });
+    const s2 = mk({
+      id: 's-c2',
+      sprintGoal: 'Goal 2',
+      status: 'PLANNED',
+      startDate: dayOffset(-1),
+      endDate: dayOffset(10),
+    });
+
+    await renderPage({ sprint: s2, sprints: [s1, s2] });
+
+    const select = screen.getByTestId('sprint-select') as HTMLSelectElement;
+    const optionValues = Array.from(select.querySelectorAll('option')).map((o) => o.value);
+    expect(optionValues).toContain('s-c1');
+    expect(optionValues).toContain('s-c2');
+  });
+
+  it('handles a draft that cannot be read', async () => {
+    mockApiMethod(
+      apiService.getSprintPlanningDraft,
+      createMockApiResponse({ success: false, error: { message: 'nope' } })
+    );
+
+    await renderPage();
+
+    await waitFor(() =>
+      expect(screen.getByText(i18nT('sprint:sprintPlanning.draftFailedNotice'))).toBeInTheDocument()
+    );
+  });
+
+  it('refuses an item without an id', async () => {
+    await renderPage({
+      backlog: [createMockBacklogItem({ id: '', title: 'No Id', status: 'READY' })],
+    });
+    await waitFor(() => expect(screen.getByText('No Id')).toBeInTheDocument());
+    fireEvent.click(screen.getByText('No Id'));
+
+    // Nothing is added to the Sprint Backlog.
+    expect(
+      screen.queryByRole('button', {
+        name: i18nT('sprint:sprintPlanning.removeItemAria', { title: 'No Id' }),
+      })
+    ).not.toBeInTheDocument();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Extended coverage: roster-aware capacity, draft hydration edge cases, the
+// unload flush while hydration is pending, and the planning-participation
+// integration with the shared AttendeesSection.
+// ---------------------------------------------------------------------------
+
+const EMPTY_DRAFT = {
+  sprintId: null,
+  sprintGoal: null,
+  items: [],
+  tasks: [],
+  capacity: [],
+  attendees: [],
+  conflicts: [],
+};
+
+const EMPTY_PARTICIPATION = {
+  attendees: [],
+  hasProductOwner: true,
+  developerCount: 1,
+  isReadyToStart: true,
+};
+
+/** A team member with a linked user profile, so the roster effect can derive a display name. */
+const makeMember = (
+  id: string,
+  userId: string,
+  role: 'product_owner' | 'scrum_master' | 'developers',
+  first?: string,
+  last?: string
+) =>
+  createMockTeamMember({
+    id,
+    userId,
+    role,
+    ...(first
+      ? {
+          user: {
+            id: userId,
+            email: `${userId}@example.com`,
+            firstName: first,
+            lastName: last ?? '',
+            createdAt: '2026-01-01T00:00:00Z',
+            updatedAt: '2026-01-01T00:00:00Z',
+          },
+        }
+      : {}),
+  });
+
+/** Two named Developers plus one roster entry with no linked user (name falls back to Unknown). */
+const developerRoster = () => [
+  makeMember('member-1', 'user-1', 'developers', 'Dev', 'One'),
+  makeMember('member-2', 'user-2', 'developers', 'Dev', 'Two'),
+  makeMember('member-3', 'user-3', 'developers'),
+];
+
+/**
+ * The two named Developers only.
+ *
+ * Capacity is matched to the roster by `userId` and every Developer without a recorded entry
+ * falls back to a full 40-hour week, so a test that pins the capacity percentage must also pin
+ * the roster the percentage divides by — otherwise the unnamed Developer silently adds 40 hours
+ * and the plan is never over capacity.
+ */
+const twoDeveloperRoster = () => developerRoster().slice(0, 2);
+
+const sprintBacklogRegion = () =>
+  screen.getByRole('region', {
+    name: new RegExp(i18nT('sprint:sprintPlanning.sprintBacklog'), 'i'),
+  });
+
+const sprintItemName = (title: string, taskCount: number, readOnly = false) =>
+  i18nT(
+    readOnly
+      ? 'sprint:sprintPlanning.sprintItemReadOnlyAria'
+      : 'sprint:sprintPlanning.sprintItemAria',
+    { title, points: 5, taskCount }
+  );
+
+const planningDraft = (sprintId: string, over: Record<string, unknown> = {}) => ({
+  sprintId,
+  sprintGoal: 'Goal',
+  items: [],
+  tasks: [],
+  capacity: [],
+  attendees: [],
+  conflicts: [],
+  ...over,
+});
+
+describe('SprintPlanning extended coverage', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    resetMockIdCounter();
+    // The child modals are mocked to capture their props in a module-level object that survives
+    // between tests. Clear it first: while the page's queries are still pending it renders the
+    // loading state and no modal, so a `waitFor(() => expect(sprModalProps.x).toBeTruthy())`
+    // would otherwise resolve immediately against the previous test's callbacks and drive them
+    // with that test's selected sprint.
+    sprModalProps.addTask = null;
+    sprModalProps.capacity = null;
+    sprModalProps.start = null;
+    sprModalProps.goal = null;
+    mockStore(useTeamStore, {
+      currentTeam: createMockTeam(),
+      userRoleInCurrentTeam: 'DEVELOPERS',
+    });
+    mockStore(useAuthStore, createMockAuthStoreState());
+    mockApiMethod(
+      apiService.getProductGoals,
+      createMockApiResponse({ data: [createMockProductGoal()] })
+    );
+    mockApiMethod(apiService.getSprintPlanningDraft, createMockApiResponse({ data: EMPTY_DRAFT }));
+    mockApiMethod(
+      apiService.getVelocityData,
+      createMockApiResponse({ data: { sprints: [], planned: [], completed: [], statuses: [] } })
+    );
+    mockApiMethod(
+      apiService.getPlanningParticipation,
+      createMockApiResponse({ data: EMPTY_PARTICIPATION })
+    );
+    mockApiMethod(apiService.saveSprintBacklog, createMockApiResponse({ success: true }));
+    mockApiMethod(apiService.saveSprintPlanningDraft, createMockApiResponse({ success: true }));
+    mockApiMethod(apiService.startSprint, createMockApiResponse({ success: true }));
+    mockApiMethod(apiService.updateGeneratedSprint, createMockApiResponse({ success: true }));
+    mockApiMethod(apiService.addPlanningAttendee, createMockApiResponse({ success: true }));
+    mockApiMethod(apiService.updatePlanningAttendee, createMockApiResponse({ success: true }));
+    mockApiMethod(apiService.deletePlanningAttendee, createMockApiResponse({ success: true }));
+  });
+
+  const renderPlanning = async (
+    opts: {
+      sprint?: any;
+      sprints?: any[];
+      backlog?: any[];
+      draft?: any;
+      team?: any;
+      participation?: any;
+      velocity?: any;
+    } = {}
+  ) => {
+    const sprint =
+      opts.sprint ??
+      createMockGeneratedSprint({ id: 's-ext', sprintGoal: 'Goal', status: 'PLANNED' });
+    mockApiMethod(
+      apiService.getGeneratedSprints,
+      createMockApiResponse({ data: opts.sprints ?? [sprint] })
+    );
+    mockApiMethod(
+      apiService.getProductBacklog,
+      createMockApiResponse({ data: opts.backlog ?? [] })
+    );
+    mockApiMethod(
+      apiService.getTeam,
+      createMockApiResponse({ data: opts.team ?? createMockTeam() })
+    );
+    mockApiMethod(apiService.getSprintTasks, createMockApiResponse({ data: [] }));
+    if (opts.draft) {
+      mockApiMethod(apiService.getSprintPlanningDraft, createMockApiResponse({ data: opts.draft }));
+    }
+    if (opts.participation) {
+      mockApiMethod(
+        apiService.getPlanningParticipation,
+        createMockApiResponse({ data: opts.participation })
+      );
+    }
+    if (opts.velocity) {
+      mockApiMethod(apiService.getVelocityData, createMockApiResponse({ data: opts.velocity }));
+    }
+
+    renderWithProviders(<SprintPlanning />);
+    await waitFor(() => expect(screen.getByTestId('sprint-select')).toBeInTheDocument());
+    fireEvent.change(screen.getByTestId('sprint-select'), { target: { value: sprint.id } });
+    return sprint;
+  };
+
+  it('hydrates capacity and assignee names and skips backlog items absent from the draft', async () => {
+    const sprint = createMockGeneratedSprint({
+      id: 's-hyd',
+      sprintGoal: 'Goal',
+      status: 'PLANNED',
+    });
+    const drafted = createMockBacklogItem({ title: 'Drafted Item', status: 'READY' });
+    const unrelated = createMockBacklogItem({ title: 'Unrelated Item', status: 'READY' });
+
+    await renderPlanning({
+      sprint,
+      backlog: [drafted, unrelated],
+      team: { ...createMockTeam(), members: developerRoster() },
+      draft: planningDraft(sprint.id, {
+        items: [{ pbiId: drafted.id }],
+        tasks: [
+          {
+            id: 'saved-1',
+            pbiId: drafted.id,
+            title: 'Assigned Task',
+            assigneeId: 'user-1',
+            estimatedHours: 3,
+            remainingHours: 3,
+          },
+          {
+            id: 'saved-2',
+            pbiId: drafted.id,
+            title: 'Ghost Assignee Task',
+            assigneeId: 'ghost-user',
+            estimatedHours: 1,
+          },
+          { id: 'saved-3', pbiId: drafted.id, title: 'No Estimate Task' },
+        ],
+        capacity: [
+          { memberId: 'member-1', userId: 'user-1', availableHours: 20 },
+          { memberId: 'member-2', userId: 'user-2', availableHours: 20 },
+        ],
+      }),
+    });
+
+    await waitFor(() => expect(screen.getByText('Assigned Task')).toBeInTheDocument());
+    expect(screen.getByText('Ghost Assignee Task')).toBeInTheDocument();
+    expect(screen.getByText('No Estimate Task')).toBeInTheDocument();
+    // The unrelated READY item stays in the Product Backlog pool.
+    expect(screen.getByText('Unrelated Item')).toBeInTheDocument();
+    // Capacity recorded for the sprint is applied to the developer roster.
+    expect(screen.getByText(i18nT('sprint:sprintPlanning.capacityRecorded'))).toBeInTheDocument();
+
+    // Adding a change marks the plan dirty; the debounced autosave persists the capacity.
+    fireEvent.change(
+      screen.getByRole('combobox', {
+        name: i18nT('sprint:sprintPlanning.taskAssigneeAria', { title: 'Assigned Task' }),
+      }),
+      { target: { value: 'user-2' } }
+    );
+    await waitFor(() => expect(apiService.saveSprintPlanningDraft).toHaveBeenCalled(), {
+      timeout: 3000,
+    });
+  });
+
+  it('clears the plan when a draft references PBIs missing from the backlog', async () => {
+    const sprint = createMockGeneratedSprint({
+      id: 's-nomatch',
+      sprintGoal: 'Goal',
+      status: 'PLANNED',
+    });
+    const poolItem = createMockBacklogItem({ title: 'Pool Only', status: 'READY' });
+
+    await renderPlanning({
+      sprint,
+      backlog: [poolItem],
+      draft: planningDraft(sprint.id, { sprintGoal: null, items: [{ pbiId: 'missing-pbi' }] }),
+    });
+
+    await waitFor(() =>
+      expect(screen.getByText(i18nT('sprint:sprintPlanning.draftNoneNotice'))).toBeInTheDocument()
+    );
+    expect(
+      screen.queryByRole('button', {
+        name: i18nT('sprint:sprintPlanning.addTaskToItemAria', { title: 'Pool Only' }),
+      })
+    ).not.toBeInTheDocument();
+  });
+
+  it('flushes a dirty plan on unload while the draft is still hydrating', async () => {
+    const sprint = createMockGeneratedSprint({
+      id: 's-flush',
+      sprintGoal: 'Goal',
+      status: 'PLANNED',
+    });
+    const item = createMockBacklogItem({ title: 'Flush Item', status: 'READY' });
+    // A never-resolving draft read keeps the resume-hydration guard active, so the debounced
+    // autosave effect bails out and the plan stays dirty for the unload flush to pick up.
+    mockApiImplementation(apiService.getSprintPlanningDraft, () => new Promise(() => {}));
+
+    await renderPlanning({
+      sprint,
+      backlog: [item],
+      team: { ...createMockTeam(), members: developerRoster() },
+    });
+
+    await waitFor(() => expect(screen.getByText('Flush Item')).toBeInTheDocument());
+    fireEvent.click(screen.getByText('Flush Item'));
+    await waitFor(() => expect(screen.getByText('Plan: Flush Item - Task 1')).toBeInTheDocument());
+
+    fireEvent.change(
+      screen.getByRole('combobox', {
+        name: i18nT('sprint:sprintPlanning.taskAssigneeAria', {
+          title: 'Plan: Flush Item - Task 1',
+        }),
+      }),
+      { target: { value: 'user-1' } }
+    );
+
+    await act(async () => {
+      window.dispatchEvent(new Event('beforeunload'));
+    });
+  });
+
+  it('adds an item through its Add button and closes the task modal', async () => {
+    const item = createMockBacklogItem({ title: 'Button Item', status: 'READY' });
+
+    await renderPlanning({ backlog: [item] });
+    await waitFor(() => expect(screen.getByText('Button Item')).toBeInTheDocument());
+
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: i18nT('sprint:sprintPlanning.addItemAria', { title: 'Button Item' }),
+      })
+    );
+
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: i18nT('sprint:sprintPlanning.addTaskToItemAria', { title: 'Button Item' }),
+      })
+    );
+    await waitFor(() => expect(sprModalProps.addTask?.isOpen).toBe(true));
+
+    await act(async () => {
+      sprModalProps.addTask.onClose();
+    });
+    expect(sprModalProps.addTask.isOpen).toBe(false);
+  });
+
+  it('opens the capacity modal with the keyboard', async () => {
+    await renderPlanning();
+
+    const capacityCard = screen
+      .getByText(i18nT('sprint:sprintPlanning.teamCapacity'))
+      .closest('[role="button"]') as HTMLElement;
+    expect(capacityCard).toBeTruthy();
+
+    fireEvent.keyDown(capacityCard, { key: 'Enter' });
+    await waitFor(() => expect(sprModalProps.capacity?.isOpen).toBe(true));
+
+    // A non-Enter key must not open the dialog.
+    fireEvent.keyDown(capacityCard, { key: 'a' });
+  });
+
+  it('handles goal and start actions when no sprint is selected', async () => {
+    mockApiMethod(apiService.getGeneratedSprints, createMockApiResponse({ data: [] }));
+    mockApiMethod(apiService.getProductBacklog, createMockApiResponse({ data: [] }));
+    mockApiMethod(apiService.getTeam, createMockApiResponse({ data: createMockTeam() }));
+
+    renderWithProviders(<SprintPlanning />);
+    await waitFor(() => expect(sprModalProps.goal).toBeTruthy());
+
+    await act(async () => {
+      sprModalProps.goal.onSave('Some goal');
+      sprModalProps.start.onConfirm();
+    });
+
+    expect(apiService.updateGeneratedSprint).not.toHaveBeenCalled();
+    expect(apiService.startSprint).not.toHaveBeenCalled();
+  });
+
+  it('renders the velocity indicator when the observed range is zero', async () => {
+    await renderPlanning({
+      velocity: {
+        sprints: [],
+        planned: [],
+        statuses: [],
+        points: [
+          { status: 'COMPLETED', completedPoints: 0 },
+          { status: 'COMPLETED', completedPoints: 0 },
+        ],
+      },
+    });
+
+    await waitFor(() =>
+      expect(document.querySelector('[class*="velocity-indicator"]')).toBeTruthy()
+    );
+  });
+
+  it('warns about an over-capacity plan and marks its metrics as dangerous', async () => {
+    const item = createMockBacklogItem({ title: 'Heavy Item', status: 'READY', storyPoints: 8 });
+    const sprint = createMockGeneratedSprint({
+      id: 's-over',
+      sprintGoal: 'Goal',
+      status: 'PLANNED',
+    });
+
+    await renderPlanning({
+      sprint,
+      backlog: [item],
+      team: { ...createMockTeam(), members: twoDeveloperRoster() },
+      draft: planningDraft(sprint.id, {
+        capacity: [
+          { memberId: 'member-1', userId: 'user-1', availableHours: 10 },
+          { memberId: 'member-2', userId: 'user-2', availableHours: 10 },
+        ],
+      }),
+    });
+
+    await waitFor(() =>
+      expect(screen.getByText(i18nT('sprint:sprintPlanning.capacityRecorded'))).toBeInTheDocument()
+    );
+    await waitFor(() => expect(screen.getByText('Heavy Item')).toBeInTheDocument());
+    // 3 tasks x 8h against 20h of recorded capacity -> over 100%.
+    fireEvent.click(screen.getByText('Heavy Item'));
+
+    await waitFor(() =>
+      expect(screen.getByText(i18nT('sprint:sprintPlanning.overCapacity'))).toBeInTheDocument()
+    );
+
+    fireEvent.click(
+      screen.getByRole('button', { name: i18nT('sprint:sprintPlanning.saveSprintBacklog') })
+    );
+    await waitFor(() => expect(apiService.saveSprintBacklog).toHaveBeenCalled());
+
+    const startButton = screen.getByRole('button', { name: /Start Sprint/i });
+    await waitFor(() => expect(startButton).not.toBeDisabled());
+    fireEvent.click(startButton);
+    await waitFor(() => expect(sprModalProps.start?.isOpen).toBe(true));
+  });
+
+  it('shows the near-limit hint at exactly full capacity', async () => {
+    const item = createMockBacklogItem({ title: 'Full Item', status: 'READY', storyPoints: 8 });
+    const sprint = createMockGeneratedSprint({
+      id: 's-full',
+      sprintGoal: 'Goal',
+      status: 'PLANNED',
+    });
+
+    await renderPlanning({
+      sprint,
+      backlog: [item],
+      team: { ...createMockTeam(), members: twoDeveloperRoster() },
+      draft: planningDraft(sprint.id, {
+        capacity: [
+          { memberId: 'member-1', userId: 'user-1', availableHours: 12 },
+          { memberId: 'member-2', userId: 'user-2', availableHours: 12 },
+        ],
+      }),
+    });
+
+    await waitFor(() => expect(screen.getByText('Full Item')).toBeInTheDocument());
+    fireEvent.click(screen.getByText('Full Item'));
+    // 3 tasks x 8h against 24h of recorded capacity -> exactly 100%.
+    await waitFor(() =>
+      expect(screen.getByText(i18nT('sprint:sprintPlanning.nearLimit'))).toBeInTheDocument()
+    );
+  });
+
+  it('handles task operations across multiple sprint items', async () => {
+    const alpha = createMockBacklogItem({ title: 'Item Alpha', status: 'READY', storyPoints: 1 });
+    const beta = createMockBacklogItem({ title: 'Item Beta', status: 'READY', storyPoints: 1 });
+
+    await renderPlanning({
+      backlog: [alpha, beta],
+      team: { ...createMockTeam(), members: developerRoster() },
+    });
+
+    await waitFor(() => expect(screen.getByText('Item Alpha')).toBeInTheDocument());
+    fireEvent.click(screen.getByText('Item Alpha'));
+    fireEvent.click(screen.getByText('Item Beta'));
+
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: i18nT('sprint:sprintPlanning.addTaskToItemAria', { title: 'Item Alpha' }),
+      })
+    );
+    await act(async () => {
+      sprModalProps.addTask.onSubmit({
+        title: 'Alpha Task',
+        estimatedHours: 2,
+        assigneeId: 'user-1',
+      });
+    });
+    await waitFor(() => expect(screen.getByText('Alpha Task')).toBeInTheDocument());
+
+    // Re-assigning and removing map over every sprint item, not just the matching one.
+    fireEvent.change(
+      screen.getByRole('combobox', {
+        name: i18nT('sprint:sprintPlanning.taskAssigneeAria', { title: 'Alpha Task' }),
+      }),
+      { target: { value: 'user-2' } }
+    );
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: i18nT('sprint:sprintPlanning.removeTaskAria', { title: 'Alpha Task' }),
+      })
+    );
+    await waitFor(() => expect(screen.queryByText('Alpha Task')).not.toBeInTheDocument());
+  });
+
+  it('keeps a read-only sprint backlog keyboard navigable and shows assignee names', async () => {
+    mockStore(useTeamStore, {
+      currentTeam: createMockTeam(),
+      userRoleInCurrentTeam: 'product_owner',
+    });
+
+    const alpha = createMockBacklogItem({ title: 'PO Item A', status: 'READY' });
+    const beta = createMockBacklogItem({ title: 'PO Item B', status: 'READY' });
+    const sprint = createMockGeneratedSprint({ id: 's-po', sprintGoal: 'Goal', status: 'PLANNED' });
+
+    await renderPlanning({
+      sprint,
+      backlog: [alpha, beta],
+      team: { ...createMockTeam(), members: developerRoster() },
+      draft: planningDraft(sprint.id, {
+        items: [{ pbiId: alpha.id }, { pbiId: beta.id }],
+        tasks: [
+          {
+            id: 'saved-a',
+            pbiId: alpha.id,
+            title: 'PO Task A',
+            assigneeId: 'user-1',
+            estimatedHours: 2,
+          },
+          { id: 'saved-b', pbiId: beta.id, title: 'PO Task B', estimatedHours: 2 },
+        ],
+      }),
+    });
+
+    await waitFor(() => expect(screen.getByText('PO Task A')).toBeInTheDocument());
+    const region = sprintBacklogRegion();
+    // The assignee name is resolved from the roster; an unassigned task falls back to Unassigned.
+    // Both are read inside the Sprint Backlog: the participation panel also lists the team roster,
+    // so a page-wide lookup for a Developer's name matches more than one element.
+    expect(within(region).getByText('Dev One')).toBeInTheDocument();
+    expect(within(region).getByText(i18nT('sprint:sprintPlanning.unassigned'))).toBeInTheDocument();
+
+    const itemA = screen.getByRole('listitem', { name: sprintItemName('PO Item A', 1, true) });
+    const itemB = screen.getByRole('listitem', { name: sprintItemName('PO Item B', 1, true) });
+
+    await act(async () => itemA.focus());
+    fireEvent.keyDown(region, { key: 'ArrowDown' });
+    await act(async () => itemB.focus());
+    fireEvent.keyDown(region, { key: 'ArrowUp' });
+  });
+
+  it('adds a focused pool item with Enter on the region and navigates the sprint backlog', async () => {
+    const a = createMockBacklogItem({ title: 'Legacy A', status: 'READY' });
+    const b = createMockBacklogItem({ title: 'Legacy B', status: 'READY' });
+    const c = createMockBacklogItem({ title: 'Legacy C', status: 'READY' });
+
+    await renderPlanning({ backlog: [a, b, c] });
+    await waitFor(() => expect(screen.getByText('Legacy A')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByText('Legacy A'));
+    await waitFor(() => expect(screen.getByText('Legacy B')).toBeInTheDocument());
+
+    // Focus a pool item so the legacy Enter path on the region has an index to act on.
+    const poolB = screen.getByText('Legacy B').closest('[role="option"]') as HTMLElement;
+    await act(async () => poolB.focus());
+
+    const region = sprintBacklogRegion();
+    fireEvent.keyDown(region, { key: 'Enter' });
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', {
+          name: i18nT('sprint:sprintPlanning.removeItemAria', { title: 'Legacy B' }),
+        })
+      ).toBeInTheDocument()
+    );
+
+    const sprintItemB = screen.getByRole('listitem', { name: sprintItemName('Legacy B', 2) });
+    await act(async () => sprintItemB.focus());
+    fireEvent.keyDown(region, { key: 'ArrowUp' });
+  });
+
+  it('ignores Enter on a grabbed pool item while another item is being dragged', async () => {
+    const a = createMockBacklogItem({ title: 'Grab A', status: 'READY' });
+    const b = createMockBacklogItem({ title: 'Grab B', status: 'READY' });
+
+    await renderPlanning({ backlog: [a, b] });
+    await waitFor(() => expect(screen.getByText('Grab A')).toBeInTheDocument());
+
+    const poolA = screen.getByText('Grab A').closest('[role="option"]') as HTMLElement;
+    const poolB = screen.getByText('Grab B').closest('[role="option"]') as HTMLElement;
+
+    fireEvent.keyDown(poolA, { key: 'Enter' });
+    // A second Enter while an item is grabbed is ignored.
+    fireEvent.keyDown(poolB, { key: 'Enter' });
+    fireEvent.keyDown(poolA, { key: 'Escape' });
+  });
+
+  it('removes a sprint item with Backspace pressed on the item itself', async () => {
+    const item = createMockBacklogItem({ title: 'Delete Item', status: 'READY' });
+
+    await renderPlanning({ backlog: [item] });
+    await waitFor(() => expect(screen.getByText('Delete Item')).toBeInTheDocument());
+    fireEvent.click(screen.getByText('Delete Item'));
+
+    const sprintItem = await screen.findByRole('listitem', {
+      name: sprintItemName('Delete Item', 2),
+    });
+    fireEvent.keyDown(sprintItem, { key: 'Backspace' });
+
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('button', {
+          name: i18nT('sprint:sprintPlanning.removeItemAria', { title: 'Delete Item' }),
+        })
+      ).not.toBeInTheDocument()
+    );
+  });
+
+  it('falls back to the raw PBI id for a conflict that is not in the backlog', async () => {
+    const item = createMockBacklogItem({ title: 'Known Item', status: 'READY' });
+    const sprint = createMockGeneratedSprint({
+      id: 's-conf',
+      sprintGoal: 'Goal',
+      status: 'PLANNED',
+    });
+
+    await renderPlanning({
+      sprint,
+      backlog: [item],
+      draft: planningDraft(sprint.id, {
+        items: [{ pbiId: item.id }],
+        conflicts: [{ pbiId: 'ghost-pbi', sprintName: 'Sprint-X' }],
+      }),
+    });
+
+    await waitFor(() =>
+      expect(screen.getByText((content) => content.includes('ghost-pbi'))).toBeInTheDocument()
+    );
+    expect(screen.getByText((content) => content.includes('Sprint-X'))).toBeInTheDocument();
+  });
+
+  it('records planning attendance for team members of every role', async () => {
+    const members = [
+      makeMember('member-po', 'user-po', 'product_owner', 'Prod', 'Owner'),
+      makeMember('member-sm', 'user-sm', 'scrum_master', 'Scrum', 'Master'),
+      makeMember('member-dev', 'user-dev', 'developers', 'Dev', 'Three'),
+      makeMember('member-nouser', 'user-nouser', 'developers'),
+    ];
+    const sprint = createMockGeneratedSprint({
+      id: 's-att',
+      sprintGoal: 'Goal',
+      status: 'PLANNED',
+    });
+
+    await renderPlanning({
+      sprint,
+      team: { ...createMockTeam(), members },
+      participation: {
+        attendees: [],
+        hasProductOwner: false,
+        developerCount: 0,
+        isReadyToStart: false,
+      },
+    });
+
+    await waitFor(() =>
+      expect(screen.getByText(i18nT('common:attendeesSection.title'))).toBeInTheDocument()
+    );
+
+    // One "mark as attended" quick action per unmarked team member, in roster order.
+    for (let i = 0; i < members.length; i += 1) {
+      const buttons = screen.getAllByTitle(i18nT('common:attendeesSection.markAsAttended'));
+      expect(buttons.length).toBe(members.length);
+      await act(async () => {
+        fireEvent.click(buttons[i]);
+      });
+    }
+
+    await waitFor(() => expect(apiService.addPlanningAttendee).toHaveBeenCalledTimes(4));
+    const roles = vi
+      .mocked(apiService.addPlanningAttendee)
+      .mock.calls.map((call) => (call[1] as { role: string }).role);
+    expect(roles).toEqual(['product_owner', 'scrum_master', 'developers', 'developers']);
+  });
+
+  it('toggles planning attendance recorded on an attendee card', async () => {
+    await renderPlanning({
+      participation: {
+        attendees: [
+          { id: 'pa-1', name: 'Guest One', email: null, role: 'stakeholder', attended: true },
+        ],
+        hasProductOwner: true,
+        developerCount: 1,
+        isReadyToStart: false,
+      },
+    });
+
+    await waitFor(() => expect(screen.getByText('Guest One')).toBeInTheDocument());
+    fireEvent.click(screen.getByTitle(i18nT('common:attendeesSection.markAsAbsent')));
+
+    await waitFor(() =>
+      expect(apiService.updatePlanningAttendee).toHaveBeenCalledWith(expect.any(String), 'pa-1', {
+        attended: false,
+      })
+    );
+  });
+
+  it('surfaces an error when recording planning attendance fails', async () => {
+    (apiService.addPlanningAttendee as unknown as ReturnType<typeof vi.fn>).mockRejectedValue(
+      new Error('attendee boom')
+    );
+    const members = [makeMember('member-po', 'user-po', 'product_owner', 'Prod', 'Owner')];
+    const sprint = createMockGeneratedSprint({
+      id: 's-att-err',
+      sprintGoal: 'Goal',
+      status: 'PLANNED',
+    });
+
+    await renderPlanning({
+      sprint,
+      team: { ...createMockTeam(), members },
+      participation: {
+        attendees: [],
+        hasProductOwner: false,
+        developerCount: 0,
+        isReadyToStart: false,
+      },
+    });
+
+    await waitFor(() =>
+      expect(screen.getByText(i18nT('common:attendeesSection.title'))).toBeInTheDocument()
+    );
+    await act(async () => {
+      fireEvent.click(screen.getByTitle(i18nT('common:attendeesSection.markAsAttended')));
+    });
+
+    await waitFor(() => expect(apiService.addPlanningAttendee).toHaveBeenCalled());
+  });
+
+  it('surfaces an error when toggling attendance fails', async () => {
+    (apiService.updatePlanningAttendee as unknown as ReturnType<typeof vi.fn>).mockRejectedValue(
+      new Error('toggle boom')
+    );
+
+    await renderPlanning({
+      participation: {
+        attendees: [
+          { id: 'pa-2', name: 'Guest Two', email: null, role: 'stakeholder', attended: false },
+        ],
+        hasProductOwner: true,
+        developerCount: 1,
+        isReadyToStart: false,
+      },
+    });
+
+    await waitFor(() => expect(screen.getByText('Guest Two')).toBeInTheDocument());
+    await act(async () => {
+      fireEvent.click(screen.getByTitle(i18nT('common:attendeesSection.markAsAttended')));
+    });
+
+    await waitFor(() => expect(apiService.updatePlanningAttendee).toHaveBeenCalled());
+  });
+
+  it('refuses to open the start dialog while the selected sprint has no goal', async () => {
+    const sprint = createMockGeneratedSprint({
+      id: 's-nogoal',
+      sprintGoal: '',
+      status: 'PLANNED',
+    });
+    const item = createMockBacklogItem({ title: 'Goalless Item', status: 'READY' });
+
+    await renderPlanning({
+      sprint,
+      backlog: [item],
+      team: { ...createMockTeam(), members: twoDeveloperRoster() },
+      // A persisted backlog (hydrated from the draft) satisfies the save gate, so the missing
+      // Sprint Goal is the only readiness condition left unmet.
+      draft: planningDraft(sprint.id, { items: [{ pbiId: item.id }] }),
+    });
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole('listitem', { name: sprintItemName('Goalless Item', 0) })
+      ).toBeInTheDocument()
+    );
+
+    const startButton = screen.getByRole('button', {
+      name: new RegExp(i18nT('sprint:sprintPlanning.startSprint'), 'i'),
+    });
+    await waitFor(() => expect(startButton).not.toBeDisabled());
+    fireEvent.click(startButton);
+
+    // The goal gate refuses before the confirmation dialog is presented.
+    expect(sprModalProps.start?.isOpen).toBe(false);
+    expect(apiService.startSprint).not.toHaveBeenCalled();
+  });
+
+  it('adds a planning attendee through the attendance form', async () => {
+    await renderPlanning({
+      participation: {
+        attendees: [],
+        hasProductOwner: true,
+        developerCount: 1,
+        isReadyToStart: false,
+      },
+    });
+
+    await waitFor(() =>
+      expect(screen.getByText(i18nT('common:attendeesSection.title'))).toBeInTheDocument()
+    );
+
+    fireEvent.click(
+      screen.getByRole('button', { name: i18nT('common:attendeesSection.addAttendeesAriaLabel') })
+    );
+
+    fireEvent.change(
+      await screen.findByPlaceholderText(i18nT('common:attendeesSection.formNamePlaceholder')),
+      { target: { value: 'Facilitator One' } }
+    );
+    fireEvent.change(
+      screen.getByPlaceholderText(i18nT('common:attendeesSection.formEmailPlaceholder')),
+      { target: { value: 'facilitator@example.com' } }
+    );
+    fireEvent.click(
+      screen.getByRole('button', { name: i18nT('common:attendeesSection.addAttendee') })
+    );
+
+    await waitFor(() =>
+      expect(apiService.addPlanningAttendee).toHaveBeenCalledWith(expect.any(String), {
+        name: 'Facilitator One',
+        email: 'facilitator@example.com',
+        role: 'stakeholder',
+        attended: true,
+      })
+    );
+  });
+
+  it('updates a guest attendee through the attendance form', async () => {
+    await renderPlanning({
+      participation: {
+        attendees: [
+          { id: 'pa-edit', name: 'Guest Edit', email: null, role: 'stakeholder', attended: true },
+        ],
+        hasProductOwner: true,
+        developerCount: 1,
+        isReadyToStart: false,
+      },
+    });
+
+    await waitFor(() => expect(screen.getByText('Guest Edit')).toBeInTheDocument());
+    fireEvent.click(screen.getByTitle(i18nT('common:attendeesSection.editAttendee')));
+
+    fireEvent.change(
+      await screen.findByPlaceholderText(i18nT('common:attendeesSection.formNamePlaceholder')),
+      { target: { value: 'Guest Renamed' } }
+    );
+    fireEvent.click(screen.getByRole('button', { name: i18nT('common:attendeesSection.update') }));
+
+    await waitFor(() =>
+      expect(apiService.updatePlanningAttendee).toHaveBeenCalledWith(
+        expect.any(String),
+        'pa-edit',
+        {
+          name: 'Guest Renamed',
+          email: '',
+          role: 'stakeholder',
+          attended: true,
+        }
+      )
+    );
+  });
+
+  it('removes a guest attendee after confirming the removal', async () => {
+    await renderPlanning({
+      participation: {
+        attendees: [
+          {
+            id: 'pa-delete',
+            name: 'Guest Delete',
+            email: null,
+            role: 'stakeholder',
+            attended: false,
+          },
+        ],
+        hasProductOwner: true,
+        developerCount: 1,
+        isReadyToStart: false,
+      },
+    });
+
+    await waitFor(() => expect(screen.getByText('Guest Delete')).toBeInTheDocument());
+    fireEvent.click(screen.getByTitle(i18nT('common:attendeesSection.removeAttendee')));
+
+    const dialog = await screen.findByRole('alertdialog');
+    fireEvent.click(
+      within(dialog).getByRole('button', {
+        name: i18nT('common:attendeesSection.removeAttendeeConfirm'),
+      })
+    );
+
+    await waitFor(() =>
+      expect(apiService.deletePlanningAttendee).toHaveBeenCalledWith(
+        expect.any(String),
+        'pa-delete'
+      )
+    );
   });
 });

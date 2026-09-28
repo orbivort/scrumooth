@@ -246,6 +246,22 @@ describe('OrganizationalBarrierService', () => {
         ownerName: 'Ada Lovelace',
       });
     });
+
+    it('should report a barrier that vanished between the stub read and the detail read', async () => {
+      asMock(prisma.organizationalBarrier.findUnique)
+        .mockResolvedValueOnce({
+          id: 'barrier-1',
+          teamId: 'team-1',
+          title: bar.title,
+          status: 'OPEN',
+          resolvedAt: null,
+        })
+        .mockResolvedValueOnce(null);
+
+      await expect(
+        organizationalBarrierService.getBarrierById('barrier-1', 'user-1')
+      ).rejects.toThrow(NotFoundError);
+    });
   });
 
   describe('createBarrier', () => {
@@ -328,6 +344,72 @@ describe('OrganizationalBarrierService', () => {
       });
 
       expect(prisma.notification.create).not.toHaveBeenCalled();
+    });
+
+    it('should raise a barrier that names no owner', async () => {
+      asMock(prisma.organizationalBarrier.create).mockResolvedValue({
+        ...bar,
+        ownerId: null,
+        owner: null,
+      });
+
+      const result = await organizationalBarrierService.createBarrier('sm-1', {
+        teamId: 'team-1',
+        title: 'Barrier',
+        description: 'Description',
+      });
+
+      expect(prisma.organizationalBarrier.create).toHaveBeenCalledWith(
+        expect.objectContaining({ data: expect.objectContaining({ ownerId: null }) })
+      );
+      expect(prisma.notification.create).not.toHaveBeenCalled();
+      expect(result.ownerName).toBeNull();
+    });
+
+    it('should anchor a Date target date as given', async () => {
+      asMock(prisma.organizationalBarrier.create).mockResolvedValue(bar);
+
+      await organizationalBarrierService.createBarrier('sm-1', {
+        teamId: 'team-1',
+        title: 'Barrier',
+        description: 'Description',
+        targetDate: new Date('2026-10-01T00:00:00.000Z'),
+      });
+
+      expect(prisma.organizationalBarrier.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ targetDate: new Date('2026-10-01T00:00:00.000Z') }),
+        })
+      );
+    });
+
+    it('should refuse a target date that is not a real date', async () => {
+      await expect(
+        organizationalBarrierService.createBarrier('sm-1', {
+          teamId: 'team-1',
+          title: 'Barrier',
+          description: 'Description',
+          targetDate: 'not-a-date',
+        })
+      ).rejects.toThrow(BadRequestError);
+
+      expect(prisma.organizationalBarrier.create).not.toHaveBeenCalled();
+    });
+
+    it('should serialize a barrier with no recorded raiser', async () => {
+      asMock(prisma.organizationalBarrier.create).mockResolvedValue({
+        ...bar,
+        raisedBy: null,
+        raisedById: 'sm-1',
+      });
+
+      const result = await organizationalBarrierService.createBarrier('sm-1', {
+        teamId: 'team-1',
+        title: 'Barrier',
+        description: 'Description',
+      });
+
+      expect(result.raisedByName).toBeNull();
     });
   });
 
@@ -460,6 +542,32 @@ describe('OrganizationalBarrierService', () => {
         select: { title: true },
       });
     });
+
+    it('should fall back to the impediment title when the racing winner cannot be re-read', async () => {
+      asMock(prisma.impediment.update).mockRejectedValue(
+        Object.assign(new Error('unique'), { code: 'P2002' })
+      );
+      asMock(prisma.organizationalBarrier.findUnique).mockResolvedValue(null);
+
+      await expect(
+        organizationalBarrierService.escalateImpediment('sm-1', {
+          teamId: 'team-1',
+          impedimentId: 'imp-1',
+        })
+      ).rejects.toMatchObject({ code: GATE_CODES.ORGANIZATIONAL_BARRIER_ALREADY_ESCALATED });
+    });
+
+    it('should rethrow an unexpected escalation failure', async () => {
+      const boom = new Error('boom');
+      asMock(prisma.impediment.update).mockRejectedValue(boom);
+
+      await expect(
+        organizationalBarrierService.escalateImpediment('sm-1', {
+          teamId: 'team-1',
+          impedimentId: 'imp-1',
+        })
+      ).rejects.toBe(boom);
+    });
   });
 
   describe('updateBarrier', () => {
@@ -546,6 +654,51 @@ describe('OrganizationalBarrierService', () => {
       await expect(
         organizationalBarrierService.updateBarrier('barrier-1', 'sm-1', { ownerId: 'nobody' })
       ).rejects.toThrow(BadRequestError);
+    });
+
+    it('should apply every amendable field in one write', async () => {
+      asMock(prisma.organizationalBarrier.update).mockResolvedValue({
+        ...bar,
+        status: 'RESOLVED',
+        resolvedAt: new Date('2026-09-20T00:00:00.000Z'),
+      });
+
+      await organizationalBarrierService.updateBarrier('barrier-1', 'sm-1', {
+        title: 'New title',
+        description: 'New description',
+        status: 'RESOLVED',
+        resolution: 'Resolved by negotiation.',
+        ownerId: 'owner-1',
+        priority: 'LOW',
+        targetDate: '2026-10-10',
+      });
+
+      expect(prisma.organizationalBarrier.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            title: 'New title',
+            description: 'New description',
+            status: 'RESOLVED',
+            resolution: 'Resolved by negotiation.',
+            ownerId: 'owner-1',
+            priority: 'LOW',
+            targetDate: new Date('2026-10-10T00:00:00.000Z'),
+            resolvedAt: expect.any(Date),
+          }),
+        })
+      );
+    });
+
+    it('should leave the resolution state untouched when no status is given', async () => {
+      await organizationalBarrierService.updateBarrier('barrier-1', 'sm-1', {
+        title: 'Only the title',
+      });
+
+      const [arg] = asMock(prisma.organizationalBarrier.update).mock.calls[0] as [
+        { data: Record<string, unknown> },
+      ];
+      expect(arg.data).not.toHaveProperty('resolvedAt');
+      expect(arg.data).not.toHaveProperty('status');
     });
   });
 
@@ -703,6 +856,100 @@ describe('OrganizationalBarrierService', () => {
       const result = await organizationalBarrierService.deleteAction('action-1', 'sm-1');
 
       expect(result).toEqual({ id: 'action-1' });
+    });
+
+    it('should throw NotFoundError when the action to delete does not exist', async () => {
+      asMock(prisma.barrierStakeholderAction.findUnique).mockResolvedValue(null);
+
+      await expect(organizationalBarrierService.deleteAction('missing', 'sm-1')).rejects.toThrow(
+        NotFoundError
+      );
+    });
+
+    it('should record an action that names no owner', async () => {
+      asMock(prisma.barrierStakeholderAction.create).mockResolvedValue({
+        ...action,
+        ownerId: null,
+        owner: null,
+      });
+
+      const result = await organizationalBarrierService.addAction('barrier-1', 'sm-1', {
+        description: 'Ask the vendor',
+      });
+
+      expect(prisma.barrierStakeholderAction.create).toHaveBeenCalledWith(
+        expect.objectContaining({ data: expect.objectContaining({ ownerId: null }) })
+      );
+      expect(result.ownerName).toBeNull();
+    });
+
+    it('should stamp the due date and completion of a returned action when recorded', async () => {
+      asMock(prisma.barrierStakeholderAction.create).mockResolvedValue({
+        ...action,
+        dueDate: new Date('2026-09-30T00:00:00.000Z'),
+        completedAt: new Date('2026-09-29T00:00:00.000Z'),
+      });
+
+      const result = await organizationalBarrierService.addAction('barrier-1', 'sm-1', {
+        description: 'Ask the vendor',
+        dueDate: '2026-09-30',
+      });
+
+      expect(result.dueDate).toBe('2026-09-30T00:00:00.000Z');
+      expect(result.completedAt).toBe('2026-09-29T00:00:00.000Z');
+    });
+
+    it('should amend every action field and stamp completion when it is done', async () => {
+      asMock(prisma.barrierStakeholderAction.findUnique).mockResolvedValue({
+        ...action,
+        barrier: { teamId: 'team-1' },
+      });
+      asMock(prisma.barrierStakeholderAction.update).mockResolvedValue({
+        ...action,
+        status: 'DONE',
+        completedAt: new Date('2026-09-29T00:00:00.000Z'),
+      });
+
+      await organizationalBarrierService.updateAction('action-1', 'sm-1', {
+        description: 'Updated description',
+        status: 'DONE',
+        ownerId: 'owner-1',
+        dueDate: '2026-10-01',
+      });
+
+      expect(prisma.user.findUnique).toHaveBeenCalledWith({
+        where: { id: 'owner-1' },
+        select: { id: true },
+      });
+      expect(prisma.barrierStakeholderAction.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            description: 'Updated description',
+            status: 'DONE',
+            ownerId: 'owner-1',
+            dueDate: new Date('2026-10-01T00:00:00.000Z'),
+            completedAt: expect.any(Date),
+          }),
+        })
+      );
+    });
+
+    it('should leave completion untouched when no action status is given', async () => {
+      asMock(prisma.barrierStakeholderAction.findUnique).mockResolvedValue({
+        ...action,
+        barrier: { teamId: 'team-1' },
+      });
+      asMock(prisma.barrierStakeholderAction.update).mockResolvedValue(action);
+
+      await organizationalBarrierService.updateAction('action-1', 'sm-1', {
+        description: 'Only the description',
+      });
+
+      const [arg] = asMock(prisma.barrierStakeholderAction.update).mock.calls[0] as [
+        { data: Record<string, unknown> },
+      ];
+      expect(arg.data).not.toHaveProperty('completedAt');
+      expect(arg.data).not.toHaveProperty('status');
     });
   });
 

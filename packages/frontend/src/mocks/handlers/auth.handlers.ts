@@ -16,12 +16,17 @@ import {
   database,
   endSession,
   isSignedIn,
+  rememberSignedUpAccount,
   roleOf,
   rotateTokens,
+  selectTeamInSession,
   session,
+  signedUpAccounts,
+  signedUpCredential,
   startSession,
   teamsOf,
   writeCsrfCookie,
+  type TeamMembership,
 } from '../store';
 
 /**
@@ -160,9 +165,12 @@ export const authHandlers: RequestHandler[] = [
       (candidate) => candidate.email.toLowerCase() === email.toLowerCase()
     );
 
-    // Every demo account shares one published password, so a wrong password is a
-    // real failure here rather than something the mock shrugs off.
-    if (!user || password !== DEMO_PASSWORD) {
+    // Every seeded demo account shares one published password; an account created at the sign-up
+    // form answers with the one it was created with. A wrong password is a real failure either way,
+    // rather than something the mock shrugs off.
+    const expectedPassword = signedUpCredential(email) ?? DEMO_PASSWORD;
+
+    if (!user || password !== expectedPassword) {
       return fail(401, 'INVALID_CREDENTIALS', 'Invalid email or password');
     }
 
@@ -219,7 +227,20 @@ export const authHandlers: RequestHandler[] = [
       createdAt: now,
       updatedAt: now,
     };
-    database().users.push(user);
+
+    /*
+     * The universe is re-seeded the way a sign-in does it, and *before* the account is written.
+     *
+     * `startSession` is the one place the demo state resets, so running it after the write would
+     * discard the account it had just been handed: the session would name nobody, `GET /auth/me`
+     * would answer 401, and the visitor would be signed out of the account they had just created.
+     * The account and its membership are written into the fresh working copy below instead, and
+     * recorded so the next page load seeds them back in (see `store/db.ts`).
+     */
+    startSession(user.id, null);
+
+    const db = database();
+    db.users.push(user);
 
     /*
      * A brand-new account joins the demo universe's first team as a Developer.
@@ -231,24 +252,24 @@ export const authHandlers: RequestHandler[] = [
      * automatic membership the Guide's "one Product Owner, one Scrum Master" rule
      * allows.
      */
-    const welcomeTeam = database().teams[0];
+    const welcomeTeam = db.teams[0];
+    let membership: TeamMembership | null = null;
+
     if (welcomeTeam) {
-      const joinedAt = new Date().toISOString();
-      welcomeTeam.members = [
-        ...(welcomeTeam.members ?? []),
-        {
-          id: crypto.randomUUID(),
-          teamId: welcomeTeam.id,
-          userId: user.id,
-          role: 'DEVELOPERS' as NonNullable<typeof welcomeTeam.members>[number]['role'],
-          joinedAt,
-          user,
-        },
-      ];
+      membership = {
+        id: crypto.randomUUID(),
+        teamId: welcomeTeam.id,
+        userId: user.id,
+        role: 'DEVELOPERS' as TeamMembership['role'],
+        joinedAt: new Date().toISOString(),
+        user,
+      };
+      welcomeTeam.members = [...(welcomeTeam.members ?? []), membership];
       welcomeTeam.memberCount = welcomeTeam.members.length;
+      selectTeamInSession(welcomeTeam.id);
     }
 
-    startSession(user.id, welcomeTeam?.id ?? null);
+    rememberSignedUpAccount({ user, password: body.password ?? '', membership });
 
     return ok({ user, sessionInfo: sessionInfo() }, 201);
   }),
@@ -441,20 +462,33 @@ export const authHandlers: RequestHandler[] = [
     if (scenario) {
       return scenario;
     }
-    if (!isSignedIn()) {
+    const user = currentUser();
+    if (!user) {
       return problems.unauthorized();
     }
 
     const body = await bodyOf<{ currentPassword: string; newPassword: string }>(request);
-    if ((body.currentPassword ?? '') !== DEMO_PASSWORD) {
+    // As at sign-in: the demo's published password for a seeded account, the one the account was
+    // created with for everybody else.
+    const expectedPassword = signedUpCredential(user.email) ?? DEMO_PASSWORD;
+    if ((body.currentPassword ?? '') !== expectedPassword) {
       return fail(400, 'INVALID_PASSWORD', 'The current password is not correct');
     }
     if ((body.newPassword ?? '').length < 8) {
       return problems.validation('The new password must be at least 8 characters', 'newPassword');
     }
 
-    // The demo has no credential store to update: every account shares one
-    // published password, so changing it would only break the next sign-in.
+    /*
+     * An account created at the sign-up form keeps the password it just chose, which is the only
+     * credential the demo holds. A seeded persona cannot: every one of them signs in with the
+     * password the login panel publishes, so accepting a new one here would leave the panel
+     * advertising a password that no longer works.
+     */
+    const signup = signedUpAccounts().find((candidate) => candidate.user.id === user.id);
+    if (signup) {
+      rememberSignedUpAccount({ ...signup, password: body.newPassword ?? '' });
+    }
+
     return accepted({ message: 'Password changed' });
   }),
 

@@ -287,6 +287,13 @@ describe('Design Tokens', () => {
       expect(getSpaceInPixels(6)).toBe(24);
       expect(getSpaceInPixels(12)).toBe(48);
     });
+
+    // The `px` token is the only space value that is neither '0' nor expressed in `rem`, so it is
+    // the sole input that reaches the numeric fallback branch at the end of `getSpaceInPixels`
+    // (`parseInt(value, 10) || 0`). Exercising it keeps that branch covered instead of dead.
+    it('should parse a non-rem, non-zero space token through the numeric fallback', () => {
+      expect(getSpaceInPixels('px')).toBe(1);
+    });
   });
 
   describe('meetsContrastAA', () => {

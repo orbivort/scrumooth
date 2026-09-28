@@ -72,6 +72,21 @@ describe('Organizational Barrier Controller', () => {
       expect(mockNext).toHaveBeenCalledWith(expect.objectContaining({ statusCode: 400 }));
       expect(service.getBarriers).not.toHaveBeenCalled();
     });
+
+    it('should resolve the acting team from the body when no context is attached', async () => {
+      mockReq.currentTeamId = undefined;
+      mockReq.query = {};
+      mockReq.body = { teamId: 'team-from-body' };
+      service.getBarriers!.mockResolvedValue([]);
+
+      await getBarriers(mockReq as any, mockRes as any, mockNext);
+      await wait(0);
+
+      expect(service.getBarriers).toHaveBeenCalledWith('team-from-body', 'user-123', {
+        status: undefined,
+        priority: undefined,
+      });
+    });
   });
 
   describe('getBarrierStats', () => {
@@ -93,6 +108,17 @@ describe('Organizational Barrier Controller', () => {
         success: true,
         data: { open: 1, inProgress: 0, resolved: 0, closed: 0, overdue: 0 },
       });
+    });
+
+    it('should require a team', async () => {
+      mockReq.currentTeamId = undefined;
+      mockReq.query = {};
+
+      await getBarrierStats(mockReq as any, mockRes as any, mockNext);
+      await wait(0);
+
+      expect(mockNext).toHaveBeenCalledWith(expect.objectContaining({ statusCode: 400 }));
+      expect(service.getBarrierStats).not.toHaveBeenCalled();
     });
   });
 
@@ -196,6 +222,16 @@ describe('Organizational Barrier Controller', () => {
         data: { id: 'barrier-123', status: 'RESOLVED' },
       });
     });
+
+    it('should require an ID', async () => {
+      mockReq.params = {};
+
+      await updateBarrier(mockReq as any, mockRes as any, mockNext);
+      await wait(0);
+
+      expect(mockNext).toHaveBeenCalledWith(expect.objectContaining({ statusCode: 400 }));
+      expect(service.updateBarrier).not.toHaveBeenCalled();
+    });
   });
 
   describe('deleteBarrier', () => {
@@ -211,6 +247,16 @@ describe('Organizational Barrier Controller', () => {
         success: true,
         data: { message: 'Organizational barrier deleted' },
       });
+    });
+
+    it('should require an ID', async () => {
+      mockReq.params = {};
+
+      await deleteBarrier(mockReq as any, mockRes as any, mockNext);
+      await wait(0);
+
+      expect(mockNext).toHaveBeenCalledWith(expect.objectContaining({ statusCode: 400 }));
+      expect(service.deleteBarrier).not.toHaveBeenCalled();
     });
   });
 
@@ -257,6 +303,36 @@ describe('Organizational Barrier Controller', () => {
         data: { message: 'Stakeholder action deleted' },
       });
     });
+
+    it('should require a barrier id when adding an action', async () => {
+      mockReq.params = {};
+
+      await addStakeholderAction(mockReq as any, mockRes as any, mockNext);
+      await wait(0);
+
+      expect(mockNext).toHaveBeenCalledWith(expect.objectContaining({ statusCode: 400 }));
+      expect(service.addAction).not.toHaveBeenCalled();
+    });
+
+    it('should require an action id when updating an action', async () => {
+      mockReq.params = {};
+
+      await updateStakeholderAction(mockReq as any, mockRes as any, mockNext);
+      await wait(0);
+
+      expect(mockNext).toHaveBeenCalledWith(expect.objectContaining({ statusCode: 400 }));
+      expect(service.updateAction).not.toHaveBeenCalled();
+    });
+
+    it('should require an action id when deleting an action', async () => {
+      mockReq.params = {};
+
+      await deleteStakeholderAction(mockReq as any, mockRes as any, mockNext);
+      await wait(0);
+
+      expect(mockNext).toHaveBeenCalledWith(expect.objectContaining({ statusCode: 400 }));
+      expect(service.deleteAction).not.toHaveBeenCalled();
+    });
   });
 
   describe('getEscalatableImpediments', () => {
@@ -270,6 +346,17 @@ describe('Organizational Barrier Controller', () => {
 
       expect(service.getEscalatableImpediments).toHaveBeenCalledWith('team-123', 'user-123');
       expect(mockRes._json).toEqual({ success: true, data: [{ id: 'imp-1' }] });
+    });
+
+    it('should require a team', async () => {
+      mockReq.currentTeamId = undefined;
+      mockReq.query = {};
+
+      await getEscalatableImpediments(mockReq as any, mockRes as any, mockNext);
+      await wait(0);
+
+      expect(mockNext).toHaveBeenCalledWith(expect.objectContaining({ statusCode: 400 }));
+      expect(service.getEscalatableImpediments).not.toHaveBeenCalled();
     });
   });
 });

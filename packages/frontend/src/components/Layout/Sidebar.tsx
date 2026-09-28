@@ -274,6 +274,17 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
     [handleNavItemClick, hideNavTooltip, location.pathname, showNavTooltip, sidebarCollapsed, t]
   );
 
+  /**
+   * The heading a run of rows declares, in the reader's language -- or nothing when it declares none.
+   *
+   * The registry is data, so its keys are plain strings and the typed resource union cannot check
+   * them: the cast is the same one `renderNavRow` makes for every row. The return is annotated
+   * because passing `never` to `t` also collapses what TypeScript infers, and the callers below
+   * have to be able to ask whether a heading exists -- an unannotated result reads as always absent.
+   */
+  const resolveNavLabel = (labelKey?: string): string | undefined =>
+    labelKey ? (t(labelKey as never) as string) : undefined;
+
   return (
     <div
       className={`${styles.layout} ${sidebarCollapsed ? styles['sidebar-collapsed'] : ''} ${isMobileSidebarOpen ? styles['sidebar-open'] : ''} ${hasScrollbar ? styles['sidebar-has-scrollbar'] : ''}`}
@@ -309,7 +320,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
           aria-label={t('nav.mainNavigation')}
         >
           {filteredNavSections.map((section, index) => {
-            const sectionLabel = section.labelKey ? t(section.labelKey as never) : undefined;
+            const sectionLabel = resolveNavLabel(section.labelKey);
 
             return (
               <div
@@ -340,7 +351,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
             <div className={styles['nav-group-divider']} aria-hidden="true" />
           )}
           {filteredSettingsGroups.map((group, index) => {
-            const groupLabel = group.labelKey ? t(group.labelKey as never) : undefined;
+            const groupLabel = resolveNavLabel(group.labelKey);
 
             return (
               <div key={group.id} role={groupLabel ? 'group' : undefined} aria-label={groupLabel}>

@@ -93,6 +93,17 @@ describe('DailyScrumSchedule Controller', () => {
       expect(mockNext).toHaveBeenCalledWith(expect.any(BadRequestError));
       expect(dailyScrumScheduleService.saveSchedule).not.toHaveBeenCalled();
     });
+
+    it('falls back to an empty body when validation is bypassed', async () => {
+      mockReq.validatedBody = undefined;
+      (dailyScrumScheduleService.saveSchedule as ReturnType<typeof vi.fn>).mockResolvedValue({
+        id: 'schedule-1',
+      });
+
+      await saveSchedule(mockReq as never, mockRes as never, mockNext);
+
+      expect(dailyScrumScheduleService.saveSchedule).toHaveBeenCalledWith('sm-123', 'team-123', {});
+    });
   });
 
   describe('listNonWorkingDays', () => {
@@ -123,6 +134,20 @@ describe('DailyScrumSchedule Controller', () => {
         to: undefined,
       });
     });
+
+    it('falls back to an empty query when validation is bypassed', async () => {
+      mockReq.validatedQuery = undefined;
+      (dailyScrumScheduleService.listNonWorkingDays as ReturnType<typeof vi.fn>).mockResolvedValue(
+        []
+      );
+
+      await listNonWorkingDays(mockReq as never, mockRes as never, mockNext);
+
+      expect(dailyScrumScheduleService.listNonWorkingDays).toHaveBeenCalledWith('team-123', {
+        from: undefined,
+        to: undefined,
+      });
+    });
   });
 
   describe('addNonWorkingDay', () => {
@@ -140,6 +165,24 @@ describe('DailyScrumSchedule Controller', () => {
         { date: '2026-12-25', name: 'Christmas Day' }
       );
       expect(mockRes.status).toHaveBeenCalledWith(201);
+    });
+
+    it('falls back to an empty body when validation is bypassed', async () => {
+      mockReq.validatedBody = undefined;
+      (dailyScrumScheduleService.addNonWorkingDay as ReturnType<typeof vi.fn>).mockResolvedValue({
+        id: 'nwd-1',
+      });
+
+      await addNonWorkingDay(mockReq as never, mockRes as never, mockNext);
+
+      expect(dailyScrumScheduleService.addNonWorkingDay).toHaveBeenCalledWith(
+        'sm-123',
+        'team-123',
+        {
+          date: undefined,
+          name: undefined,
+        }
+      );
     });
   });
 

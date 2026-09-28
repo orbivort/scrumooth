@@ -13,6 +13,7 @@ import {
   selectTeam,
 } from '../../../controllers/team.controller';
 import { teamService } from '../../../services/team.service';
+import { UnauthorizedError } from '../../../utils/errors';
 import { createMockRequest, createMockResponse, createMockNext } from '../../setup/testSetup';
 
 vi.mock('../../../services/team.service', () => ({
@@ -551,6 +552,110 @@ describe('Team Controller', () => {
         success: false,
         error: { message: 'Team not found' },
       });
+    });
+  });
+
+  describe('unauthenticated requests', () => {
+    it('getUserTeams rejects when no user is attached', async () => {
+      mockReq.query = {};
+
+      getUserTeams(mockReq as any, mockRes as any, mockNext);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(mockNext).toHaveBeenCalledWith(expect.any(UnauthorizedError));
+      expect(teamService.getUserTeams).not.toHaveBeenCalled();
+    });
+
+    it('getTeamById rejects when no user is attached', async () => {
+      mockReq.params = { teamId: 'team-123' };
+
+      getTeamById(mockReq as any, mockRes as any, mockNext);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(mockNext).toHaveBeenCalledWith(expect.any(UnauthorizedError));
+    });
+
+    it('createTeam rejects when no user is attached', async () => {
+      createTeam(mockReq as any, mockRes as any, mockNext);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(mockNext).toHaveBeenCalledWith(expect.any(UnauthorizedError));
+    });
+
+    it('updateTeam rejects when no user is attached', async () => {
+      mockReq.params = { teamId: 'team-123' };
+
+      updateTeam(mockReq as any, mockRes as any, mockNext);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(mockNext).toHaveBeenCalledWith(expect.any(UnauthorizedError));
+    });
+
+    it('deleteTeam rejects when no user is attached', async () => {
+      mockReq.params = { teamId: 'team-123' };
+
+      deleteTeam(mockReq as any, mockRes as any, mockNext);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(mockNext).toHaveBeenCalledWith(expect.any(UnauthorizedError));
+    });
+
+    it('addMember rejects when no user is attached', async () => {
+      mockReq.params = { teamId: 'team-123' };
+
+      addMember(mockReq as any, mockRes as any, mockNext);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(mockNext).toHaveBeenCalledWith(expect.any(UnauthorizedError));
+    });
+
+    it('removeMember rejects when no user is attached', async () => {
+      mockReq.params = { teamId: 'team-123', memberId: 'member-456' };
+
+      removeMember(mockReq as any, mockRes as any, mockNext);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(mockNext).toHaveBeenCalledWith(expect.any(UnauthorizedError));
+    });
+
+    it('updateMemberRole rejects when no user is attached', async () => {
+      mockReq.params = { teamId: 'team-123', memberId: 'member-456' };
+      mockReq.body = { role: 'DEVELOPERS' };
+
+      updateMemberRole(mockReq as any, mockRes as any, mockNext);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(mockNext).toHaveBeenCalledWith(expect.any(UnauthorizedError));
+    });
+
+    it('getMyTeams rejects when no user is attached', async () => {
+      getMyTeams(mockReq as any, mockRes as any, mockNext);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(mockNext).toHaveBeenCalledWith(expect.any(UnauthorizedError));
+    });
+
+    it('getMyRoleInTeam rejects when no user is attached', async () => {
+      mockReq.params = { teamId: 'team-123' };
+
+      getMyRoleInTeam(mockReq as any, mockRes as any, mockNext);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(mockNext).toHaveBeenCalledWith(expect.any(UnauthorizedError));
+    });
+
+    it('selectTeam responds 401 when no user is attached', async () => {
+      mockReq.body = { teamId: 'team-123' };
+
+      selectTeam(mockReq as any, mockRes as any, mockNext);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(mockRes._status).toBe(401);
+      expect(mockRes._json).toEqual({
+        success: false,
+        error: { message: 'User not authenticated' },
+      });
+      expect(teamService.validateTeamMembership).not.toHaveBeenCalled();
     });
   });
 });

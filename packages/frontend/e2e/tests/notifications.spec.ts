@@ -11,7 +11,7 @@
  * `playwright.config.ts`), so the inbox under test is the demo universe's: the
  * notifications, their types and their recipients are the ones the seed declares.
  */
-import { test, expect, type Page } from '../fixtures';
+import { test, expect, awaitMockWorker, type Page } from '../fixtures';
 import type { LoginPage } from '../pages';
 import { NotificationType } from '../../src/types/notification.types';
 import { SEEDED_NOTIFICATIONS } from '../../src/mocks/fixtures/notifications';
@@ -71,6 +71,10 @@ const panel = (page: Page) => page.locator('[class*="notification-panel"]');
  */
 async function signIn(page: Page, loginPage: LoginPage): Promise<void> {
   await loginPage.goto();
+  // The badge is read against the seed, so the worker has to be intercepting
+  // before the login fires — otherwise a request could escape and a poll answer
+  // with a transport failure rather than the mock backend's inbox.
+  await awaitMockWorker(page);
   await loginPage.login(ACCOUNT.email, ACCOUNT.password);
   await expect(page.locator('[data-app-topbar]')).toBeVisible({ timeout: 30000 });
 }

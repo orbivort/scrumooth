@@ -114,9 +114,15 @@ test.describe('Scrum Master Dashboard', () => {
         const section = page
           .locator('[data-testid="health-check"], [class*="health-check"]')
           .first();
-        const hasChart = await trendChart.isVisible().catch(() => false);
-        const hasSection = await section.isVisible().catch(() => false);
-        expect(hasChart || hasSection).toBe(true);
+
+        // Polled rather than read once: the lens reads its data after it mounts, so a single read can
+        // land between the two. The section is what the case is about either way -- the chart is
+        // inside it, and it is only drawn once there is a trend to draw.
+        await expect
+          .poll(async () => (await trendChart.isVisible()) || (await section.isVisible()), {
+            timeout: 15000,
+          })
+          .toBe(true);
       });
     });
 
@@ -186,16 +192,29 @@ test.describe('Scrum Master Dashboard', () => {
     test('TC-SMDASH-007: Move the tab selection with the keyboard', async ({ smDashboardPage }) => {
       await test.step('Focus the first tab and move with ArrowRight', async () => {
         await expect(smDashboardPage.overviewTab).toBeVisible();
+
+        // The rail opens on the lens the address named, and an arrow key moves the selection from the
+        // tab that is selected rather than from the one that happens to hold focus. The case starts by
+        // reading the first tab, so the move it makes is the one it asserts.
+        await smDashboardPage.overviewTab.click();
+        await expect(smDashboardPage.overviewTab).toHaveAttribute('aria-selected', 'true');
+
         await smDashboardPage.overviewTab.focus();
         await smDashboardPage.pressKey('ArrowRight');
       });
 
       await test.step('Verify the lens is selected and focused', async () => {
-        expect(await smDashboardPage.isFacilitationSelected()).toBe(true);
+        // Retrying assertions rather than one-shot reads: the move is applied by the module's own
+        // router update after the key event, so a read taken immediately can still see the old tab.
+        await expect(smDashboardPage.facilitationTab).toHaveAttribute('aria-selected', 'true');
         await expect(smDashboardPage.facilitationPanel).toBeVisible();
       });
 
       await test.step('Home returns to the overview', async () => {
+        // Selecting a lens hands focus to the panel it revealed -- the rail would otherwise leave a
+        // keyboard reader behind on the tab they left. Moving the selection again means entering the
+        // rail again, which is what a keyboard reader does too.
+        await smDashboardPage.facilitationTab.focus();
         await smDashboardPage.pressKey('Home');
         await expect(smDashboardPage.overviewTab).toHaveAttribute('aria-selected', 'true');
       });

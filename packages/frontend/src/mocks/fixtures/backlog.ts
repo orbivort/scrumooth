@@ -41,7 +41,7 @@ const CINDRA_BACKLOG: readonly BacklogSeed[] = [
     // has a Done item for its open Increment to be composed from.
     status: ItemStatus.DONE,
     storyPoints: 8,
-    businessValue: 90,
+    businessValue: 13,
     effort: ValueEffortLevel.HIGH,
     labels: ['corridor', 'alerts'],
     acceptanceCriteria:
@@ -56,7 +56,7 @@ const CINDRA_BACKLOG: readonly BacklogSeed[] = [
     priority: MoSCoWPriority.MUST_HAVE,
     status: ItemStatus.READY,
     storyPoints: 13,
-    businessValue: 100,
+    businessValue: 13,
     effort: ValueEffortLevel.HIGH,
     labels: ['corridor', 'planning'],
     acceptanceCriteria:
@@ -71,7 +71,7 @@ const CINDRA_BACKLOG: readonly BacklogSeed[] = [
     priority: MoSCoWPriority.SHOULD_HAVE,
     status: ItemStatus.REFINED,
     storyPoints: 5,
-    businessValue: 60,
+    businessValue: 8,
     effort: ValueEffortLevel.MEDIUM,
     labels: ['audit'],
     acceptanceCriteria:
@@ -86,7 +86,7 @@ const CINDRA_BACKLOG: readonly BacklogSeed[] = [
     priority: MoSCoWPriority.MUST_HAVE,
     status: ItemStatus.DONE,
     storyPoints: 3,
-    businessValue: 70,
+    businessValue: 8,
     effort: ValueEffortLevel.LOW,
     labels: ['audit', 'safety'],
     acceptanceCriteria:
@@ -101,7 +101,7 @@ const CINDRA_BACKLOG: readonly BacklogSeed[] = [
     priority: MoSCoWPriority.SHOULD_HAVE,
     status: ItemStatus.REFINED,
     storyPoints: 5,
-    businessValue: 55,
+    businessValue: 8,
     effort: ValueEffortLevel.MEDIUM,
     labels: ['corridor'],
     acceptanceCriteria:
@@ -115,7 +115,7 @@ const CINDRA_BACKLOG: readonly BacklogSeed[] = [
     priority: MoSCoWPriority.SHOULD_HAVE,
     status: ItemStatus.IN_PROGRESS,
     storyPoints: 5,
-    businessValue: 65,
+    businessValue: 8,
     effort: ValueEffortLevel.MEDIUM,
     labels: ['corridor', 'rules'],
     acceptanceCriteria:
@@ -130,7 +130,7 @@ const CINDRA_BACKLOG: readonly BacklogSeed[] = [
     priority: MoSCoWPriority.MUST_HAVE,
     status: ItemStatus.DONE,
     storyPoints: 5,
-    businessValue: 80,
+    businessValue: 8,
     effort: ValueEffortLevel.MEDIUM,
     labels: ['alerts'],
     acceptanceCriteria:
@@ -145,7 +145,7 @@ const CINDRA_BACKLOG: readonly BacklogSeed[] = [
     priority: MoSCoWPriority.COULD_HAVE,
     status: ItemStatus.NEW,
     storyPoints: 3,
-    businessValue: 30,
+    businessValue: 3,
     effort: ValueEffortLevel.LOW,
     labels: ['interface'],
     acceptanceCriteria:
@@ -160,7 +160,7 @@ const CINDRA_BACKLOG: readonly BacklogSeed[] = [
     priority: MoSCoWPriority.COULD_HAVE,
     status: ItemStatus.NEW,
     storyPoints: 8,
-    businessValue: 40,
+    businessValue: 5,
     effort: ValueEffortLevel.HIGH,
     labels: ['export'],
     acceptanceCriteria:
@@ -178,7 +178,7 @@ const PELL_BACKLOG: readonly BacklogSeed[] = [
     priority: MoSCoWPriority.MUST_HAVE,
     status: ItemStatus.READY,
     storyPoints: 13,
-    businessValue: 100,
+    businessValue: 13,
     effort: ValueEffortLevel.HIGH,
     labels: ['capacity', 'planning'],
     acceptanceCriteria:
@@ -193,7 +193,7 @@ const PELL_BACKLOG: readonly BacklogSeed[] = [
     priority: MoSCoWPriority.MUST_HAVE,
     status: ItemStatus.READY,
     storyPoints: 8,
-    businessValue: 85,
+    businessValue: 13,
     effort: ValueEffortLevel.MEDIUM,
     labels: ['capacity', 'reports'],
     acceptanceCriteria:
@@ -208,7 +208,7 @@ const PELL_BACKLOG: readonly BacklogSeed[] = [
     priority: MoSCoWPriority.SHOULD_HAVE,
     status: ItemStatus.REFINED,
     storyPoints: 8,
-    businessValue: 70,
+    businessValue: 8,
     effort: ValueEffortLevel.MEDIUM,
     labels: ['inputs'],
     acceptanceCriteria:
@@ -223,7 +223,7 @@ const PELL_BACKLOG: readonly BacklogSeed[] = [
     priority: MoSCoWPriority.MUST_HAVE,
     status: ItemStatus.DONE,
     storyPoints: 5,
-    businessValue: 75,
+    businessValue: 8,
     effort: ValueEffortLevel.MEDIUM,
     labels: ['capacity', 'rules'],
     acceptanceCriteria:
@@ -238,7 +238,7 @@ const PELL_BACKLOG: readonly BacklogSeed[] = [
     priority: MoSCoWPriority.MUST_HAVE,
     status: ItemStatus.DONE,
     storyPoints: 13,
-    businessValue: 95,
+    businessValue: 13,
     effort: ValueEffortLevel.HIGH,
     labels: ['migration'],
     acceptanceCriteria:
@@ -252,7 +252,7 @@ const PELL_BACKLOG: readonly BacklogSeed[] = [
     priority: MoSCoWPriority.SHOULD_HAVE,
     status: ItemStatus.IN_PROGRESS,
     storyPoints: 5,
-    businessValue: 65,
+    businessValue: 8,
     effort: ValueEffortLevel.MEDIUM,
     labels: ['capacity', 'alerts'],
     acceptanceCriteria:
@@ -266,7 +266,7 @@ const PELL_BACKLOG: readonly BacklogSeed[] = [
     priority: MoSCoWPriority.SHOULD_HAVE,
     status: ItemStatus.NEW,
     storyPoints: 5,
-    businessValue: 50,
+    businessValue: 5,
     effort: ValueEffortLevel.MEDIUM,
     labels: ['capacity', 'calendar'],
     acceptanceCriteria:
@@ -280,7 +280,7 @@ const PELL_BACKLOG: readonly BacklogSeed[] = [
     priority: MoSCoWPriority.COULD_HAVE,
     status: ItemStatus.NEW,
     storyPoints: 3,
-    businessValue: 35,
+    businessValue: 5,
     effort: ValueEffortLevel.LOW,
     labels: ['export'],
     acceptanceCriteria:
@@ -295,7 +295,7 @@ const PELL_BACKLOG: readonly BacklogSeed[] = [
     priority: MoSCoWPriority.COULD_HAVE,
     status: ItemStatus.REFINED,
     storyPoints: 3,
-    businessValue: 30,
+    businessValue: 3,
     effort: ValueEffortLevel.LOW,
     labels: ['interface'],
     acceptanceCriteria:

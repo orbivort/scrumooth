@@ -950,4 +950,223 @@ describe('Retrospective Controller', () => {
       expect(mockRes._json).toEqual({ success: true, data: linked });
     });
   });
+
+  describe('missing params', () => {
+    it('getRetrospectiveById requires an id', async () => {
+      mockReq.params = {};
+
+      await getRetrospectiveById(mockReq as any, mockRes as any);
+
+      expect(mockRes._status).toBe(400);
+      expect(mockRes._json.error.code).toBe('VALIDATION_ERROR');
+      expect(retrospectiveService.getRetrospectiveById).not.toHaveBeenCalled();
+    });
+
+    it('getRetrospectiveBySprintId requires a sprint id', async () => {
+      mockReq.params = {};
+
+      await getRetrospectiveBySprintId(mockReq as any, mockRes as any);
+
+      expect(mockRes._status).toBe(400);
+      expect(retrospectiveService.getRetrospectiveBySprintId).not.toHaveBeenCalled();
+    });
+
+    it('addItem requires a retrospective id', async () => {
+      mockReq.params = {};
+
+      await addItem(mockReq as any, mockRes as any);
+
+      expect(mockRes._status).toBe(400);
+      expect(retrospectiveService.addItem).not.toHaveBeenCalled();
+    });
+
+    it('voteItem requires ids once authenticated', async () => {
+      mockReq.params = {};
+      mockReq.user = { id: 'user-123' };
+
+      await voteItem(mockReq as any, mockRes as any);
+
+      expect(mockRes._status).toBe(400);
+      expect(retrospectiveService.voteItem).not.toHaveBeenCalled();
+    });
+
+    it('unvoteItem requires ids once authenticated', async () => {
+      mockReq.params = {};
+      mockReq.user = { id: 'user-123' };
+
+      await unvoteItem(mockReq as any, mockRes as any);
+
+      expect(mockRes._status).toBe(400);
+      expect(retrospectiveService.unvoteItem).not.toHaveBeenCalled();
+    });
+
+    it('updateItem requires ids', async () => {
+      mockReq.params = {};
+
+      await updateItem(mockReq as any, mockRes as any);
+
+      expect(mockRes._status).toBe(400);
+      expect(retrospectiveService.updateItem).not.toHaveBeenCalled();
+    });
+
+    it('deleteItem requires ids', async () => {
+      mockReq.params = {};
+
+      await deleteItem(mockReq as any, mockRes as any);
+
+      expect(mockRes._status).toBe(400);
+      expect(retrospectiveService.deleteItem).not.toHaveBeenCalled();
+    });
+
+    it('addActionItem requires a retrospective id', async () => {
+      mockReq.params = {};
+
+      await addActionItem(mockReq as any, mockRes as any);
+
+      expect(mockRes._status).toBe(400);
+      expect(retrospectiveService.addActionItem).not.toHaveBeenCalled();
+    });
+
+    it('updateActionItem requires ids', async () => {
+      mockReq.params = {};
+
+      await updateActionItem(mockReq as any, mockRes as any);
+
+      expect(mockRes._status).toBe(400);
+      expect(retrospectiveService.updateActionItem).not.toHaveBeenCalled();
+    });
+
+    it('deleteActionItem requires ids', async () => {
+      mockReq.params = {};
+
+      await deleteActionItem(mockReq as any, mockRes as any);
+
+      expect(mockRes._status).toBe(400);
+      expect(retrospectiveService.deleteActionItem).not.toHaveBeenCalled();
+    });
+
+    it('updateRetrospective requires an id', async () => {
+      mockReq.params = {};
+
+      await updateRetrospective(mockReq as any, mockRes as any);
+
+      expect(mockRes._status).toBe(400);
+      expect(retrospectiveService.updateRetrospective).not.toHaveBeenCalled();
+    });
+
+    it('addRetroAttendee requires a retrospective id', async () => {
+      mockReq.params = {};
+      mockReq.body = { name: 'John Doe' };
+
+      await addRetroAttendee(mockReq as any, mockRes as any);
+
+      expect(mockRes._status).toBe(400);
+      expect(retrospectiveService.addAttendee).not.toHaveBeenCalled();
+    });
+
+    it('updateRetroAttendee requires an attendee id', async () => {
+      mockReq.params = {};
+      mockReq.body = {};
+
+      await updateRetroAttendee(mockReq as any, mockRes as any);
+
+      expect(mockRes._status).toBe(400);
+      expect(retrospectiveService.updateAttendee).not.toHaveBeenCalled();
+    });
+
+    it('deleteRetroAttendee requires an attendee id', async () => {
+      mockReq.params = {};
+
+      await deleteRetroAttendee(mockReq as any, mockRes as any);
+
+      expect(mockRes._status).toBe(400);
+      expect(retrospectiveService.deleteAttendee).not.toHaveBeenCalled();
+    });
+
+    it('applyDodChanges requires an id', async () => {
+      mockReq.params = {};
+
+      await applyDodChanges(mockReq as any, mockRes as any);
+
+      expect(mockRes._status).toBe(400);
+      expect(retrospectiveService.applyDodChanges).not.toHaveBeenCalled();
+    });
+
+    it('linkActionItemToPbi requires an action item id', async () => {
+      mockReq.params = {};
+      mockReq.body = { pbiId: 'pbi-1' };
+
+      await linkActionItemToPbi(mockReq as any, mockRes as any);
+
+      expect(mockRes._status).toBe(400);
+      expect(retrospectiveService.linkActionItemToPbi).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('attendee email handling', () => {
+    it('trims a provided email when updating an attendee', async () => {
+      mockReq.params = { attendeeId: 'attendee-123' };
+      mockReq.userId = 'user-123';
+      mockReq.body = { email: '  john@example.com  ' };
+      const mockAttendee = { id: 'attendee-123', email: 'john@example.com' };
+
+      (retrospectiveService.updateAttendee as any).mockResolvedValue(mockAttendee);
+
+      await updateRetroAttendee(mockReq as any, mockRes as any);
+
+      expect(retrospectiveService.updateAttendee).toHaveBeenCalledWith(
+        'attendee-123',
+        expect.objectContaining({ email: 'john@example.com' }),
+        'user-123'
+      );
+    });
+  });
+
+  describe('error propagation', () => {
+    it('addActionItem returns 500 when the service fails', async () => {
+      mockReq.params = { retroId: 'retro-123' };
+      mockReq.body = { title: 'Action' };
+
+      (retrospectiveService.addActionItem as any).mockRejectedValue(new Error('boom'));
+
+      await addActionItem(mockReq as any, mockRes as any);
+
+      expect(mockRes._status).toBe(500);
+      expect(mockRes._json.error.code).toBe('INTERNAL_SERVER_ERROR');
+    });
+
+    it('updateRetrospective returns 500 when the service fails', async () => {
+      mockReq.params = { id: 'retro-123' };
+      mockReq.body = {};
+
+      (retrospectiveService.updateRetrospective as any).mockRejectedValue(new Error('boom'));
+
+      await updateRetrospective(mockReq as any, mockRes as any);
+
+      expect(mockRes._status).toBe(500);
+    });
+
+    it('materializeActionItem returns 500 when the service fails', async () => {
+      mockReq.params = { actionItemId: 'action-1' };
+      mockReq.userId = 'user-123';
+
+      (retrospectiveService.materializeActionItem as any).mockRejectedValue(new Error('boom'));
+
+      await materializeActionItem(mockReq as any, mockRes as any);
+
+      expect(mockRes._status).toBe(500);
+    });
+
+    it('linkActionItemToPbi returns 500 when the service fails', async () => {
+      mockReq.params = { actionItemId: 'action-1' };
+      mockReq.userId = 'user-123';
+      mockReq.body = { pbiId: 'pbi-1' };
+
+      (retrospectiveService.linkActionItemToPbi as any).mockRejectedValue(new Error('boom'));
+
+      await linkActionItemToPbi(mockReq as any, mockRes as any);
+
+      expect(mockRes._status).toBe(500);
+    });
+  });
 });

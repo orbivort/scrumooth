@@ -32,6 +32,10 @@ export function startMockWorker(): Promise<void> {
       onUnhandledRequest: MOCK_BROWSER_ON_UNHANDLED_REQUEST,
     })
     .then(() => {
+      // A stable marker E2E fixtures can wait for: once it is set, the worker is
+      // controlling the page and a request cannot escape to the network anymore.
+      // It is re-set on every full page load, because bootstrap runs per load.
+      document.documentElement.dataset.mockWorker = 'active';
       logger.info('[mocks] HTTP mocking enabled', undefined, {
         handlers: handlers.length,
         latencyMs: MOCK_LATENCY_MS,

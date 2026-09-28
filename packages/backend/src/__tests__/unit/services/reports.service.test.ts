@@ -482,4 +482,218 @@ describe('ReportsService', () => {
       );
     });
   });
+
+  describe('cache management', () => {
+    it('drops a cached report once its TTL has elapsed', async () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date('2026-01-01T00:00:00.000Z'));
+      (prisma.sprint.findMany as any).mockResolvedValue([]);
+
+      await reportsService.getVelocityData(TEAM, MEMBER);
+      expect(reportsService.getCacheStats().size).toBe(1);
+
+      // Advance past the five-minute TTL so the expired entry is evicted on the next read.
+      vi.setSystemTime(new Date('2026-01-01T00:06:00.000Z'));
+      await reportsService.getVelocityData(TEAM, MEMBER);
+
+      expect(prisma.sprint.findMany).toHaveBeenCalledTimes(2);
+      vi.useRealTimers();
+    });
+
+    it('serves sprint-history and metrics reads from cache', async () => {
+      (prisma.sprint.findMany as any).mockResolvedValue([]);
+
+      await reportsService.getSprintHistory(TEAM, MEMBER);
+      await reportsService.getSprintHistory(TEAM, MEMBER);
+      await reportsService.getTeamMetrics(TEAM, MEMBER);
+      await reportsService.getTeamMetrics(TEAM, MEMBER);
+
+      expect(prisma.sprint.findMany).toHaveBeenCalledTimes(2);
+    });
+
+    it('reports cache statistics', async () => {
+      (prisma.sprint.findMany as any).mockResolvedValue([]);
+      await reportsService.getVelocityData(TEAM, MEMBER);
+
+      const stats = reportsService.getCacheStats();
+
+      expect(stats.size).toBe(1);
+      expect(stats.memoryMB).toBeGreaterThanOrEqual(0);
+      expect(stats.maxSize).toBe(1000);
+      expect(stats.maxMemoryMB).toBe(50);
+    });
+
+    it('invalidates a single team, or the whole cache when no team is named', async () => {
+      (prisma.sprint.findMany as any).mockResolvedValue([]);
+      await reportsService.getVelocityData(TEAM, MEMBER);
+
+      reportsService.invalidateCache(TEAM);
+      expect(reportsService.getCacheStats().size).toBe(0);
+
+      await reportsService.getVelocityData(TEAM, MEMBER);
+      reportsService.invalidateCache();
+      expect(reportsService.getCacheStats().size).toBe(0);
+      expect(prisma.sprint.findMany).toHaveBeenCalledTimes(2);
+    });
+
+    it('evicts the least-recently-used entry when the cache reaches its size limit', async () => {
+      (prisma.sprint.findMany as any).mockResolvedValue([]);
+
+      for (let i = 0; i < 1000; i += 1) {
+        await reportsService.getVelocityData(`team-${i}`, MEMBER);
+      }
+      expect(reportsService.getCacheStats().size).toBe(1000);
+
+      // The next write must evict the oldest entry before the new one is admitted.
+      await reportsService.getVelocityData('team-overflow', MEMBER);
+
+      expect(reportsService.getCacheStats().size).toBe(1000);
+    });
+
+    it('evicts when the cache memory budget is exceeded', async () => {
+      (prisma.sprint.findMany as any).mockResolvedValue([]);
+
+      // A key alone large enough to exceed the 50 MB budget once it is measured.
+      const hugeTeam = `team-${'x'.repeat(26 * 1024 * 1024)}`;
+      await reportsService.getVelocityData(hugeTeam, MEMBER);
+
+      // The second write measures the cache with the huge entry already present.
+      await reportsService.getVelocityData(`${hugeTeam}-2`, MEMBER);
+
+      expect(reportsService.getCacheStats().size).toBe(2);
+    });
+  });
+
+  describe('sprint history without surviving evidence', () => {
+    it('reports a Sprint whose completion evidence did not survive as unavailable', async () => {
+      const sprint = sprintRow({
+        sprintBacklogItems: [{ pbiId: 'pbi-1', pbi: { storyPoints: 13, status: 'DONE' } }],
+      });
+      (prisma.sprint.findMany as any).mockResolvedValue([sprint]);
+      // No snapshot and no status history: the completion cannot be established for any item.
+      (prisma.sprintCompletionSnapshot.findMany as any).mockResolvedValue([]);
+      (prisma.statusChangeHistory.findMany as any).mockResolvedValue([]);
+
+      const [item] = await reportsService.getSprintHistory(TEAM, MEMBER);
+
+      expect(item?.completedPoints).toBeNull();
+      expect(item?.plannedPoints).toBeNull();
+      expect(item?.itemCount).toBeNull();
+      expect(item?.completedItemCount).toBeNull();
+      expect(item?.provenance).toBe('not_available');
+    });
+  });
+
+  describe('evidence-backed insight signals', () => {
+    it('reports Definition of Done as an observation when it is fully met', async () => {
+      const sprint = sprintRow();
+      (prisma.sprint.findMany as any).mockResolvedValue([sprint]);
+      (prisma.sprintCompletionSnapshot.findMany as any).mockResolvedValue([
+        snapshot(sprint.id, 20, 20),
+      ]);
+      (prisma.sprintBacklogItem.findMany as any).mockResolvedValue([{ pbiId: 'pbi-1' }]);
+      (prisma.doDChecklistVerification.findMany as any).mockResolvedValue([
+        { isVerified: true },
+        { isVerified: true },
+      ]);
+
+      const insights = await reportsService.getInsights(TEAM, MEMBER);
+      const dod = insights.find((insight) => insight.id === 'definition-of-done');
+
+      expect(dod?.kind).toBe('observation');
+      expect(prisma.doDChecklistVerification.findMany).toHaveBeenCalled();
+    });
+
+    it('raises attention for a Definition of Done gap', async () => {
+      const sprint = sprintRow();
+      (prisma.sprint.findMany as any).mockResolvedValue([sprint]);
+      (prisma.sprintCompletionSnapshot.findMany as any).mockResolvedValue([
+        snapshot(sprint.id, 20, 10),
+      ]);
+      (prisma.sprintBacklogItem.findMany as any).mockResolvedValue([{ pbiId: 'pbi-1' }]);
+      (prisma.doDChecklistVerification.findMany as any).mockResolvedValue([
+        { isVerified: true },
+        { isVerified: false },
+      ]);
+
+      const insights = await reportsService.getInsights(TEAM, MEMBER);
+      const dod = insights.find((insight) => insight.id === 'definition-of-done');
+
+      expect(dod?.kind).toBe('attention');
+    });
+
+    it('raises attention for Sprint Backlog churn that endangers the Goal', async () => {
+      const sprint = sprintRow();
+      (prisma.sprint.findMany as any).mockResolvedValue([sprint]);
+      (prisma.sprintCompletionSnapshot.findMany as any).mockResolvedValue([
+        snapshot(sprint.id, 20, 20),
+      ]);
+      (prisma.sprintBacklogChange.findMany as any).mockResolvedValue([
+        { goalImpact: 'ENDANGERS_GOAL', approvalStatus: 'PENDING' },
+      ]);
+
+      const insights = await reportsService.getInsights(TEAM, MEMBER);
+      const churn = insights.find((insight) => insight.id === 'sprint-backlog-churn');
+
+      expect(churn?.kind).toBe('attention');
+      expect(churn?.description).toContain('"changes":1');
+      expect(churn?.description).toContain('"endangeringGoal":1');
+      expect(churn?.description).toContain('"awaitingAcknowledgement":1');
+    });
+
+    it('reports Sprint Backlog churn as an observation when it does not endanger the Goal', async () => {
+      const sprint = sprintRow();
+      (prisma.sprint.findMany as any).mockResolvedValue([sprint]);
+      (prisma.sprintCompletionSnapshot.findMany as any).mockResolvedValue([
+        snapshot(sprint.id, 20, 20),
+      ]);
+      (prisma.sprintBacklogChange.findMany as any).mockResolvedValue([
+        { goalImpact: 'NO_IMPACT', approvalStatus: 'APPROVED' },
+      ]);
+
+      const insights = await reportsService.getInsights(TEAM, MEMBER);
+      const churn = insights.find((insight) => insight.id === 'sprint-backlog-churn');
+
+      expect(churn?.kind).toBe('observation');
+    });
+
+    it('counts only the Sprint Goal verdicts the Scrum Team itself recorded', async () => {
+      const achieved = sprintRow({ sprintReview: { sprintGoalOutcome: 'ACHIEVED' } });
+      const partial = sprintRow({ sprintReview: { sprintGoalOutcome: 'PARTIALLY_ACHIEVED' } });
+      const missed = sprintRow({ sprintReview: { sprintGoalOutcome: 'NOT_ACHIEVED' } });
+      (prisma.sprint.findMany as any).mockResolvedValue([achieved, partial, missed]);
+      (prisma.sprintCompletionSnapshot.findMany as any).mockResolvedValue([
+        snapshot(achieved.id, 10, 10),
+        snapshot(partial.id, 10, 5),
+        snapshot(missed.id, 10, 2),
+      ]);
+
+      const insights = await reportsService.getInsights(TEAM, MEMBER);
+      const verdicts = insights.find((insight) => insight.id === 'sprint-goal-verdicts');
+
+      expect(verdicts?.description).toContain('reports:insights.sprintGoalVerdicts.description');
+      expect(verdicts?.description).toContain('"achieved":1');
+      expect(verdicts?.description).toContain('"partiallyAchieved":1');
+      expect(verdicts?.description).toContain('"notAchieved":1');
+    });
+
+    it('reports open impediments even when none of them carries an age', async () => {
+      (prisma.sprint.findMany as any).mockResolvedValue([]);
+      (smDashboardService.getImpedimentMetrics as any).mockResolvedValue({
+        total: 2,
+        open: 1,
+        inProgress: 0,
+        resolved: 1,
+        closed: 0,
+        averageResolutionDays: 0,
+        aging: [],
+      });
+
+      const insights = await reportsService.getInsights(TEAM, MEMBER);
+      const impediments = insights.find((insight) => insight.id === 'open-impediments');
+
+      expect(impediments?.kind).toBe('attention');
+      expect(impediments?.description).toContain('"oldestAgeDays":0');
+    });
+  });
 });

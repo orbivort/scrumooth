@@ -1,5 +1,12 @@
 import React from 'react';
-import { screen, renderWithProviders, waitFor, initTestI18n, i18nT } from '../../test-utils';
+import {
+  screen,
+  fireEvent,
+  renderWithProviders,
+  waitFor,
+  initTestI18n,
+  i18nT,
+} from '../../test-utils';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach, beforeAll } from 'vitest';
 
@@ -1406,6 +1413,282 @@ describe('SprintBacklogManager', () => {
           })
         );
       });
+    });
+  });
+
+  describe('Sprint Backlog mutation flows', () => {
+    const fillRemoveForm = async (user: ReturnType<typeof userEvent.setup>) => {
+      await user.type(
+        screen.getByPlaceholderText('Why are you removing this item?'),
+        'No longer needed'
+      );
+      await user.click(
+        screen.getByLabelText(i18nT('sprint:sprintBacklogManager.goalImpactSupports'))
+      );
+    };
+
+    const fillAddForm = async (user: ReturnType<typeof userEvent.setup>) => {
+      await user.type(
+        screen.getByPlaceholderText('Why are you adding this item?'),
+        'New requirement'
+      );
+      await user.click(
+        screen.getByLabelText(i18nT('sprint:sprintBacklogManager.goalImpactSupports'))
+      );
+    };
+
+    it('returns a PBI to the backlog once a reason and impact are stated', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<SprintBacklogManager {...defaultProps} />);
+
+      await waitFor(() => expect(screen.getByText('Implement login')).toBeInTheDocument());
+      await user.click(screen.getAllByTitle('Remove from sprint')[0]!);
+      await screen.findByText(i18nT('sprint:sprintBacklogManager.returnItemToBacklog'));
+
+      await fillRemoveForm(user);
+      await user.click(
+        screen.getByRole('button', {
+          name: i18nT('sprint:sprintBacklogManager.returnToBacklogAction'),
+        })
+      );
+
+      await waitFor(() => {
+        expect(apiService.removePBIFromSprint).toHaveBeenCalledWith(
+          'sprint-1',
+          'pbi-1',
+          'return_to_backlog',
+          'No longer needed',
+          'SUPPORTS_GOAL'
+        );
+      });
+    });
+
+    it('records a goal-endangering removal as pending without applying it', async () => {
+      const user = userEvent.setup();
+      (apiService.removePBIFromSprint as ReturnType<typeof vi.fn>).mockResolvedValue({
+        data: { pending: true },
+      });
+      renderWithProviders(<SprintBacklogManager {...defaultProps} />);
+
+      await waitFor(() => expect(screen.getByText('Implement login')).toBeInTheDocument());
+      await user.click(screen.getAllByTitle('Remove from sprint')[0]!);
+      await screen.findByText(i18nT('sprint:sprintBacklogManager.returnItemToBacklog'));
+
+      await fillRemoveForm(user);
+      await user.click(
+        screen.getByRole('button', {
+          name: i18nT('sprint:sprintBacklogManager.returnToBacklogAction'),
+        })
+      );
+
+      await waitFor(() => expect(apiService.removePBIFromSprint).toHaveBeenCalled());
+    });
+
+    it('surfaces the backend message when a removal is refused', async () => {
+      const user = userEvent.setup();
+      (apiService.removePBIFromSprint as ReturnType<typeof vi.fn>).mockRejectedValue({
+        response: { data: { error: { message: 'Removal refused.' } } },
+      });
+      renderWithProviders(<SprintBacklogManager {...defaultProps} />);
+
+      await waitFor(() => expect(screen.getByText('Implement login')).toBeInTheDocument());
+      await user.click(screen.getAllByTitle('Remove from sprint')[0]!);
+      await screen.findByText(i18nT('sprint:sprintBacklogManager.returnItemToBacklog'));
+
+      await fillRemoveForm(user);
+      await user.click(
+        screen.getByRole('button', {
+          name: i18nT('sprint:sprintBacklogManager.returnToBacklogAction'),
+        })
+      );
+
+      await waitFor(() => expect(apiService.removePBIFromSprint).toHaveBeenCalled());
+    });
+
+    it('reports an addition failure with the backend message', async () => {
+      const user = userEvent.setup();
+      (apiService.addPBIToSprint as ReturnType<typeof vi.fn>).mockRejectedValue({
+        response: { data: { error: { message: 'Addition refused.' } } },
+      });
+      renderWithProviders(<SprintBacklogManager {...defaultProps} />);
+
+      await waitFor(() => expect(screen.getByText('+ Add Item')).toBeInTheDocument());
+      await user.click(screen.getByText('+ Add Item'));
+      await screen.findByText('Feature C');
+
+      await fillAddForm(user);
+      await user.click(screen.getAllByRole('button', { name: 'Add' })[0]!);
+
+      await waitFor(() => expect(apiService.addPBIToSprint).toHaveBeenCalled());
+    });
+
+    it('opens the add modal from the empty backlog state and closes it again', async () => {
+      const user = userEvent.setup();
+      (apiService.getActiveSprint as ReturnType<typeof vi.fn>).mockResolvedValue({
+        data: { items: [] },
+      });
+      renderWithProviders(<SprintBacklogManager {...defaultProps} />);
+
+      await user.click(await screen.findByText(i18nT('sprint:sprintBacklogManager.addFirstItem')));
+      await screen.findByText('Add Item to Sprint');
+
+      const closeButtons = screen.getAllByRole('button').filter((btn) => btn.textContent === '×');
+      await user.click(closeButtons[closeButtons.length - 1]!);
+
+      await waitFor(() => {
+        expect(screen.queryByText('Add Item to Sprint')).not.toBeInTheDocument();
+      });
+    });
+
+    it('closes the remove modal from its overlay and from its close control', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<SprintBacklogManager {...defaultProps} />);
+
+      await waitFor(() => expect(screen.getByText('Implement login')).toBeInTheDocument());
+
+      // Overlay.
+      await user.click(screen.getAllByTitle('Remove from sprint')[0]!);
+      await screen.findByText(i18nT('sprint:sprintBacklogManager.returnItemToBacklog'));
+      const overlay = document.querySelector('[class*="sbm-modal-overlay"]') as HTMLElement;
+      fireEvent.click(overlay);
+      await waitFor(() =>
+        expect(
+          screen.queryByText(i18nT('sprint:sprintBacklogManager.returnItemToBacklog'))
+        ).not.toBeInTheDocument()
+      );
+
+      // Close control.
+      await user.click(screen.getAllByTitle('Remove from sprint')[0]!);
+      await screen.findByText(i18nT('sprint:sprintBacklogManager.returnItemToBacklog'));
+      const closeButtons = screen.getAllByRole('button').filter((btn) => btn.textContent === '×');
+      await user.click(closeButtons[closeButtons.length - 1]!);
+      await waitFor(() =>
+        expect(
+          screen.queryByText(i18nT('sprint:sprintBacklogManager.returnItemToBacklog'))
+        ).not.toBeInTheDocument()
+      );
+    });
+  });
+
+  describe('Product Owner review modal', () => {
+    const pendingChange = {
+      id: 'change-pending',
+      pbiTitle: 'Feature A',
+      changeType: 'ADDED',
+      changedByName: 'John Doe',
+      createdAt: new Date().toISOString(),
+      goalImpact: 'ENDANGERS_GOAL',
+      approvalStatus: 'PENDING',
+      sprintGoalAtChange: 'Complete authentication',
+    };
+
+    const openReject = async (user: ReturnType<typeof userEvent.setup>) => {
+      const rejectButtons = await screen.findAllByRole('button', {
+        name: i18nT('sprint:sprintBacklogManager.rejectChange'),
+      });
+      await user.click(rejectButtons[rejectButtons.length - 1]!);
+    };
+
+    beforeEach(() => {
+      (useTeamStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
+        currentTeam: { id: 'team-1' },
+        userRoleInCurrentTeam: 'PRODUCT_OWNER',
+      });
+      (apiService.getSprintBacklogChanges as ReturnType<typeof vi.fn>).mockResolvedValue({
+        data: [pendingChange],
+      });
+    });
+
+    it('cancels a review it opened', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<SprintBacklogManager {...defaultProps} />);
+
+      await openReject(user);
+      const cancelButtons = screen.getAllByRole('button', {
+        name: i18nT('sprint:sprintBacklogManager.cancel'),
+      });
+      await user.click(cancelButtons[cancelButtons.length - 1]!);
+
+      await waitFor(() =>
+        expect(
+          screen.queryByText(i18nT('sprint:sprintBacklogManager.reviewAddsItem'))
+        ).not.toBeInTheDocument()
+      );
+    });
+
+    it('dismisses a review from its overlay and from its close control', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<SprintBacklogManager {...defaultProps} />);
+
+      // Overlay.
+      await openReject(user);
+      await screen.findByText(i18nT('sprint:sprintBacklogManager.reviewAddsItem'));
+      const overlay = document.querySelector('[class*="sbm-modal-overlay"]') as HTMLElement;
+      fireEvent.click(overlay);
+      await waitFor(() =>
+        expect(
+          screen.queryByText(i18nT('sprint:sprintBacklogManager.reviewAddsItem'))
+        ).not.toBeInTheDocument()
+      );
+
+      // Close control.
+      await openReject(user);
+      await screen.findByText(i18nT('sprint:sprintBacklogManager.reviewAddsItem'));
+      const closeButtons = screen.getAllByRole('button').filter((btn) => btn.textContent === '×');
+      await user.click(closeButtons[closeButtons.length - 1]!);
+      await waitFor(() =>
+        expect(
+          screen.queryByText(i18nT('sprint:sprintBacklogManager.reviewAddsItem'))
+        ).not.toBeInTheDocument()
+      );
+    });
+
+    it('records a review note and reports a failed acknowledgement', async () => {
+      const user = userEvent.setup();
+      (apiService.acknowledgeSprintBacklogChange as ReturnType<typeof vi.fn>).mockRejectedValue(
+        new Error('Refused.')
+      );
+      renderWithProviders(<SprintBacklogManager {...defaultProps} />);
+
+      await openReject(user);
+
+      await user.type(
+        screen.getByLabelText(i18nT('sprint:sprintBacklogManager.reviewNoteLabel')),
+        'Rejected: scope too large'
+      );
+
+      const confirmButtons = screen.getAllByRole('button', {
+        name: i18nT('sprint:sprintBacklogManager.rejectChange'),
+      });
+      await user.click(confirmButtons[confirmButtons.length - 1]!);
+
+      await waitFor(() => {
+        expect(apiService.acknowledgeSprintBacklogChange).toHaveBeenCalledWith(
+          'sprint-1',
+          'change-pending',
+          expect.objectContaining({ decision: 'REJECT' })
+        );
+      });
+    });
+  });
+
+  describe('Deep link scrolling', () => {
+    it('scrolls the announced change into view when the platform supports it', async () => {
+      const scrollIntoView = vi.fn();
+      const original = Element.prototype.scrollIntoView;
+      Element.prototype.scrollIntoView =
+        scrollIntoView as unknown as typeof Element.prototype.scrollIntoView;
+
+      try {
+        renderWithProviders(
+          <SprintBacklogManager {...defaultProps} highlightChangeId="change-1" />
+        );
+
+        await waitFor(() => expect(screen.getByText('Feature A')).toBeInTheDocument());
+        expect(scrollIntoView).toHaveBeenCalledWith({ block: 'nearest' });
+      } finally {
+        Element.prototype.scrollIntoView = original;
+      }
     });
   });
 });

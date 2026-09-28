@@ -693,6 +693,19 @@
   }
 }
 
+/* Tablet: the header action buttons no longer fit on one row, so allow the
+   header to wrap instead of squeezing the title to zero width. */
+@media (width <= 1024px) {
+  .sprint-board-header {
+    flex-wrap: wrap;
+    gap: var(--space-4);
+  }
+
+  .header-right {
+    flex-wrap: wrap;
+  }
+}
+
 @media (width <= 600px) {
   .kanban-board {
     grid-template-columns: 1fr;

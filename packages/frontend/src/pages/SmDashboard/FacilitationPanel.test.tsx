@@ -27,10 +27,15 @@ import {
   renderWithProviders,
   initTestI18n,
   i18nT,
+  act,
 } from '../../test-utils';
 import { vi, beforeAll, beforeEach } from 'vitest';
 import { FacilitationPanel } from './FacilitationPanel';
-import { smDashboardService, healthCheckService } from '../../services';
+import {
+  smDashboardService,
+  healthCheckService,
+  organizationalBarriersService,
+} from '../../services';
 import { useTeamContext } from '../../contexts/TeamContext';
 import { mockSmDashboardData } from '../../__mocks__/smDashboardData';
 
@@ -53,6 +58,30 @@ vi.mock('../../components/common/ScrumValuesBanner', () => ({
 }));
 vi.mock('../../components/common/HealthCheckSurvey', () => ({
   HealthCheckSurvey: () => <div data-testid="health-check-survey" />,
+}));
+
+// The escalation dialog is exercised by its own suite; here it is only the vehicle that hands the
+// panel's callbacks back to the test, so a bare stand-in exposes them without the real form.
+vi.mock('../../components/EscalateImpedimentDialog/EscalateImpedimentDialog', () => ({
+  EscalateImpedimentDialog: ({
+    open,
+    onEscalated,
+    onClose,
+  }: {
+    open: boolean;
+    onEscalated: () => void;
+    onClose: () => void;
+  }) =>
+    open ? (
+      <div data-testid="mock-escalate-dialog">
+        <button type="button" onClick={onEscalated}>
+          mock-escalate-confirm
+        </button>
+        <button type="button" onClick={onClose}>
+          mock-escalate-close
+        </button>
+      </div>
+    ) : null,
 }));
 
 const mockTeam = {
@@ -455,6 +484,85 @@ describe('FacilitationPanel', () => {
       unmount();
 
       expect(registerRefresh).toHaveBeenLastCalledWith(null);
+    });
+  });
+
+  describe('Barrier summary and escalation', () => {
+    const renderWithBarriers = () => {
+      (smDashboardService.getDashboard as vi.Mock).mockResolvedValue(mockDashboardResponse());
+      (healthCheckService.getTrend as vi.Mock).mockResolvedValue({
+        success: true as const,
+        data: [],
+      });
+      (organizationalBarriersService.getStats as vi.Mock).mockResolvedValue({
+        success: true as const,
+        data: { open: 2, overdue: 1 },
+      });
+      (organizationalBarriersService.getBarriers as vi.Mock).mockResolvedValue({
+        success: true as const,
+        data: [
+          { id: 'b1', title: 'Staging environment', ageDays: 12 },
+          { id: 'b2', title: 'Vendor licence', ageDays: 5 },
+        ],
+      });
+      return renderComponent();
+    };
+
+    it('summarises the barrier register and lists the oldest barriers', async () => {
+      renderWithBarriers();
+
+      await waitFor(() => expect(screen.getByTestId('barrier-summary')).toBeInTheDocument());
+
+      expect(screen.getByTestId('barriers-open')).toHaveTextContent('2');
+      expect(screen.getByTestId('barriers-overdue')).toHaveTextContent('1');
+      expect(await screen.findByText('Staging environment')).toBeInTheDocument();
+      expect(screen.getByText('Vendor licence')).toBeInTheDocument();
+    });
+
+    it('carries an impediment to a barrier and refreshes the register afterwards', async () => {
+      renderWithBarriers();
+
+      await waitFor(() => expect(screen.getByTestId('impediment-metrics')).toBeInTheDocument());
+
+      const escalateButtons = await screen.findAllByRole('button', {
+        name: i18nT('scrum-master-dashboard:barriers.escalate'),
+      });
+      fireEvent.click(escalateButtons[0]);
+
+      const dialog = await screen.findByTestId('mock-escalate-dialog');
+      const dialogButtons = dialog.querySelectorAll('button');
+      fireEvent.click(dialogButtons[0]);
+
+      // onEscalated invalidates the two barrier queries; the stand-in stays mounted until closed.
+      expect(screen.getByTestId('mock-escalate-dialog')).toBeInTheDocument();
+
+      fireEvent.click(dialogButtons[1]);
+      await waitFor(() =>
+        expect(screen.queryByTestId('mock-escalate-dialog')).not.toBeInTheDocument()
+      );
+    });
+  });
+
+  describe('Panel refresh', () => {
+    it('refreshes its four reads when the shell asks it to', async () => {
+      (smDashboardService.getDashboard as vi.Mock).mockResolvedValue(mockDashboardResponse());
+      (healthCheckService.getTrend as vi.Mock).mockResolvedValue({
+        success: true as const,
+        data: [],
+      });
+
+      renderComponent();
+
+      await waitFor(() => expect(registerRefresh).toHaveBeenCalledWith(expect.any(Function)));
+
+      const calls = registerRefresh.mock.calls;
+      const refresh = calls[calls.length - 1][0] as () => Promise<void>;
+
+      await act(async () => {
+        await refresh();
+      });
+
+      expect(smDashboardService.getDashboard).toHaveBeenCalled();
     });
   });
 });

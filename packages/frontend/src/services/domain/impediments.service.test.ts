@@ -80,6 +80,23 @@ describe('ImpedimentsService', () => {
       expect(result.data).toHaveLength(0);
     });
 
+    it('should scope impediments to a sprint when a sprintId is provided', async () => {
+      const mockResponse = {
+        data: {
+          success: true,
+          data: [],
+        },
+      };
+      vi.mocked(mockApi.get).mockResolvedValue(mockResponse);
+
+      const result = await impedimentsService.getImpediments('team-1', 'sprint-1');
+
+      expect(mockApi.get).toHaveBeenCalledWith('/impediments', {
+        params: { teamId: 'team-1', sprintId: 'sprint-1' },
+      });
+      expect(result.success).toBe(true);
+    });
+
     it('should handle API errors', async () => {
       vi.mocked(mockApi.get).mockRejectedValue(new Error('Network error'));
 

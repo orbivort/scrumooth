@@ -353,18 +353,9 @@ export const DefinitionScopeSwitch: React.FC<DefinitionScopeSwitchProps> = ({
           </p>
         )}
 
-        {/* Reading the shared agreement in full and leaving it are the two things a team in a group can
-            do about it, and the group's own screen is where it is administered rather than here. */}
+        {/* Leaving the commitment is the decision that is left behind the statement; reading the
+            commitment itself is offered beside the statement, in `renderGroupReview` below. */}
         <div className={styles.actions}>
-          <Button
-            variant="link"
-            size="sm"
-            className={`${buttonStyles.button} ${buttonStyles['button-link']}`}
-            onClick={() => setIsReviewing((open) => !open)}
-          >
-            {isReviewing ? t('definitionScope.hideReviewLink') : t('definitionScope.reviewLink')}
-          </Button>
-
           <Link to={`/settings/team-groups?group=${group.id}`} className={styles.link}>
             {t('definitionScope.manageLink')}
           </Link>
@@ -380,12 +371,40 @@ export const DefinitionScopeSwitch: React.FC<DefinitionScopeSwitchProps> = ({
             </Button>
           )}
         </div>
-
-        {isReviewing && renderAgreement()}
       </>
     ) : (
       canDecide && renderAdoptFlow()
     );
+
+  /**
+   * Reading the agreement the team complies with, and the agreement itself.
+   *
+   * Deliberately outside the disclosure above. The statement is the fact the team is held to, and it
+   * is always on the surface; the agreement it names is what that fact rests on, so it is one
+   * activation away rather than two. What stays behind the disclosure is the governing -- adopting,
+   * leaving, and the record of what was adopted -- which is the part a reader acts on occasionally.
+   *
+   * The trigger's name does not change with its state, the way the disclosure primitive's does not:
+   * a control that renames itself cannot be found again by the name it was offered under. Its state
+   * is reported by `aria-expanded`, and what the label promises -- the agreement -- is what opens.
+   */
+  const renderGroupReview = (): React.ReactElement => (
+    <>
+      <div className={styles.actions}>
+        <Button
+          variant="link"
+          size="sm"
+          className={`${buttonStyles.button} ${buttonStyles['button-link']}`}
+          aria-expanded={isReviewing}
+          onClick={() => setIsReviewing((open) => !open)}
+        >
+          {t('definitionScope.reviewLink')}
+        </Button>
+      </div>
+
+      {isReviewing && renderAgreement()}
+    </>
+  );
 
   /**
    * Whether there is a decision here at all.
@@ -420,6 +439,8 @@ export const DefinitionScopeSwitch: React.FC<DefinitionScopeSwitchProps> = ({
       ) : (
         renderScopeNote()
       )}
+
+      {group && renderGroupReview()}
 
       {/* One renderer for both directions: adopting a group and leaving one are the same kind of
           decision, and a stale acknowledgement is a third state of the same flow. Both refusals stay

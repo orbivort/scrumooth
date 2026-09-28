@@ -119,6 +119,7 @@ import { WarningIcon } from './WarningIcon';
 import { XCircleIcon } from './XCircleIcon';
 import { XIcon } from './XIcon';
 import { ZapIcon } from './ZapIcon';
+import { isIconName, iconNames } from './types';
 
 describe('Icons', () => {
   const iconTests = [
@@ -270,5 +271,20 @@ describe('Icons', () => {
         expect(svg?.tagName.toLowerCase()).toBe('svg');
       });
     });
+  });
+});
+
+describe('isIconName type guard', () => {
+  it('returns true for known icon names', () => {
+    expect(isIconName('AddIcon')).toBe(true);
+    expect(isIconName('ScrumoothIcon')).toBe(true);
+    expect(isIconName(iconNames[0])).toBe(true);
+    expect(isIconName(iconNames[iconNames.length - 1])).toBe(true);
+  });
+
+  it('returns false for unknown icon names', () => {
+    expect(isIconName('NotARealIcon')).toBe(false);
+    expect(isIconName('')).toBe(false);
+    expect(isIconName('addicon')).toBe(false);
   });
 });

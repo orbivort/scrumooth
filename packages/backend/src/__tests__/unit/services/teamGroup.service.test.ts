@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { teamGroupService } from '../../../services/teamGroup.service';
 import { definitionOfDoneService } from '../../../services/dod.service';
 import prisma from '../../../utils/prisma';
+import { logger } from '../../../utils/logger';
 import { GATE_CODES } from '@scrumooth/shared';
 
 vi.mock('../../../utils/prisma', () => ({
@@ -433,6 +434,263 @@ describe('TeamGroupService', () => {
         'does not work in a group'
       );
       expect(definitionOfDoneService.adoptDefinitionOfDoneAsOwn).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('defensive paths and Prisma error handling', () => {
+    it('should report version 0 for a group with no shared Definition of Done', async () => {
+      vi.mocked(prisma.teamGroup.findMany).mockResolvedValue([
+        { ...groupWithTeams(), definitionOfDone: null },
+      ] as never);
+
+      const groups = await teamGroupService.listGroups();
+
+      expect(groups[0]).toMatchObject({ id: GROUP_ID, dodVersion: 0 });
+    });
+
+    it('should create a group with no description', async () => {
+      vi.mocked(prisma.teamGroup.findUnique)
+        .mockResolvedValueOnce(null as never)
+        .mockResolvedValue(groupWithTeams() as never);
+      vi.mocked(prisma.teamGroup.create).mockResolvedValue({} as never);
+
+      await teamGroupService.createGroup(PO_ID, { name: 'Payments product' });
+
+      expect(prisma.teamGroup.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({ description: null }),
+      });
+    });
+
+    it('should answer a racing duplicate name with a conflict', async () => {
+      vi.mocked(prisma.teamGroup.findUnique).mockResolvedValueOnce(null as never);
+      vi.mocked(prisma.teamGroup.create).mockRejectedValue(
+        Object.assign(new Error('unique'), { code: 'P2002' })
+      );
+
+      await expect(
+        teamGroupService.createGroup(PO_ID, { name: 'Payments product' })
+      ).rejects.toThrow('already exists');
+    });
+
+    it('should rethrow an unexpected create failure', async () => {
+      vi.mocked(prisma.teamGroup.findUnique).mockResolvedValueOnce(null as never);
+      const boom = new Error('database is down');
+      vi.mocked(prisma.teamGroup.create).mockRejectedValue(boom);
+
+      await expect(teamGroupService.createGroup(PO_ID, { name: 'Payments product' })).rejects.toBe(
+        boom
+      );
+    });
+
+    it('should rethrow a non-object create failure untouched', async () => {
+      vi.mocked(prisma.teamGroup.findUnique).mockResolvedValueOnce(null as never);
+      vi.mocked(prisma.teamGroup.create).mockRejectedValue('boom');
+
+      await expect(teamGroupService.createGroup(PO_ID, { name: 'Payments product' })).rejects.toBe(
+        'boom'
+      );
+    });
+
+    it('should rethrow a null create failure untouched', async () => {
+      vi.mocked(prisma.teamGroup.findUnique).mockResolvedValueOnce(null as never);
+      vi.mocked(prisma.teamGroup.create).mockRejectedValue(null);
+
+      await expect(
+        teamGroupService.createGroup(PO_ID, { name: 'Payments product' })
+      ).rejects.toBeNull();
+    });
+
+    it('should refuse a rename onto another group’s name', async () => {
+      vi.mocked(prisma.teamGroup.findUnique)
+        .mockResolvedValueOnce(groupWithTeams() as never)
+        .mockResolvedValueOnce({ id: 'other-group' } as never);
+
+      await expect(
+        teamGroupService.updateGroup(GROUP_ID, PO_ID, { name: 'Taken' })
+      ).rejects.toThrow('already exists');
+      expect(prisma.teamGroup.update).not.toHaveBeenCalled();
+    });
+
+    it('should allow describing a group without renaming it', async () => {
+      await teamGroupService.updateGroup(GROUP_ID, PO_ID, { description: 'New description' });
+
+      expect(prisma.teamGroup.update).toHaveBeenCalledWith({
+        where: { id: GROUP_ID },
+        data: { description: 'New description', updatedBy: PO_ID },
+      });
+    });
+
+    it('should answer a racing join with the not-empty refusal when deleting', async () => {
+      vi.mocked(prisma.teamGroup.findUnique).mockResolvedValue({
+        ...groupWithTeams(),
+        _count: { teams: 0 },
+        teams: [],
+      } as never);
+      vi.mocked(prisma.teamGroup.delete).mockRejectedValue(
+        Object.assign(new Error('fk'), { code: 'P2003' })
+      );
+
+      await expect(teamGroupService.deleteGroup(GROUP_ID, PO_ID)).rejects.toMatchObject({
+        statusCode: 409,
+        code: GATE_CODES.TEAM_GROUP_NOT_EMPTY,
+      });
+    });
+
+    it('should rethrow an unexpected delete failure', async () => {
+      vi.mocked(prisma.teamGroup.findUnique).mockResolvedValue({
+        ...groupWithTeams(),
+        _count: { teams: 0 },
+        teams: [],
+      } as never);
+      const boom = new Error('locked');
+      vi.mocked(prisma.teamGroup.delete).mockRejectedValue(boom);
+
+      await expect(teamGroupService.deleteGroup(GROUP_ID, PO_ID)).rejects.toBe(boom);
+    });
+
+    it('should refuse to join from a team that does not exist', async () => {
+      vi.mocked(prisma.teamMember.findFirst).mockResolvedValue({ role: 'PRODUCT_OWNER' } as never);
+      vi.mocked(prisma.team.findUnique).mockResolvedValue(null as never);
+
+      await expect(
+        teamGroupService.joinGroup(TEAM_ID, PO_ID, { groupId: GROUP_ID, acknowledgedDodVersion: 3 })
+      ).rejects.toMatchObject({ statusCode: 404 });
+    });
+
+    it('should refuse to join a group that does not exist', async () => {
+      vi.mocked(prisma.teamMember.findFirst).mockResolvedValue({ role: 'PRODUCT_OWNER' } as never);
+      vi.mocked(prisma.team.findUnique).mockResolvedValue({ id: TEAM_ID, groupId: null } as never);
+      vi.mocked(prisma.teamGroup.findUnique).mockResolvedValue(null as never);
+
+      await expect(
+        teamGroupService.joinGroup(TEAM_ID, PO_ID, { groupId: GROUP_ID, acknowledgedDodVersion: 3 })
+      ).rejects.toMatchObject({ statusCode: 404 });
+    });
+
+    it('should recreate the shared Definition of Done when the group has none, before adopting it', async () => {
+      vi.mocked(prisma.teamMember.findFirst).mockResolvedValue({ role: 'PRODUCT_OWNER' } as never);
+      vi.mocked(prisma.team.findUnique).mockResolvedValue({ id: TEAM_ID, groupId: null } as never);
+      vi.mocked(prisma.teamGroup.findUnique).mockResolvedValue({
+        ...groupWithTeams(),
+        definitionOfDone: null,
+      } as never);
+      vi.mocked(definitionOfDoneService.createDefaultSharedDefinitionOfDone).mockResolvedValue({
+        version: 7,
+      } as never);
+
+      const summary = await teamGroupService.joinGroup(TEAM_ID, PO_ID, {
+        groupId: GROUP_ID,
+        acknowledgedDodVersion: 7,
+      });
+
+      expect(definitionOfDoneService.createDefaultSharedDefinitionOfDone).toHaveBeenCalledWith(
+        GROUP_ID,
+        PO_ID
+      );
+      expect(prisma.team.update).toHaveBeenCalledWith(
+        expect.objectContaining({ data: expect.objectContaining({ groupDodVersionAtJoin: 7 }) })
+      );
+      expect(summary.teamCount).toBe(3);
+    });
+
+    it('should report the group as gone when a racing delete wins the join', async () => {
+      vi.mocked(prisma.teamMember.findFirst).mockResolvedValue({ role: 'PRODUCT_OWNER' } as never);
+      vi.mocked(prisma.team.findUnique).mockResolvedValue({ id: TEAM_ID, groupId: null } as never);
+      vi.mocked(prisma.team.update).mockRejectedValue(
+        Object.assign(new Error('fk'), { code: 'P2003' })
+      );
+
+      await expect(
+        teamGroupService.joinGroup(TEAM_ID, PO_ID, { groupId: GROUP_ID, acknowledgedDodVersion: 3 })
+      ).rejects.toMatchObject({ statusCode: 404 });
+    });
+
+    it('should rethrow an unexpected join failure', async () => {
+      vi.mocked(prisma.teamMember.findFirst).mockResolvedValue({ role: 'PRODUCT_OWNER' } as never);
+      vi.mocked(prisma.team.findUnique).mockResolvedValue({ id: TEAM_ID, groupId: null } as never);
+      const boom = new Error('nope');
+      vi.mocked(prisma.team.update).mockRejectedValue(boom);
+
+      await expect(
+        teamGroupService.joinGroup(TEAM_ID, PO_ID, { groupId: GROUP_ID, acknowledgedDodVersion: 3 })
+      ).rejects.toBe(boom);
+    });
+
+    it('should refuse to leave for a team that does not exist', async () => {
+      vi.mocked(prisma.teamMember.findFirst).mockResolvedValue({ role: 'PRODUCT_OWNER' } as never);
+      vi.mocked(prisma.team.findUnique).mockResolvedValue(null as never);
+
+      await expect(teamGroupService.leaveGroup(TEAM_ID, PO_ID)).rejects.toMatchObject({
+        statusCode: 404,
+      });
+    });
+
+    it('should carry a criterion without a category or built-in key onto the team’s own agreement', async () => {
+      vi.mocked(prisma.teamMember.findFirst).mockResolvedValue({ role: 'PRODUCT_OWNER' } as never);
+      vi.mocked(prisma.team.findUnique).mockResolvedValue({
+        id: TEAM_ID,
+        name: 'Team A',
+        groupId: GROUP_ID,
+      } as never);
+      vi.mocked(prisma.definitionOfDone.findUnique).mockResolvedValue({
+        version: 3,
+        updatedAt: new Date('2026-09-10T10:00:00.000Z'),
+        items: [
+          {
+            id: 'item-1',
+            description: 'Reviewed',
+            category: null,
+            isActive: true,
+            order: 0,
+            defaultKey: null,
+          },
+        ],
+      } as never);
+
+      await teamGroupService.leaveGroup(TEAM_ID, PO_ID);
+
+      expect(definitionOfDoneService.adoptDefinitionOfDoneAsOwn).toHaveBeenCalledWith(
+        TEAM_ID,
+        [
+          {
+            description: 'Reviewed',
+            category: undefined,
+            isActive: true,
+            order: 0,
+            defaultKey: undefined,
+          },
+        ],
+        PO_ID
+      );
+    });
+
+    it('should return an empty commitment when the group has no Definition of Done row', async () => {
+      vi.mocked(prisma.definitionOfDone.findUnique).mockResolvedValue(null as never);
+
+      const shared = await teamGroupService.getSharedDefinitionOfDone(GROUP_ID);
+
+      expect(shared).toEqual({
+        groupId: GROUP_ID,
+        version: 0,
+        items: [],
+        updatedAt: new Date(0).toISOString(),
+      });
+      expect(logger.warn).toHaveBeenCalled();
+    });
+
+    it('should refuse to show a group that does not exist', async () => {
+      vi.mocked(prisma.teamGroup.findUnique).mockResolvedValue(null as never);
+
+      await expect(teamGroupService.getGroup(GROUP_ID, DEV_ID)).rejects.toMatchObject({
+        statusCode: 404,
+      });
+    });
+
+    it('should refuse an anonymous caller reading a group they did not create', async () => {
+      await expect(teamGroupService.getGroup(GROUP_ID, undefined)).rejects.toMatchObject({
+        statusCode: 403,
+        code: GATE_CODES.TEAM_GROUP_MEMBERS_ONLY,
+      });
     });
   });
 });

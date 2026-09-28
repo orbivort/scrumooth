@@ -999,4 +999,93 @@ describe('StartSprintModal', () => {
       expect(screen.getByText('160h')).toBeInTheDocument();
     });
   });
+
+  describe('Gate codes and keyboard handling', () => {
+    it('should explain a team-members-only refusal from its gate code', () => {
+      renderWithProviders(
+        <StartSprintModal
+          {...defaultProps}
+          error="Refused"
+          errorCode="GATE_SPRINT_TEAM_MEMBERS_ONLY"
+        />
+      );
+
+      expect(
+        screen.getByText(
+          new RegExp(i18nT('sprint:sprintPlanning.startSprintModal.error.teamMembersOnly'))
+        )
+      ).toBeInTheDocument();
+    });
+
+    it('should explain a Definition of Ready refusal from its gate code', () => {
+      renderWithProviders(
+        <StartSprintModal {...defaultProps} error="Refused" errorCode="GATE_DOR_REQUIRED" />
+      );
+
+      expect(
+        screen.getByText(
+          new RegExp(
+            i18nT('sprint:sprintPlanning.startSprintModal.error.definitionOfReadyRequired')
+          )
+        )
+      ).toBeInTheDocument();
+    });
+
+    it('should fall back to the message matcher for an unrecognised gate code', () => {
+      renderWithProviders(
+        <StartSprintModal {...defaultProps} error="400 Bad Request" errorCode="GATE_UNKNOWN_CODE" />
+      );
+
+      expect(
+        screen.getByText(
+          new RegExp(i18nT('sprint:sprintPlanning.startSprintModal.error.invalidRequest'))
+        )
+      ).toBeInTheDocument();
+    });
+
+    it('should show a friendly message when the Sprint Backlog has no items', () => {
+      renderWithProviders(<StartSprintModal {...defaultProps} error="No items in the backlog" />);
+
+      expect(
+        screen.getByText(
+          new RegExp(i18nT('sprint:sprintPlanning.startSprintModal.error.invalidSprintBacklog'))
+        )
+      ).toBeInTheDocument();
+    });
+
+    it('should close on the Escape key', () => {
+      renderWithProviders(<StartSprintModal {...defaultProps} />);
+
+      fireEvent.keyDown(document, { key: 'Escape' });
+
+      expect(defaultProps.onClose).toHaveBeenCalled();
+    });
+
+    it('should not close on Escape while loading', () => {
+      renderWithProviders(<StartSprintModal {...defaultProps} isLoading />);
+
+      fireEvent.keyDown(document, { key: 'Escape' });
+
+      expect(defaultProps.onClose).not.toHaveBeenCalled();
+    });
+
+    it('should trap Tab focus within the dialog', () => {
+      renderWithProviders(<StartSprintModal {...defaultProps} />);
+
+      const dialog = screen.getByRole('dialog');
+      const focusables = dialog.querySelectorAll<HTMLElement>(
+        'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+      );
+      const first = focusables[0];
+      const last = focusables[focusables.length - 1];
+
+      last.focus();
+      fireEvent.keyDown(document, { key: 'Tab' });
+      expect(document.activeElement).toBe(first);
+
+      first.focus();
+      fireEvent.keyDown(document, { key: 'Tab', shiftKey: true });
+      expect(document.activeElement).toBe(last);
+    });
+  });
 });

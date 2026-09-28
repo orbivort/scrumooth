@@ -123,6 +123,33 @@ describe('CoachingEntryService', () => {
         expect.objectContaining({ take: 200, skip: 0 })
       );
     });
+
+    it('should serialize an entry with no Sprint, author or follow-up date', async () => {
+      asMock(prisma.coachingEntry.findMany).mockResolvedValue([
+        {
+          id: 'entry-2',
+          teamId: 'team-1',
+          topic: 'OTHER',
+          note: 'note',
+          sprintId: null,
+          followUpDate: null,
+          authorId: 'sm-1',
+          createdAt: new Date('2026-09-20T09:00:00.000Z'),
+          updatedAt: new Date('2026-09-20T09:00:00.000Z'),
+          sprint: null,
+          author: null,
+        },
+      ]);
+      asMock(prisma.coachingEntry.count).mockResolvedValue(1);
+
+      const page = await coachingEntryService.getCoachingEntries('team-1', 'sm-1');
+
+      expect(page.entries[0]).toMatchObject({
+        sprintName: null,
+        authorName: null,
+        followUpDate: null,
+      });
+    });
   });
 
   describe('createCoachingEntry', () => {
@@ -201,6 +228,38 @@ describe('CoachingEntryService', () => {
       );
       expect(JSON.stringify(asMock(auditResourceEvent).mock.calls)).not.toContain(entry.note);
     });
+
+    it('should accept a follow-up date given as a Date', async () => {
+      asMock(prisma.coachingEntry.create).mockResolvedValue(entry);
+
+      await coachingEntryService.createCoachingEntry('sm-1', {
+        teamId: 'team-1',
+        topic: 'OTHER',
+        note: 'note',
+        followUpDate: new Date('2026-10-01T00:00:00.000Z'),
+      });
+
+      expect(prisma.coachingEntry.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            followUpDate: new Date('2026-10-01T00:00:00.000Z'),
+          }),
+        })
+      );
+    });
+
+    it('should refuse a follow-up date that is not a real date', async () => {
+      await expect(
+        coachingEntryService.createCoachingEntry('sm-1', {
+          teamId: 'team-1',
+          topic: 'OTHER',
+          note: 'note',
+          followUpDate: 'not-a-date',
+        })
+      ).rejects.toThrow(BadRequestError);
+
+      expect(prisma.coachingEntry.create).not.toHaveBeenCalled();
+    });
   });
 
   describe('updateCoachingEntry', () => {
@@ -245,6 +304,49 @@ describe('CoachingEntryService', () => {
         })
       );
       expect(result.topic).toBe('CROSS_FUNCTIONALITY');
+    });
+
+    it('should accept a Sprint that belongs to the team when amending', async () => {
+      asMock(prisma.sprint.findFirst).mockResolvedValue({ id: 'sprint-1' });
+      asMock(prisma.coachingEntry.update).mockResolvedValue({ ...entry, sprintId: 'sprint-1' });
+
+      await coachingEntryService.updateCoachingEntry('entry-1', 'sm-1', { sprintId: 'sprint-1' });
+
+      expect(prisma.sprint.findFirst).toHaveBeenCalledWith({
+        where: { id: 'sprint-1', teamId: 'team-1' },
+        select: { id: true },
+      });
+    });
+
+    it('should refuse a Sprint that belongs to another team when amending', async () => {
+      asMock(prisma.sprint.findFirst).mockResolvedValue(null);
+
+      await expect(
+        coachingEntryService.updateCoachingEntry('entry-1', 'sm-1', { sprintId: 'foreign-sprint' })
+      ).rejects.toThrow(BadRequestError);
+
+      expect(prisma.coachingEntry.update).not.toHaveBeenCalled();
+    });
+
+    it('should amend the note, Sprint and follow-up date without changing the topic', async () => {
+      asMock(prisma.sprint.findFirst).mockResolvedValue({ id: 'sprint-1' });
+      asMock(prisma.coachingEntry.update).mockResolvedValue({ ...entry, note: 'New note' });
+
+      await coachingEntryService.updateCoachingEntry('entry-1', 'sm-1', {
+        note: 'New note',
+        sprintId: 'sprint-1',
+        followUpDate: '2026-11-01T00:00:00.000Z',
+      });
+
+      expect(prisma.coachingEntry.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            note: 'New note',
+            sprintId: 'sprint-1',
+            followUpDate: new Date('2026-11-01T00:00:00.000Z'),
+          }),
+        })
+      );
     });
   });
 

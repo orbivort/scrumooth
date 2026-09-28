@@ -743,4 +743,79 @@ describe('authService - Password Reset', () => {
       expect(cutoffTime).toBeLessThanOrEqual(afterTime);
     });
   });
+
+  describe('requestPasswordReset non-Error email failure', () => {
+    it('swallows a non-Error thrown while sending the reset email', async () => {
+      (prisma.user.findUnique as any).mockResolvedValue({
+        id: 'user-1',
+        email: 'test@example.com',
+        firstName: 'Test',
+      });
+      (prisma.passwordResetToken.create as any).mockResolvedValue({});
+
+      const { emailService } = await import('../../../services/email/index.js');
+      (emailService.send as any).mockRejectedValueOnce('smtp down');
+
+      const result = await authService.requestPasswordReset('test@example.com');
+
+      expect(result.message).toBe(
+        'If an account with that email exists, a password reset link has been sent.'
+      );
+    });
+  });
+
+  describe('resetPassword token disappearing between reads', () => {
+    it('rejects when the token vanishes after it was validated', async () => {
+      const validToken = {
+        id: 'token-1',
+        userId: 'user-1',
+        tokenHash: 'hashed-token',
+        expiresAt: new Date(Date.now() + 60 * 60 * 1000),
+        usedAt: null,
+        user: { email: 'test@example.com' },
+      };
+
+      (prisma.passwordResetToken.findUnique as any)
+        .mockResolvedValueOnce(validToken)
+        .mockResolvedValueOnce(null);
+
+      await expect(authService.resetPassword('valid-token', 'newPassword123')).rejects.toThrow(
+        BadRequestError
+      );
+    });
+  });
+
+  describe('resetPassword non-Error confirmation-email failure', () => {
+    it('swallows a non-Error thrown while sending the change confirmation', async () => {
+      const mockResetToken = {
+        id: 'token-1',
+        userId: 'user-1',
+        tokenHash: 'hashed-token',
+        expiresAt: new Date(Date.now() + 60 * 60 * 1000),
+        usedAt: null,
+        user: {
+          id: 'user-1',
+          email: 'test@example.com',
+          firstName: 'Test',
+        },
+      };
+
+      (prisma.passwordResetToken.findUnique as any).mockResolvedValue(mockResetToken);
+      (bcrypt.hash as any).mockResolvedValue('new-hashed-password');
+      (prisma.$transaction as any).mockImplementation(async (callback: any) =>
+        callback({
+          user: { update: vi.fn().mockResolvedValue({}) },
+          passwordResetToken: { update: vi.fn().mockResolvedValue({}) },
+          refreshToken: { updateMany: vi.fn().mockResolvedValue({ count: 0 }) },
+        })
+      );
+
+      const { emailService } = await import('../../../services/email/index.js');
+      (emailService.send as any).mockRejectedValueOnce('smtp down');
+
+      const result = await authService.resetPassword('valid-token', 'newPassword123');
+
+      expect(result.message).toBe('Password has been reset successfully');
+    });
+  });
 });

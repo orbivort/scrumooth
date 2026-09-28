@@ -83,6 +83,19 @@ describe('Facilitation Controller', () => {
       });
     });
 
+    it('should fall back to the paging defaults for unusable bounds', async () => {
+      mockReq.query = { limit: 10, offset: '-1' };
+      coaching.getCoachingEntries!.mockResolvedValue({ entries: [], total: 0 });
+
+      await getCoachingEntries(mockReq as any, mockRes as any, mockNext);
+      await wait(0);
+
+      expect(coaching.getCoachingEntries).toHaveBeenCalledWith('team-123', 'user-123', {
+        limit: 50,
+        offset: 0,
+      });
+    });
+
     it('should require a team', async () => {
       mockReq.currentTeamId = undefined;
 
@@ -131,6 +144,16 @@ describe('Facilitation Controller', () => {
 
       expect(mockNext).toHaveBeenCalledWith(expect.objectContaining({ statusCode: 400 }));
     });
+
+    it('should require an id to delete a coaching entry', async () => {
+      mockReq.params = {};
+
+      await deleteCoachingEntry(mockReq as any, mockRes as any, mockNext);
+      await wait(0);
+
+      expect(mockNext).toHaveBeenCalledWith(expect.objectContaining({ statusCode: 400 }));
+      expect(coaching.deleteCoachingEntry).not.toHaveBeenCalled();
+    });
   });
 
   describe('working agreements', () => {
@@ -174,6 +197,39 @@ describe('Facilitation Controller', () => {
         status: 'RETIRED',
       });
     });
+
+    it('should require an id to update an agreement', async () => {
+      mockReq.params = {};
+
+      await updateWorkingAgreement(mockReq as any, mockRes as any, mockNext);
+      await wait(0);
+
+      expect(mockNext).toHaveBeenCalledWith(expect.objectContaining({ statusCode: 400 }));
+      expect(agreements.updateWorkingAgreement).not.toHaveBeenCalled();
+    });
+
+    it('should resolve the team from the query when context is absent', async () => {
+      mockReq.currentTeamId = undefined;
+      mockReq.query = { teamId: 'team-from-query' };
+      agreements.getWorkingAgreements!.mockResolvedValue([]);
+
+      await getWorkingAgreements(mockReq as any, mockRes as any, mockNext);
+      await wait(0);
+
+      expect(agreements.getWorkingAgreements).toHaveBeenCalledWith('team-from-query', 'user-123');
+    });
+
+    it('should resolve the team from the body when context and query are absent', async () => {
+      mockReq.currentTeamId = undefined;
+      mockReq.query = {};
+      mockReq.body = { teamId: 'team-from-body' };
+      agreements.getWorkingAgreements!.mockResolvedValue([]);
+
+      await getWorkingAgreements(mockReq as any, mockRes as any, mockNext);
+      await wait(0);
+
+      expect(agreements.getWorkingAgreements).toHaveBeenCalledWith('team-from-body', 'user-123');
+    });
   });
 
   describe('cross-functionality', () => {
@@ -197,6 +253,16 @@ describe('Facilitation Controller', () => {
         'assessment-123',
         'user-123'
       );
+    });
+
+    it('should require an id to read an assessment', async () => {
+      mockReq.params = {};
+
+      await getCrossFunctionalityAssessment(mockReq as any, mockRes as any, mockNext);
+      await wait(0);
+
+      expect(mockNext).toHaveBeenCalledWith(expect.objectContaining({ statusCode: 400 }));
+      expect(crossFunctionality.getAssessmentById).not.toHaveBeenCalled();
     });
 
     it('should record an assessment', async () => {

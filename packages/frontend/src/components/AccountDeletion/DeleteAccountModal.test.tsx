@@ -1019,4 +1019,136 @@ describe('DeleteAccountModal Component', () => {
       expect(screen.getByRole('button', { name: 'Delete My Account' })).toBeInTheDocument();
     });
   });
+
+  describe('Schedule Deletion Interaction Tests', () => {
+    const scheduleTeams: TeamMembership[] = [createMockTeam({ isLastPO: true })];
+    const schedulePhrase = 'SCHEDULE DELETION';
+
+    it('should upper-case the schedule confirmation input and check its checkbox when the phrase matches', async () => {
+      const user = userEvent.setup();
+      renderWithRouter(
+        <DeleteAccountModal
+          {...defaultProps}
+          teams={scheduleTeams}
+          isBlocked
+          pendingDeletion={null}
+        />
+      );
+
+      const input = screen.getByRole('textbox');
+      await user.type(input, 'schedule deletion');
+
+      expect(input).toHaveValue(schedulePhrase);
+      // Typing the exact phrase auto-confirms via `setIsScheduleConfirmed`.
+      expect(screen.getByRole('checkbox')).toBeChecked();
+    });
+
+    it('should toggle the schedule checkbox via its onChange handler', async () => {
+      const user = userEvent.setup();
+      renderWithRouter(
+        <DeleteAccountModal
+          {...defaultProps}
+          teams={scheduleTeams}
+          isBlocked
+          pendingDeletion={null}
+        />
+      );
+
+      const checkbox = screen.getByRole('checkbox');
+      expect(checkbox).not.toBeChecked();
+
+      await user.click(checkbox);
+      expect(checkbox).toBeChecked();
+
+      await user.click(checkbox);
+      expect(checkbox).not.toBeChecked();
+    });
+
+    it('should call onScheduleDeletion when the Schedule Deletion button is clicked after confirming', async () => {
+      const user = userEvent.setup();
+      const mockOnScheduleDeletion = vi.fn().mockResolvedValue(undefined);
+      renderWithRouter(
+        <DeleteAccountModal
+          {...defaultProps}
+          teams={scheduleTeams}
+          isBlocked
+          pendingDeletion={null}
+          onScheduleDeletion={mockOnScheduleDeletion}
+        />
+      );
+
+      await user.type(screen.getByRole('textbox'), schedulePhrase);
+      await user.click(screen.getByRole('button', { name: 'Schedule Deletion' }));
+
+      await waitFor(() => {
+        expect(mockOnScheduleDeletion).toHaveBeenCalledWith(schedulePhrase);
+      });
+    });
+
+    it('should not call onScheduleDeletion when the Schedule Deletion button is disabled', async () => {
+      const user = userEvent.setup();
+      const mockOnScheduleDeletion = vi.fn().mockResolvedValue(undefined);
+      renderWithRouter(
+        <DeleteAccountModal
+          {...defaultProps}
+          teams={scheduleTeams}
+          isBlocked
+          pendingDeletion={null}
+          onScheduleDeletion={mockOnScheduleDeletion}
+        />
+      );
+
+      await user.click(screen.getByRole('button', { name: 'Schedule Deletion' }));
+
+      expect(mockOnScheduleDeletion).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('Cancel Deletion Interaction Tests', () => {
+    const gracePeriodPendingDeletion = {
+      requestedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+      scheduledDeletionAt: new Date(Date.now() + 12 * 24 * 60 * 60 * 1000).toISOString(),
+      gracePeriodDays: 14,
+    };
+    const blockedTeams: TeamMembership[] = [createMockTeam({ isLastPO: true })];
+
+    it('should call onCancelDeletion when Cancel Deletion is clicked during the grace period', async () => {
+      const user = userEvent.setup();
+      const mockOnCancelDeletion = vi.fn().mockResolvedValue(undefined);
+      renderWithRouter(
+        <DeleteAccountModal
+          {...defaultProps}
+          teams={blockedTeams}
+          isBlocked
+          pendingDeletion={gracePeriodPendingDeletion}
+          onCancelDeletion={mockOnCancelDeletion}
+        />
+      );
+
+      await user.click(screen.getByRole('button', { name: 'Cancel Deletion' }));
+
+      await waitFor(() => {
+        expect(mockOnCancelDeletion).toHaveBeenCalledTimes(1);
+      });
+    });
+
+    it('should not call onCancelDeletion when a deletion is in progress', async () => {
+      const user = userEvent.setup();
+      const mockOnCancelDeletion = vi.fn().mockResolvedValue(undefined);
+      renderWithRouter(
+        <DeleteAccountModal
+          {...defaultProps}
+          teams={blockedTeams}
+          isBlocked
+          pendingDeletion={gracePeriodPendingDeletion}
+          onCancelDeletion={mockOnCancelDeletion}
+          isDeleting
+        />
+      );
+
+      await user.click(screen.getByRole('button', { name: 'Cancel Deletion' }));
+
+      expect(mockOnCancelDeletion).not.toHaveBeenCalled();
+    });
+  });
 });

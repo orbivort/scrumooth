@@ -5,10 +5,27 @@ import {
   ConflictError,
   NotFoundError,
   ForbiddenError,
+  BadRequestError,
+  AccountDeletionBlockedError,
+  InvalidConfirmationError,
 } from '../../../utils/errors';
 import prisma from '../../../utils/prisma';
+import config from '../../../config';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
+
+// Mock the notification service so the deletion-notification fan-out can be asserted without
+// pulling in i18n plumbing.
+const { mockCreateLocalized } = vi.hoisted(() => ({
+  mockCreateLocalized: vi.fn().mockResolvedValue({ id: 'notification-1' }),
+}));
+
+vi.mock('../../../services/notification.service', () => ({
+  NotificationService: class {
+    createLocalized = mockCreateLocalized;
+    create = vi.fn();
+  },
+}));
 
 // Mock prisma
 vi.mock('../../../utils/prisma', () => ({
@@ -126,6 +143,11 @@ vi.mock('../../../services/email/templates/index.js', () => ({
   PasswordChangeTemplate: class MockPasswordChangeTemplate {
     render() {
       return { html: '<html>Mock change email</html>', text: 'Mock change email' };
+    }
+  },
+  WelcomeEmailTemplate: class MockWelcomeEmailTemplate {
+    render() {
+      return { html: '<html>Mock welcome email</html>', text: 'Mock welcome email' };
     }
   },
 }));
@@ -441,6 +463,35 @@ describe('authService', () => {
       await expect(authService.login('test@example.com', 'wrongpassword')).rejects.toThrow(
         UnauthorizedError
       );
+    });
+
+    it('revokes the oldest sessions when the concurrent limit is reached', async () => {
+      const mockUser = {
+        id: 'user-1',
+        email: 'test@example.com',
+        password: 'hashed-password',
+        firstName: 'Test',
+        lastName: 'User',
+        avatarUrl: null,
+      };
+
+      (prisma.user.findUnique as any).mockResolvedValue(mockUser);
+      (bcrypt.compare as any).mockResolvedValue(true);
+      // Five active sessions already sit at the configured maximum of five.
+      (prisma.refreshToken.findMany as any).mockResolvedValue([
+        { id: 'session-1' },
+        { id: 'session-2' },
+        { id: 'session-3' },
+        { id: 'session-4' },
+        { id: 'session-5' },
+      ]);
+      (prisma.refreshToken.updateMany as any).mockResolvedValue({ count: 1 });
+      (prisma.refreshToken.create as any).mockResolvedValue({});
+
+      const result = await authService.login('test@example.com', 'password123');
+
+      expect(result.tokens.accessToken).toBe('mock-access-token');
+      expect(prisma.refreshToken.updateMany).toHaveBeenCalled();
     });
   });
 
@@ -777,6 +828,376 @@ describe('authService', () => {
       const result = await authService.getDeletionStatus('user-1');
 
       expect(result).toBeNull();
+    });
+  });
+
+  describe('registration edge cases', () => {
+    const createdUser = (overrides: Record<string, unknown> = {}) => ({
+      id: 'user-1',
+      email: 'user@example.com',
+      password: 'hashed-password',
+      firstName: 'Test',
+      lastName: 'User',
+      avatarUrl: null,
+      termsAcceptedAt: new Date(),
+      marketingOptIn: false,
+      marketingOptInAt: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      ...overrides,
+    });
+
+    it('treats an email with no domain as not allowed when a domain restriction is active', async () => {
+      setAllowedDomains(['acme.com']);
+
+      await expect(
+        authService.register({
+          email: 'no-at-sign',
+          password: 'password123',
+          firstName: 'Test',
+          lastName: 'User',
+          termsAccepted: true,
+          marketingOptIn: false,
+        })
+      ).rejects.toThrow(ForbiddenError);
+    });
+
+    it('records the marketing consent and session context when the user opts in', async () => {
+      (prisma.user.findUnique as any).mockResolvedValue(null);
+      (bcrypt.hash as any).mockResolvedValue('hashed-password');
+      (prisma.user.create as any).mockResolvedValue(createdUser({ marketingOptIn: true }));
+      (prisma.consentRecord.createMany as any).mockResolvedValue({});
+      (prisma.refreshToken.create as any).mockResolvedValue({});
+
+      const result = await authService.register(
+        {
+          email: 'opt@example.com',
+          password: 'password123',
+          firstName: 'Test',
+          lastName: 'User',
+          termsAccepted: true,
+          marketingOptIn: true,
+          locale: 'de',
+        },
+        { ipAddress: '10.0.0.1', userAgent: 'vitest-agent' }
+      );
+
+      expect(result.user).toBeDefined();
+      const consentCall = (prisma.consentRecord.createMany as any).mock.calls[0][0];
+      expect(consentCall.data).toHaveLength(2);
+      expect(consentCall.data[1].consentType).toBe('marketing_communications');
+      expect(consentCall.data[1].ipAddress).toBe('10.0.0.1');
+    });
+
+    it('sends the welcome email after registration', async () => {
+      (prisma.user.findUnique as any).mockResolvedValue(null);
+      (bcrypt.hash as any).mockResolvedValue('hashed-password');
+      (prisma.user.create as any).mockResolvedValue(createdUser());
+      (prisma.consentRecord.createMany as any).mockResolvedValue({});
+      (prisma.refreshToken.create as any).mockResolvedValue({});
+
+      await authService.register({
+        email: 'welcome@example.com',
+        password: 'password123',
+        firstName: 'Test',
+        lastName: 'User',
+        termsAccepted: true,
+        marketingOptIn: false,
+      });
+
+      // The welcome email is fire-and-forget; flush the microtask queue so it settles.
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      const { emailService } = await import('../../../services/email/index.js');
+      expect(emailService.send).toHaveBeenCalled();
+    });
+
+    it('swallows a non-Error failure while sending the welcome email', async () => {
+      (prisma.user.findUnique as any).mockResolvedValue(null);
+      (bcrypt.hash as any).mockResolvedValue('hashed-password');
+      (prisma.user.create as any).mockResolvedValue(createdUser());
+      (prisma.consentRecord.createMany as any).mockResolvedValue({});
+      (prisma.refreshToken.create as any).mockResolvedValue({});
+
+      const { emailService } = await import('../../../services/email/index.js');
+      (emailService.send as any).mockRejectedValueOnce('smtp is down');
+
+      await authService.register({
+        email: 'welcome-fail@example.com',
+        password: 'password123',
+        firstName: 'Test',
+        lastName: 'User',
+        termsAccepted: true,
+        marketingOptIn: false,
+      });
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      // Registration itself never throws because the email is best-effort.
+      expect(prisma.user.create).toHaveBeenCalled();
+    });
+
+    it('swallows an Error failure while sending the welcome email', async () => {
+      (prisma.user.findUnique as any).mockResolvedValue(null);
+      (bcrypt.hash as any).mockResolvedValue('hashed-password');
+      (prisma.user.create as any).mockResolvedValue(createdUser());
+      (prisma.consentRecord.createMany as any).mockResolvedValue({});
+      (prisma.refreshToken.create as any).mockResolvedValue({});
+
+      const { emailService } = await import('../../../services/email/index.js');
+      (emailService.send as any).mockRejectedValueOnce(new Error('smtp is down'));
+
+      await authService.register({
+        email: 'welcome-error@example.com',
+        password: 'password123',
+        firstName: 'Test',
+        lastName: 'User',
+        termsAccepted: true,
+        marketingOptIn: false,
+      });
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(prisma.user.create).toHaveBeenCalled();
+    });
+
+    it('parses refresh durations expressed in every supported unit', async () => {
+      (prisma.user.findUnique as any).mockResolvedValue(createdUser());
+      (bcrypt.compare as any).mockResolvedValue(true);
+      (prisma.refreshToken.findMany as any).mockResolvedValue([]);
+      (prisma.refreshToken.create as any).mockResolvedValue({});
+
+      const mutableJwt = config.jwt as { refreshExpiresIn: string };
+      const original = mutableJwt.refreshExpiresIn;
+      try {
+        for (const duration of ['30s', '15m', '2h', '1w']) {
+          mutableJwt.refreshExpiresIn = duration;
+          const result = await authService.login('user@example.com', 'password123');
+          expect(result.tokens.accessToken).toBe('mock-access-token');
+        }
+      } finally {
+        mutableJwt.refreshExpiresIn = original;
+      }
+    });
+  });
+
+  describe('changePassword confirmation email failures', () => {
+    const primeChangePassword = () => {
+      (prisma.user.findUnique as any).mockResolvedValue({
+        id: 'user-1',
+        password: 'current-hashed-password',
+        firstName: 'Test',
+        email: 'test@example.com',
+      });
+      (bcrypt.compare as any).mockResolvedValue(true);
+      (bcrypt.hash as any).mockResolvedValue('new-hashed-password');
+      (prisma.user.update as any).mockResolvedValue({});
+    };
+
+    it('logs and swallows an Error thrown while sending the confirmation email', async () => {
+      primeChangePassword();
+      const { emailService } = await import('../../../services/email/index.js');
+      (emailService.send as any).mockRejectedValueOnce(new Error('smtp boom'));
+
+      await expect(
+        authService.changePassword('user-1', 'currentpassword', 'newpassword123')
+      ).resolves.not.toThrow();
+    });
+
+    it('logs and swallows a non-Error thrown while sending the confirmation email', async () => {
+      primeChangePassword();
+      const { emailService } = await import('../../../services/email/index.js');
+      (emailService.send as any).mockRejectedValueOnce('smtp boom');
+
+      await expect(
+        authService.changePassword('user-1', 'currentpassword', 'newpassword123')
+      ).resolves.not.toThrow();
+    });
+  });
+
+  describe('updateProfile locale', () => {
+    it('persists the locale when one is provided', async () => {
+      (prisma.user.update as any).mockResolvedValue({
+        id: 'user-1',
+        firstName: 'Updated',
+        lastName: 'Name',
+        locale: 'de',
+      });
+
+      const result = await authService.updateProfile('user-1', {
+        firstName: 'Updated',
+        lastName: 'Name',
+        locale: 'de',
+      });
+
+      expect(result.id).toBe('user-1');
+      expect(prisma.user.update).toHaveBeenCalledWith({
+        where: { id: 'user-1' },
+        data: expect.objectContaining({ locale: 'de' }),
+      });
+    });
+  });
+
+  describe('checkDeletionEligibility with a pending deletion', () => {
+    it('exposes the pending scheduled deletion', async () => {
+      (prisma.teamMember.findMany as any).mockResolvedValue([]);
+      const requestedAt = new Date();
+      const scheduledDeletionAt = new Date();
+      scheduledDeletionAt.setDate(scheduledDeletionAt.getDate() + 14);
+      (prisma.scheduledDeletion.findFirst as any).mockResolvedValue({
+        requestedAt,
+        scheduledDeletionAt,
+        gracePeriodDays: 14,
+      });
+
+      const result = await authService.checkDeletionEligibility('user-1');
+
+      expect(result.pendingDeletion).not.toBeNull();
+      expect(result.pendingDeletion?.gracePeriodDays).toBe(14);
+    });
+  });
+
+  describe('deleteAccount branches', () => {
+    it('rejects a wrong confirmation phrase', async () => {
+      await expect(authService.deleteAccount('user-1', 'nope')).rejects.toThrow(
+        InvalidConfirmationError
+      );
+    });
+
+    it('refuses deletion when the user is the last Product Owner', async () => {
+      (prisma.teamMember.findMany as any).mockResolvedValue([
+        { teamId: 'team-1', role: 'PRODUCT_OWNER', team: { id: 'team-1', name: 'Team 1' } },
+      ]);
+      (prisma.teamMember.count as any).mockResolvedValue(1);
+      (prisma.scheduledDeletion.findFirst as any).mockResolvedValue(null);
+
+      await expect(authService.deleteAccount('user-1', 'DELETE MY ACCOUNT')).rejects.toThrow(
+        AccountDeletionBlockedError
+      );
+    });
+  });
+
+  describe('forceDeleteAccount', () => {
+    const deletionTransaction = () =>
+      vi.fn().mockImplementation(async (callback: (tx: unknown) => unknown) =>
+        callback({
+          refreshToken: { deleteMany: vi.fn().mockResolvedValue({}) },
+          notification: { deleteMany: vi.fn().mockResolvedValue({}) },
+          teamMember: { deleteMany: vi.fn().mockResolvedValue({}) },
+          task: { updateMany: vi.fn().mockResolvedValue({}) },
+          impediment: { deleteMany: vi.fn().mockResolvedValue({}), updateMany: vi.fn() },
+          retrospectiveItem: { updateMany: vi.fn().mockResolvedValue({}) },
+          retroActionItem: { deleteMany: vi.fn().mockResolvedValue({}) },
+          sprintBacklogChange: { updateMany: vi.fn().mockResolvedValue({}) },
+          doDChecklistVerification: { deleteMany: vi.fn().mockResolvedValue({}) },
+          doRChecklistVerification: { deleteMany: vi.fn().mockResolvedValue({}) },
+          retroItemVote: { deleteMany: vi.fn().mockResolvedValue({}) },
+          scheduledDeletion: { deleteMany: vi.fn().mockResolvedValue({}) },
+          user: { delete: vi.fn().mockResolvedValue({}) },
+        })
+      );
+
+    it('rejects a wrong confirmation phrase', async () => {
+      await expect(authService.forceDeleteAccount('user-1', 'nope')).rejects.toThrow(
+        InvalidConfirmationError
+      );
+    });
+
+    it('deletes immediately when nothing is scheduled and nothing is blocked', async () => {
+      (prisma.scheduledDeletion.findFirst as any).mockResolvedValue(null);
+      (prisma.teamMember.findMany as any).mockResolvedValue([]);
+      (prisma.$transaction as any).mockImplementation(deletionTransaction());
+
+      await authService.forceDeleteAccount('user-1', 'DELETE MY ACCOUNT');
+
+      expect(prisma.$transaction).toHaveBeenCalled();
+    });
+
+    it('refuses when nothing is scheduled and the user is blocked', async () => {
+      (prisma.scheduledDeletion.findFirst as any).mockResolvedValue(null);
+      (prisma.teamMember.findMany as any).mockResolvedValue([
+        { teamId: 'team-1', role: 'PRODUCT_OWNER', team: { id: 'team-1', name: 'Team 1' } },
+      ]);
+      (prisma.teamMember.count as any).mockResolvedValue(1);
+
+      await expect(authService.forceDeleteAccount('user-1', 'DELETE MY ACCOUNT')).rejects.toThrow(
+        BadRequestError
+      );
+    });
+
+    it('refuses while the grace period is still running', async () => {
+      const future = new Date();
+      future.setDate(future.getDate() + 10);
+      (prisma.scheduledDeletion.findFirst as any).mockResolvedValue({
+        id: 'deletion-1',
+        status: 'PENDING',
+        scheduledDeletionAt: future,
+      });
+
+      await expect(authService.forceDeleteAccount('user-1', 'DELETE MY ACCOUNT')).rejects.toThrow(
+        BadRequestError
+      );
+    });
+
+    it('force deletes once the grace period has elapsed', async () => {
+      const past = new Date();
+      past.setDate(past.getDate() - 1);
+      (prisma.scheduledDeletion.findFirst as any).mockResolvedValue({
+        id: 'deletion-1',
+        status: 'PENDING',
+        scheduledDeletionAt: past,
+      });
+      (prisma.scheduledDeletion.update as any).mockResolvedValue({});
+      (prisma.$transaction as any).mockImplementation(deletionTransaction());
+
+      await authService.forceDeleteAccount('user-1', 'DELETE MY ACCOUNT');
+
+      expect(prisma.scheduledDeletion.update).toHaveBeenCalledWith({
+        where: { id: 'deletion-1' },
+        data: { forceConfirmed: true },
+      });
+      expect(prisma.$transaction).toHaveBeenCalled();
+    });
+  });
+
+  describe('scheduleDeletion notifications', () => {
+    it('rejects a wrong confirmation phrase', async () => {
+      await expect(authService.scheduleDeletion('user-1', 'nope')).rejects.toThrow(BadRequestError);
+    });
+
+    it('notifies the members of every team left without a Product Owner', async () => {
+      (prisma.scheduledDeletion.findFirst as any).mockResolvedValue(null);
+      (prisma.teamMember.findMany as any)
+        .mockResolvedValueOnce([
+          { teamId: 'team-1', role: 'PRODUCT_OWNER', team: { id: 'team-1', name: 'Team 1' } },
+          { teamId: 'team-2', role: 'MEMBER', team: { id: 'team-2', name: 'Team 2' } },
+        ])
+        .mockResolvedValue([{ userId: 'member-1' }]);
+      (prisma.teamMember.count as any).mockResolvedValue(1);
+      (prisma.scheduledDeletion.create as any).mockResolvedValue({
+        id: 'deletion-1',
+        status: 'PENDING',
+      });
+
+      const result = await authService.scheduleDeletion('user-1', 'SCHEDULE DELETION');
+
+      expect(result.status).toBe('PENDING');
+      expect(mockCreateLocalized).toHaveBeenCalled();
+    });
+  });
+
+  describe('cancelScheduledDeletion notifications', () => {
+    it('notifies the affected team members that the deletion was cancelled', async () => {
+      (prisma.scheduledDeletion.findFirst as any).mockResolvedValue({
+        id: 'deletion-1',
+        status: 'PENDING',
+        blockedTeamIds: ['team-1'],
+      });
+      (prisma.scheduledDeletion.update as any).mockResolvedValue({});
+      (prisma.teamMember.findMany as any).mockResolvedValue([{ userId: 'member-1' }]);
+
+      await authService.cancelScheduledDeletion('user-1');
+
+      expect(prisma.scheduledDeletion.update).toHaveBeenCalled();
+      expect(mockCreateLocalized).toHaveBeenCalled();
     });
   });
 });

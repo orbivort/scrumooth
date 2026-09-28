@@ -9,7 +9,14 @@
  */
 import React from 'react';
 import userEvent from '@testing-library/user-event';
-import { screen, within, renderWithProviders, initTestI18n } from '../../../../test-utils';
+import {
+  screen,
+  within,
+  fireEvent,
+  waitFor,
+  renderWithProviders,
+  initTestI18n,
+} from '../../../../test-utils';
 import { vi, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
 import { definitionService } from '../../../../services';
@@ -157,5 +164,112 @@ describe('VersionHistoryPopover', () => {
 
     expect(await screen.findByText('The version history could not be loaded.')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Retry/ })).toBeInTheDocument();
+  });
+});
+
+describe('VersionHistoryPopover - closing and ordering', () => {
+  beforeAll(async () => {
+    await initTestI18n();
+  });
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(definitionService.getDoDHistory).mockResolvedValue({ success: true, data: HISTORY });
+  });
+
+  it('closes when the trigger is toggled a second time', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<VersionHistoryPopover teamId={TEAM_ID} scope="DOD" version={3} />);
+
+    const trigger = screen.getByRole('button', { name: /v3/ });
+    await user.click(trigger);
+    await screen.findByRole('dialog', { name: 'Version history' });
+
+    await user.click(trigger);
+
+    expect(screen.queryByRole('dialog', { name: 'Version history' })).not.toBeInTheDocument();
+  });
+
+  it('closes when a pointer press lands outside the panel', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<VersionHistoryPopover teamId={TEAM_ID} scope="DOD" version={3} />);
+
+    await user.click(screen.getByRole('button', { name: /v3/ }));
+    await screen.findByRole('dialog', { name: 'Version history' });
+
+    // A press anywhere outside the panel and its trigger dismisses it, without moving focus back.
+    fireEvent.pointerDown(document.body);
+
+    expect(screen.queryByRole('dialog', { name: 'Version history' })).not.toBeInTheDocument();
+  });
+
+  it('closes from the panel close control', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<VersionHistoryPopover teamId={TEAM_ID} scope="DOD" version={3} />);
+
+    await user.click(screen.getByRole('button', { name: /v3/ }));
+    const dialog = await screen.findByRole('dialog', { name: 'Version history' });
+
+    await user.click(within(dialog).getByRole('button', { name: 'Close' }));
+
+    expect(screen.queryByRole('dialog', { name: 'Version history' })).not.toBeInTheDocument();
+  });
+
+  it('retries a history it could not read', async () => {
+    vi.mocked(definitionService.getDoDHistory).mockResolvedValue({
+      success: false,
+      error: { code: 'NOPE', message: 'Refused.' },
+    });
+    const user = userEvent.setup();
+    renderWithProviders(<VersionHistoryPopover teamId={TEAM_ID} scope="DOD" version={3} />);
+
+    await user.click(screen.getByRole('button', { name: /v3/ }));
+    const retry = await screen.findByRole('button', { name: /Retry/ });
+    await user.click(retry);
+
+    await waitFor(() => {
+      expect(definitionService.getDoDHistory).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  it("orders a version's criteria by their recorded position", async () => {
+    vi.mocked(definitionService.getDoDHistory).mockResolvedValue({
+      success: true,
+      data: [
+        {
+          id: 'v1',
+          teamId: TEAM_ID,
+          version: 1,
+          items: [
+            {
+              description: 'Second criterion',
+              category: 'review',
+              isActive: true,
+              order: 2,
+              defaultKey: null,
+            },
+            {
+              description: 'First criterion',
+              category: 'review',
+              isActive: true,
+              order: 1,
+              defaultKey: null,
+            },
+          ],
+          createdAt: '2026-07-01T10:00:00.000Z',
+          createdBy: 'user-1',
+          createdByName: 'Pat Owner',
+          isCurrent: true,
+        },
+      ],
+    });
+    const user = userEvent.setup();
+    renderWithProviders(<VersionHistoryPopover teamId={TEAM_ID} scope="DOD" version={1} />);
+
+    await user.click(screen.getByRole('button', { name: /v1/ }));
+    const dialog = await screen.findByRole('dialog', { name: 'Version history' });
+
+    expect(within(dialog).getByText('First criterion')).toBeInTheDocument();
+    expect(within(dialog).getByText('Second criterion')).toBeInTheDocument();
   });
 });

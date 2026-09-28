@@ -410,7 +410,7 @@ export const incrementHandlers: RequestHandler[] = [
     }>(request);
 
     const prior = incrementOf(body.priorIncrementId ?? '');
-    if (!prior || prior.teamId !== increment.teamId) {
+    if (prior?.teamId !== increment.teamId) {
       return problems.validation('That Increment is not one of this team’s', 'priorIncrementId');
     }
     if (prior.id === increment.id) {

@@ -150,7 +150,7 @@ export const privacyHandlers: RequestHandler[] = [
     const job = database().exportJobs.find(
       (candidate) => candidate.id === String(params.jobId ?? '')
     );
-    if (!job || job.userId !== user.id) {
+    if (job?.userId !== user.id) {
       return problems.notFound('Export job');
     }
 
@@ -170,7 +170,7 @@ export const privacyHandlers: RequestHandler[] = [
     const job = database().exportJobs.find(
       (candidate) => candidate.id === String(params.jobId ?? '')
     );
-    if (!job || job.userId !== user.id) {
+    if (job?.userId !== user.id) {
       return problems.notFound('Export job');
     }
     if (job.status !== 'completed') {
@@ -273,7 +273,7 @@ export const privacyHandlers: RequestHandler[] = [
 
     const id = String(params.jobId ?? '');
     const job = database().exportJobs.find((candidate) => candidate.id === id);
-    if (!job || job.userId !== user.id) {
+    if (job?.userId !== user.id) {
       return problems.notFound('Export job');
     }
     // Cancelling is a request the running job honours: the file is never

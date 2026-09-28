@@ -14,6 +14,9 @@ vi.mock('../../../utils/prisma', () => ({
     doRItem: {
       deleteMany: vi.fn(),
     },
+    doRVersionSnapshot: {
+      findMany: vi.fn(),
+    },
     doRChecklistVerification: {
       findUnique: vi.fn(),
       findMany: vi.fn(),
@@ -26,6 +29,9 @@ vi.mock('../../../utils/prisma', () => ({
     teamMember: {
       findUnique: vi.fn(),
       findFirst: vi.fn(),
+    },
+    user: {
+      findMany: vi.fn(),
     },
     $transaction: vi.fn(),
   },
@@ -447,6 +453,178 @@ describe('DefinitionOfReadyService', () => {
       expect(tx.doRItem.create).toHaveBeenCalledTimes(2);
       // The team's own criterion is not in the payload, so it is dropped.
       expect(tx.doRItem.deleteMany).toHaveBeenCalledWith({ where: { id: { in: ['item-a'] } } });
+    });
+
+    it('should refuse a caller with no id rather than treat them as exempt', async () => {
+      await expect(
+        definitionOfReadyService.updateDefinitionOfReady('team-1', [
+          { description: 'Kept', isActive: true, order: 0 },
+        ])
+      ).rejects.toMatchObject({
+        statusCode: 403,
+        code: GATE_CODES.DOR_SCRUM_MASTER_ONLY,
+      });
+
+      expect(prisma.definitionOfReady.findUnique).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('getDoRVersionSnapshots', () => {
+    const currentDoR = (overrides: Record<string, unknown> = {}) => ({
+      id: 'dor-1',
+      teamId: 'team-1',
+      version: 4,
+      updatedAt: new Date('2026-09-10T10:00:00.000Z'),
+      updatedBy: 'user-1',
+      items: [
+        {
+          description: 'Clear title and description provided',
+          category: 'acceptance',
+          isActive: true,
+          order: 0,
+          defaultKey: 'clearTitle',
+        },
+      ],
+      ...overrides,
+    });
+
+    it('should return an empty history when the team has no readiness agreement', async () => {
+      vi.mocked(prisma.definitionOfReady.findUnique).mockResolvedValue(null as never);
+
+      const result = await definitionOfReadyService.getDoRVersionSnapshots('team-1');
+
+      expect(result).toEqual([]);
+      expect(prisma.doRVersionSnapshot.findMany).not.toHaveBeenCalled();
+    });
+
+    it('should report the current agreement as the single newest entry, naming its author', async () => {
+      vi.mocked(prisma.definitionOfReady.findUnique).mockResolvedValue(currentDoR() as never);
+      vi.mocked(prisma.doRVersionSnapshot.findMany).mockResolvedValue([] as never);
+      vi.mocked(prisma.user.findMany).mockResolvedValue([
+        { id: 'user-1', firstName: 'Ada', lastName: 'Lovelace' },
+      ] as never);
+
+      const result = await definitionOfReadyService.getDoRVersionSnapshots('team-1');
+
+      expect(prisma.user.findMany).toHaveBeenCalledWith({
+        where: { id: { in: ['user-1'] } },
+        select: { id: true, firstName: true, lastName: true },
+      });
+      expect(result).toHaveLength(1);
+      expect(result[0]).toMatchObject({
+        id: 'dor-1',
+        teamId: 'team-1',
+        version: 4,
+        isCurrent: true,
+        createdBy: 'user-1',
+        createdByName: 'Ada Lovelace',
+        createdAt: '2026-09-10T10:00:00.000Z',
+      });
+    });
+
+    it('should parse superseded snapshots, dropping malformed entries, and name their authors', async () => {
+      vi.mocked(prisma.definitionOfReady.findUnique).mockResolvedValue(
+        currentDoR({ updatedBy: null, items: [] }) as never
+      );
+      // One well-formed snapshot with a mix of good and malformed criteria, and one whose item
+      // column is not even an array: a malformed entry must never poison the whole history.
+      vi.mocked(prisma.doRVersionSnapshot.findMany).mockResolvedValue([
+        {
+          id: 'snap-1',
+          teamId: 'team-1',
+          version: 3,
+          createdAt: new Date('2026-09-01T00:00:00.000Z'),
+          createdBy: 'user-1',
+          items: [
+            {
+              description: 'Full',
+              category: 'acceptance',
+              isActive: true,
+              order: 3,
+              defaultKey: 'clearTitle',
+            },
+            { description: 'Minimal' },
+            'a string, not an object',
+            null,
+            ['an array, not an object'],
+            { foo: 'bar' },
+          ],
+        },
+        {
+          id: 'snap-2',
+          teamId: 'team-1',
+          version: 2,
+          createdAt: new Date('2026-08-01T00:00:00.000Z'),
+          createdBy: null,
+          items: 'not-an-array',
+        },
+      ] as never);
+      vi.mocked(prisma.user.findMany).mockResolvedValue([
+        { id: 'user-1', firstName: 'Ada', lastName: 'Lovelace' },
+      ] as never);
+
+      const result = await definitionOfReadyService.getDoRVersionSnapshots('team-1');
+
+      expect(result).toHaveLength(3);
+      expect(result[0]!.isCurrent).toBe(true);
+      expect(result[1]!.isCurrent).toBe(false);
+      expect(result[1]!.items).toEqual([
+        {
+          description: 'Full',
+          category: 'acceptance',
+          isActive: true,
+          order: 3,
+          defaultKey: 'clearTitle',
+        },
+        { description: 'Minimal', category: null, isActive: false, order: 0, defaultKey: null },
+      ]);
+      expect(result[1]!.createdByName).toBe('Ada Lovelace');
+      expect(result[2]!.items).toEqual([]);
+      expect(result[2]!.createdByName).toBeNull();
+    });
+
+    it('should resolve a null author name when the recorded author is unknown', async () => {
+      vi.mocked(prisma.definitionOfReady.findUnique).mockResolvedValue(
+        currentDoR({ updatedBy: 'ghost', items: [] }) as never
+      );
+      vi.mocked(prisma.doRVersionSnapshot.findMany).mockResolvedValue([
+        {
+          id: 'snap-1',
+          teamId: 'team-1',
+          version: 3,
+          createdAt: new Date('2026-09-01T00:00:00.000Z'),
+          createdBy: 'ghost-2',
+          items: [],
+        },
+      ] as never);
+      vi.mocked(prisma.user.findMany).mockResolvedValue([] as never);
+
+      const result = await definitionOfReadyService.getDoRVersionSnapshots('team-1');
+
+      expect(result[0]!.createdByName).toBeNull();
+      expect(result[1]!.createdByName).toBeNull();
+    });
+
+    it('should skip the author lookup entirely when no version records one', async () => {
+      vi.mocked(prisma.definitionOfReady.findUnique).mockResolvedValue(
+        currentDoR({ updatedBy: null, items: [] }) as never
+      );
+      vi.mocked(prisma.doRVersionSnapshot.findMany).mockResolvedValue([
+        {
+          id: 'snap-1',
+          teamId: 'team-1',
+          version: 0,
+          createdAt: new Date('2026-09-01T00:00:00.000Z'),
+          createdBy: null,
+          items: [],
+        },
+      ] as never);
+
+      const result = await definitionOfReadyService.getDoRVersionSnapshots('team-1');
+
+      expect(prisma.user.findMany).not.toHaveBeenCalled();
+      expect(result[0]!.createdByName).toBeNull();
+      expect(result[1]!.createdByName).toBeNull();
     });
   });
 

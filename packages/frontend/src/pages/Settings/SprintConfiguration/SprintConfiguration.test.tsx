@@ -632,4 +632,219 @@ describe('SprintConfiguration Component', () => {
       expect(previewButton).toBeInTheDocument();
     });
   });
+
+  describe('Additional coverage: generated sprint statuses', () => {
+    it('renders the item and status classes for every sprint status', async () => {
+      vi.mocked(apiService.getGeneratedSprints).mockResolvedValue({
+        data: [
+          {
+            id: 's-active',
+            name: 'Sprint-active',
+            status: 'active',
+            startDate: '2026-01-01',
+            endDate: '2026-01-14',
+          },
+          {
+            id: 's-planned',
+            name: 'Sprint-planned',
+            status: 'planned',
+            startDate: '2026-01-15',
+            endDate: '2026-01-28',
+          },
+          {
+            id: 's-completed',
+            name: 'Sprint-completed',
+            status: 'completed',
+            startDate: '2026-01-01',
+            endDate: '2026-01-07',
+          },
+          {
+            id: 's-cancelled',
+            name: 'Sprint-cancelled',
+            status: 'cancelled',
+            startDate: '2026-02-01',
+            endDate: '2026-02-07',
+          },
+        ],
+      });
+
+      renderWithProviders(<SprintConfiguration />);
+
+      await waitFor(
+        () => {
+          expect(screen.getByText('Generated Sprints')).toBeInTheDocument();
+        },
+        { timeout: 3000 }
+      );
+
+      expect(screen.getByText('Active')).toBeInTheDocument();
+      expect(screen.getByText('Planned')).toBeInTheDocument();
+      expect(screen.getByText('Completed')).toBeInTheDocument();
+      expect(screen.getByText('Cancelled')).toBeInTheDocument();
+    });
+  });
+
+  describe('Additional coverage: delete sprint flow', () => {
+    // SprintStatus enum values are lowercase, so the delete affordance (shown only for a planned
+    // Sprint) needs statuses in that casing.
+    const plannedSprints = [
+      {
+        id: 'sprint-1',
+        name: 'Sprint-2w-2601',
+        status: 'active',
+        startDate: '2026-01-01',
+        endDate: '2026-01-14',
+      },
+      {
+        id: 'sprint-2',
+        name: 'Sprint-2w-2602',
+        status: 'planned',
+        startDate: '2026-01-15',
+        endDate: '2026-01-28',
+      },
+    ];
+
+    it('deletes a planned sprint after confirming in the dialog', async () => {
+      vi.mocked(apiService.getGeneratedSprints).mockResolvedValue({ data: plannedSprints });
+      const user = userEvent.setup();
+      renderWithProviders(<SprintConfiguration />);
+
+      await waitFor(
+        () => {
+          expect(screen.getByText('Generated Sprints')).toBeInTheDocument();
+        },
+        { timeout: 3000 }
+      );
+
+      await user.click(screen.getByRole('button', { name: 'Delete Sprint-2w-2602' }));
+
+      expect(await screen.findByRole('heading', { name: 'Delete Sprint' })).toBeInTheDocument();
+      expect(screen.getByText('Sprint to delete:')).toBeInTheDocument();
+
+      await user.click(screen.getByRole('button', { name: 'Delete Sprint' }));
+
+      await waitFor(() => {
+        expect(apiService.deleteGeneratedSprint).toHaveBeenCalledWith('sprint-2');
+      });
+      expect(await screen.findByText('Sprint deleted successfully!')).toBeInTheDocument();
+    });
+
+    it('closes the delete dialog via Cancel and via the close button without deleting', async () => {
+      vi.mocked(apiService.getGeneratedSprints).mockResolvedValue({ data: plannedSprints });
+      const user = userEvent.setup();
+      renderWithProviders(<SprintConfiguration />);
+
+      await waitFor(
+        () => {
+          expect(screen.getByText('Generated Sprints')).toBeInTheDocument();
+        },
+        { timeout: 3000 }
+      );
+
+      await user.click(screen.getByRole('button', { name: 'Delete Sprint-2w-2602' }));
+      await screen.findByRole('heading', { name: 'Delete Sprint' });
+      await user.click(screen.getByRole('button', { name: 'Cancel' }));
+      await waitFor(() => {
+        expect(screen.queryByRole('heading', { name: 'Delete Sprint' })).not.toBeInTheDocument();
+      });
+
+      await user.click(screen.getByRole('button', { name: 'Delete Sprint-2w-2602' }));
+      await screen.findByRole('heading', { name: 'Delete Sprint' });
+      await user.click(screen.getByRole('button', { name: 'Close delete modal' }));
+      await waitFor(() => {
+        expect(screen.queryByRole('heading', { name: 'Delete Sprint' })).not.toBeInTheDocument();
+      });
+
+      expect(apiService.deleteGeneratedSprint).not.toHaveBeenCalled();
+    });
+
+    it('shows an error notification when deleting a sprint fails', async () => {
+      vi.mocked(apiService.deleteGeneratedSprint).mockRejectedValue(new Error('Delete failed'));
+      vi.mocked(apiService.getGeneratedSprints).mockResolvedValue({ data: plannedSprints });
+      const user = userEvent.setup();
+      renderWithProviders(<SprintConfiguration />);
+
+      await waitFor(
+        () => {
+          expect(screen.getByText('Generated Sprints')).toBeInTheDocument();
+        },
+        { timeout: 3000 }
+      );
+
+      await user.click(screen.getByRole('button', { name: 'Delete Sprint-2w-2602' }));
+      await screen.findByRole('heading', { name: 'Delete Sprint' });
+      await user.click(screen.getByRole('button', { name: 'Delete Sprint' }));
+
+      expect(await screen.findByText(/Failed to delete sprint:/)).toBeInTheDocument();
+    });
+  });
+
+  describe('Additional coverage: preview modal dismissal and notifications', () => {
+    it('closes the preview when the overlay is clicked', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<SprintConfiguration />);
+
+      await waitFor(
+        () => {
+          expect(screen.getByText('Preview & Generate Sprints')).toBeInTheDocument();
+        },
+        { timeout: 3000 }
+      );
+
+      await user.click(screen.getByText('Preview & Generate Sprints'));
+      const overlay = await screen.findByRole('dialog');
+      await user.click(overlay);
+
+      await waitFor(() => {
+        expect(screen.queryByText('Sprint Generation Preview')).not.toBeInTheDocument();
+      });
+    });
+
+    it('closes the preview when the close button is clicked', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<SprintConfiguration />);
+
+      await waitFor(
+        () => {
+          expect(screen.getByText('Preview & Generate Sprints')).toBeInTheDocument();
+        },
+        { timeout: 3000 }
+      );
+
+      await user.click(screen.getByText('Preview & Generate Sprints'));
+      await screen.findByText('Sprint Generation Preview');
+      await user.click(screen.getByRole('button', { name: 'Close preview modal' }));
+
+      await waitFor(() => {
+        expect(screen.queryByText('Sprint Generation Preview')).not.toBeInTheDocument();
+      });
+    });
+
+    it('dismisses a notification via its close button', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<SprintConfiguration />);
+
+      await waitFor(
+        () => {
+          expect(screen.getByText('Preview & Generate Sprints')).toBeInTheDocument();
+        },
+        { timeout: 3000 }
+      );
+
+      await user.click(screen.getByText('Preview & Generate Sprints'));
+      await waitFor(() => {
+        expect(screen.getByText('Sprint Generation Preview')).toBeInTheDocument();
+      });
+
+      const confirmButton = screen.getByText('Cancel').nextElementSibling as HTMLElement;
+      await user.click(confirmButton);
+
+      expect(await screen.findByText('Sprints generated successfully!')).toBeInTheDocument();
+      await user.click(screen.getByRole('button', { name: 'Dismiss notification' }));
+
+      await waitFor(() => {
+        expect(screen.queryByText('Sprints generated successfully!')).not.toBeInTheDocument();
+      });
+    });
+  });
 });

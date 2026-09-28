@@ -1,5 +1,5 @@
 import React from 'react';
-import { screen, renderWithProviders, waitFor } from '../../../test-utils';
+import { screen, renderWithProviders, waitFor, fireEvent } from '../../../test-utils';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, beforeEach, beforeAll, vi } from 'vitest';
 
@@ -8,6 +8,11 @@ import { createMockBacklogItem, initTestI18n } from '../../../test-utils';
 import { BacklogProvider, useBacklogContext } from '../context/BacklogContext';
 
 import { ItemDetailModal } from './ItemDetailModal';
+
+const clipboardWriteText = vi.fn().mockResolvedValue(undefined);
+Object.assign(navigator, {
+  clipboard: { writeText: clipboardWriteText },
+});
 
 const mockItem = createMockBacklogItem({
   id: 'pbi-1',
@@ -333,6 +338,86 @@ describe('ItemDetailModal', () => {
 
       await waitFor(() => {
         expect(screen.getByText('No acceptance criteria defined')).toBeInTheDocument();
+      });
+    });
+  });
+
+  describe('Interactions and estimation fallbacks', () => {
+    it('should call onClose when clicking the overlay itself', async () => {
+      const onClose = vi.fn();
+      renderDetailModal({ onClose });
+
+      await waitFor(() => {
+        expect(document.querySelector('[role="dialog"]')).toBeInTheDocument();
+      });
+
+      const overlay = document.querySelector('[class*="modal-overlay"]');
+      expect(overlay).not.toBeNull();
+      fireEvent.click(overlay!);
+
+      expect(onClose).toHaveBeenCalledTimes(1);
+    });
+
+    it('should copy the item id to the clipboard', async () => {
+      clipboardWriteText.mockClear();
+      renderDetailModal();
+
+      const copyButton = await screen.findByLabelText('Copy item ID to clipboard');
+      await userEvent.click(copyButton);
+
+      expect(clipboardWriteText).toHaveBeenCalledWith('pbi-1');
+    });
+
+    it('should dismiss the workflow error banner', async () => {
+      renderWithProviders(
+        <BacklogProvider>
+          <SetDetailContextValues workflowError="Status transition failed" />
+          <SetSelectedItem item={mockItem} />
+          <ItemDetailModal
+            isOpen={true}
+            onClose={vi.fn()}
+            onEdit={vi.fn()}
+            onDelete={vi.fn()}
+            onStatusChange={vi.fn()}
+            isUpdating={false}
+            isLoadingChildTasks={false}
+          />
+        </BacklogProvider>
+      );
+
+      expect(await screen.findByText('Status transition failed')).toBeInTheDocument();
+
+      await userEvent.click(screen.getByLabelText('Close error message'));
+
+      await waitFor(() => {
+        expect(screen.queryByText('Status transition failed')).not.toBeInTheDocument();
+      });
+    });
+
+    it('should show "Not estimated" when business value and story points are missing', async () => {
+      const sparseItem = createMockBacklogItem({
+        ...mockItem,
+        businessValue: undefined,
+        storyPoints: undefined,
+      });
+
+      renderWithProviders(
+        <BacklogProvider>
+          <SetSelectedItem item={sparseItem} />
+          <ItemDetailModal
+            isOpen={true}
+            onClose={vi.fn()}
+            onEdit={vi.fn()}
+            onDelete={vi.fn()}
+            onStatusChange={vi.fn()}
+            isUpdating={false}
+            isLoadingChildTasks={false}
+          />
+        </BacklogProvider>
+      );
+
+      await waitFor(() => {
+        expect(screen.getAllByText('Not estimated').length).toBe(2);
       });
     });
   });

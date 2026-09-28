@@ -156,6 +156,23 @@ describe('useAuthStore - Async Actions', () => {
       expect(useAuthStore.getState().isAuthenticated).toBe(false);
       expect(useAuthStore.getState().isLoading).toBe(false);
     });
+
+    it('should sync the locale when the authenticated user has one', async () => {
+      const user = createMockUser('1', 'test@example.com');
+      user.locale = 'de';
+      vi.mocked(apiService.getCurrentUser).mockResolvedValue({
+        success: true,
+        data: user,
+      });
+
+      await act(async () => {
+        await useAuthStore.getState().checkAuth();
+      });
+
+      expect(useAuthStore.getState().isAuthenticated).toBe(true);
+      expect(useAuthStore.getState().user?.locale).toBe('de');
+      expect(document.cookie).toContain('de');
+    });
   });
 
   describe('checkDeletionEligibility', () => {
@@ -190,6 +207,22 @@ describe('useAuthStore - Async Actions', () => {
       expect(useAuthStore.getState().deletionEligibility?.blockedReason).toBe(
         'Failed to check eligibility'
       );
+    });
+
+    it('should leave eligibility untouched when a successful response carries no data', async () => {
+      act(() => {
+        useAuthStore.setState({ deletionEligibility: null });
+      });
+      vi.mocked(apiService.checkDeletionEligibility).mockResolvedValue({
+        success: true,
+        data: undefined,
+      });
+
+      await act(async () => {
+        await useAuthStore.getState().checkDeletionEligibility();
+      });
+
+      expect(useAuthStore.getState().deletionEligibility).toBeNull();
     });
   });
 
@@ -235,6 +268,28 @@ describe('useAuthStore - Async Actions', () => {
       });
 
       expect(useAuthStore.getState().deletionError).toBe('Network error');
+      expect(useAuthStore.getState().isDeletingAccount).toBe(false);
+    });
+
+    it('should fall back to a default message when the failure has no error object', async () => {
+      vi.mocked(apiService.deleteAccount).mockResolvedValue({ success: false });
+
+      await act(async () => {
+        await useAuthStore.getState().deleteAccount('DELETE');
+      });
+
+      expect(useAuthStore.getState().deletionError).toBe('Failed to delete account');
+      expect(useAuthStore.getState().isDeletingAccount).toBe(false);
+    });
+
+    it('should surface a generic message when a non-Error is thrown', async () => {
+      vi.mocked(apiService.deleteAccount).mockRejectedValue('boom');
+
+      await act(async () => {
+        await useAuthStore.getState().deleteAccount('DELETE');
+      });
+
+      expect(useAuthStore.getState().deletionError).toBe('An unexpected error occurred');
       expect(useAuthStore.getState().isDeletingAccount).toBe(false);
     });
   });
@@ -298,6 +353,33 @@ describe('useAuthStore - Async Actions', () => {
 
       expect(result).toBe(false);
       expect(useAuthStore.getState().profileUpdateError).toBe('Network error');
+    });
+
+    it('should fall back to a default message when the failure has no error object', async () => {
+      vi.mocked(apiService.updateProfile).mockResolvedValue({ success: false });
+
+      const result = await act(async () => {
+        return await useAuthStore
+          .getState()
+          .updateProfile({ firstName: 'Jane', lastName: 'Smith' });
+      });
+
+      expect(result).toBe(false);
+      expect(useAuthStore.getState().profileUpdateError).toBe('Failed to update profile');
+      expect(useAuthStore.getState().isUpdatingProfile).toBe(false);
+    });
+
+    it('should surface a generic message when a non-Error is thrown', async () => {
+      vi.mocked(apiService.updateProfile).mockRejectedValue('boom');
+
+      const result = await act(async () => {
+        return await useAuthStore
+          .getState()
+          .updateProfile({ firstName: 'Jane', lastName: 'Smith' });
+      });
+
+      expect(result).toBe(false);
+      expect(useAuthStore.getState().profileUpdateError).toBe('An unexpected error occurred');
     });
 
     it('should update profile with locale', async () => {
@@ -382,6 +464,35 @@ describe('useAuthStore - Async Actions', () => {
 
       expect(result).toBe(false);
       expect(useAuthStore.getState().passwordChangeError).toBe('Network error');
+    });
+
+    it('should fall back to a default message when the failure has no error object', async () => {
+      vi.mocked(apiService.changePassword).mockResolvedValue({ success: false });
+
+      const result = await act(async () => {
+        return await useAuthStore.getState().changePassword({
+          currentPassword: 'oldpass',
+          newPassword: 'newpass',
+        });
+      });
+
+      expect(result).toBe(false);
+      expect(useAuthStore.getState().passwordChangeError).toBe('Failed to change password');
+      expect(useAuthStore.getState().isChangingPassword).toBe(false);
+    });
+
+    it('should surface a generic message when a non-Error is thrown', async () => {
+      vi.mocked(apiService.changePassword).mockRejectedValue('boom');
+
+      const result = await act(async () => {
+        return await useAuthStore.getState().changePassword({
+          currentPassword: 'oldpass',
+          newPassword: 'newpass',
+        });
+      });
+
+      expect(result).toBe(false);
+      expect(useAuthStore.getState().passwordChangeError).toBe('An unexpected error occurred');
     });
   });
 });

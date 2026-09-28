@@ -477,4 +477,118 @@ describe('useDragAndDrop', () => {
       expect(result.current.isDragging).toBe(false);
     });
   });
+
+  describe('handleDragLeave and keyboard branch coverage', () => {
+    it('should clear the drop target column on drag leave', () => {
+      const { result } = renderHook(() => useDragAndDrop(defaultProps));
+
+      act(() => {
+        result.current.handleDragOver(
+          {
+            preventDefault: vi.fn(),
+            dataTransfer: { dropEffect: '' },
+          } as unknown as React.DragEvent,
+          TaskStatus.REVIEW
+        );
+      });
+      expect(result.current.dropTargetColumn).toBe(TaskStatus.REVIEW);
+
+      act(() => {
+        result.current.handleDragLeave();
+      });
+      expect(result.current.dropTargetColumn).toBeNull();
+    });
+
+    it('should move forward with ArrowRight from IN_PROGRESS to REVIEW', () => {
+      const { result } = renderHook(() => useDragAndDrop(defaultProps));
+
+      act(() => {
+        result.current.handleKeyDown(
+          { key: 'ArrowRight', preventDefault: vi.fn() } as unknown as React.KeyboardEvent,
+          mockTasks[1]
+        );
+      });
+
+      expect(mockOnStatusChange).toHaveBeenCalledWith('task-2', TaskStatus.REVIEW, undefined);
+    });
+
+    it('should move forward with ArrowRight from REVIEW to DONE', () => {
+      const reviewTask = {
+        ...mockTasks[0],
+        id: 'task-review',
+        status: TaskStatus.REVIEW,
+        pbiId: undefined,
+      };
+      const { result } = renderHook(() =>
+        useDragAndDrop({ ...defaultProps, tasks: [...mockTasks, reviewTask] })
+      );
+
+      act(() => {
+        result.current.handleKeyDown(
+          { key: 'ArrowRight', preventDefault: vi.fn() } as unknown as React.KeyboardEvent,
+          reviewTask
+        );
+      });
+
+      expect(mockOnStatusChange).toHaveBeenCalledWith('task-review', TaskStatus.DONE, {
+        remainingHours: 0,
+      });
+    });
+
+    it('should move backward with ArrowLeft from REVIEW to IN_PROGRESS', () => {
+      const reviewTask = { ...mockTasks[0], id: 'task-review', status: TaskStatus.REVIEW };
+      const { result } = renderHook(() =>
+        useDragAndDrop({ ...defaultProps, tasks: [...mockTasks, reviewTask] })
+      );
+
+      act(() => {
+        result.current.handleKeyDown(
+          { key: 'ArrowLeft', preventDefault: vi.fn() } as unknown as React.KeyboardEvent,
+          reviewTask
+        );
+      });
+
+      expect(mockOnStatusChange).toHaveBeenCalledWith(
+        'task-review',
+        TaskStatus.IN_PROGRESS,
+        undefined
+      );
+    });
+
+    it('should attempt a backward move from DONE via ArrowLeft and report the invalid transition', () => {
+      const { result } = renderHook(() => useDragAndDrop(defaultProps));
+
+      act(() => {
+        result.current.handleKeyDown(
+          { key: 'ArrowLeft', preventDefault: vi.fn() } as unknown as React.KeyboardEvent,
+          mockTasks[2]
+        );
+      });
+
+      // DONE → REVIEW is not an allowed transition, so validation surfaces an error.
+      expect(mockOnValidationError).toHaveBeenCalled();
+    });
+
+    it('should ignore a second Space press while a drag is already in progress', () => {
+      const { result } = renderHook(() => useDragAndDrop(defaultProps));
+
+      act(() => {
+        result.current.handleKeyDown(
+          { key: ' ', preventDefault: vi.fn() } as unknown as React.KeyboardEvent,
+          mockTasks[0]
+        );
+      });
+      expect(result.current.isDragging).toBe(true);
+
+      act(() => {
+        result.current.handleKeyDown(
+          { key: ' ', preventDefault: vi.fn() } as unknown as React.KeyboardEvent,
+          mockTasks[0]
+        );
+      });
+
+      expect(result.current.draggedTaskId).toBe('task-1');
+      expect(result.current.isDragging).toBe(true);
+    });
+  });
 });

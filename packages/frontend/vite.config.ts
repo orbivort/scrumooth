@@ -48,6 +48,35 @@ const stripMockWorkerPlugin = (keepWorker: boolean): Plugin => {
   };
 };
 
+/**
+ * Answers `/api` requests that escape the mock service worker (dev server only).
+ *
+ * In mock mode the MSW worker inside the page is the backend, and every request
+ * that reaches the dev server is an interception escape. Registered through
+ * `configureServer` *before* Vite's internal middlewares, this answers such a
+ * request directly with a 503 in the standard error envelope — no proxy, no
+ * upstream connection, no ECONNREFUSED stack trace. The one-line log keeps the
+ * escapes observable without burying the test output.
+ */
+const mockApiGuardPlugin = (body: string): Plugin => ({
+  name: 'mock-api-guard',
+  apply: 'serve',
+  configureServer(server) {
+    // Registered without a mount path so `req.url` keeps its `/api` prefix —
+    // connect strips the mount prefix of a mounted middleware from `req.url`.
+    server.middlewares.use((req, res, next) => {
+      if (!req.url?.startsWith('/api/')) {
+        next();
+        return;
+      }
+      console.warn(`[vite] /api request escaped mock interception; answered 503 (${req.url}).`);
+      res.statusCode = 503;
+      res.setHeader('Content-Type', 'application/json');
+      res.end(body);
+    });
+  },
+});
+
 export default defineConfig(({ mode }) => {
   // Load env file based on mode
   const env = loadEnv(mode, process.cwd(), '');
@@ -75,6 +104,27 @@ export default defineConfig(({ mode }) => {
   // case still needs a target, so fall back to the default dev server.
   const proxyTarget = apiUrl.replace(/\/api\/v1\/?$/, '') || 'http://localhost:5001';
 
+  // Mock mode: the MSW worker answers every `/api` request inside the page, so a
+  // request that reaches the server anyway has escaped interception (e.g. a poll
+  // fired while the worker was restarting). No backend runs behind a mock-mode
+  // server, so instead of letting such a request die as an ECONNREFUSED stack
+  // trace, the guard plugin answers it with a 503 in the standard error envelope
+  // — the client sees an HTTP failure it already knows how to handle, and the
+  // server logs one quiet line per escape. The proxy is not configured at all in
+  // mock mode: a proxy error handler cannot keep Vite's own logger from printing
+  // the full stack trace, while a middleware that answers before the proxy runs
+  // never touches a socket in the first place.
+  const isMockMode = env.VITE_USE_MOCK_API === 'true';
+  const escapedMockResponseBody = JSON.stringify({
+    success: false,
+    error: {
+      code: 'SERVICE_UNAVAILABLE',
+      message:
+        'The request bypassed the mock backend: the mock service worker was not yet ' +
+        'controlling the page when it was issued.',
+    },
+  });
+
   // Base path for GitHub Pages deployment
   // For username.github.io, base is '/'
   // For username.github.io/repo-name, set VITE_BASE_PATH='/repo-name/'
@@ -87,6 +137,7 @@ export default defineConfig(({ mode }) => {
     htmlVersionPlugin(),
     // Only a build that can actually serve mock traffic keeps the worker script.
     stripMockWorkerPlugin(env.VITE_USE_MOCK_API === 'true'),
+    ...(isMockMode ? [mockApiGuardPlugin(escapedMockResponseBody)] : []),
     react(),
   ];
   if (isAnalyze) {
@@ -121,12 +172,16 @@ export default defineConfig(({ mode }) => {
       host: '0.0.0.0',
       port,
       strictPort: true,
-      proxy: {
-        '/api': {
-          target: proxyTarget,
-          changeOrigin: true,
-        },
-      },
+      // The proxy exists only for the real-backend case. In mock mode the guard
+      // plugin answers escaped `/api` requests instead — see `mockApiGuardPlugin`.
+      proxy: isMockMode
+        ? {}
+        : {
+            '/api': {
+              target: proxyTarget,
+              changeOrigin: true,
+            },
+          },
     },
     build: {
       outDir: 'dist',

@@ -104,6 +104,28 @@ describe('WorkingAgreementService', () => {
         []
       );
     });
+
+    it('should leave the author names null when an agreement records no author', async () => {
+      asMock(prisma.workingAgreement.findMany).mockResolvedValue([
+        { ...agreement, createdBy: null, updatedBy: null },
+      ]);
+
+      const result = await workingAgreementService.getWorkingAgreements('team-1', 'dev-1');
+
+      expect(result[0]).toMatchObject({ createdByName: null, updatedByName: null });
+    });
+
+    it('should leave the author name null when the recorded author is unknown', async () => {
+      asMock(prisma.workingAgreement.findMany).mockResolvedValue([
+        { ...agreement, createdBy: 'ghost', updatedBy: 'ghost-2' },
+      ]);
+      asMock(prisma.user.findMany).mockResolvedValue([]);
+
+      const result = await workingAgreementService.getWorkingAgreements('team-1', 'dev-1');
+
+      expect(result[0]).toMatchObject({ createdByName: null, updatedByName: null });
+      expect(prisma.user.findMany).toHaveBeenCalledTimes(1);
+    });
   });
 
   describe('createWorkingAgreement', () => {
@@ -205,6 +227,25 @@ describe('WorkingAgreementService', () => {
       expect(prisma.workingAgreement.update).toHaveBeenCalledWith(
         expect.objectContaining({
           data: expect.objectContaining({ status: 'ACTIVE', retiredAt: null }),
+        })
+      );
+    });
+
+    it('should amend the title and description without touching the retirement state', async () => {
+      asMock(prisma.workingAgreement.update).mockResolvedValue({
+        ...agreement,
+        title: 'New title',
+        description: 'New description',
+      });
+
+      await workingAgreementService.updateWorkingAgreement('agreement-1', 'dev-1', {
+        title: 'New title',
+        description: 'New description',
+      });
+
+      expect(prisma.workingAgreement.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: { title: 'New title', description: 'New description', updatedBy: 'dev-1' },
         })
       );
     });

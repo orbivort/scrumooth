@@ -152,7 +152,7 @@ export const createMockBacklogItem = (
   status: ItemStatus.NEW,
   priority: MoSCoWPriority.MUST_HAVE,
   storyPoints: 8,
-  businessValue: 10,
+  businessValue: 8,
   labels: ['security', 'authentication'],
   acceptanceCriteria: 'Users can log in and out securely',
   createdAt: '2026-01-01T00:00:00Z',

@@ -162,4 +162,99 @@ describe('DeleteConfirmModal', () => {
       });
     });
   });
+
+  describe('Workflow error banner', () => {
+    const SetWorkflowError: React.FC = () => {
+      const { setWorkflowError } = useBacklogContext();
+      React.useEffect(() => {
+        setWorkflowError('Delete failed');
+      }, [setWorkflowError]);
+      return null;
+    };
+
+    it('should render the error banner and let the user dismiss it', async () => {
+      renderWithProviders(
+        <BacklogProvider>
+          <SetSelectedItem item={mockItem} />
+          <SetWorkflowError />
+          <DeleteConfirmModal
+            isOpen={true}
+            onClose={mockOnClose}
+            onConfirm={mockOnConfirm}
+            isDeleting={false}
+          />
+        </BacklogProvider>
+      );
+
+      expect(await screen.findByText('Delete failed')).toBeInTheDocument();
+
+      await userEvent.click(screen.getByLabelText('Close error message'));
+
+      await waitFor(() => {
+        expect(screen.queryByText('Delete failed')).not.toBeInTheDocument();
+      });
+    });
+  });
+
+  describe('Item edge cases', () => {
+    it('should fall back to the unknown item label when the title is empty', async () => {
+      renderWithProviders(
+        <BacklogProvider>
+          <SetSelectedItem item={createMockBacklogItem({ id: 'pbi-empty', title: '' })} />
+          <DeleteConfirmModal
+            isOpen={true}
+            onClose={mockOnClose}
+            onConfirm={mockOnConfirm}
+            isDeleting={false}
+          />
+        </BacklogProvider>
+      );
+
+      expect(await screen.findByText(/Unknown Item/)).toBeInTheDocument();
+    });
+
+    it('should use the singular story point label when there is exactly one point', async () => {
+      renderWithProviders(
+        <BacklogProvider>
+          <SetSelectedItem
+            item={createMockBacklogItem({
+              id: 'pbi-one',
+              title: 'One point item',
+              storyPoints: 1,
+            })}
+          />
+          <DeleteConfirmModal
+            isOpen={true}
+            onClose={mockOnClose}
+            onConfirm={mockOnConfirm}
+            isDeleting={false}
+          />
+        </BacklogProvider>
+      );
+
+      expect(await screen.findByText(/1 story point/)).toBeInTheDocument();
+    });
+
+    it('should fall back to the default status class when the status is blank', async () => {
+      renderWithProviders(
+        <BacklogProvider>
+          <SetSelectedItem
+            item={createMockBacklogItem({
+              id: 'pbi-blank',
+              title: 'Blank status item',
+              status: '' as never,
+            })}
+          />
+          <DeleteConfirmModal
+            isOpen={true}
+            onClose={mockOnClose}
+            onConfirm={mockOnConfirm}
+            isDeleting={false}
+          />
+        </BacklogProvider>
+      );
+
+      expect(await screen.findByText(/Blank status item/)).toBeInTheDocument();
+    });
+  });
 });

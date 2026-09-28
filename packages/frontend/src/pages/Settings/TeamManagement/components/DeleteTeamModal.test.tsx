@@ -607,4 +607,31 @@ describe('DeleteTeamModal', () => {
       expect(input).not.toBeInTheDocument();
     });
   });
+
+  describe('Paste prevention events', () => {
+    it('blocks Ctrl+V, the context menu, drop and drag over on the confirmation input', () => {
+      renderWithProviders(
+        <DeleteTeamModal
+          isOpen={true}
+          team={mockTeam}
+          onClose={mockOnClose}
+          onConfirm={mockOnConfirm}
+          isDeleting={false}
+        />
+      );
+
+      const input = screen.getByLabelText(/type.*team alpha.*to confirm/i);
+
+      // A Ctrl+V keystroke is intercepted (handleKeyDown paste-prevention branch).
+      fireEvent.keyDown(input, { key: 'v', ctrlKey: true });
+      expect(screen.getByText(/manual typing required for security/i)).toBeInTheDocument();
+
+      // Right-click, drop and drag-over each stop the browser default (paste/insert) route.
+      fireEvent.contextMenu(input);
+      fireEvent.drop(input);
+      fireEvent.dragOver(input);
+
+      expect(input).toBeInTheDocument();
+    });
+  });
 });

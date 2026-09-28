@@ -16,6 +16,7 @@ import React from 'react';
 import {
   screen,
   fireEvent,
+  waitFor,
   renderWithProviders,
   initTestI18n,
   createMockTeam,
@@ -52,7 +53,38 @@ vi.mock('../../../../services', () => ({
 }));
 
 vi.mock('./DefinitionEditor', () => ({
-  DefinitionEditor: () => <div data-testid="definition-editor">Definition Editor</div>,
+  DefinitionEditor: ({
+    onSave,
+    onCancel,
+  }: {
+    onSave: (items: unknown[]) => Promise<void>;
+    onCancel: () => void;
+  }) => (
+    <div data-testid="definition-editor">
+      Definition Editor
+      <button
+        type="button"
+        onClick={() =>
+          // The refusal is surfaced through the section's own mutation `onError`; swallowing the
+          // rejected promise here only stops the stand-in from leaking an unhandled rejection.
+          void onSave([
+            {
+              id: 'item-1',
+              description: 'Saved criterion',
+              category: 'quality',
+              isActive: true,
+              order: 0,
+            },
+          ]).catch(() => undefined)
+        }
+      >
+        save-editor
+      </button>
+      <button type="button" onClick={onCancel}>
+        cancel-editor
+      </button>
+    </div>
+  ),
 }));
 
 vi.mock('./VersionHistoryPopover', () => ({
@@ -428,6 +460,149 @@ describe('DefinitionOfDoneSection', () => {
 
       expect(await screen.findByText('No Definition of Done yet')).toBeInTheDocument();
       expect(screen.queryByRole('button', { name: 'Configure DoD' })).not.toBeInTheDocument();
+    });
+  });
+});
+
+describe('DefinitionOfDoneSection - save and recovery flows', () => {
+  let useAuthStoreMock: ReturnType<typeof vi.fn>;
+
+  beforeAll(() => {
+    initTestI18n();
+  });
+
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    useAuthStoreMock = (await import('../../../../store')).default;
+    useAuthStoreMock.mockReturnValue({ user: createMockUser() });
+    (teamGroupService.listGroups as vi.Mock).mockResolvedValue({ success: true, data: [] });
+  });
+
+  it('saves a team-scoped agreement and closes the editor on success', async () => {
+    (definitionService.getDefinitionOfDone as vi.Mock).mockResolvedValue({
+      success: true,
+      data: withItems(),
+    });
+    (definitionService.updateDefinitionOfDone as vi.Mock).mockResolvedValue({
+      success: true,
+      data: withItems(),
+    });
+
+    renderWithProviders(
+      <DefinitionOfDoneSection teamId={TEAM_ID} team={teamWith(null)} isActive />
+    );
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Edit DoD' }));
+    fireEvent.click(screen.getByText('save-editor'));
+
+    await waitFor(() => {
+      expect(definitionService.updateDefinitionOfDone).toHaveBeenCalledWith(
+        TEAM_ID,
+        expect.any(Array)
+      );
+    });
+  });
+
+  it('leaves the editor without saving when the edit is cancelled', async () => {
+    (definitionService.getDefinitionOfDone as vi.Mock).mockResolvedValue({
+      success: true,
+      data: withItems(),
+    });
+
+    renderWithProviders(
+      <DefinitionOfDoneSection teamId={TEAM_ID} team={teamWith(null)} isActive />
+    );
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Edit DoD' }));
+    fireEvent.click(screen.getByText('cancel-editor'));
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('definition-editor')).not.toBeInTheDocument();
+    });
+    expect(definitionService.updateDefinitionOfDone).not.toHaveBeenCalled();
+  });
+
+  it('retries a read that failed', async () => {
+    (definitionService.getDefinitionOfDone as vi.Mock).mockRejectedValue(new Error('Failed'));
+
+    renderWithProviders(
+      <DefinitionOfDoneSection teamId={TEAM_ID} team={teamWith(null)} isActive />
+    );
+
+    const retry = await screen.findByRole('button', { name: 'Retry' });
+    fireEvent.click(retry);
+
+    await waitFor(() => {
+      expect(definitionService.getDefinitionOfDone).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  it('opens the editor from an empty agreement', async () => {
+    (definitionService.getDefinitionOfDone as vi.Mock).mockResolvedValue({
+      success: true,
+      data: withItems({ items: [] }),
+    });
+
+    renderWithProviders(
+      <DefinitionOfDoneSection teamId={TEAM_ID} team={teamWith(null)} isActive />
+    );
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Configure DoD' }));
+
+    expect(screen.getByTestId('definition-editor')).toBeInTheDocument();
+  });
+
+  it('routes a shared save to the group, never to the team', async () => {
+    (definitionService.getDefinitionOfDone as vi.Mock).mockResolvedValue({
+      success: true,
+      data: withItems({ version: 3 }),
+    });
+    (teamGroupService.updateSharedDefinitionOfDone as vi.Mock).mockResolvedValue({
+      success: true,
+      data: { groupId: GROUP.id, version: 4, items: [], updatedAt: '2024-01-02T00:00:00Z' },
+    });
+
+    renderWithProviders(
+      <DefinitionOfDoneSection
+        teamId={TEAM_ID}
+        team={teamWith(UserRole.PRODUCT_OWNER, GROUP)}
+        isActive
+      />
+    );
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Edit DoD' }));
+    fireEvent.click(screen.getByText('save-editor'));
+
+    await waitFor(() => {
+      expect(teamGroupService.updateSharedDefinitionOfDone).toHaveBeenCalledWith(
+        GROUP.id,
+        expect.any(Object)
+      );
+    });
+    expect(definitionService.updateDefinitionOfDone).not.toHaveBeenCalled();
+  });
+
+  it('renders a save refusal in place and lets it be dismissed', async () => {
+    (definitionService.getDefinitionOfDone as vi.Mock).mockResolvedValue({
+      success: true,
+      data: withItems(),
+    });
+    (definitionService.updateDefinitionOfDone as vi.Mock).mockRejectedValue(
+      new Error('A Scrum Master must approve this change.')
+    );
+
+    renderWithProviders(
+      <DefinitionOfDoneSection teamId={TEAM_ID} team={teamWith(null)} isActive />
+    );
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Edit DoD' }));
+    fireEvent.click(screen.getByText('save-editor'));
+
+    const dismiss = await screen.findByRole('button', { name: 'Dismiss' });
+    fireEvent.click(dismiss);
+
+    await waitFor(() => {
+      expect(screen.queryByRole('button', { name: 'Dismiss' })).not.toBeInTheDocument();
     });
   });
 });

@@ -62,7 +62,7 @@ export const dailyScrumScheduleHandlers: RequestHandler[] = [
 
     const id = String(params.id ?? '');
     const entry = database().nonWorkingDays.find((candidate) => candidate.id === id);
-    if (!entry || entry.teamId !== teamId) {
+    if (entry?.teamId !== teamId) {
       return problems.notFound('Non-working day');
     }
 

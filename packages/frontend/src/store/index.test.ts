@@ -11,6 +11,7 @@ import {
   initializeStoreSideEffects,
 } from './index';
 import type { Team, User } from '../types';
+import { apiService, sessionManager } from '../services';
 
 vi.mock('../services', () => ({
   apiService: {
@@ -372,6 +373,20 @@ describe('initializeStoreSideEffects', () => {
     initializeStoreSideEffects();
 
     expect(initializeStoreSideEffects).toBeDefined();
+  });
+
+  it('should register an activity notifier that pings the API for activity', async () => {
+    vi.clearAllMocks();
+    vi.mocked(apiService.updateActivity).mockResolvedValue(undefined as never);
+
+    initializeStoreSideEffects();
+
+    expect(sessionManager.setActivityNotifier).toHaveBeenCalledTimes(1);
+    const notifier = vi.mocked(sessionManager.setActivityNotifier).mock.calls[0][0];
+    expect(notifier).toBeTypeOf('function');
+
+    await notifier();
+    expect(apiService.updateActivity).toHaveBeenCalledTimes(1);
   });
 });
 
