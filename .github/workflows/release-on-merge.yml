@@ -23,7 +23,7 @@ jobs:
       contains(github.event.pull_request.labels.*.name, 'release')
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           ref: main
           token: ${{ secrets.RELEASE_TOKEN }}

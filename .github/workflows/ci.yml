@@ -37,7 +37,7 @@ jobs:
       shared: ${{ steps.filter.outputs.shared }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
 
       - name: Detect changed paths
         id: filter
@@ -65,7 +65,7 @@ jobs:
     if: github.event_name == 'pull_request'
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
 
       - name: Validate branch name
         run: node scripts/utility/validate-git-branch.js "${{ github.head_ref }}"
@@ -83,7 +83,7 @@ jobs:
        needs.detect-changes.outputs.shared == 'true')
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
 
       - name: Setup pnpm + Node + install
         uses: ./.github/actions/setup-node-pnpm
@@ -133,7 +133,7 @@ jobs:
     if: github.event_name == 'pull_request'
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
 
       - name: Dependency Review
         uses: actions/dependency-review-action@v5
@@ -146,7 +146,7 @@ jobs:
     if: needs.detect-changes.outputs.frontend == 'true' || needs.detect-changes.outputs.shared == 'true'
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
 
       - name: Setup pnpm + Node + install
         uses: ./.github/actions/setup-node-pnpm
@@ -179,7 +179,7 @@ jobs:
       E2E_BROWSERS: desktop
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
 
       - name: Setup pnpm + Node + install
         uses: ./.github/actions/setup-node-pnpm
@@ -232,7 +232,7 @@ jobs:
       E2E_BROWSERS: chromium
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
 
       - name: Setup pnpm + Node + install
         uses: ./.github/actions/setup-node-pnpm
@@ -279,7 +279,7 @@ jobs:
     if: needs.detect-changes.outputs.frontend == 'true' || needs.detect-changes.outputs.shared == 'true'
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
 
       - name: Setup pnpm + Node + install
         uses: ./.github/actions/setup-node-pnpm
@@ -317,7 +317,7 @@ jobs:
     if: needs.detect-changes.outputs.backend == 'true' || needs.detect-changes.outputs.shared == 'true'
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
 
       - name: Setup pnpm + Node + install
         uses: ./.github/actions/setup-node-pnpm
@@ -357,7 +357,7 @@ jobs:
       NODE_ENV: test
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
 
       - name: Setup pnpm + Node + install
         uses: ./.github/actions/setup-node-pnpm
@@ -388,7 +388,7 @@ jobs:
       NODE_ENV: test
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
 
       - name: Setup pnpm + Node + install
         uses: ./.github/actions/setup-node-pnpm
@@ -419,7 +419,7 @@ jobs:
       NODE_ENV: test
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
 
       - name: Setup pnpm + Node + install
         uses: ./.github/actions/setup-node-pnpm
@@ -477,7 +477,7 @@ jobs:
       needs.detect-changes.outputs.shared == 'true'
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
 
       - name: Setup pnpm + Node + install
         uses: ./.github/actions/setup-node-pnpm
@@ -521,7 +521,7 @@ jobs:
       needs.detect-changes.outputs.shared == 'true'
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
 
       - name: Setup pnpm + Node + install
         uses: ./.github/actions/setup-node-pnpm
@@ -551,7 +551,7 @@ jobs:
         language: ['typescript']
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
 
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v4
@@ -582,7 +582,7 @@ jobs:
     if: needs.detect-changes.outputs.frontend == 'true' || needs.detect-changes.outputs.shared == 'true'
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
 
       - name: Setup pnpm + Node + install
         uses: ./.github/actions/setup-node-pnpm
@@ -634,7 +634,7 @@ jobs:
     if: needs.detect-changes.outputs.backend == 'true' || needs.detect-changes.outputs.shared == 'true'
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
 
       - name: Setup pnpm + Node + install
         uses: ./.github/actions/setup-node-pnpm

@@ -30,7 +30,7 @@ jobs:
     timeout-minutes: 20
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
 
       - name: Setup pnpm + Node + install
         uses: ./.github/actions/setup-node-pnpm

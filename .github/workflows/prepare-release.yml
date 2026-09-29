@@ -31,7 +31,7 @@ jobs:
       version_no_v: ${{ steps.validate.outputs.version_no_v }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           ref: main
           token: ${{ secrets.RELEASE_TOKEN }}
