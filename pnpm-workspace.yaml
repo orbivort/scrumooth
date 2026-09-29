@@ -13,7 +13,7 @@ catalog:
   '@types/node': ^24.13.3
   '@typescript-eslint/eslint-plugin': ^8.67.0
   '@typescript-eslint/parser': ^8.67.0
-  '@vitest/coverage-v8': ^4.1.11
+  '@vitest/coverage-v8': ^5.0.2
   '@vitest/ui': ^4.1.11
   cross-env: ^10.1.0
   date-fns: ^4.4.0
