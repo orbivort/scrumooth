@@ -209,7 +209,7 @@ jobs:
         run: pnpm --filter=@scrumooth/frontend exec playwright test --shard=${{ matrix.shard }}
 
       - name: Upload Playwright report
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: frontend-e2e-report-${{ strategy.job-index }}
@@ -262,7 +262,7 @@ jobs:
         run: pnpm --filter=@scrumooth/frontend exec playwright test --grep=@smoke
 
       - name: Upload Playwright report
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: frontend-e2e-smoke-report
@@ -302,7 +302,7 @@ jobs:
           verbose: true
 
       - name: Upload frontend coverage artifact
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: frontend-coverage
@@ -448,7 +448,7 @@ jobs:
           verbose: true
 
       - name: Upload backend coverage artifact
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: backend-coverage
@@ -502,7 +502,7 @@ jobs:
         run: pnpm run build
 
       - name: Upload build artifacts
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: build-artifacts
           path: |
@@ -619,7 +619,7 @@ jobs:
           echo "**Total Bundle Size:** ${TOTAL_MB} MB" >> $GITHUB_STEP_SUMMARY
 
       - name: Upload bundle stats
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: bundle-stats
           path: packages/frontend/dist/stats.html
@@ -667,7 +667,7 @@ jobs:
           echo "> Note: Detailed benchmark results are available in the uploaded artifacts." >> $GITHUB_STEP_SUMMARY
 
       - name: Upload benchmark results
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: benchmark-results
