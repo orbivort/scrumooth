@@ -118,7 +118,7 @@
     "eslint-plugin-react": "catalog:",
     "eslint-plugin-react-hooks": "catalog:",
     "eslint-plugin-react-refresh": "catalog:",
-    "eslint-plugin-unicorn": "^64.0.0",
+    "eslint-plugin-unicorn": "^76.0.0",
     "globals": "catalog:",
     "husky": "^9.1.7",
     "lint-staged": "^17.3.0",
