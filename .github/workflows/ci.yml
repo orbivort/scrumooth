@@ -591,7 +591,7 @@ jobs:
           pnpm-version: ${{ env.PNPM_VERSION }}
 
       - name: Download build artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: build-artifacts
           path: packages
@@ -643,7 +643,7 @@ jobs:
           pnpm-version: ${{ env.PNPM_VERSION }}
 
       - name: Download build artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: build-artifacts
           path: packages
