@@ -19,7 +19,6 @@ updates:
         update-types:
           - "minor"
           - "patch"
-    versioning-strategy: increase
     open-pull-requests-limit: 5
     labels:
       - "dependencies"
@@ -181,6 +180,21 @@ updates:
       - "dependencies"
       - "docker"
       - "frontend"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+
+  - package-ecosystem: "docker"
+    directory: "/scripts/maintenance/database"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "Etc/UTC"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "docker"
     commit-message:
       prefix: "chore"
       include: "scope"
