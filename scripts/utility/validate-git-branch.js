@@ -10,6 +10,7 @@
  *   - type: feat, fix, docs, style, refactor, perf, test, build, ci, chore, revert, release
  *   - description: lowercase letters, numbers, and hyphens (no spaces or underscores)
  *   - release branches: release/vX.Y.Z or release/X.Y.Z (semantic versioning)
+ *   - dependabot branches: dependabot/<ecosystem>/<dependency-name-and-version>
  *
  * Examples:
  *   ✅ feat/user-dashboard
@@ -17,6 +18,7 @@
  *   ✅ chore/update-dependencies
  *   ✅ release/v2.0.0
  *   ✅ release/1.5.3
+ *   ✅ dependabot/github_actions/actions/download-artifact-8
  *   ❌ my-feature
  *   ❌ feature_user_dashboard
  *   ❌ Fix/something
@@ -45,6 +47,11 @@ export const BRANCH_PATTERN = new RegExp(`^(${VALID_TYPES.join('|')})/([a-z0-9-]
 
 // Pattern for release branches: release/vX.Y.Z or release/X.Y.Z
 export const RELEASE_BRANCH_PATTERN = /^release\/v?(\d+)\.(\d+)\.(\d+)$/;
+
+// Pattern for Dependabot branches: dependabot/<ecosystem>/<dependency-name-and-version>
+// Ecosystem uses lowercase letters, digits, and underscores (e.g. github_actions, npm_and_yarn).
+// The dependency segment may contain slashes, dots, hyphens, underscores, and digits.
+export const DEPENDABOT_BRANCH_PATTERN = /^dependabot\/([a-z0-9_]+)\/([a-z0-9._\-/]+)$/i;
 
 /**
  * Validates a branch name against the conventional branch naming convention.
@@ -92,6 +99,17 @@ Examples:
   ✅ release/1.5.3
   ✅ release/v0.1.0
   ❌ ${branchName}`,
+    };
+  }
+
+  // Check for Dependabot branches (special pattern)
+  const dependabotMatch = branchName.match(DEPENDABOT_BRANCH_PATTERN);
+  if (dependabotMatch) {
+    const [, ecosystem, dependency] = dependabotMatch;
+    return {
+      valid: true,
+      type: 'dependabot',
+      description: `${ecosystem}/${dependency}`,
     };
   }
 
@@ -197,6 +215,9 @@ Valid types:
 Release branches:
   release/vX.Y.Z or release/X.Y.Z (semantic versioning)
 
+Dependabot branches:
+  dependabot/<ecosystem>/<dependency-name-and-version>
+
 Protected branches (always allowed):
   ${PROTECTED_BRANCHES.join(', ')}
 
@@ -206,6 +227,7 @@ Examples:
   ✅ chore/update-dependencies
   ✅ release/v2.0.0
   ✅ release/1.5.3
+  ✅ dependabot/github_actions/actions/download-artifact-8
   ❌ my-feature
   ❌ feature_user_dashboard
 `);
