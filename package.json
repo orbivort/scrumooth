@@ -107,10 +107,10 @@
     "loadtest:generate-data": "cd packages/backend && pnpm run loadtest:data"
   },
   "devDependencies": {
-    "@commitlint/cli": "^21.2.2",
-    "@commitlint/config-conventional": "^21.2.2",
+    "@commitlint/cli": "^21.2.3",
+    "@commitlint/config-conventional": "^21.2.3",
     "@eslint/js": "catalog:",
-    "concurrently": "^10.0.4",
+    "concurrently": "^10.0.5",
     "dotenv-cli": "^11.0.0",
     "eslint": "catalog:",
     "eslint-config-prettier": "catalog:",
@@ -121,12 +121,12 @@
     "eslint-plugin-unicorn": "^64.0.0",
     "globals": "catalog:",
     "husky": "^9.1.7",
-    "lint-staged": "^17.3.0",
+    "lint-staged": "^17.5.1",
     "prettier": "catalog:",
     "rimraf": "catalog:",
     "stylelint": "catalog:",
     "stylelint-config-standard": "catalog:",
-    "stylelint-no-unsupported-browser-features": "^8.1.1",
+    "stylelint-no-unsupported-browser-features": "^8.1.2",
     "typescript": "catalog:",
     "typescript-eslint": "catalog:",
     "vitest": "catalog:"
