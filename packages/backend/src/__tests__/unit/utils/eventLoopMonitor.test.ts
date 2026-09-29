@@ -70,6 +70,25 @@ describe('Event Loop Monitor', () => {
       expect(vi.mocked(monitorEventLoopDelay).mock.calls.length).toBe(originalCallCount);
       expect(mockHistogram.enable.mock.calls.length).toBe(enableCallCount);
     });
+
+    it('should catch and log an Error thrown while starting', () => {
+      vi.mocked(monitorEventLoopDelay).mockImplementation((): never => {
+        throw new Error('perf hooks unavailable');
+      });
+
+      expect(() => eventLoopMonitor.start()).not.toThrow();
+      expect(eventLoopMonitor.isRunning()).toBe(false);
+    });
+
+    it('should catch and log a non-Error thrown while starting', () => {
+      vi.mocked(monitorEventLoopDelay).mockImplementation((): never => {
+        // eslint-disable-next-line no-throw-literal
+        throw 'perf hooks unavailable';
+      });
+
+      expect(() => eventLoopMonitor.start()).not.toThrow();
+      expect(eventLoopMonitor.isRunning()).toBe(false);
+    });
   });
 
   describe('stop', () => {
@@ -124,6 +143,37 @@ describe('Event Loop Monitor', () => {
       const metrics = eventLoopMonitor.getMetrics(true);
 
       expect(metrics.max).toBe(600);
+    });
+
+    it('should log a critical warning when the critical threshold is exceeded', () => {
+      eventLoopMonitor.start();
+      mockHistogram.max = 600_000_000;
+
+      const metrics = eventLoopMonitor.getMetrics();
+
+      expect(metrics.max).toBe(600);
+    });
+
+    it('should log a warning when only the warn threshold is exceeded', () => {
+      eventLoopMonitor.start();
+      mockHistogram.max = 150_000_000;
+
+      const metrics = eventLoopMonitor.getMetrics();
+
+      expect(metrics.max).toBe(150);
+    });
+
+    it('should convert bigint histogram values to milliseconds', () => {
+      eventLoopMonitor.start();
+      mockHistogram.min = BigInt(2_000_000) as unknown as number;
+      mockHistogram.max = BigInt(3_000_000) as unknown as number;
+      mockHistogram.mean = BigInt(2_500_000) as unknown as number;
+
+      const metrics = eventLoopMonitor.getMetrics(true);
+
+      expect(metrics.min).toBe(2);
+      expect(metrics.max).toBe(3);
+      expect(metrics.mean).toBe(2.5);
     });
   });
 

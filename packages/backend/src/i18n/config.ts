@@ -33,6 +33,11 @@ import deCompliance from '../locales/de/scrumGuideCompliance.json' with { type: 
 import frCompliance from '../locales/fr/scrumGuideCompliance.json' with { type: 'json' };
 import esCompliance from '../locales/es/scrumGuideCompliance.json' with { type: 'json' };
 import itCompliance from '../locales/it/scrumGuideCompliance.json' with { type: 'json' };
+import enReports from '../locales/en/reports.json' with { type: 'json' };
+import deReports from '../locales/de/reports.json' with { type: 'json' };
+import frReports from '../locales/fr/reports.json' with { type: 'json' };
+import esReports from '../locales/es/reports.json' with { type: 'json' };
+import itReports from '../locales/it/reports.json' with { type: 'json' };
 
 const resources = {
   en: {
@@ -42,6 +47,7 @@ const resources = {
     validation: enValidation,
     retrospectives: enRetrospectives,
     scrumGuideCompliance: enCompliance,
+    reports: enReports,
   },
   de: {
     emails: deEmails,
@@ -50,6 +56,7 @@ const resources = {
     validation: deValidation,
     retrospectives: deRetrospectives,
     scrumGuideCompliance: deCompliance,
+    reports: deReports,
   },
   fr: {
     emails: frEmails,
@@ -58,6 +65,7 @@ const resources = {
     validation: frValidation,
     retrospectives: frRetrospectives,
     scrumGuideCompliance: frCompliance,
+    reports: frReports,
   },
   es: {
     emails: esEmails,
@@ -66,6 +74,7 @@ const resources = {
     validation: esValidation,
     retrospectives: esRetrospectives,
     scrumGuideCompliance: esCompliance,
+    reports: esReports,
   },
   it: {
     emails: itEmails,
@@ -74,6 +83,7 @@ const resources = {
     validation: itValidation,
     retrospectives: itRetrospectives,
     scrumGuideCompliance: itCompliance,
+    reports: itReports,
   },
 };
 
@@ -87,7 +97,15 @@ export const i18nInstance: I18nType = i18next.createInstance({
   // are unaffected by this change.
   load: 'currentOnly',
   nonExplicitSupportedLngs: true,
-  ns: ['emails', 'notifications', 'errors', 'validation', 'retrospectives', 'scrumGuideCompliance'],
+  ns: [
+    'emails',
+    'notifications',
+    'errors',
+    'validation',
+    'retrospectives',
+    'scrumGuideCompliance',
+    'reports',
+  ],
   defaultNS: 'errors',
   interpolation: { escapeValue: false },
   returnNull: false,
@@ -97,6 +115,10 @@ export const i18nInstance: I18nType = i18next.createInstance({
   },
   parseMissingKeyHandler: (key) => {
     const parts = key.split(/[:.]/);
+    // `String.prototype.split` always returns at least one element, so the last element can
+    // never be `undefined`; the fallback only satisfies `noUncheckedIndexedAccess` and is
+    // therefore unreachable at runtime.
+    /* v8 ignore next */
     return parts[parts.length - 1] ?? key;
   },
 });

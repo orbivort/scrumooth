@@ -1,8 +1,8 @@
 import React from 'react';
-import { screen, within, initTestI18n } from '../../../test-utils';
+import { screen, within, waitFor, initTestI18n } from '../../../test-utils';
 import { render } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { MemoryRouter, Routes, Route } from 'react-router';
+import { MemoryRouter, Routes, Route, useSearchParams } from 'react-router';
 import { I18nextProvider } from 'react-i18next';
 import { vi } from 'vitest';
 import userEvent from '@testing-library/user-event';
@@ -106,6 +106,42 @@ const createWrapper = () => {
         <MemoryRouter initialEntries={['/settings/team-management']}>
           <Routes>
             <Route path="/settings/team-management" element={children} />
+          </Routes>
+        </MemoryRouter>
+      </QueryClientProvider>
+    </I18nextProvider>
+  );
+  return Wrapper;
+};
+
+/**
+ * The same wrapper, entered at an address of the caller's choosing, with a probe that reports the
+ * search string the page currently sits on -- the only way to see, in a memory router, that a
+ * consumed query flag has really left the address.
+ */
+const createDeepLinkWrapper = (initialEntry: string) => {
+  const queryClient = createMockQueryClient();
+  const i18n = getTestI18nInstance();
+
+  const SearchProbe: React.FC = () => {
+    const [params] = useSearchParams();
+    return <span data-testid="search-params">{params.toString()}</span>;
+  };
+
+  const Wrapper: React.FC<WrapperProps> = ({ children }) => (
+    <I18nextProvider i18n={i18n}>
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter initialEntries={[initialEntry]}>
+          <Routes>
+            <Route
+              path="/settings/team-management"
+              element={
+                <>
+                  {children}
+                  <SearchProbe />
+                </>
+              }
+            />
           </Routes>
         </MemoryRouter>
       </QueryClientProvider>
@@ -1100,13 +1136,42 @@ describe('TeamManagement', () => {
     it('should display page title', () => {
       render(<TeamManagement />, { wrapper: createWrapper() });
 
-      expect(screen.getByRole('heading', { name: /team management/i })).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: /all teams/i })).toBeInTheDocument();
     });
 
     it('should display page subtitle', () => {
       render(<TeamManagement />, { wrapper: createWrapper() });
 
-      expect(screen.getByText(/create and manage teams/i)).toBeInTheDocument();
+      // The sub-heading states who may look and who may change a team, so it is part of the page's
+      // contract rather than decoration.
+      expect(screen.getByText(/anyone can look and create one/i)).toBeInTheDocument();
+    });
+  });
+
+  describe('Create deep link', () => {
+    it('opens the create form when the reader arrives from the team welcome screen', () => {
+      render(<TeamManagement />, {
+        wrapper: createDeepLinkWrapper('/settings/team-management?create=1'),
+      });
+
+      // Straight into the form: the reader asked to start a team, not to read the directory first.
+      expect(screen.getByRole('dialog', { name: /create new team/i })).toBeInTheDocument();
+    });
+
+    it('leaves the form closed on an ordinary visit', () => {
+      render(<TeamManagement />, {
+        wrapper: createDeepLinkWrapper('/settings/team-management'),
+      });
+
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+
+    it('consumes the flag, so a reload does not reopen the form', () => {
+      render(<TeamManagement />, {
+        wrapper: createDeepLinkWrapper('/settings/team-management?create=1'),
+      });
+
+      expect(screen.getByTestId('search-params')).not.toHaveTextContent('create');
     });
   });
 
@@ -1743,6 +1808,300 @@ describe('TeamManagement', () => {
       await user.click(deleteConfirmButton);
 
       expect(screen.getByRole('heading', { name: /delete team/i })).toBeInTheDocument();
+    });
+  });
+
+  describe('Create team submit flow', () => {
+    it('submits the create form and refreshes the team list', async () => {
+      const user = userEvent.setup();
+      const submitMutate = vi.fn((_data, options) => options?.onSuccess?.());
+      vi.mocked(useTeamManagement.useCreateTeam).mockReturnValue({
+        mutate: submitMutate,
+        isPending: false,
+        isSuccess: true,
+        isError: false,
+      } as unknown as ReturnType<typeof useTeamManagement.useCreateTeam>);
+
+      render(<TeamManagement />, { wrapper: createWrapper() });
+
+      await user.click(screen.getByRole('button', { name: /create team/i }));
+      const dialog = await screen.findByRole('dialog');
+      await user.type(within(dialog).getByLabelText(/team name/i), 'New Squad');
+      await user.click(within(dialog).getByRole('button', { name: /create team/i }));
+
+      await waitFor(() => expect(submitMutate).toHaveBeenCalled());
+      expect(mockRefreshTeams).toHaveBeenCalled();
+    });
+
+    it('warns when the refresh after creation fails', async () => {
+      const user = userEvent.setup();
+      const submitMutate = vi.fn((_data, options) => options?.onSuccess?.());
+      vi.mocked(useTeamManagement.useCreateTeam).mockReturnValue({
+        mutate: submitMutate,
+        isPending: false,
+        isSuccess: true,
+        isError: false,
+      } as unknown as ReturnType<typeof useTeamManagement.useCreateTeam>);
+
+      const failingRefresh = vi.fn().mockRejectedValue(new Error('refresh failed'));
+      vi.mocked(TeamContext.useTeamContext).mockReturnValue({
+        userRole: 'PRODUCT_OWNER',
+        refreshTeams: failingRefresh,
+        currentTeam: null,
+        userTeams: [],
+        isLoading: false,
+        error: null,
+        switchTeam: vi.fn(),
+        hasMultipleTeams: false,
+      });
+
+      render(<TeamManagement />, { wrapper: createWrapper() });
+
+      await user.click(screen.getByRole('button', { name: /create team/i }));
+      const dialog = await screen.findByRole('dialog');
+      await user.type(within(dialog).getByLabelText(/team name/i), 'New Squad');
+      await user.click(within(dialog).getByRole('button', { name: /create team/i }));
+
+      await waitFor(() => expect(failingRefresh).toHaveBeenCalled());
+    });
+  });
+
+  describe('Edit team submit flow', () => {
+    it('submits the edit form and refreshes the team list', async () => {
+      const user = userEvent.setup();
+      const submitMutate = vi.fn((_payload, options) => options?.onSuccess?.());
+      vi.mocked(useTeamManagement.useUpdateTeam).mockReturnValue({
+        mutate: submitMutate,
+        isPending: false,
+        isSuccess: true,
+        isError: false,
+      } as unknown as ReturnType<typeof useTeamManagement.useUpdateTeam>);
+
+      render(<TeamManagement />, { wrapper: createWrapper() });
+
+      await user.click(screen.getByRole('button', { name: /edit team alpha/i }));
+      const dialog = await screen.findByRole('dialog');
+      await user.type(within(dialog).getByPlaceholderText(/describe your team/i), ' updated');
+      await user.click(within(dialog).getByRole('button', { name: /save changes/i }));
+
+      await waitFor(() => expect(submitMutate).toHaveBeenCalled());
+      expect(mockRefreshTeams).toHaveBeenCalled();
+    });
+
+    it('warns when the refresh after an update fails', async () => {
+      const user = userEvent.setup();
+      const submitMutate = vi.fn((_payload, options) => options?.onSuccess?.());
+      vi.mocked(useTeamManagement.useUpdateTeam).mockReturnValue({
+        mutate: submitMutate,
+        isPending: false,
+        isSuccess: true,
+        isError: false,
+      } as unknown as ReturnType<typeof useTeamManagement.useUpdateTeam>);
+
+      const failingRefresh = vi.fn().mockRejectedValue(new Error('refresh failed'));
+      vi.mocked(TeamContext.useTeamContext).mockReturnValue({
+        userRole: 'PRODUCT_OWNER',
+        refreshTeams: failingRefresh,
+        currentTeam: null,
+        userTeams: [],
+        isLoading: false,
+        error: null,
+        switchTeam: vi.fn(),
+        hasMultipleTeams: false,
+      });
+
+      render(<TeamManagement />, { wrapper: createWrapper() });
+
+      await user.click(screen.getByRole('button', { name: /edit team alpha/i }));
+      const dialog = await screen.findByRole('dialog');
+      await user.type(within(dialog).getByPlaceholderText(/describe your team/i), ' updated');
+      await user.click(within(dialog).getByRole('button', { name: /save changes/i }));
+
+      await waitFor(() => expect(failingRefresh).toHaveBeenCalled());
+    });
+  });
+
+  describe('Delete team submit flow', () => {
+    it('submits the delete confirmation and refreshes the team list', async () => {
+      const user = userEvent.setup();
+      const submitMutate = vi.fn((_id, options) => options?.onSuccess?.());
+      vi.mocked(useTeamManagement.useDeleteTeam).mockReturnValue({
+        mutate: submitMutate,
+        isPending: false,
+        isSuccess: true,
+        isError: false,
+      } as unknown as ReturnType<typeof useTeamManagement.useDeleteTeam>);
+
+      render(<TeamManagement />, { wrapper: createWrapper() });
+
+      await user.click(screen.getByRole('button', { name: /delete team alpha/i }));
+      const dialog = await screen.findByRole('dialog');
+      await user.type(within(dialog).getByRole('textbox', { name: /type/i }), 'Team Alpha');
+      await user.click(within(dialog).getByRole('button', { name: /delete team/i }));
+
+      await waitFor(() => expect(submitMutate).toHaveBeenCalled());
+      expect(mockRefreshTeams).toHaveBeenCalled();
+    });
+
+    it('warns when the refresh after a delete fails', async () => {
+      const user = userEvent.setup();
+      const submitMutate = vi.fn((_id, options) => options?.onSuccess?.());
+      vi.mocked(useTeamManagement.useDeleteTeam).mockReturnValue({
+        mutate: submitMutate,
+        isPending: false,
+        isSuccess: true,
+        isError: false,
+      } as unknown as ReturnType<typeof useTeamManagement.useDeleteTeam>);
+
+      const failingRefresh = vi.fn().mockRejectedValue(new Error('refresh failed'));
+      vi.mocked(TeamContext.useTeamContext).mockReturnValue({
+        userRole: 'PRODUCT_OWNER',
+        refreshTeams: failingRefresh,
+        currentTeam: null,
+        userTeams: [],
+        isLoading: false,
+        error: null,
+        switchTeam: vi.fn(),
+        hasMultipleTeams: false,
+      });
+
+      render(<TeamManagement />, { wrapper: createWrapper() });
+
+      await user.click(screen.getByRole('button', { name: /delete team alpha/i }));
+      const dialog = await screen.findByRole('dialog');
+      await user.type(within(dialog).getByRole('textbox', { name: /type/i }), 'Team Alpha');
+      await user.click(within(dialog).getByRole('button', { name: /delete team/i }));
+
+      await waitFor(() => expect(failingRefresh).toHaveBeenCalled());
+    });
+
+    it('flags product goals when the backend says a team cannot be deleted', async () => {
+      const user = userEvent.setup();
+      const submitMutate = vi.fn((_id, options) =>
+        options?.onError?.({
+          message: 'Request failed',
+          response: {
+            data: { error: { message: 'Cannot delete team with existing product goals' } },
+          },
+        })
+      );
+      vi.mocked(useTeamManagement.useDeleteTeam).mockReturnValue({
+        mutate: submitMutate,
+        isPending: false,
+        isSuccess: false,
+        isError: true,
+      } as unknown as ReturnType<typeof useTeamManagement.useDeleteTeam>);
+
+      render(<TeamManagement />, { wrapper: createWrapper() });
+
+      await user.click(screen.getByRole('button', { name: /delete team alpha/i }));
+      const dialog = await screen.findByRole('dialog');
+      await user.type(within(dialog).getByRole('textbox', { name: /type/i }), 'Team Alpha');
+      await user.click(within(dialog).getByRole('button', { name: /delete team/i }));
+
+      await waitFor(() => expect(screen.getByText(/deletion blocked/i)).toBeInTheDocument());
+    });
+
+    it('flags product goals when the error message says a team cannot be deleted', async () => {
+      const user = userEvent.setup();
+      const submitMutate = vi.fn((_id, options) =>
+        options?.onError?.(new Error('Cannot delete team with existing product goals'))
+      );
+      vi.mocked(useTeamManagement.useDeleteTeam).mockReturnValue({
+        mutate: submitMutate,
+        isPending: false,
+        isSuccess: false,
+        isError: true,
+      } as unknown as ReturnType<typeof useTeamManagement.useDeleteTeam>);
+
+      render(<TeamManagement />, { wrapper: createWrapper() });
+
+      await user.click(screen.getByRole('button', { name: /delete team alpha/i }));
+      const dialog = await screen.findByRole('dialog');
+      await user.type(within(dialog).getByRole('textbox', { name: /type/i }), 'Team Alpha');
+      await user.click(within(dialog).getByRole('button', { name: /delete team/i }));
+
+      await waitFor(() => expect(screen.getByText(/deletion blocked/i)).toBeInTheDocument());
+    });
+  });
+
+  describe('Permission banner dismissal', () => {
+    it('shows the permission banner and dismisses it', async () => {
+      const user = userEvent.setup();
+
+      const { rerender } = render(<TeamManagement />, { wrapper: createWrapper() });
+
+      await user.click(screen.getByRole('button', { name: /edit team alpha/i }));
+      const dialog = await screen.findByRole('dialog');
+      await user.type(within(dialog).getByPlaceholderText(/describe your team/i), ' updated');
+
+      vi.mocked(TeamContext.useTeamContext).mockReturnValue({
+        userRole: 'DEVELOPERS',
+        refreshTeams: mockRefreshTeams,
+        currentTeam: null,
+        userTeams: [],
+        isLoading: false,
+        error: null,
+        switchTeam: vi.fn(),
+        hasMultipleTeams: false,
+      });
+
+      rerender(<TeamManagement />);
+
+      const modal = screen.getByRole('dialog');
+      await user.click(within(modal).getByRole('button', { name: /save changes/i }));
+
+      const dismiss = await screen.findByRole('button', { name: /dismiss error/i });
+      expect(dismiss).toBeInTheDocument();
+
+      await user.click(dismiss);
+      await waitFor(() =>
+        expect(screen.queryByRole('button', { name: /dismiss error/i })).not.toBeInTheDocument()
+      );
+    });
+  });
+
+  describe('Search URL synchronisation', () => {
+    it('commits the search to the URL after the debounce', async () => {
+      const user = userEvent.setup();
+      render(<TeamManagement />, {
+        wrapper: createDeepLinkWrapper('/settings/team-management'),
+      });
+
+      await user.type(screen.getByPlaceholderText(/search teams by name/i), 'alpha');
+
+      await waitFor(
+        () => expect(screen.getByTestId('search-params')).toHaveTextContent('q=alpha'),
+        { timeout: 2000 }
+      );
+    });
+
+    it('clears the search from the empty state', async () => {
+      vi.mocked(useTeamManagement.useTeams).mockReturnValue({
+        data: {
+          success: true,
+          data: {
+            teams: [],
+            pagination: { page: 1, limit: 10, total: 0, totalPages: 0 },
+          },
+        },
+        isLoading: false,
+        error: null,
+        refetch: vi.fn(),
+      } as unknown as ReturnType<typeof useTeamManagement.useTeams>);
+
+      const user = userEvent.setup();
+      render(<TeamManagement />, {
+        wrapper: createDeepLinkWrapper('/settings/team-management?q=foo'),
+      });
+
+      await user.click(
+        await screen.findByRole('button', { name: /clear search and browse all teams/i })
+      );
+
+      await waitFor(() =>
+        expect(screen.getByTestId('search-params')).not.toHaveTextContent('q=foo')
+      );
     });
   });
 });

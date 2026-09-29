@@ -1,132 +1,16 @@
 /* ============================================
-   SCRUM MASTER FACILITATION DASHBOARD
-   Modern Professional UI - aligned with the
-   team Dashboard design language
+   SCRUM MASTER FACILITATION PANEL
+   The second tab of the Dashboard module. It carries no page shell, no landmark and no heading of
+   its own -- the module owns those -- so this file styles only the lens's content.
    ============================================ */
 
 /* ============================================
-   PAGE SHELL & AMBIENT BACKGROUND
+   PANEL LEAD
+   The lens's own framing, stated once above the sections. The module header belongs to the whole
+   module, so it cannot say what this tab is for.
    ============================================ */
 
-.page {
-  display: flex;
-  flex-direction: column;
-  min-height: 100%;
-  position: relative;
-}
-
-.main {
-  flex: 1;
-  padding: var(--space-6);
-  position: relative;
-}
-
-/* Ambient decorative glow - mirrors the team dashboard */
-.main::before {
-  content: '';
-  position: fixed;
-  top: calc(var(--space-16) * -1);
-  right: calc(var(--space-20) * -1);
-  width: var(--space-32);
-  height: var(--space-32);
-  background: radial-gradient(
-    circle,
-    var(--color-primary-100) 0%,
-    var(--color-primary-50) 50%,
-    transparent 70%
-  );
-  opacity: var(--opacity-50);
-  pointer-events: none;
-  z-index: var(--z-base);
-}
-
-/* ============================================
-   SKIP LINK
-   ============================================ */
-
-.skip-link {
-  position: absolute;
-  left: -9999px;
-  top: 0;
-}
-
-.skip-link:focus {
-  left: var(--space-2);
-  top: var(--space-2);
-  z-index: var(--z-dropdown, 100);
-  background: var(--color-background-card);
-  padding: var(--space-2);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-md);
-}
-
-/* ============================================
-   PAGE HEADER
-   ============================================ */
-
-.page-header {
-  margin: var(--space-6) var(--space-6) var(--space-8);
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  padding: var(--space-6);
-  background: linear-gradient(
-    135deg,
-    var(--color-background-card) 0%,
-    var(--color-background-page) 100%
-  );
-  border-radius: var(--radius-2xl);
-  border: var(--border-width-1) solid var(--color-border-default);
-  box-shadow: var(--shadow-md);
-  position: relative;
-  overflow: hidden;
-}
-
-/* Gradient accent bar along the top edge */
-.page-header::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: var(--border-width-4);
-  background: linear-gradient(
-    90deg,
-    var(--color-primary-500) 0%,
-    var(--color-primary-600) 50%,
-    var(--color-success-500) 100%
-  );
-}
-
-.header-content {
-  flex: 1;
-  position: relative;
-  z-index: var(--z-base);
-}
-
-.page-title {
-  margin: 0 0 var(--space-2);
-  font-size: var(--font-size-3xl);
-  font-weight: var(--font-weight-bold);
-  color: var(--color-text-primary);
-  letter-spacing: var(--letter-spacing-tight);
-  line-height: var(--line-height-tight);
-  background: linear-gradient(135deg, var(--color-text-primary) 0%, var(--color-primary-600) 100%);
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-}
-
-.page-title-icon {
-  display: inline-flex;
-  align-items: center;
-  color: var(--color-primary-500);
-  -webkit-text-fill-color: initial;
-}
-
-.page-subtitle {
+.panel-lead {
   margin: 0;
   font-size: var(--font-size-base);
   color: var(--color-text-secondary);
@@ -463,6 +347,58 @@
 }
 
 /* ============================================
+   SPRINT GOAL VERDICTS
+   The team's own recorded assessment, told apart by its words rather than by pass/fail colouring.
+   ============================================ */
+
+.verdict-list {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-2);
+  list-style: none;
+  margin: var(--space-3) 0 0;
+  padding: 0;
+}
+
+.verdict-list li {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-background-hover);
+  border: var(--border-width-1) solid var(--color-border-default);
+  border-radius: var(--radius-md);
+}
+
+.verdict-label {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-tertiary);
+  font-weight: var(--font-weight-semibold);
+  text-transform: uppercase;
+  letter-spacing: var(--letter-spacing-wide);
+}
+
+.verdict-value {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+  font-variant-numeric: var(--font-variant-numeric-tabular);
+}
+
+.note {
+  margin: var(--space-3) 0 0;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  line-height: var(--line-height-relaxed);
+}
+
+@media (width <= 640px) {
+  .verdict-list {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ============================================
    WARNING & EMPTY STATES
    ============================================ */
 
@@ -520,39 +456,11 @@
 
 /* ============================================
    RESPONSIVE DESIGN
+   The module shell owns the page padding, so only the lens's own rhythm answers here.
    ============================================ */
-
-/* Extra Large Desktop (>= 1800px) */
-@media (width >= 1800px) {
-  .page-title {
-    font-size: var(--font-size-4xl);
-  }
-}
-
-/* Tablet (<= 1024px) */
-@media (width <= 1024px) {
-  .main {
-    padding: var(--space-4) var(--space-5);
-  }
-
-  .page-header {
-    flex-direction: column;
-    gap: var(--space-4);
-    margin: var(--space-4) var(--space-5) var(--space-8);
-  }
-}
 
 /* Mobile (<= 768px) */
 @media (width <= 768px) {
-  .main {
-    padding: var(--space-4);
-  }
-
-  .page-header {
-    padding: var(--space-4);
-    margin: var(--space-4) var(--space-4) var(--space-8);
-  }
-
   .grid {
     grid-template-columns: 1fr;
     gap: var(--space-4);
@@ -565,10 +473,6 @@
   .section {
     padding: var(--space-4);
     border-radius: var(--radius-xl);
-  }
-
-  .page-title {
-    font-size: var(--font-size-2xl);
   }
 
   .section-header {
@@ -584,10 +488,6 @@
 
 /* Small Mobile (<= 480px) */
 @media (width <= 480px) {
-  .main {
-    padding: var(--space-3) var(--space-2);
-  }
-
   .stat-grid {
     grid-template-columns: 1fr 1fr;
   }
@@ -621,4 +521,139 @@
   .radar {
     border-width: var(--border-width-2);
   }
+}
+
+/* ============================================================================
+   CADENCE ADHERENCE AND ADAPTATION FOLLOW-THROUGH
+   ============================================================================
+   Counted against the team's own working-day calendar, so a Sprint containing a
+   holiday is not reported as having fallen behind.
+   ============================================================================ */
+
+.cadence-figure {
+  display: block;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-primary);
+}
+
+.cadence-expected {
+  display: block;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-tertiary);
+}
+
+.cadence-badge {
+  display: inline-block;
+  margin-top: var(--space-1);
+  padding: var(--space-0-5) var(--space-2);
+  border-radius: var(--radius-full);
+  background: var(--color-success-50);
+  font-size: var(--font-size-2xs);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-success-700);
+}
+
+.adaptation-pending {
+  display: inline-block;
+  margin-top: var(--space-1);
+  padding: var(--space-0-5) var(--space-2);
+  border-radius: var(--radius-full);
+  background: var(--color-warning-50);
+  font-size: var(--font-size-2xs);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-warning-800);
+}
+
+.missed-days {
+  margin-top: var(--space-1);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+}
+
+.missed-days summary {
+  cursor: pointer;
+  color: var(--color-text-link);
+}
+
+.missed-days summary:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-focus-primary-4);
+}
+
+.missed-days .missed-days-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-3);
+  margin: var(--space-1) 0 0;
+  padding: 0;
+  list-style: none;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ============================================
+   BARRIER REGISTER SUMMARY & COACHING LOG
+   ============================================ */
+
+.barriers-link {
+  align-self: flex-start;
+  margin-top: var(--space-2);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-primary-600);
+  text-decoration: none;
+}
+
+.barriers-link:hover {
+  text-decoration: underline;
+}
+
+.barriers-link:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+  border-radius: var(--radius-sm);
+}
+
+.coaching-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  gap: var(--space-3);
+  margin-block: var(--space-2);
+}
+
+.coaching-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.coaching-input,
+.coaching-textarea {
+  padding: var(--space-2);
+  border: var(--input-border-width) solid var(--input-border-color);
+  border-radius: var(--input-border-radius);
+  background: var(--input-background);
+  color: var(--input-text-color);
+  font-family: var(--font-family-sans);
+  font-size: var(--font-size-sm);
+  box-sizing: border-box;
+  inline-size: 100%;
+}
+
+.coaching-textarea {
+  resize: vertical;
+}
+
+.coaching-input:focus,
+.coaching-textarea:focus {
+  border-color: var(--input-border-color-focus);
+  box-shadow: var(--focus-ring);
+  outline: none;
+}
+
+.coaching-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-block: var(--space-2);
 }

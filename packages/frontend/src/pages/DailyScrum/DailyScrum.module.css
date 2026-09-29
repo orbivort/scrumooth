@@ -2616,3 +2616,273 @@
 .daily-scrum-sprint-goal-container:hover .daily-scrum-sprint-goal-icon svg {
   color: var(--color-primary-700);
 }
+
+/* ============================================================================
+   STANDING CADENCE STRIP
+   ============================================================================
+   "at the same time and place every working day". The strip informs and
+   evidences; amber marks a day the calendar does not expect, never an error.
+   ============================================================================ */
+
+.cadence-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3) var(--space-5);
+  align-items: center;
+  padding: var(--space-3) var(--space-5);
+  margin-bottom: var(--space-4);
+  border: var(--border-width-1) solid var(--color-border-default);
+  border-radius: var(--radius-lg);
+  background: var(--color-background-card);
+  box-shadow: var(--shadow-sm);
+}
+
+.cadence-item {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+  min-width: 0;
+}
+
+.cadence-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: var(--radius-sm);
+  background: var(--color-primary-50);
+  color: var(--color-primary-600);
+}
+
+.cadence-value {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-primary);
+}
+
+.cadence-value-muted {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-tertiary);
+}
+
+.cadence-place {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.cadence-link {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-link);
+  text-decoration: none;
+  transition: color var(--transition-fast);
+}
+
+.cadence-link:hover {
+  color: var(--color-text-link-hover);
+  text-decoration: underline;
+}
+
+.cadence-day-pill {
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-full);
+  background: var(--color-primary-50);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-primary-700);
+}
+
+.cadence-held {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+}
+
+.cadence-non-working {
+  padding: var(--space-1) var(--space-3);
+  border: var(--border-width-1) solid var(--color-warning-200);
+  border-radius: var(--radius-full);
+  background: var(--color-warning-50);
+  font-size: var(--font-size-xs);
+  color: var(--color-warning-800);
+  animation: cadence-note-in var(--transition-normal);
+}
+
+@keyframes cadence-note-in {
+  from {
+    opacity: var(--opacity-0);
+    transform: translateY(-0.125rem);
+  }
+
+  to {
+    opacity: var(--opacity-100);
+    transform: translateY(0);
+  }
+}
+
+.cadence-configure {
+  margin-inline-start: auto;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-link);
+  text-decoration: none;
+}
+
+.cadence-configure:hover {
+  text-decoration: underline;
+}
+
+/* ============================================================================
+   ADAPTATION EVIDENCE
+   ============================================================================
+   "the purpose of the Daily Scrum is to ... adapt the Sprint Backlog". The
+   choice is between two declared outcomes, so it reads as a decision rather
+   than a correction.
+   ============================================================================ */
+
+.adaptation-evidence {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin: 0;
+  padding: var(--space-4);
+  border: var(--border-width-1) solid var(--color-border-default);
+  border-radius: var(--radius-md);
+  background: var(--color-background-hover);
+}
+
+.adaptation-evidence legend {
+  padding-inline: var(--space-2);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+}
+
+.evidence-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.evidence-option {
+  display: inline-flex;
+  gap: var(--space-2);
+  align-items: center;
+  padding: var(--space-2) var(--space-4);
+  border: var(--border-width-1) solid var(--color-border-default);
+  border-radius: var(--radius-full);
+  background: var(--color-background-card);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition:
+    border-color var(--transition-fast),
+    background var(--transition-fast),
+    color var(--transition-fast);
+}
+
+.evidence-option:hover {
+  border-color: var(--color-border-hover);
+}
+
+.evidence-option-active {
+  border-color: var(--color-primary-400);
+  background: var(--color-primary-50);
+  color: var(--color-primary-800);
+}
+
+.adaptation-evidence .evidence-option input:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-focus-primary-4);
+}
+
+.evidence-acknowledgement {
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border: var(--border-width-1) solid var(--color-success-200);
+  border-radius: var(--radius-sm);
+  background: var(--color-success-50);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-relaxed);
+  color: var(--color-success-800);
+}
+
+.evidence-hint {
+  margin: 0;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-tertiary);
+}
+
+.adjustment-action-type {
+  flex: 0 0 auto;
+  padding: var(--space-0-5) var(--space-2);
+  border-radius: var(--radius-xs);
+  background: var(--color-gray-100);
+  font-size: var(--font-size-2xs);
+  font-weight: var(--font-weight-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-secondary);
+}
+
+.reflection-chip {
+  flex: 0 0 auto;
+  padding: var(--space-0-5) var(--space-2);
+  border-radius: var(--radius-full);
+  font-size: var(--font-size-2xs);
+  font-weight: var(--font-weight-medium);
+}
+
+.reflection-chip-reflected {
+  background: var(--color-success-50);
+  color: var(--color-success-700);
+}
+
+.reflection-chip-pending {
+  background: var(--color-warning-50);
+  color: var(--color-warning-800);
+}
+
+/* ============================================================================
+   INSPECTED SPRINT GOAL
+   ============================================================================
+   The goal the event actually examined, which a later renegotiation must not
+   be able to rewrite.
+   ============================================================================ */
+
+.inspected-goal {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1-5);
+  padding: var(--space-3) var(--space-4);
+  margin-bottom: var(--space-4);
+  border: var(--border-width-1) solid var(--color-primary-100);
+  border-left: var(--border-width-4) solid var(--color-primary-400);
+  border-radius: var(--radius-md);
+  background: var(--color-primary-50);
+}
+
+.inspected-goal-text {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-relaxed);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-primary-900);
+}
+
+.inspected-goal-empty {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-tertiary);
+}
+
+.inspected-goal-renegotiated {
+  margin: 0;
+  padding-top: var(--space-2);
+  border-top: var(--border-width-1) solid var(--color-warning-200);
+  font-size: var(--font-size-xs);
+  line-height: var(--line-height-relaxed);
+  color: var(--color-warning-800);
+}

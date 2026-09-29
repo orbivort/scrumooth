@@ -4,9 +4,11 @@ import { vi, beforeAll } from 'vitest';
 
 import { MemberCard } from './MemberCard';
 
-// Mock SendMessageModal
+// Mock SendMessageModal. It renders a close control (when open) so the card's own
+// open/close handlers can be exercised without depending on the real modal's internals.
 vi.mock('./SendMessageModal', () => ({
-  SendMessageModal: vi.fn(() => null),
+  SendMessageModal: ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) =>
+    isOpen ? <button onClick={onClose}>close-message-modal</button> : null,
 }));
 
 // Mock useModalFocus
@@ -149,6 +151,30 @@ describe('MemberCard', () => {
 
       const deleteButton = screen.getByLabelText(/remove/i);
       expect(deleteButton).toBeDisabled();
+    });
+
+    test('opens the send-message modal and closes it again from the card view', () => {
+      const { render } = setup();
+      render();
+
+      fireEvent.click(screen.getByLabelText(/send message/i));
+      const modal = screen.getByText('close-message-modal');
+      expect(modal).toBeInTheDocument();
+
+      fireEvent.click(modal);
+      expect(screen.queryByText('close-message-modal')).not.toBeInTheDocument();
+    });
+
+    test('opens the send-message modal and closes it again from the list view', () => {
+      const { render } = setup({ viewMode: 'list' });
+      render();
+
+      fireEvent.click(screen.getByLabelText(/send message/i));
+      const modal = screen.getByText('close-message-modal');
+      expect(modal).toBeInTheDocument();
+
+      fireEvent.click(modal);
+      expect(screen.queryByText('close-message-modal')).not.toBeInTheDocument();
     });
   });
 });

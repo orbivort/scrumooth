@@ -15,6 +15,12 @@
     "title": "Elementos de acción",
     "unassigned": "Sin asignar"
   },
+  "anonymity": {
+    "authorHidden": "Anónimo",
+    "badge": "Anónima",
+    "chooseLabel": "Realizar esta retrospectiva de forma anónima",
+    "hint": "La autoría de los elementos no se registra para nadie, tampoco para el Scrum Master."
+  },
   "ariaLabels": {
     "columnsRegion": "Columnas de retroalimentación de la Sprint Retrospective",
     "sprintInfoRegion": "Información del Sprint",
@@ -68,7 +74,8 @@
     "ariaLabel": "Marcar Retrospective como completada",
     "button": "Completar Retrospective",
     "completing": "Completando...",
-    "description": "Marcar esta Retrospective como completada para finalizar y prevenir más cambios."
+    "description": "Marcar esta Retrospective como completada para finalizar y prevenir más cambios.",
+    "sprintNotEnded": "La Sprint Review inspecciona el resultado del Sprint y la Retrospective lo concluye. Esta Retrospective puede completarse a partir de la fecha de fin del Sprint ({{endDate}})."
   },
   "confirmationModal": {
     "cancel": "Cancelar",
@@ -109,6 +116,44 @@
     "message": "Eliminar elemento de acción",
     "title": "Confirmar Eliminación"
   },
+  "dodInspection": {
+    "addCriterion": "Añadir criterio",
+    "addCriterionPlaceholder": "Un criterio que el equipo debería añadir",
+    "adoptedVersion": "Adoptada v{{version}}",
+    "applyChanges": "Aplicar a la Definición de Terminado",
+    "applyFailed": "No se pudo actualizar la Definición de Terminado. No se cambió nada: ajusta las decisiones e inténtalo de nuevo.",
+    "applying": "Aplicando…",
+    "arriving": "Se añade",
+    "cancel": "Cancelar",
+    "changeIncomplete": "Cada criterio cambiado necesita su nueva redacción",
+    "confirmApply": "Aplicar cambios",
+    "confirmSubtitle": "Esto sustituye la Definición de Terminado v{{from}} por la v{{to}} y conserva la v{{from}} en el historial.",
+    "confirmTitle": "¿Aplicar estos cambios a la Definición de Terminado?",
+    "currentVersion": "Definición de Terminado v{{version}}",
+    "decisionLabel": "Decisión sobre {{criterion}}",
+    "decisions": {
+      "CHANGE": "Cambiar",
+      "KEEP": "Mantener",
+      "RETIRE": "Retirar"
+    },
+    "discardProposal": "Descartar propuesta",
+    "loading": "Cargando la Definición de Terminado…",
+    "noCriteria": "Este equipo aún no tiene ningún criterio activo en su Definición de Terminado. Añade los criterios con los que trabaja o defínelos en las Definiciones del equipo.",
+    "none": "Ninguno",
+    "noteLabel": "Motivo (opcional)",
+    "notePlaceholder": "¿Por qué esta decisión?",
+    "notesLabel": "Lo que el equipo concluyó sobre su Definición de Terminado",
+    "notesPlaceholder": "Registra el razonamiento detrás de estas decisiones…",
+    "proposedLabel": "Nueva redacción",
+    "proposedPlaceholder": "¿Cómo debería leerse este criterio?",
+    "retiring": "Se retira",
+    "rewording": "Nueva redacción",
+    "saveFailed": "No se pudo guardar la reflexión. Tus decisiones siguen en pantalla.",
+    "saveReflection": "Guardar reflexión",
+    "saving": "Guardando…",
+    "subtitle": "La Guía de Scrum pide que este evento inspeccione la Definición de Terminado e identifique los cambios más útiles. Decide cada criterio y aplica lo que el equipo acepte.",
+    "title": "Inspección de la Definición de Terminado"
+  },
   "errorState": {
     "backToRetrospectives": "Volver a Sprint Retrospectives",
     "message": "La Retrospective para este Sprint no pudo ser cargada.",
@@ -130,8 +175,14 @@
     "completedSprint": "Sprint completado",
     "completedSprints": "Sprints completados",
     "completedSprints_plural": "Sprints completados",
+    "createCancel": "Cancelar",
+    "createConfirm": "Crear",
     "createRetrospective": "Crear Retrospective",
     "creating": "Creando...",
+    "emptyState": {
+      "description": "La Retrospectiva puede realizarse para un Sprint activo o completado. Inicie un Sprint en Sprint Planning para comenzar.",
+      "title": "No hay Sprints para la Retrospectiva"
+    },
     "goal": "Sprint Goal:",
     "items": "elementos",
     "loading": "Cargando Sprint Retrospectives...",
@@ -155,6 +206,24 @@
     "viewRetrospective": "Ver Retrospective"
   },
   "loading": "Cargando Retrospective...",
+  "phases": {
+    "close": {
+      "description": "Anota lo que decidió el equipo, marca quién estuvo presente y completa la Retrospective.",
+      "title": "Registrar y cerrar"
+    },
+    "decide": {
+      "description": "Inspecciona la Definición de Terminado y convierte las mejoras acordadas en elementos de acción.",
+      "title": "Lo que cambiamos"
+    },
+    "reflect": {
+      "description": "Reúne lo que salió bien, lo que no y lo que el equipo quiere mejorar: una idea por elemento.",
+      "title": "Lo que ocurrió"
+    },
+    "stage": {
+      "description": "Trae al aula el Sprint que vas a inspeccionar, junto con los Valores de Scrum que marcan el tono.",
+      "title": "Preparar el escenario"
+    }
+  },
   "pts": "pts",
   "sprintInfo": {
     "businessDay_one": "{{count}} día de trabajo",

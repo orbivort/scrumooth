@@ -4,15 +4,45 @@ import * as teamController from '../controllers/team.controller';
 import * as dodController from '../controllers/dod.controller';
 import * as dorController from '../controllers/dor.controller';
 import * as healthCheckController from '../controllers/teamHealthCheck.controller';
+import * as teamGroupController from '../controllers/teamGroup.controller';
 import { authenticate, requireRoles } from '../middleware/auth.middleware';
+import { createRequireTeamContext } from '../middleware/teamContext.middleware';
 import { validateBody, validateParams } from '../middleware/validation.middleware';
-import { UserRole } from '@scrumooth/shared';
+import { GATE_CODES, UserRole } from '@scrumooth/shared';
+import { definitionItemsSchema } from '../validations/definitionItem.validation';
+import { joinTeamGroupSchema } from '../validations/teamGroup.validation';
 import { z } from 'zod';
 
 const router: RouterType = Router();
 
 // All routes require authentication
 router.use(authenticate);
+
+// The Definition of Done is "created by the Scrum Team" for its own product, so it belongs to the
+// team that owns it: reading or changing one requires membership. The refusal carries the module's
+// own gate code so an integrator can branch on it without parsing the message.
+const requireDoDTeamContext = createRequireTeamContext({
+  messageKey: 'errors:dodTeamMembersOnly',
+  gateCode: GATE_CODES.DOD_TEAM_MEMBERS_ONLY,
+});
+
+// The Definition of Ready is the team's own agreement about when an item is ready to be planned --
+// a complementary practice rather than a Guide artifact, but still the team's own: reading it asks
+// for membership, and changing it is the team's Scrum Master's (asserted in the service, where the
+// caller's role is resolved from this team's roster rather than from any team's).
+const requireDoRTeamContext = createRequireTeamContext({
+  messageKey: 'errors:dorTeamMembersOnly',
+  gateCode: GATE_CODES.DOR_TEAM_MEMBERS_ONLY,
+});
+
+// A health check reads the team's own reflection on how it lives the Scrum Values, so the team
+// context is asserted before the handler runs. The stronger rule -- results and trend belong to
+// the team's Scrum Master, and to no other team's -- is enforced in the service, where the
+// health check's own team is known.
+const requireHealthCheckTeamContext = createRequireTeamContext({
+  messageKey: 'errors:healthCheck.teamMembersOnly',
+  gateCode: GATE_CODES.HEALTH_CHECK_TEAM_MEMBERS_ONLY,
+});
 
 // Validation schemas
 const createTeamSchema = z.object({
@@ -38,29 +68,12 @@ const memberIdSchema = z.object({
   memberId: z.string().uuid('Invalid member ID'),
 });
 
-const updateDoDSchema = z.object({
-  items: z.array(
-    z.object({
-      id: z.string().optional(),
-      description: z.string().min(1, 'Description is required'),
-      category: z.string().optional(),
-      isActive: z.boolean(),
-      order: z.number(),
-    })
-  ),
-});
+// The team's Definition of Done and its Definition of Ready are replaced by the same payload shape,
+// and that shape is shared with the group's Definition of Done: one criterion contract, validated in
+// one place, so the three surfaces cannot disagree about what a criterion is.
+const updateDoDSchema = definitionItemsSchema();
 
-const updateDoRSchema = z.object({
-  items: z.array(
-    z.object({
-      id: z.string().optional(),
-      description: z.string().min(1, 'Description is required'),
-      category: z.string().optional(),
-      isActive: z.boolean(),
-      order: z.number(),
-    })
-  ),
-});
+const updateDoRSchema = definitionItemsSchema();
 
 /**
  * @route   GET /api/v1/teams
@@ -93,7 +106,7 @@ router.get('/:teamId', validateParams(teamIdSchema), teamController.getTeamById)
 /**
  * @route   PUT /api/v1/teams/:teamId
  * @desc    Update team
- * @access  Private (Administrator)
+ * @access  Private
  */
 router.put(
   '/:teamId',
@@ -105,7 +118,7 @@ router.put(
 /**
  * @route   DELETE /api/v1/teams/:teamId
  * @desc    Delete team
- * @access  Private (Administrator)
+ * @access  Private
  */
 router.delete('/:teamId', validateParams(teamIdSchema), teamController.deleteTeam);
 
@@ -159,70 +172,102 @@ router.get('/:teamId/my-role', validateParams(teamIdSchema), teamController.getM
 router.post('/select-team', teamController.selectTeam);
 
 /**
+ * @route   POST /api/v1/teams/:teamId/group
+ * @desc    Adopt a group's shared Definition of Done. Refused when the team already belongs to a
+ *          group, or when the acknowledged version is not the one in force, so a team cannot be
+ *          recorded as complying with a Definition of Done it never saw.
+ * @access  Private (the team's Product Owner or Scrum Master)
+ */
+router.post(
+  '/:teamId/group',
+  validateParams(teamIdSchema),
+  validateBody(joinTeamGroupSchema),
+  teamGroupController.joinTeamGroup
+);
+
+/**
+ * @route   DELETE /api/v1/teams/:teamId/group
+ * @desc    Leave the group, keeping the Definition of Done the team has been complying with.
+ * @access  Private (the team's Product Owner or Scrum Master)
+ */
+router.delete('/:teamId/group', validateParams(teamIdSchema), teamGroupController.leaveTeamGroup);
+
+/**
  * @route   GET /api/v1/teams/:teamId/definition-of-done
  * @desc    Get Definition of Done for a team
- * @access  Private
+ * @access  Private (team members)
  */
 router.get(
   '/:teamId/definition-of-done',
   validateParams(teamIdSchema),
+  requireDoDTeamContext,
   dodController.getDefinitionOfDone
 );
 
 /**
  * @route   PUT /api/v1/teams/:teamId/definition-of-done
- * @desc    Update Definition of Done for a team
- * @access  Private (Scrum Master)
+ * @desc    Replace the Definition of Done with a new version. Refused when the new version would
+ *          hold no active item, and every superseded version is preserved in the history.
+ * @access  Private (team members) — the Definition of Done is the Scrum Team's own agreement
+ *          about what "Done" means, not a role's private setting.
  */
 router.put(
   '/:teamId/definition-of-done',
   validateParams(teamIdSchema),
+  requireDoDTeamContext,
   validateBody(updateDoDSchema),
   dodController.updateDefinitionOfDone
 );
 
 /**
  * @route   GET /api/v1/teams/:teamId/definition-of-done/history
- * @desc    Get Definition of Done history for a team
- * @access  Private
+ * @desc    Get the append-only Definition of Done version history for a team, newest first
+ * @access  Private (team members)
  */
 router.get(
   '/:teamId/definition-of-done/history',
   validateParams(teamIdSchema),
+  requireDoDTeamContext,
   dodController.getDoDHistory
 );
 
 /**
  * @route   GET /api/v1/teams/:teamId/definition-of-ready
  * @desc    Get Definition of Ready for a team
- * @access  Private
+ * @access  Private (team members)
  */
 router.get(
   '/:teamId/definition-of-ready',
   validateParams(teamIdSchema),
+  requireDoRTeamContext,
   dorController.getDefinitionOfReady
 );
 
 /**
  * @route   PUT /api/v1/teams/:teamId/definition-of-ready
- * @desc    Update Definition of Ready for a team
- * @access  Private (Scrum Master)
+ * @desc    Replace the Definition of Ready with a new version. Refused when the new version would
+ *          hold no active criterion. Criteria the payload keeps by id are updated in place, so the
+ *          readiness verifications recorded against them survive the edit.
+ * @access  Private (the team's Scrum Master) — the readiness agreement is a complementary team
+ *          practice, and the API reference documents the Scrum Master as its owner.
  */
 router.put(
   '/:teamId/definition-of-ready',
   validateParams(teamIdSchema),
+  requireDoRTeamContext,
   validateBody(updateDoRSchema),
   dorController.updateDefinitionOfReady
 );
 
 /**
  * @route   GET /api/v1/teams/:teamId/definition-of-ready/history
- * @desc    Get Definition of Ready history for a team
- * @access  Private
+ * @desc    Get the Definition of Ready in force for a team (it keeps a version, not snapshots)
+ * @access  Private (team members)
  */
 router.get(
   '/:teamId/definition-of-ready/history',
   validateParams(teamIdSchema),
+  requireDoRTeamContext,
   dorController.getDoRHistory
 );
 
@@ -234,6 +279,7 @@ router.get(
 router.post(
   '/:teamId/health-checks',
   validateParams(teamIdSchema),
+  requireHealthCheckTeamContext,
   requireRoles(UserRole.SCRUM_MASTER),
   validateBody(z.object({ sprintId: z.string().uuid().optional().nullable() })),
   healthCheckController.createHealthCheck
@@ -247,6 +293,7 @@ router.post(
 router.get(
   '/:teamId/health-checks/latest',
   validateParams(teamIdSchema),
+  requireHealthCheckTeamContext,
   healthCheckController.getLatestStatus
 );
 
@@ -258,6 +305,7 @@ router.get(
 router.get(
   '/:teamId/health-check-trend',
   validateParams(teamIdSchema),
+  requireHealthCheckTeamContext,
   requireRoles(UserRole.SCRUM_MASTER),
   healthCheckController.getTrend
 );

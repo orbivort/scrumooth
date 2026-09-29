@@ -28,6 +28,9 @@ import { SprintStatus, ImpedimentStatus } from '../../types';
 
 vi.mock('../../store', () => ({
   useTeamStore: vi.fn(),
+  // The page reads the current user id to decide reporter/owner delete rights.
+  useAuthStore: (selector: (state: { user: { id: string } | null }) => unknown) =>
+    selector({ user: { id: 'user-1' } }),
 }));
 
 vi.mock('../../services', () => ({
@@ -203,7 +206,8 @@ describe('Impediments - Loading State Tests', () => {
         ).not.toBeInTheDocument();
       });
 
-      expect(screen.getByText('Impediments')).toBeInTheDocument();
+      // 'Impediments' is both the module heading and the first tab, so query by role.
+      expect(screen.getByRole('heading', { level: 1, name: 'Impediments' })).toBeInTheDocument();
     });
 
     it('should show loading state during sprint fetch', async () => {

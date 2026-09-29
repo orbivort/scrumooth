@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { apiService, definitionService } from '../../services';
 import { useTeamStore } from '../../store';
 import { useTeamContext } from '../../contexts/TeamContext';
+import { canOrderBacklog } from '../../utils/roleUtils';
 import { logger } from '../../utils/logger';
 import { queryKeys } from '../../hooks/queryKeys';
 import { useToast } from '../../hooks/useToast';
@@ -15,9 +16,7 @@ import {
   TaskStatus,
   type ProductBacklogItem,
   type Task,
-  type BacklogAdjustment,
   type StakeholderFeedback,
-  type RetroActionItem,
 } from '../../types';
 import { EmptyState } from '../../components/EmptyState';
 import { LoadingState } from '../../components/common/Loading';
@@ -31,6 +30,7 @@ import { BulkUploadModal } from './BulkUpload';
 import { BacklogHeader, BacklogFilterBar, ActiveGoalBanner, LoadMoreButton } from './components';
 import { BoardView } from './views/BoardView';
 import { ListView } from './views/ListView';
+import { type BacklogDropTarget } from './hooks/useDragAndDrop';
 import {
   CreateItemModal,
   EditItemModal,
@@ -85,6 +85,11 @@ const BacklogContent: React.FC = () => {
   const { userRole } = useTeamContext();
   const isDeveloper = userRole === 'DEVELOPERS';
 
+  // Only the Product Owner orders the Product Backlog (Scrum Guide). The backend refuses
+  // everyone else with GATE_PRODUCT_OWNER_ONLY_BACKLOG_ORDER, so the ordering affordances are
+  // offered only where the decision belongs — with a hint explaining why.
+  const isProductOwner = canOrderBacklog(userRole);
+
   const {
     backlogData,
     activeGoal,
@@ -121,24 +126,29 @@ const BacklogContent: React.FC = () => {
     setPendingStatus,
   } = useModalManager();
 
-  const { createItemMutation, updateItemMutation, editItemMutation, deleteItemMutation } =
-    useBacklogMutations({
-      resetForm,
-      setFormErrors,
-      setWorkflowError,
-      setSelectedItem,
-      onCreateSuccess: () => setShowCreateModal(false),
-      onEditSuccess: () => {
-        setShowEditModal(false);
-        setShowDetailModal(false);
-      },
-      onDeleteSuccess: () => {
-        setShowDeleteModal(false);
-        setShowDetailModal(false);
-      },
-      onSuccessToast: success,
-      onErrorToast: showError,
-    });
+  const {
+    createItemMutation,
+    updateItemMutation,
+    editItemMutation,
+    deleteItemMutation,
+    reorderItemMutation,
+  } = useBacklogMutations({
+    resetForm,
+    setFormErrors,
+    setWorkflowError,
+    setSelectedItem,
+    onCreateSuccess: () => setShowCreateModal(false),
+    onEditSuccess: () => {
+      setShowEditModal(false);
+      setShowDetailModal(false);
+    },
+    onDeleteSuccess: () => {
+      setShowDeleteModal(false);
+      setShowDetailModal(false);
+    },
+    onSuccessToast: success,
+    onErrorToast: showError,
+  });
 
   const doneCount = filteredItems.filter((item) => item.status === ItemStatus.DONE).length;
 
@@ -207,6 +217,73 @@ const BacklogContent: React.FC = () => {
       setShowDetailModal(true);
     },
     [setSelectedItem, setWorkflowError, setShowDetailModal]
+  );
+
+  /**
+   * Persist the place a card was dropped in.
+   *
+   * A drop always carries the band it landed in and, when it landed on a card, the neighbour it
+   * now sits next to. Those are two different writes upstream, so when the band changes the
+   * priority is written first and the position second: the reorder is resolved against the team's
+   * stored order, and moving an item that is still filed under its old band in between would
+   * place it relative to the wrong neighbours.
+   */
+  const handleReorder = useCallback(
+    async (itemId: string, target: BacklogDropTarget) => {
+      const item = (backlogData?.data ?? []).find((candidate) => candidate.id === itemId);
+      if (!item) {
+        return;
+      }
+
+      if (target.priority !== item.priority) {
+        try {
+          await updateItemMutation.mutateAsync({
+            id: itemId,
+            updates: { priority: target.priority },
+          });
+        } catch {
+          // The mutation already surfaced the refusal (e.g. the Product Owner ordering gate).
+          return;
+        }
+      }
+
+      if (!target.targetPbiId || !target.position) {
+        return;
+      }
+
+      reorderItemMutation.mutate({
+        pbiId: itemId,
+        targetPbiId: target.targetPbiId,
+        position: target.position,
+      });
+    },
+    [backlogData?.data, updateItemMutation, reorderItemMutation]
+  );
+
+  /**
+   * Move an item one position within the visible list, anchored on its neighbour.
+   *
+   * The list view exposes ordering without a pointer, so ordering never depends on drag alone.
+   */
+  const handleMoveByStep = useCallback(
+    (itemId: string, direction: 'up' | 'down') => {
+      const index = filteredItems.findIndex((item) => item.id === itemId);
+      if (index === -1) {
+        return;
+      }
+
+      const neighbour = direction === 'up' ? filteredItems[index - 1] : filteredItems[index + 1];
+      if (!neighbour) {
+        return;
+      }
+
+      reorderItemMutation.mutate({
+        pbiId: itemId,
+        targetPbiId: neighbour.id,
+        position: direction === 'up' ? 'before' : 'after',
+      });
+    },
+    [filteredItems, reorderItemMutation]
   );
 
   // Deep-link support: when the URL carries a `?pbi=<id>` query param (e.g. navigated from
@@ -499,21 +576,9 @@ const BacklogContent: React.FC = () => {
           onBulkImport={() => setShowBulkUploadModal(true)}
         />
 
-        <PendingAdjustments
-          onImplementAdd={(adjustment: BacklogAdjustment) => {
-            setFormData({
-              title: adjustment.description,
-              description: `Reason: ${adjustment.reason}`,
-              estimate: undefined,
-              moscowPriority: MoSCoWPriority.COULD_HAVE,
-              businessValue: undefined,
-              labels: '',
-              acceptanceCriteria: '',
-              status: ItemStatus.NEW,
-            });
-            setShowCreateModal(true);
-          }}
-        />
+        {/* Adjustments materialise into a backlog item through the panel itself, so the created
+            item is linked back to the adjustment as its evidence. */}
+        <PendingAdjustments />
 
         <PendingFeedback
           onCreateWorkItem={(feedback: StakeholderFeedback) => {
@@ -532,21 +597,7 @@ const BacklogContent: React.FC = () => {
           }}
         />
 
-        <PendingRetroActionItems
-          onCreateWorkItem={(actionItem: RetroActionItem) => {
-            setFormData({
-              title: actionItem.title,
-              description: actionItem.description ?? `Action item from retrospective`,
-              estimate: undefined,
-              moscowPriority: MoSCoWPriority.COULD_HAVE,
-              businessValue: undefined,
-              labels: 'retro-action',
-              acceptanceCriteria: '',
-              status: ItemStatus.NEW,
-            });
-            setShowCreateModal(true);
-          }}
-        />
+        <PendingRetroActionItems />
 
         <ActiveGoalBanner
           goal={activeGoal}
@@ -558,18 +609,31 @@ const BacklogContent: React.FC = () => {
 
         <BacklogFilterBar filters={filters} onFiltersChange={setFilters} />
 
+        {!isProductOwner && (
+          <p className={styles['backlog-order-hint']} role="note">
+            {t('order.productOwnerOnlyHint') as string}
+          </p>
+        )}
+
         {viewMode === 'board' && (
           <BoardView
             itemsByMoscow={itemsByMoscow}
             onItemClick={handleOpenDetailModal}
+            onReorder={handleReorder}
             onPriorityChange={(itemId, newPriority) => {
               updateItemMutation.mutate({ id: itemId, updates: { priority: newPriority } });
             }}
+            canOrder={isProductOwner}
           />
         )}
 
         {viewMode === 'list' && (
-          <ListView items={filteredItems} onItemClick={handleOpenDetailModal} />
+          <ListView
+            items={filteredItems}
+            onItemClick={handleOpenDetailModal}
+            onMove={isProductOwner ? handleMoveByStep : undefined}
+            canOrder={isProductOwner}
+          />
         )}
 
         {isAutoLoading && (

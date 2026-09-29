@@ -46,6 +46,7 @@
     "ownerPlaceholder": "Seleccionar propietario...",
     "productGoalAssessment": "Evaluación del progreso del objetivo del producto",
     "productGoalAssessmentPlaceholder": "¿Cómo está progresando el equipo hacia el objetivo del producto?",
+    "productGoalAssessmentRequired": "Escribe la evaluación del objetivo de producto o deja el campo vacío. Una evaluación en blanco no se registra como evidencia.",
     "relatedPbi": "PBI Relacionado (Opcional)",
     "requiredFieldsNote": "Los campos requeridos están marcados con *",
     "subtitle": "Capture información valiosa de las partes interesadas para mejorar su producto",
@@ -67,6 +68,7 @@
     "cannotAddAdjustmentTitle": "No se puede agregar ajuste a un Review completado",
     "description": "Cambios al Product Backlog basados en Feedback de la Sprint Review.",
     "empty": "Sin ajustes del backlog realizados durante este Review.",
+    "linkedItem": "Elemento vinculado:",
     "owner": "Propietario:",
     "reason": "Razón:",
     "status": {
@@ -93,6 +95,13 @@
       "completeSubtitle": "Revise todos los elementos y confirme para marcar esta Sprint Review como completada",
       "completeTitle": "Completar Sprint Review",
       "confirmation": "¿Está seguro de que desea marcar esta Sprint Review como completada? Esta acción no puede ser revertida.",
+      "goalAchieved": "Logrado",
+      "goalNotAchieved": "No logrado",
+      "goalPartiallyAchieved": "Parcialmente logrado",
+      "goalVerdictHint": "Se registra al completar la revisión.",
+      "goalVerdictLegend": "¿En qué medida se alcanzó el objetivo del sprint?",
+      "goalVerdictNote": "Las propias palabras del equipo (opcional)",
+      "goalVerdictRequired": "Registra el veredicto del equipo sobre el objetivo del sprint: logrado, parcialmente logrado o no logrado. La finalización de elementos no lo sustituye.",
       "gotIt": "Entendido",
       "validationAttended": "Al menos un asistente debe estar marcado como atendido antes de completar la Sprint Review.",
       "validationAttendees": "Por favor agregue al menos un asistente antes de completar la Sprint Review.",
@@ -101,6 +110,7 @@
     },
     "defaultSummary": "Sprint Review completado.",
     "failed": "No se pudo completar el Review. Por favor intente nuevamente.",
+    "sprintNotEnded": "La Sprint Review inspecciona el resultado del Sprint. Esta Sprint Review puede completarse a partir de la fecha de fin del Sprint ({{endDate}}).",
     "successModal": {
       "close": "Cerrar",
       "message": "¡Sprint Review completada exitosamente!",
@@ -121,6 +131,7 @@
   "detailLabels": {
     "endDate": "Fecha de fin:",
     "sprintGoal": "Sprint Goal:",
+    "sprintGoalOutcome": "Veredicto sobre el objetivo del sprint",
     "startDate": "Fecha de inicio:",
     "status": "Estado:"
   },
@@ -143,7 +154,7 @@
       "question": "Pregunta",
       "suggestion": "Sugerencia"
     },
-    "empty": "Sin Feedback recopilado. Haga clic en \"Agregar Feedback\" para añadir Feedback de Stakeholders.",
+    "empty": "Aún no hay Feedback de Stakeholders. Agregue Feedback para registrar lo que plantearon.",
     "owner": "Propietario:",
     "title": "Feedback de Stakeholders"
   },
@@ -184,6 +195,10 @@
     "completedSprints_plural": "Sprints completados",
     "createIncrement": "Crear Increment",
     "createReview": "Crear Sprint Review",
+    "emptyState": {
+      "description": "La Revisión del Sprint puede realizarse para un Sprint activo o completado. Inicie un Sprint en Sprint Planning para comenzar.",
+      "title": "No hay Sprints para revisar"
+    },
     "goal": "Goal:",
     "loading": "Cargando Sprint Reviews...",
     "reviewStatus": {

@@ -1,4 +1,13 @@
 {
+  "coverage": {
+    "goalAssessed": "Sprint Goals assessed",
+    "notAvailable": "Not recorded",
+    "note": "Coverage says how much of this page is actually recorded. Points come from the record written when each Sprint closed; where that record does not exist, the status history of the Sprint's own items is used, and where neither survives the point is shown as a gap rather than as zero.",
+    "reconstructed": "Rebuilt from history",
+    "recorded": "Recorded at close",
+    "sprintsInScope": "Sprints in scope",
+    "title": "What this page rests on"
+  },
   "dod": {
     "empty": "No Definition of Done defined. Add one to ensure consistent quality.",
     "title": "Definition of Done"
@@ -7,23 +16,21 @@
     "message": "Unable to load report data. Please try again later.",
     "title": "Error Loading Reports"
   },
-  "insights": {
-    "empty": "No insights available yet. Complete more sprints to generate insights.",
-    "title": "Key Insights"
-  },
   "loading": {
-    "insights": "Loading insights...",
+    "insights": "Loading observations...",
     "metrics": "Loading metrics...",
     "sprintHistory": "Loading sprint history...",
     "velocityChart": "Loading velocity chart..."
   },
   "metrics": {
-    "avgVelocity": {
-      "fromLastSprint": "from last sprint",
-      "title": "Average Velocity",
-      "unit": "Story Points per Sprint"
+    "avgCompletedPoints": {
+      "coverage": "{{observed}} of {{total}} closed Sprints recorded",
+      "title": "Average Completed Points",
+      "unit": "Story points per Sprint"
     },
+    "caption": "The observed record. Averages are taken over the Sprints whose completion could be established, and they describe what happened rather than what to plan next.",
     "completionRate": {
+      "disclaimer": "Points completion only, not Sprint Goal attainment",
       "title": "Sprint Backlog Completion Rate",
       "unit": "Sprints Fully Delivered"
     },
@@ -31,21 +38,45 @@
       "openCount": "open impediment(s)",
       "resolved": "Resolved",
       "title": "Impediments"
-    }
+    },
+    "observedRange": {
+      "title": "Observed Range",
+      "unit": "Lowest to highest recorded"
+    },
+    "title": "Observed record"
+  },
+  "observations": {
+    "empty": "Nothing to inspect yet. Complete a Sprint and hold its Sprint Review to record something here.",
+    "intro": "Signals read out of the team's own record. Each one names the evidence behind it, and none of them is a target: they are things to look at, and the Sprint Retrospective is where they turn into improvements.",
+    "title": "Observations to inspect"
   },
   "productGoal": {
     "empty": "No active product goal. Define a goal to give the team a clear target.",
     "title": "Product Goal",
     "viewLink": "View goals"
   },
+  "provenance": {
+    "in_progress": "Sprint in progress",
+    "not_available": "Not recorded",
+    "reconstructed": "Rebuilt from status history",
+    "recorded": "Recorded at close"
+  },
   "pts": "pts",
   "skipToMainContent": "Skip to main content",
+  "sprintGoalOutcome": {
+    "achieved": "achieved",
+    "assessed": "Sprint Goal: {{verdict}}",
+    "notAchieved": "not achieved",
+    "notRecorded": "Sprint Goal not assessed",
+    "partiallyAchieved": "partially achieved"
+  },
   "sprintHistory": {
     "empty": "No sprint history available.",
     "sprintGoalLabel": "Sprint Goal",
     "stats": {
       "completed": "Completed",
       "impediments": "Impediments",
+      "items": "Items Done",
       "planned": "Planned",
       "teamMembers": "Team Members"
     },
@@ -53,21 +84,28 @@
   },
   "sprintStatusLabels": {
     "ACTIVE": "Active",
+    "CANCELLED": "Cancelled",
     "COMPLETED": "Completed",
+    "DRAFT": "Draft",
     "PLANNED": "Planned"
   },
-  "subtitle": "Track team performance and sprint metrics",
+  "subtitle": "The team's own observed history, read back for inspection",
   "title": "Reports",
   "velocityChart": {
-    "accessibilityDescription": "Bar chart comparing planned and completed story points per sprint.",
+    "accessibilityDescription": "Bar chart comparing planned and completed story points per sprint. A sprint whose completion is not recorded has no completed bar.",
     "ariaLabel": "Sprint velocity chart comparing planned and completed story points.",
-    "ariaTableCaption": "Sprint velocity data",
+    "ariaTableCaption": "Planned and completed story points per sprint, with where each figure came from",
     "ariaTableLabel": "Sprint velocity data table",
     "ariaTableSprint": "Sprint",
     "completed": "Completed",
     "planned": "Planned",
-    "title": "Sprint Velocity",
+    "provenanceColumn": "Where it came from",
+    "title": "Planned and completed points",
     "xAxisLabel": "Sprint",
-    "yAxisLabel": "Story Points"
+    "yAxisLabel": "Story points"
+  },
+  "velocityHistory": {
+    "caption": "This is descriptive history: it is not a target, and it is not comparable between teams.",
+    "title": "Completed points history"
   }
 }

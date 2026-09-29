@@ -1,5 +1,5 @@
-import React, { useState, useReducer, useCallback, useRef, useMemo } from 'react';
-import { useNavigate } from 'react-router';
+import React, { useState, useReducer, useCallback, useEffect, useRef, useMemo } from 'react';
+import { useNavigate, useSearchParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { useQueryClient } from '@tanstack/react-query';
 import { UserRole } from '@scrumooth/shared';
@@ -7,6 +7,7 @@ import { UserRole } from '@scrumooth/shared';
 import { useTeamStore, useAuthStore } from '../../store';
 import { queryKeys } from '../../hooks/queryKeys';
 import { canMutateSprintBacklog, canCancelSprint } from '../../utils/roleUtils';
+import { parseSprintBoardDeepLink } from '../../utils/notificationRoute';
 import { useDebounce, useToast } from '../../hooks';
 import { ToastContainer } from '../../components/common/ToastContainer/ToastContainer';
 import {
@@ -72,6 +73,7 @@ import {
   PbiPreviewModal,
 } from './components/modals';
 import { SprintBacklogManager } from './SprintBacklogManager';
+import { SprintSmNotes } from './components/SprintSmNotes';
 import styles from './SprintBoard.module.css';
 
 export const SprintBoard: React.FC = () => {
@@ -87,6 +89,10 @@ export const SprintBoard: React.FC = () => {
   // Developers-only; PO/SM keep read-only inspection. Only the Product Owner may cancel.
   const canMutate = canMutateSprintBacklog(userRoleInCurrentTeam);
   const isProductOwner = canCancelSprint(userRoleInCurrentTeam);
+  // The Sprint's notes are the Scrum Master's coaching record: the server withholds them from
+  // everyone else, so the panel is rendered only for the role that owns them.
+  const isScrumMaster =
+    String(userRoleInCurrentTeam).toLowerCase() === UserRole.SCRUM_MASTER.toLowerCase();
   const navigate = useNavigate();
   const { t } = useTranslation('sprint');
   const teamId = currentTeam?.id;
@@ -194,7 +200,36 @@ export const SprintBoard: React.FC = () => {
     readyToDonePbiIds,
     isReviewCompleted,
     isRetrospectiveCompleted,
+    pendingBacklogChangeCount,
   } = boardData;
+
+  // A notification about a pending Sprint Backlog change routes here with the Sprint and the
+  // change it concerns. The Product Owner is delivered to the decision itself: the Sprint Backlog
+  // Manager opens on the change, rather than the board leaving them to find it.
+  const [searchParams] = useSearchParams();
+  const sprintBacklogDeepLink = useMemo(
+    () => parseSprintBoardDeepLink(searchParams),
+    [searchParams]
+  );
+  const deepLinkHandledRef = useRef(false);
+  const [backlogManagerChangeId, setBacklogManagerChangeId] = useState<string | undefined>(
+    undefined
+  );
+
+  useEffect(() => {
+    if (deepLinkHandledRef.current || !sprintBacklogDeepLink.openBacklogManager || !sprint) {
+      return;
+    }
+    // The notification names the Sprint the decision belongs to. A different Sprint is the current
+    // team's business, so its manager must not be opened on a change that is not there.
+    if (sprintBacklogDeepLink.sprintId && sprintBacklogDeepLink.sprintId !== sprint.id) {
+      return;
+    }
+
+    deepLinkHandledRef.current = true;
+    setBacklogManagerChangeId(sprintBacklogDeepLink.changeId ?? undefined);
+    modalDispatch({ type: 'OPEN_BACKLOG_MANAGER' });
+  }, [sprintBacklogDeepLink, sprint]);
 
   const handleSetFormErrors = useCallback((errors: Record<string, string | undefined>) => {
     formDispatch({
@@ -615,6 +650,7 @@ export const SprintBoard: React.FC = () => {
         showBurndown={showBurndown}
         canMutate={canMutate}
         isProductOwner={isProductOwner}
+        pendingApprovalCount={pendingBacklogChangeCount}
       />
 
       <SprintOverview
@@ -632,6 +668,8 @@ export const SprintBoard: React.FC = () => {
         totalStoryPoints={sprintStats.totalStoryPoints}
         completedStoryPoints={sprintStats.completedStoryPoints}
       />
+
+      {isScrumMaster && <SprintSmNotes sprintId={sprint.id} smNotes={sprint.smNotes} />}
       {showBurndown && (
         <BurndownChart
           sprintName={sprint.name}
@@ -928,6 +966,7 @@ export const SprintBoard: React.FC = () => {
           sprintId={sprint.id}
           sprintName={sprint.name}
           sprintGoal={sprint.sprintGoal}
+          highlightChangeId={backlogManagerChangeId}
           onClose={() => modalDispatch({ type: 'CLOSE_BACKLOG_MANAGER' })}
         />
       )}

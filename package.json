@@ -91,6 +91,7 @@
     "i18n:glossary": "node scripts/i18n/sync-glossary.mjs",
     "i18n:pseudo": "node scripts/i18n/pseudo-localize.mjs",
     "i18n:sort": "node scripts/i18n/sort.mjs",
+    "gates:verify": "node scripts/maintenance/verify-gate-catalogue.mjs",
     "test:scripts": "vitest run --config scripts/vitest.config.ts",
     "audit": "pnpm audit --registry https://registry.npmjs.org/",
     "outdated": "pnpm outdated",

@@ -503,9 +503,21 @@
   border: var(--border-width-1) solid var(--color-warning-300);
 }
 
+.status-badge.draft {
+  background: linear-gradient(135deg, var(--color-gray-100) 0%, var(--color-gray-200) 100%);
+  color: var(--color-gray-700);
+  border: var(--border-width-1) solid var(--color-gray-300);
+}
+
+.status-badge.cancelled {
+  background: linear-gradient(135deg, var(--color-error-100) 0%, var(--color-error-200) 100%);
+  color: var(--color-error-800);
+  border: var(--border-width-1) solid var(--color-error-300);
+}
+
 .history-stats {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
   gap: var(--space-4);
   padding-top: var(--space-4);
   border-top: var(--border-width-1) solid var(--color-border-default);
@@ -1294,5 +1306,248 @@
   .insight-item:hover {
     transform: none;
     box-shadow: none;
+  }
+}
+
+/* ========================================
+   INSPECTION LAYOUT
+   Coverage first, then history, observations, and only then the summary figures -- so what the
+   record rests on is read before the figures drawn from it.
+   ======================================== */
+
+.content {
+  width: 100%;
+}
+
+.section-heading {
+  margin: 0 0 var(--space-4) 0;
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+  letter-spacing: var(--letter-spacing-tight);
+}
+
+/* A caption states what the section above it is and is not. Muted, but never optional. */
+.section-caption {
+  margin: var(--space-3) 0 0 0;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-tertiary);
+  line-height: var(--line-height-relaxed);
+  max-width: 80ch;
+}
+
+/* ========================================
+   DATA COVERAGE STRIP
+   Which parts of the record are actually recorded, stated in words before colour.
+   ======================================== */
+
+.coverage-strip {
+  background: var(--color-background-card);
+  border: var(--border-width-1) solid var(--color-border-default);
+  border-radius: var(--radius-xl);
+  padding: var(--space-5);
+  margin-bottom: var(--space-6);
+  box-shadow: var(--shadow-sm);
+}
+
+.coverage-heading {
+  margin: 0 0 var(--space-4) 0;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: var(--letter-spacing-wide);
+}
+
+.coverage-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: var(--space-4);
+  margin: 0;
+}
+
+.coverage-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.coverage-item dt {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-tertiary);
+  font-weight: var(--font-weight-semibold);
+  text-transform: uppercase;
+  letter-spacing: var(--letter-spacing-wide);
+}
+
+.coverage-item dd {
+  margin: 0;
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+}
+
+.coverage-note {
+  margin: var(--space-4) 0 0 0;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-tertiary);
+  line-height: var(--line-height-relaxed);
+  max-width: 80ch;
+}
+
+/* ========================================
+   SPRINT GOAL VERDICT + PROVENANCE
+   Text badges, not colour swatches: a verdict is read, and a point's origin is stated.
+   ======================================== */
+
+.verdict-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+}
+
+.goal-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-3);
+  border: var(--border-width-1) solid var(--color-border-default);
+  border-radius: var(--radius-full);
+  background: var(--color-background-hover);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-normal);
+}
+
+.goal-badge-icon {
+  color: var(--color-text-tertiary);
+  flex-shrink: 0;
+}
+
+/* The verdicts are told apart by their words and their border weight. None of them is coloured as
+   good or bad news: a Sprint that missed its Goal is a fact the team inspects, not a failure. */
+.goal-achieved {
+  border-color: var(--color-primary-400);
+  background: var(--color-primary-50);
+}
+
+.goal-partially-achieved {
+  border-style: dashed;
+}
+
+.goal-not-achieved {
+  border-color: var(--color-gray-400);
+}
+
+.goal-unassessed {
+  border-style: dashed;
+  color: var(--color-text-secondary);
+}
+
+.provenance-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-full);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  background: var(--color-background-hover);
+  color: var(--color-text-secondary);
+}
+
+.provenance-recorded {
+  border: var(--border-width-1) solid var(--color-primary-200);
+  color: var(--color-primary-700);
+}
+
+.provenance-reconstructed {
+  border: var(--border-width-1) solid var(--color-gray-300);
+}
+
+.provenance-in-progress {
+  border: var(--border-width-1) dashed var(--color-primary-300);
+  color: var(--color-primary-700);
+}
+
+.provenance-not-available {
+  border: var(--border-width-1) dashed var(--color-gray-400);
+  color: var(--color-text-tertiary);
+}
+
+.sprint-goal-note {
+  margin: var(--space-3) 0 0 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  line-height: var(--line-height-relaxed);
+  font-style: italic;
+}
+
+/* ========================================
+   OBSERVED RECORD (metrics)
+   ======================================== */
+
+.metrics-section {
+  margin-bottom: var(--space-8);
+}
+
+.metrics-header {
+  margin-bottom: var(--space-5);
+}
+
+.metrics-header h3 {
+  margin: 0;
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+  letter-spacing: var(--letter-spacing-tight);
+}
+
+/* The metric cards are titled with h4 now that the section has its own h3. */
+.metric-header h4 {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-secondary);
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: var(--letter-spacing-wide);
+}
+
+.metric-icon-glyph {
+  color: var(--color-primary-500);
+  flex-shrink: 0;
+}
+
+@media (width <= 768px) {
+  .coverage-strip {
+    padding: var(--space-4);
+  }
+
+  .coverage-list {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .goal-badge,
+  .provenance-chip {
+    transition: none;
+  }
+}
+
+@media (prefers-contrast: high) {
+  .coverage-strip,
+  .goal-badge,
+  .provenance-chip {
+    border-width: var(--border-width-2);
+  }
+}
+
+@media print {
+  .coverage-strip {
+    box-shadow: none;
+    break-inside: avoid;
   }
 }

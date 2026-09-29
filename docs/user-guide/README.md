@@ -1,6 +1,6 @@
 # Scrumooth User Guide
 
-Welcome to the Scrumooth User Guide. This comprehensive documentation will help you understand and effectively use Scrumooth, the self-hosted Scrum Guide enforcement layer.
+Welcome to the Scrumooth User Guide. Scrumooth is the self-hosted **Scrum Guide enforcement layer**: the rules of the 2020 Scrum Guide are enforced server-side, so a Sprint cannot be closed before its Review and its Sprint Retrospective, only Developers size the work, and "Done" means the Definition of Done has been met.
 
 > **Judge a Scrum tool by the rules it keeps, not by the boards it draws.**
 
@@ -8,37 +8,22 @@ Welcome to the Scrumooth User Guide. This comprehensive documentation will help 
 
 ## About This Guide
 
-### What is Scrumooth?
+This guide covers how to use Scrumooth, from creating your account to running a full Sprint.
 
-Scrumooth is a self-hosted, open-source web application for teams that run Scrum. It is the **Scrum Guide enforcement layer**: it turns the rules of the 2020 Scrum Guide into gates the backend enforces — a Sprint cannot be closed before its Review and its Retrospective, only Developers size the work, one Product Owner owns the Product Backlog, and "Done" means the Definition of Done has been met. It provides tools for the entire Scrum lifecycle:
-
-- **Product Goals** - Define and track strategic objectives
-- **Product Backlog** - Manage and prioritize work items
-- **Sprint Planning** - Plan iterations with capacity management
-- **Sprint Execution** - Track progress with Kanban boards
-- **Daily Scrum** - Coordinate daily standups
-- **Sprint Reviews** - Gather feedback and demonstrate work
-- **Retrospectives** - Reflect and improve processes
-
-These are the features covered by this guide. The canonical, complete feature list — including Increments, Impediments, Definition of Done/Ready, the Workflow Engine, and Team Health Check — lives in the project README: [Features](../../README.md#features).
-
-Scrumooth is built for one situation in particular: engineering-led organisations that have to be able to show how a Sprint was actually run, and for whom process data cannot leave their own infrastructure — regulated industries, their suppliers, and public-sector teams. It is **self-hosted by design** (your process data never leaves your infrastructure), ships with GDPR data export and a 14-day deletion grace period, and writes every role change and state transition to a dedicated, compliance-separated audit log.
-
-### What Scrumooth Enforces
-
-Scrumooth does not treat the Scrum Guide as advice. It enforces the rules server-side, so they hold whether you use the interface or call the API directly: a Sprint cannot be closed before its Review and its Retrospective, only Developers size the work, one Product Owner owns the Product Backlog, and "Done" means the Definition of Done has been met.
-
-The canonical list of enforced rules — and the boundaries where Scrumooth deliberately does not enforce anything — lives in the project README: [What Scrumooth Enforces](../../README.md#what-scrumooth-enforces).
+- **What Scrumooth is, and why it is built this way:** [The Manifesto](../../README.md#the-manifesto)
+- **Everything Scrumooth enforces:** [What Scrumooth Enforces](../../README.md#what-scrumooth-enforces)
+- **The complete feature list:** [Features](../../README.md#features)
+- **Scrum itself — its events, roles and artifacts:** the [2020 Scrum Guide](https://scrumguides.org/)
 
 ### Who Should Use This Guide?
 
 This guide is designed for all Scrumooth users:
 
-| Role               | Primary Sections                               |
-| ------------------ | ---------------------------------------------- |
-| **Product Owners** | Getting Started, Core Features                 |
-| **Scrum Masters**  | Getting Started, Core Features, Retrospectives |
-| **Developers**     | Getting Started, Sprint Board, Daily Scrum     |
+| Role               | Start with                                                                                                                                                                                                          |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Product Owners** | [Getting Started](./getting-started/README.md), [Product Goal](./core-features/product-goal.md), [Product Backlog](./core-features/product-backlog.md)                                                              |
+| **Scrum Masters**  | [Getting Started](./getting-started/README.md), [Sprint Planning](./core-features/sprint-planning.md), [Impediment](./core-features/impediment.md), [Sprint Retrospective](./core-features/sprint-retrospective.md) |
+| **Developers**     | [Getting Started](./getting-started/README.md), [Sprint Board](./core-features/sprint-board.md), [Daily Scrum](./core-features/daily-scrum.md), [Increment](./core-features/increment.md)                           |
 
 ---
 
@@ -51,13 +36,15 @@ user-guide/
 │   └── README.md                # Step-by-step setup guide
 └── core-features/               # Feature-specific guides
     ├── README.md                # Feature overview
-    ├── product-goals.md         # Product Goals guide
-    ├── product-backlog.md       # Backlog management guide
-    ├── sprint-planning.md       # Sprint planning guide
-    ├── sprint-board.md          # Sprint board (Kanban) guide
+    ├── product-goal.md          # Product Goal guide
+    ├── product-backlog.md       # Product Backlog guide
+    ├── sprint-planning.md       # Sprint Planning guide
+    ├── sprint-board.md          # Sprint Board (Kanban) guide
     ├── daily-scrum.md           # Daily Scrum guide
-    ├── sprint-review.md         # Sprint review guide
-    └── retrospectives.md        # Retrospectives guide
+    ├── impediment.md            # Impediment guide
+    ├── increment.md             # Increment guide
+    ├── sprint-review.md         # Sprint Review guide
+    └── sprint-retrospective.md  # Sprint Retrospective guide
 ```
 
 ---
@@ -70,75 +57,37 @@ user-guide/
 
 1. [Create your account](./getting-started/README.md#step-1-account-registration)
 2. [Set up your team](./getting-started/README.md#step-2-team-setup)
-3. [Create your first product goal](./getting-started/README.md#step-3-create-your-first-product-goal)
-4. [Add backlog items](./getting-started/README.md#step-4-add-backlog-items)
-5. [Plan your first sprint](./getting-started/README.md#step-5-plan-your-first-sprint)
+3. [Create your first Product Goal](./getting-started/README.md#step-3-create-your-first-product-goal)
+4. [Add Product Backlog items](./getting-started/README.md#step-4-add-backlog-items)
+5. [Plan your first Sprint](./getting-started/README.md#step-5-plan-your-first-sprint)
 
 ### I Need Help with a Specific Feature
 
-| Feature         | Guide                                                       |
-| --------------- | ----------------------------------------------------------- |
-| Product Goals   | [Product Goals Guide](./core-features/product-goals.md)     |
-| Product Backlog | [Product Backlog Guide](./core-features/product-backlog.md) |
-| Sprint Planning | [Sprint Planning Guide](./core-features/sprint-planning.md) |
-| Sprint Board    | [Sprint Board Guide](./core-features/sprint-board.md)       |
-| Daily Scrum     | [Daily Scrum Guide](./core-features/daily-scrum.md)         |
-| Sprint Review   | [Sprint Review Guide](./core-features/sprint-review.md)     |
-| Retrospectives  | [Retrospectives Guide](./core-features/retrospectives.md)   |
+| Feature              | Guide                                                                 |
+| -------------------- | --------------------------------------------------------------------- |
+| Product Goal         | [Product Goal Guide](./core-features/product-goal.md)                 |
+| Product Backlog      | [Product Backlog Guide](./core-features/product-backlog.md)           |
+| Sprint Planning      | [Sprint Planning Guide](./core-features/sprint-planning.md)           |
+| Sprint Board         | [Sprint Board Guide](./core-features/sprint-board.md)                 |
+| Daily Scrum          | [Daily Scrum Guide](./core-features/daily-scrum.md)                   |
+| Impediment           | [Impediment Guide](./core-features/impediment.md)                     |
+| Increment            | [Increment Guide](./core-features/increment.md)                       |
+| Sprint Review        | [Sprint Review Guide](./core-features/sprint-review.md)               |
+| Sprint Retrospective | [Sprint Retrospective Guide](./core-features/sprint-retrospective.md) |
 
 ---
 
-## Scrum Framework Overview
+## Scrum Roles in Scrumooth
 
-Scrumooth enforces the Scrum framework as defined in the [2020 Scrum Guide](https://scrumguides.org/).
+A team holds exactly one Product Owner and one Scrum Master, and only Developers size work. What each role may do follows from the 2020 Scrum Guide:
 
-### Scrum Events
+| Role              | What the role may do in Scrumooth                                                                                                   |
+| ----------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| **Product Owner** | Order the Product Backlog and set its MoSCoW band, own the Product Goal, run the Sprint Review, cancel a Sprint                     |
+| **Scrum Master**  | Facilitate events, maintain the Definition of Ready, own unassigned Impediments and the escalation notice, keep coaching notes      |
+| **Developers**    | Size Product Backlog items, save the Sprint Backlog, execute and update work, author the Daily Scrum, verify and deliver Increments |
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                      SPRINT LIFECYCLE                            │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                  │
-│   ┌─────────────────┐                                            │
-│   │ Sprint Planning │ ──▶ Define Sprint Goal & select work       │
-│   └─────────────────┘                                            │
-│            │                                                     │
-│            ▼                                                     │
-│   ┌─────────────────┐     ┌──────────────┐                      │
-│   │ Sprint Board    │ ◀── │ Daily Scrum  │ ──▶ Daily sync       │
-│   │ (Execute Work)  │     │ (15 min)     │                      │
-│   └─────────────────┘     └──────────────┘                      │
-│            │                                                     │
-│            ▼                                                     │
-│   ┌─────────────────┐                                            │
-│   │ Sprint Review   │ ──▶ Demo & gather feedback                 │
-│   └─────────────────┘                                            │
-│            │                                                     │
-│            ▼                                                     │
-│   ┌─────────────────┐                                            │
-│   │ Retrospective   │ ──▶ Reflect & improve                      │
-│   └─────────────────┘                                            │
-│            │                                                     │
-│            └──────▶ Repeat for next sprint                       │
-│                                                                  │
-└─────────────────────────────────────────────────────────────────┘
-```
-
-### Scrum Roles
-
-| Role              | Responsibility         | Scrumooth Permissions                            |
-| ----------------- | ---------------------- | ------------------------------------------------ |
-| **Product Owner** | Maximize product value | Manage backlog, goals, reviews; cancel a Sprint  |
-| **Scrum Master**  | Facilitate Scrum       | Facilitate ceremonies, manage impediments        |
-| **Developers**    | Create the Increment   | Size work, save the Sprint Backlog, execute work |
-
-### Scrum Artifacts
-
-| Artifact            | Description                                      | Commitment             |
-| ------------------- | ------------------------------------------------ | ---------------------- |
-| **Product Backlog** | Ordered list of everything needed in the product | **Product Goal**       |
-| **Sprint Backlog**  | Items selected for the current Sprint            | **Sprint Goal**        |
-| **Increment**       | Sum of all completed items                       | **Definition of Done** |
+Each feature guide names the gates that apply to the actions it describes.
 
 ---
 
@@ -146,82 +95,35 @@ Scrumooth enforces the Scrum framework as defined in the [2020 Scrum Guide](http
 
 ### Starting a New Sprint
 
-1. Review [Sprint Planning Guide](./core-features/sprint-planning.md)
-2. Ensure backlog items are refined and estimated
-3. Define a clear Sprint Goal
-4. Select items based on team capacity
-5. Start the sprint and track on the Sprint Board
+1. Review the [Sprint Planning Guide](./core-features/sprint-planning.md).
+2. Ensure Product Backlog items are refined to Ready and estimated.
+3. Define a clear Sprint Goal.
+4. Select items based on team capacity.
+5. Save the Sprint Backlog, start the Sprint and track it on the Sprint Board.
 
 ### Daily Work Routine
 
-1. Check the [Sprint Board](./core-features/sprint-board.md) for your tasks
-2. Participate in [Daily Scrum](./core-features/daily-scrum.md)
-3. Update task status as you progress
-4. Raise impediments immediately
+1. Check the [Sprint Board](./core-features/sprint-board.md) for your tasks.
+2. Participate in the [Daily Scrum](./core-features/daily-scrum.md).
+3. Update task status as you progress.
+4. Raise an [Impediment](./core-features/impediment.md) immediately when something blocks the team.
 
 ### Ending a Sprint
 
-1. Complete all Definition of Done criteria
-2. Conduct [Sprint Review](./core-features/sprint-review.md) with stakeholders
-3. Hold [Retrospective](./core-features/retrospectives.md) with the team
-4. Document action items for improvement
-5. Plan the next sprint
-
----
-
-## Tips for Success
-
-### For Product Owners
-
-- Keep the backlog refined and prioritized
-- Write clear acceptance criteria
-- Engage stakeholders regularly
-- Focus on value, not output
-
-### For Scrum Masters
-
-- Protect the team from interruptions
-- Remove impediments quickly
-- Facilitate, don't dictate
-- Foster continuous improvement
-
-### For Developers
-
-- Commit to sprint goals
-- Update the board daily
-- Collaborate with teammates
-- Maintain quality standards
+1. Complete the work and verify the Definition of Done for each item.
+2. Compose and deliver the [Increment](./core-features/increment.md).
+3. Conduct the [Sprint Review](./core-features/sprint-review.md) with stakeholders.
+4. Hold the [Sprint Retrospective](./core-features/sprint-retrospective.md) with the team.
+5. Document action items for improvement, then plan the next Sprint.
 
 ---
 
 ## Getting Help
 
-### In-Application
-
-- Look for help icons (💡) throughout the interface
-- Hover over fields for tooltips
-- Press **?** for keyboard shortcuts
-
-### Documentation
-
-- Browse the guides in this documentation
-
-### Support
-
-- Review existing documentation first
-- Check the project's issue tracker for known issues
-- Contact your team Product Owner for access issues
+- **In application:** look for help icons (💡), hover field tooltips, and press **?** for keyboard shortcuts.
+- **Documentation:** the feature guides above, and the [REST API reference](../api/README.md) for integrations.
+- **Issues:** search the [GitHub issue tracker](https://github.com/orbivort/scrumooth/issues) before filing a new report.
 
 ---
 
-## Document Version
-
-| Attribute             | Value       |
-| --------------------- | ----------- |
-| **Version**           | 1.1         |
-| **Last Updated**      | August 2026 |
-| **Scrumooth Version** | 1.x         |
-
----
-
-**Ready to get started?** Head to the [Getting Started Guide](./getting-started/README.md) to begin your Scrumooth journey.
+**Ready to get started?** Head to the [Getting Started Guide](./getting-started/README.md) to begin.

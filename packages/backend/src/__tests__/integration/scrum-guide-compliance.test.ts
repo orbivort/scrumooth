@@ -896,7 +896,7 @@ describe('Scrum Guide Compliance Enhancement Integration Tests', () => {
         .expect(409);
 
       expect(response.body.success).toBe(false);
-      expect(response.body.error.code).toBe('ROLE_ALREADY_TAKEN');
+      expect(response.body.error.code).toBe('GATE_LEADERSHIP_ROLE_TAKEN');
 
       // No membership row should have been created for the target user
       const membership = await prisma.teamMember.findUnique({
@@ -930,7 +930,7 @@ describe('Scrum Guide Compliance Enhancement Integration Tests', () => {
         .expect(409);
 
       expect(response.body.success).toBe(false);
-      expect(response.body.error.code).toBe('ROLE_ALREADY_TAKEN');
+      expect(response.body.error.code).toBe('GATE_LEADERSHIP_ROLE_TAKEN');
     });
 
     it('should reject promoting a member to an already-taken Scrum Master role', async () => {
@@ -967,7 +967,7 @@ describe('Scrum Guide Compliance Enhancement Integration Tests', () => {
         .expect(409);
 
       expect(response.body.success).toBe(false);
-      expect(response.body.error.code).toBe('ROLE_ALREADY_TAKEN');
+      expect(response.body.error.code).toBe('GATE_LEADERSHIP_ROLE_TAKEN');
 
       // The role should remain unchanged in the database
       const unchanged = await prisma.teamMember.findUnique({ where: { id: membership.id } });
@@ -1124,7 +1124,7 @@ describe('Scrum Guide Compliance Enhancement Integration Tests', () => {
         .expect(409);
 
       expect(response.body.success).toBe(false);
-      expect(response.body.error.code).toBe('TEAM_SIZE_LIMIT_REACHED');
+      expect(response.body.error.code).toBe('GATE_TEAM_SIZE_LIMIT');
 
       // No membership row should have been created for the target user
       const targetUser = await prisma.user.findUnique({

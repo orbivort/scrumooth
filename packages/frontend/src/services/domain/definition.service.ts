@@ -1,11 +1,13 @@
 import type {
   DefinitionOfDone,
-  DoDItem,
+  DoDItemPayload,
   DoDChecklistVerification,
   DoDComplianceReport,
+  DoDVersionSnapshot,
   DefinitionOfReady,
-  DoRItem,
+  DoRItemPayload,
   DoRChecklistVerification,
+  DoRVersionSnapshot,
   ApiResponse,
 } from '../../types';
 import { apiService } from '../index';
@@ -20,7 +22,7 @@ class DefinitionService {
 
   async updateDefinitionOfDone(
     teamId: string,
-    items: DoDItem[]
+    items: DoDItemPayload[]
   ): Promise<ApiResponse<DefinitionOfDone>> {
     const response = await apiService.put<ApiResponse<DefinitionOfDone>>(
       `/teams/${teamId}/definition-of-done`,
@@ -29,8 +31,12 @@ class DefinitionService {
     return response.data;
   }
 
-  async getDoDHistory(teamId: string): Promise<ApiResponse<DefinitionOfDone[]>> {
-    const response = await apiService.get<ApiResponse<DefinitionOfDone[]>>(
+  /**
+   * The append-only Definition of Done version history, newest first, with the current version
+   * marked.
+   */
+  async getDoDHistory(teamId: string): Promise<ApiResponse<DoDVersionSnapshot[]>> {
+    const response = await apiService.get<ApiResponse<DoDVersionSnapshot[]>>(
       `/teams/${teamId}/definition-of-done/history`
     );
     return response.data;
@@ -70,7 +76,7 @@ class DefinitionService {
 
   async updateDefinitionOfReady(
     teamId: string,
-    items: DoRItem[]
+    items: DoRItemPayload[]
   ): Promise<ApiResponse<DefinitionOfReady>> {
     const response = await apiService.put<ApiResponse<DefinitionOfReady>>(
       `/teams/${teamId}/definition-of-ready`,
@@ -79,8 +85,12 @@ class DefinitionService {
     return response.data;
   }
 
-  async getDoRHistory(teamId: string): Promise<ApiResponse<DefinitionOfReady[]>> {
-    const response = await apiService.get<ApiResponse<DefinitionOfReady[]>>(
+  /**
+   * The append-only Definition of Ready version history, newest first, with the current version
+   * marked -- the same shape the Definition of Done's history reports, so one component reads both.
+   */
+  async getDoRHistory(teamId: string): Promise<ApiResponse<DoRVersionSnapshot[]>> {
+    const response = await apiService.get<ApiResponse<DoRVersionSnapshot[]>>(
       `/teams/${teamId}/definition-of-ready/history`
     );
     return response.data;

@@ -1,5 +1,6 @@
 import prisma from '../utils/prisma';
-import { NotFoundError, BadRequestError } from '../utils/errors';
+import { NotFoundError, BadRequestError, localizedError } from '../utils/errors';
+import { GATE_CODES } from '@scrumooth/shared';
 import { generateUUIDv7 } from '../utils/uuid';
 import type {
   SprintConfiguration,
@@ -240,6 +241,45 @@ class SprintConfigurationService {
 
     if (!sprint) {
       throw new NotFoundError('Generated sprint');
+    }
+
+    // The Sprint Goal is authored by the team that owns the Sprint: only a member of that team
+    // may write it, so a non-member cannot rewrite another team's commitment through the API.
+    const teamMember = await prisma.teamMember.findFirst({
+      where: { teamId: sprint.teamId, userId },
+      select: { id: true },
+    });
+
+    if (!teamMember) {
+      throw localizedError(
+        'errors:sprint.teamMembersOnly',
+        {},
+        403,
+        GATE_CODES.SPRINT_TEAM_MEMBERS_ONLY
+      );
+    }
+
+    // The Guide treats the Sprint Goal as the commitment the team inspects during the Sprint.
+    // Once the Sprint is running it is therefore frozen: the sanctioned way to revise it is the
+    // Product Owner's acknowledgement of a goal-endangering Sprint Backlog change, which records
+    // the renegotiation. The authoritative lifecycle status lives on the materialized Sprint
+    // (the GeneratedSprint status is the planning-side mirror), so resolve both.
+    const linkedSprint = sprint.sprintId
+      ? await prisma.sprint.findUnique({
+          where: { id: sprint.sprintId },
+          select: { status: true },
+        })
+      : null;
+
+    const authoritativeStatus = linkedSprint?.status ?? sprint.status;
+
+    if (authoritativeStatus !== 'DRAFT' && authoritativeStatus !== 'PLANNED') {
+      throw localizedError(
+        'errors:sprint.goalLocked',
+        { status: authoritativeStatus },
+        400,
+        GATE_CODES.SPRINT_GOAL_LOCKED
+      );
     }
 
     // Keep the materialized Sprint record in sync: once a Sprint has been materialized from

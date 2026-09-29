@@ -1,0 +1,292 @@
+/* Group create/edit modal - Modern Design System */
+
+/* Consistent with the Create/Edit team modals, so the settings screens read as one family. */
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4);
+  background: var(--modal-overlay-background);
+  backdrop-filter: blur(var(--space-2));
+  z-index: var(--modal-backdrop-z-index);
+  animation: overlay-fade-in var(--duration-fast) ease-out;
+}
+
+@keyframes overlay-fade-in {
+  from {
+    opacity: var(--opacity-0);
+  }
+
+  to {
+    opacity: var(--opacity-100);
+  }
+}
+
+.modal {
+  width: 100%;
+  max-width: 560px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-background-card);
+  border-radius: var(--radius-2xl);
+  box-shadow: var(--shadow-xl);
+  overflow: hidden;
+  animation: modal-scale-in var(--duration-normal) var(--ease-bounce);
+}
+
+@keyframes modal-scale-in {
+  from {
+    opacity: var(--opacity-0);
+    transform: scale(0.95) translateY(var(--space-4));
+  }
+
+  to {
+    opacity: var(--opacity-100);
+    transform: scale(1) translateY(0);
+  }
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--space-4);
+  padding: var(--space-6);
+  background: linear-gradient(
+    135deg,
+    var(--color-primary-50) 0%,
+    var(--color-background-card) 100%
+  );
+  border-bottom: var(--border-width-1) solid var(--color-border-default);
+}
+
+.header-content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.icon-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-xl);
+  background: linear-gradient(135deg, var(--color-primary-500) 0%, var(--color-primary-600) 100%);
+  color: var(--color-text-inverse);
+  box-shadow: var(--shadow-primary-button);
+  margin-bottom: var(--space-1);
+}
+
+.title {
+  margin: 0;
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+  letter-spacing: var(--letter-spacing-tight);
+}
+
+.subtitle {
+  margin: 0;
+  max-width: 52ch;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-normal);
+}
+
+.close-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  border-width: 0;
+  border-radius: var(--radius-lg);
+  background: transparent;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition:
+    background-color var(--transition-fast),
+    color var(--transition-fast);
+}
+
+.close-button:hover {
+  background: var(--color-background-hover);
+  color: var(--color-text-primary);
+}
+
+.close-button:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  padding: var(--space-6);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.form-label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+}
+
+.required {
+  color: var(--color-error-600);
+}
+
+.optional-badge {
+  padding: 1px var(--space-2);
+  border-radius: var(--radius-full);
+  background: var(--color-background-page);
+  border: var(--border-width-1) solid var(--color-border-default);
+  color: var(--color-text-tertiary);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-normal);
+}
+
+.input-wrapper {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+.form-input,
+.form-textarea {
+  width: 100%;
+  padding: var(--space-3) var(--space-4);
+  border: var(--border-width-1) solid var(--color-border-default);
+  border-radius: var(--radius-lg);
+  background: var(--color-background-card);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-sm);
+  font-family: inherit;
+  line-height: var(--line-height-normal);
+  transition:
+    border-color var(--transition-fast),
+    box-shadow var(--transition-fast);
+}
+
+.form-textarea {
+  resize: vertical;
+  min-height: 84px;
+}
+
+.form-input:focus,
+.form-textarea:focus {
+  outline: none;
+  border-color: var(--color-primary-500);
+  box-shadow: var(--shadow-focus-primary-4);
+}
+
+.form-input:disabled,
+.form-textarea:disabled {
+  background: var(--color-background-page);
+  cursor: not-allowed;
+}
+
+.form-input[aria-invalid='true'],
+.form-textarea[aria-invalid='true'] {
+  border-color: var(--color-error-500);
+}
+
+.char-counter {
+  align-self: flex-end;
+  margin-top: var(--space-1);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-tertiary);
+}
+
+.char-counter-warning {
+  color: var(--color-warning-600);
+}
+
+.char-counter-error {
+  color: var(--color-error-600);
+  font-weight: var(--font-weight-semibold);
+}
+
+.form-error {
+  color: var(--color-error-600);
+  font-size: var(--font-size-xs);
+}
+
+.form-server-error {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border: var(--border-width-1) solid var(--color-error-200);
+  border-radius: var(--radius-lg);
+  background: var(--color-error-50);
+  color: var(--color-error-700);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-normal);
+}
+
+.footer {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: var(--space-3);
+  padding-top: var(--space-4);
+  border-top: var(--border-width-1) solid var(--color-border-default);
+  flex-wrap: wrap;
+}
+
+/* Sits inside the shared `Button`, whose children are wrapped in a plain inline span -- so the gap
+   between the icon and its label is the icon's own trailing margin, and the box is aligned to the
+   text by its middle rather than its baseline. */
+.save-icon {
+  width: 1rem;
+  height: 1rem;
+  margin-inline-end: var(--space-1);
+  vertical-align: middle;
+  flex-shrink: 0;
+}
+
+@media (width <= 600px) {
+  .header,
+  .body {
+    padding: var(--space-4);
+  }
+
+  .footer {
+    flex-direction: column-reverse;
+    align-items: stretch;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .overlay,
+  .modal {
+    animation: none;
+  }
+
+  .close-button,
+  .form-input,
+  .form-textarea {
+    transition: none;
+  }
+}

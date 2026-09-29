@@ -194,6 +194,17 @@ export const config = {
     ),
   },
 
+  // Impediment Escalation Configuration
+  impediment: {
+    // How long an unresolved impediment may age before its team's Scrum Master is notified.
+    // One week is the product default: long enough not to nag, short enough to act within a Sprint.
+    escalationThresholdDays: Math.max(
+      1, // A sub-day threshold is noise rather than a signal.
+      parseInt(process.env.IMPEDIMENT_ESCALATION_THRESHOLD_DAYS ?? '7', 10)
+    ),
+    escalationCron: process.env.IMPEDIMENT_ESCALATION_CRON ?? '0 6 * * *',
+  },
+
   // Event Loop Monitoring
   eventLoop: {
     enabled:
@@ -230,6 +241,15 @@ export const config = {
     // Maximum number of members allowed per Scrum Team (Scrum Guide: "typically 10 or fewer").
     // Configurable so self-hosted deployments can adjust the limit.
     maxSize: parseInt(process.env.TEAM_MAX_SIZE ?? '10', 10),
+  },
+
+  // Sprint Configuration (Scrum Guide compliance)
+  sprint: {
+    // Over-commitment tolerance, as a percentage, allowed when comparing the plan's summed
+    // task hours against the capacity the team recorded during Sprint Planning. Estimation is
+    // inherently approximate, so a plan may exceed recorded capacity by up to this amount
+    // before `startSprint` refuses it. `0` disables the tolerance (strict > 100% refusal).
+    capacityTolerancePct: parseFloat(process.env.SPRINT_CAPACITY_TOLERANCE_PCT ?? '10'),
   },
 
   // Database Transaction Configuration
@@ -449,9 +469,22 @@ export const validateConfig = (): void => {
     throw new Error('NOTIFICATION_MAX_PAGE_SIZE must be between 10 and 100');
   }
 
+  // Validate impediment escalation configuration
+  if (
+    Number.isNaN(config.impediment.escalationThresholdDays) ||
+    config.impediment.escalationThresholdDays < 1
+  ) {
+    throw new Error('IMPEDIMENT_ESCALATION_THRESHOLD_DAYS must be a positive integer');
+  }
+
   // Validate team configuration
   if (config.team.maxSize < 1) {
     throw new Error('TEAM_MAX_SIZE must be a positive integer');
+  }
+
+  // Validate sprint configuration
+  if (Number.isNaN(config.sprint.capacityTolerancePct) || config.sprint.capacityTolerancePct < 0) {
+    throw new Error('SPRINT_CAPACITY_TOLERANCE_PCT must be a non-negative number');
   }
 
   // Validate event loop monitoring configuration

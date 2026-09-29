@@ -139,6 +139,21 @@ describe('Cross-Feature Integration Tests', () => {
     return pbi;
   };
 
+  // Helper to give a team its single ACTIVE Product Goal. The Product Backlog is the emergent
+  // expression of the Product Goal, so creating an item through the API requires one.
+  const createActiveProductGoal = async (teamId: string, userId: string) => {
+    const goalId = generateUUIDv7();
+    return prisma.productGoal.create({
+      data: {
+        id: goalId,
+        teamId,
+        title: 'Active Goal',
+        status: 'ACTIVE',
+        createdBy: userId,
+      },
+    });
+  };
+
   const cleanupTestData = async (emails: string[]) => {
     try {
       for (const email of emails) {
@@ -214,7 +229,11 @@ describe('Cross-Feature Integration Tests', () => {
         .post(`/api/v1/sprints/${sprint.id}/backlog-items`)
         .set('Cookie', cookies)
         .set(CSRF_CONSTANTS.HEADER_NAME, csrfToken)
-        .send({ pbiId: pbi.id })
+        .send({
+          pbiId: pbi.id,
+          reason: 'Cross-feature regression check',
+          goalImpact: 'SUPPORTS_GOAL',
+        })
         .expect(201);
 
       const response = await request(app)
@@ -337,6 +356,8 @@ describe('Cross-Feature Integration Tests', () => {
         .send({
           progressNotes: 'Blocked by external dependency',
           planForNextDay: 'Plan to unblock',
+          // A Daily Scrum must declare its adaptation outcome.
+          noAdaptationNeeded: true,
         })
         .expect(201);
 
@@ -434,6 +455,12 @@ describe('Cross-Feature Integration Tests', () => {
           name: 'Deliverable Increment',
           status: 'VERIFIED',
           totalStoryPoints: 20,
+          // Delivery requires both the integration verification and the written attestation that
+          // the Increment is in usable condition.
+          integrationVerified: true,
+          usabilityVerified: true,
+          usabilityEvidence: 'Exercised in the staging environment',
+          usabilityVerifiedAt: new Date(),
         },
       });
 
@@ -714,6 +741,8 @@ describe('Cross-Feature Integration Tests', () => {
         const team = await createTestTeam(teamName);
         // Only Developers may set story points, so use a Developer here.
         await addTeamMember(team.id, await getUserIdFromEmail(email), 'DEVELOPERS');
+        // A PBI must serve the team's ACTIVE Product Goal, so give the team one first.
+        await createActiveProductGoal(team.id, await getUserIdFromEmail(email));
 
         // Test with each locale header - validation should be consistent
         for (const locale of SUPPORTED_LOCALES) {
@@ -793,6 +822,8 @@ describe('Cross-Feature Integration Tests', () => {
         const team = await createTestTeam(teamName);
         // Only Developers may set story points, so use a Developer here.
         await addTeamMember(team.id, await getUserIdFromEmail(email), 'DEVELOPERS');
+        // A PBI must serve the team's ACTIVE Product Goal, so give the team one first.
+        await createActiveProductGoal(team.id, await getUserIdFromEmail(email));
 
         // Create sprint with Italian locale
         const { csrfToken } = extractCsrfFromCookies(cookies);
@@ -865,6 +896,7 @@ describe('Cross-Feature Integration Tests', () => {
           .send({
             progressNotes: 'Blocked by API issue',
             planForNextDay: 'Plan to resolve API',
+            noAdaptationNeeded: true,
           })
           .expect(201);
 
@@ -899,6 +931,8 @@ describe('Cross-Feature Integration Tests', () => {
         const team = await createTestTeam(teamName);
         // Only Developers may set story points, so use a Developer here.
         await addTeamMember(team.id, await getUserIdFromEmail(email), 'DEVELOPERS');
+        // A PBI must serve the team's ACTIVE Product Goal, so give the team one first.
+        await createActiveProductGoal(team.id, await getUserIdFromEmail(email));
 
         // First operation with English
         const { csrfToken } = extractCsrfFromCookies(cookies);

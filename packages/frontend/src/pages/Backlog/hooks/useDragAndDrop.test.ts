@@ -14,6 +14,7 @@ const createMockBacklogItem = (
   description: 'Test description',
   status: ItemStatus.NEW,
   priority: MoSCoWPriority.MUST_HAVE,
+  rank: 1,
   storyPoints: 8,
   businessValue: 10,
   labels: ['frontend'],
@@ -24,11 +25,16 @@ const createMockBacklogItem = (
   ...overrides,
 });
 
-const createMockDragEvent = (data: {
-  itemId?: string;
-  currentPriority?: string;
-}): React.DragEvent => {
+const createMockDragEvent = (
+  data: {
+    itemId?: string;
+    currentPriority?: string;
+  },
+  /** Where the pointer sits over the card, used to resolve before/after. */
+  pointer: { clientY?: number; rectTop?: number; rectHeight?: number } = {}
+): React.DragEvent => {
   const dataStore: Record<string, string> = {};
+  const { clientY = 0, rectTop = 0, rectHeight = 100 } = pointer;
 
   const dataTransfer = {
     getData: vi.fn((key: string) => dataStore[key] || data[key as keyof typeof data] || ''),
@@ -41,6 +47,7 @@ const createMockDragEvent = (data: {
 
   return {
     dataTransfer,
+    clientY,
     preventDefault: vi.fn(),
     stopPropagation: vi.fn(),
     type: 'drag',
@@ -54,7 +61,9 @@ const createMockDragEvent = (data: {
     isPropagationStopped: () => false,
     persist: vi.fn(),
     target: null,
-    currentTarget: null,
+    currentTarget: {
+      getBoundingClientRect: () => ({ top: rectTop, height: rectHeight }) as DOMRect,
+    },
     relatedTarget: null,
     nativeEvent: {},
   } as unknown as React.DragEvent;
@@ -75,11 +84,19 @@ describe('useDragAndDrop', () => {
       expect(result.current.draggedItem).toBeNull();
     });
 
+    it('should have no drop indicator initially', () => {
+      const { result } = renderHook(() => useDragAndDrop({ onDrop }));
+
+      expect(result.current.dropIndicator).toBeNull();
+    });
+
     it('should return all handler functions', () => {
       const { result } = renderHook(() => useDragAndDrop({ onDrop }));
 
       expect(typeof result.current.handleDragStart).toBe('function');
-      expect(typeof result.current.handleDrop).toBe('function');
+      expect(typeof result.current.handleDropOnColumn).toBe('function');
+      expect(typeof result.current.handleDropOnCard).toBe('function');
+      expect(typeof result.current.handleDragOverCard).toBe('function');
       expect(typeof result.current.handleDragOver).toBe('function');
       expect(typeof result.current.handleDragEnd).toBe('function');
     });
@@ -138,8 +155,8 @@ describe('useDragAndDrop', () => {
     });
   });
 
-  describe('handleDrop', () => {
-    it('should call onDrop with itemId and newPriority', () => {
+  describe('handleDropOnColumn', () => {
+    it('should call onDrop with the item and the target band', () => {
       const { result } = renderHook(() => useDragAndDrop({ onDrop }));
       const event = createMockDragEvent({
         itemId: 'item-1',
@@ -147,10 +164,11 @@ describe('useDragAndDrop', () => {
       });
 
       act(() => {
-        result.current.handleDrop(event, MoSCoWPriority.SHOULD_HAVE);
+        result.current.handleDropOnColumn(event, MoSCoWPriority.SHOULD_HAVE);
       });
 
-      expect(onDrop).toHaveBeenCalledWith('item-1', MoSCoWPriority.SHOULD_HAVE);
+      // A column drop carries no neighbour: the item joins the end of that band.
+      expect(onDrop).toHaveBeenCalledWith('item-1', { priority: MoSCoWPriority.SHOULD_HAVE });
     });
 
     it('should prevent default on drop', () => {
@@ -161,7 +179,7 @@ describe('useDragAndDrop', () => {
       });
 
       act(() => {
-        result.current.handleDrop(event, MoSCoWPriority.SHOULD_HAVE);
+        result.current.handleDropOnColumn(event, MoSCoWPriority.SHOULD_HAVE);
       });
 
       expect(event.preventDefault).toHaveBeenCalled();
@@ -183,7 +201,7 @@ describe('useDragAndDrop', () => {
       expect(result.current.draggedItem).not.toBeNull();
 
       act(() => {
-        result.current.handleDrop(dropEvent, MoSCoWPriority.SHOULD_HAVE);
+        result.current.handleDropOnColumn(dropEvent, MoSCoWPriority.SHOULD_HAVE);
       });
 
       expect(result.current.draggedItem).toBeNull();
@@ -197,13 +215,13 @@ describe('useDragAndDrop', () => {
       });
 
       act(() => {
-        result.current.handleDrop(event, MoSCoWPriority.SHOULD_HAVE);
+        result.current.handleDropOnColumn(event, MoSCoWPriority.SHOULD_HAVE);
       });
 
       expect(onDrop).not.toHaveBeenCalled();
     });
 
-    it('should handle different priority drops', () => {
+    it('should handle drops on every band', () => {
       const { result } = renderHook(() => useDragAndDrop({ onDrop }));
       const priorities = [
         MoSCoWPriority.MUST_HAVE,
@@ -219,11 +237,117 @@ describe('useDragAndDrop', () => {
         });
 
         act(() => {
-          result.current.handleDrop(event, priority);
+          result.current.handleDropOnColumn(event, priority);
         });
 
-        expect(onDrop).toHaveBeenCalledWith('item-1', priority);
+        expect(onDrop).toHaveBeenCalledWith('item-1', { priority });
       });
+    });
+  });
+
+  describe('handleDropOnCard', () => {
+    it('should place the item before the neighbour when dropped on the upper half', () => {
+      const { result } = renderHook(() => useDragAndDrop({ onDrop }));
+      const dragged = createMockBacklogItem({ id: 'pbi-1' });
+      const target = createMockBacklogItem({
+        id: 'pbi-2',
+        priority: MoSCoWPriority.SHOULD_HAVE,
+      });
+
+      act(() => {
+        result.current.handleDragStart(createMockDragEvent({}), dragged);
+      });
+
+      const hoverEvent = createMockDragEvent({}, { clientY: 10, rectTop: 0, rectHeight: 100 });
+
+      act(() => {
+        result.current.handleDragOverCard(hoverEvent, target);
+      });
+
+      expect(result.current.dropIndicator).toEqual({ itemId: 'pbi-2', position: 'before' });
+
+      const dropEvent = createMockDragEvent({ itemId: 'pbi-1' });
+
+      act(() => {
+        result.current.handleDropOnCard(dropEvent, target);
+      });
+
+      expect(onDrop).toHaveBeenCalledWith('pbi-1', {
+        priority: MoSCoWPriority.SHOULD_HAVE,
+        targetPbiId: 'pbi-2',
+        position: 'before',
+      });
+    });
+
+    it('should place the item after the neighbour when dropped on the lower half', () => {
+      const { result } = renderHook(() => useDragAndDrop({ onDrop }));
+      const dragged = createMockBacklogItem({ id: 'pbi-1' });
+      const target = createMockBacklogItem({ id: 'pbi-2' });
+
+      act(() => {
+        result.current.handleDragStart(createMockDragEvent({}), dragged);
+      });
+
+      act(() => {
+        result.current.handleDragOverCard(
+          createMockDragEvent({}, { clientY: 90, rectTop: 0, rectHeight: 100 }),
+          target
+        );
+      });
+
+      expect(result.current.dropIndicator).toEqual({ itemId: 'pbi-2', position: 'after' });
+
+      act(() => {
+        result.current.handleDropOnCard(createMockDragEvent({ itemId: 'pbi-1' }), target);
+      });
+
+      expect(onDrop).toHaveBeenCalledWith('pbi-1', {
+        priority: target.priority,
+        targetPbiId: 'pbi-2',
+        position: 'after',
+      });
+    });
+
+    it('should not treat a card as a drop target for itself', () => {
+      const { result } = renderHook(() => useDragAndDrop({ onDrop }));
+      const item = createMockBacklogItem({ id: 'pbi-1' });
+
+      act(() => {
+        result.current.handleDragStart(createMockDragEvent({}), item);
+      });
+
+      act(() => {
+        result.current.handleDragOverCard(createMockDragEvent({}), item);
+      });
+
+      expect(result.current.dropIndicator).toBeNull();
+
+      act(() => {
+        result.current.handleDropOnCard(createMockDragEvent({ itemId: 'pbi-1' }), item);
+      });
+
+      expect(onDrop).not.toHaveBeenCalled();
+    });
+
+    it('should clear the insertion indicator after the drop', () => {
+      const { result } = renderHook(() => useDragAndDrop({ onDrop }));
+      const dragged = createMockBacklogItem({ id: 'pbi-1' });
+      const target = createMockBacklogItem({ id: 'pbi-2' });
+
+      act(() => {
+        result.current.handleDragStart(createMockDragEvent({}), dragged);
+      });
+
+      act(() => {
+        result.current.handleDragOverCard(createMockDragEvent({}), target);
+      });
+
+      act(() => {
+        result.current.handleDropOnCard(createMockDragEvent({ itemId: 'pbi-1' }), target);
+      });
+
+      expect(result.current.dropIndicator).toBeNull();
+      expect(result.current.draggedItem).toBeNull();
     });
   });
 
@@ -270,6 +394,25 @@ describe('useDragAndDrop', () => {
       expect(result.current.draggedItem).toBeNull();
     });
 
+    it('should clear the insertion indicator on drag end', () => {
+      const { result } = renderHook(() => useDragAndDrop({ onDrop }));
+      const dragged = createMockBacklogItem({ id: 'pbi-1' });
+
+      act(() => {
+        result.current.handleDragStart(createMockDragEvent({}), dragged);
+      });
+
+      act(() => {
+        result.current.handleDragOverCard(createMockDragEvent({}), createMockBacklogItem());
+      });
+
+      act(() => {
+        result.current.handleDragEnd();
+      });
+
+      expect(result.current.dropIndicator).toBeNull();
+    });
+
     it('should clear draggedItem even if not dragging', () => {
       const { result } = renderHook(() => useDragAndDrop({ onDrop }));
 
@@ -284,7 +427,7 @@ describe('useDragAndDrop', () => {
   });
 
   describe('Complete Drag Flow', () => {
-    it('should handle complete drag and drop flow', () => {
+    it('should handle complete drag and drop flow onto a column', () => {
       const { result } = renderHook(() => useDragAndDrop({ onDrop }));
       const item = createMockBacklogItem({
         id: 'flow-item',
@@ -313,10 +456,10 @@ describe('useDragAndDrop', () => {
       expect(dragOverEvent.preventDefault).toHaveBeenCalled();
 
       act(() => {
-        result.current.handleDrop(dropEvent, MoSCoWPriority.SHOULD_HAVE);
+        result.current.handleDropOnColumn(dropEvent, MoSCoWPriority.SHOULD_HAVE);
       });
 
-      expect(onDrop).toHaveBeenCalledWith('flow-item', MoSCoWPriority.SHOULD_HAVE);
+      expect(onDrop).toHaveBeenCalledWith('flow-item', { priority: MoSCoWPriority.SHOULD_HAVE });
       expect(result.current.draggedItem).toBeNull();
     });
 
@@ -352,12 +495,12 @@ describe('useDragAndDrop', () => {
       expect(firstRef).toBe(secondRef);
     });
 
-    it('should have stable handleDrop reference', () => {
+    it('should have stable handleDropOnColumn reference', () => {
       const { result, rerender } = renderHook(() => useDragAndDrop({ onDrop }));
 
-      const firstRef = result.current.handleDrop;
+      const firstRef = result.current.handleDropOnColumn;
       rerender();
-      const secondRef = result.current.handleDrop;
+      const secondRef = result.current.handleDropOnColumn;
 
       expect(firstRef).toBe(secondRef);
     });
@@ -382,7 +525,7 @@ describe('useDragAndDrop', () => {
       expect(firstRef).toBe(secondRef);
     });
 
-    it('should update handleDrop when onDrop changes', () => {
+    it('should update handleDropOnColumn when onDrop changes', () => {
       const onDrop1 = vi.fn();
       const onDrop2 = vi.fn();
 
@@ -390,11 +533,11 @@ describe('useDragAndDrop', () => {
         initialProps: { onDrop: onDrop1 },
       });
 
-      const firstRef = result.current.handleDrop;
+      const firstRef = result.current.handleDropOnColumn;
 
       rerender({ onDrop: onDrop2 });
 
-      const secondRef = result.current.handleDrop;
+      const secondRef = result.current.handleDropOnColumn;
 
       expect(firstRef).not.toBe(secondRef);
     });

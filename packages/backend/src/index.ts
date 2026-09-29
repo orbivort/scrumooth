@@ -7,6 +7,7 @@ import prisma, { disconnectPrisma } from './utils/prisma';
 import { logger } from './utils/logger';
 import { startNotificationCleanup } from './jobs/notificationCleanup';
 import { startDeletionGracePeriodJob } from './jobs/deletionGracePeriodJob';
+import { startImpedimentEscalationJob } from './jobs/impedimentEscalationJob';
 import { authService } from './services/auth.service';
 import { eventLoopMonitor } from './utils/eventLoopMonitor';
 import { i18nInitPromise } from './i18n/config.js';
@@ -17,6 +18,7 @@ validateConfig();
 // Start scheduled jobs
 startNotificationCleanup();
 startDeletionGracePeriodJob();
+startImpedimentEscalationJob();
 
 // Initialize auth service (starts cleanup job)
 authService.initialize();

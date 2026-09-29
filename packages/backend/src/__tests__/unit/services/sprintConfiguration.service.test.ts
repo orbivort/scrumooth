@@ -30,7 +30,11 @@ vi.mock('../../../utils/prisma', () => ({
       update: vi.fn(),
     },
     sprint: {
+      findUnique: vi.fn(),
       update: vi.fn(),
+    },
+    teamMember: {
+      findFirst: vi.fn(),
     },
   },
 }));
@@ -52,10 +56,13 @@ vi.mock('../../../utils/uuid', () => ({
 import { sprintConfigurationService } from '../../../services/sprintConfiguration.service';
 import prisma from '../../../utils/prisma';
 import { NotFoundError, BadRequestError } from '../../../utils/errors';
+import { GATE_CODES } from '@scrumooth/shared';
 
 describe('SprintConfigurationService', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Editing the Sprint Goal requires a member of the owning team.
+    vi.mocked(prisma.teamMember.findFirst).mockResolvedValue({ id: 'member-1' } as any);
   });
 
   describe('getSprintConfiguration', () => {
@@ -472,6 +479,8 @@ describe('SprintConfigurationService', () => {
         sprintId: linkedSprintId,
         status: 'PLANNED',
       } as any);
+      // The materialized Sprint is the authoritative lifecycle record; it is still being planned.
+      vi.mocked(prisma.sprint.findUnique).mockResolvedValue({ status: 'PLANNED' } as any);
       vi.mocked(prismaTx.generatedSprint.update).mockResolvedValue(mockSprint as any);
       vi.mocked(prismaTx.sprint.update).mockResolvedValue({
         id: linkedSprintId,
@@ -500,6 +509,80 @@ describe('SprintConfigurationService', () => {
           sprintGoal: 'New goal',
         })
       ).rejects.toThrow(NotFoundError);
+    });
+
+    it('refuses a non-team-member with GATE_SPRINT_TEAM_MEMBERS_ONLY', async () => {
+      vi.mocked(prisma.generatedSprint.findUnique).mockResolvedValue({
+        id: 'sprint-id',
+        teamId: 'team-id',
+        status: 'PLANNED',
+      } as any);
+      vi.mocked(prisma.teamMember.findFirst).mockResolvedValue(null);
+
+      await expect(
+        sprintConfigurationService.updateGeneratedSprint('sprint-id', 'outsider-1', {
+          sprintGoal: 'Rewritten by an outsider',
+        })
+      ).rejects.toMatchObject({
+        statusCode: 403,
+        code: GATE_CODES.SPRINT_TEAM_MEMBERS_ONLY,
+      });
+    });
+
+    it('locks the Sprint Goal once the generated Sprint is running', async () => {
+      vi.mocked(prisma.generatedSprint.findUnique).mockResolvedValue({
+        id: 'sprint-id',
+        teamId: 'team-id',
+        status: 'ACTIVE',
+      } as any);
+
+      await expect(
+        sprintConfigurationService.updateGeneratedSprint('sprint-id', 'user-1', {
+          sprintGoal: 'Rewritten mid-Sprint',
+        })
+      ).rejects.toMatchObject({
+        statusCode: 400,
+        code: GATE_CODES.SPRINT_GOAL_LOCKED,
+      });
+      expect(prismaTx.generatedSprint.update).not.toHaveBeenCalled();
+    });
+
+    it('locks the Sprint Goal when the linked materialized Sprint is running', async () => {
+      vi.mocked(prisma.generatedSprint.findUnique).mockResolvedValue({
+        id: 'sprint-id',
+        teamId: 'team-id',
+        sprintId: 'linked-sprint-id',
+        // A stale mirror status must not unlock a running Sprint.
+        status: 'PLANNED',
+      } as any);
+      vi.mocked(prisma.sprint.findUnique).mockResolvedValue({ status: 'ACTIVE' } as any);
+
+      await expect(
+        sprintConfigurationService.updateGeneratedSprint('sprint-id', 'user-1', {
+          sprintGoal: 'Rewritten mid-Sprint',
+        })
+      ).rejects.toMatchObject({
+        statusCode: 400,
+        code: GATE_CODES.SPRINT_GOAL_LOCKED,
+      });
+    });
+
+    it('allows editing the goal while the Sprint is still a draft', async () => {
+      vi.mocked(prisma.generatedSprint.findUnique).mockResolvedValue({
+        id: 'sprint-id',
+        teamId: 'team-id',
+        status: 'DRAFT',
+      } as any);
+      vi.mocked(prismaTx.generatedSprint.update).mockResolvedValue({
+        id: 'sprint-id',
+        sprintGoal: 'Draft goal',
+      } as any);
+
+      const result = await sprintConfigurationService.updateGeneratedSprint('sprint-id', 'user-1', {
+        sprintGoal: 'Draft goal',
+      });
+
+      expect(result.sprintGoal).toBe('Draft goal');
     });
   });
 });

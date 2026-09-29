@@ -89,8 +89,19 @@ export default defineConfig({
     url: 'http://localhost:5173',
     reuseExistingServer: !process.env.CI,
     timeout: 120 * 1000,
+    /*
+     * The flags are set here rather than inherited from a developer's `.env`, so a
+     * run is the same locally and in CI.
+     *
+     * Mock mode is what the E2E suite runs against: the specs drive the product the
+     * way a visitor does, and the mock backend answers the same requests the real
+     * one would. Same-origin, so the worker intercepts the app's own traffic and
+     * there is no cross-origin request to satisfy.
+     */
     env: {
       VITE_BASE_PATH: '/',
+      VITE_USE_MOCK_API: 'true',
+      VITE_API_URL: '/api/v1',
     },
   },
 });

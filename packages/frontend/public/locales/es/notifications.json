@@ -41,6 +41,7 @@
     "all": "Todos",
     "directMessages": "Mensajes directos",
     "impediments": "Impediments",
+    "sprintBacklogChanges": "Cambios en el Sprint Backlog",
     "taskAssignments": "Asignaciones de tareas",
     "teamCreated": "Equipo creado",
     "teamDeleted": "Equipo eliminado",
@@ -50,6 +51,8 @@
   },
   "impedimentAssigned": "Nuevo Impediment asignado: \"{{impedimentTitle}}\"",
   "impedimentAssignedMessage": "Reportado por {{reporterName}}",
+  "impedimentEscalation": "El impedimento requiere su acción: \"{{impedimentTitle}}\"",
+  "impedimentEscalationMessage": "Este impedimento lleva {{ageDays}} días sin resolverse. Como Scrum Master, usted es responsable de provocar su eliminación.",
   "loading": {
     "ariaLabel": "Cargando notificaciones",
     "title": "Cargando notificaciones..."
@@ -58,6 +61,8 @@
   "marking": "Marcando...",
   "newTaskAssignedMessage": "En el sprint \"{{sprintName}}\"",
   "newTaskAssignedTitle": "Nueva tarea asignada: \"{{taskTitle}}\"",
+  "organizationalBarrierRaised": "Barrera organizativa asignada: \"{{barrierTitle}}\"",
+  "organizationalBarrierRaisedMessage": "Esta barrera está fuera del equipo Scrum. Usted es responsable de eliminarla para que el equipo pueda continuar.",
   "pagination": {
     "next": "Siguiente",
     "pageInfo": "Página {{current}} de {{total}}",
@@ -67,6 +72,8 @@
   "remindersSent": "Recordatorios enviados a {{count}} miembro del equipo",
   "remindersSent_plural": "Recordatorios enviados a {{count}} miembros del equipo",
   "skipToMainContent": "Ir al contenido principal",
+  "sprintBacklogChangePendingMessage": "{{changedByName}} ha declarado que cambiar \"{{pbiTitle}}\" pone en peligro el objetivo del sprint de \"{{sprintName}}\". Aprueba el objetivo del sprint renegociado o rechaza el cambio.",
+  "sprintBacklogChangePendingTitle": "Un cambio en el Sprint Backlog espera tu decisión",
   "subtitle": "Manténgase actualizado con las actividades del equipo y actualizaciones importantes",
   "taskReassignedMessage": "En el sprint \"{{sprintName}}\"",
   "taskReassignedTitle": "Tarea reasignada a usted: \"{{taskTitle}}\"",

@@ -9,51 +9,74 @@ import {
   Tooltip,
   Legend,
   type ChartOptions,
+  type TooltipItem,
 } from 'chart.js';
 import { useTranslation } from 'react-i18next';
+
+import type { CompletionProvenance, VelocityData } from '../../../types';
 
 import styles from './VelocityChart.module.css';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
-interface VelocityData {
-  sprints: string[];
-  planned: number[];
-  completed: number[];
-}
+/**
+ * Chart palette.
+ *
+ * Concrete values because chart.js needs them, taken from the design tokens so the chart belongs to
+ * the same palette as the rest of the page. Both datasets are neutral on purpose: a fall in
+ * completed points is a fact about the team's history, not a failure, so neither the bars nor the
+ * legend may colour it as one.
+ */
+const PLANNED_FILL = 'rgba(209, 213, 219, 0.7)';
+const PLANNED_BORDER = '#9ca3af';
+const COMPLETED_FILL = 'rgba(59, 130, 246, 0.75)';
+const COMPLETED_BORDER = '#2563eb';
+
+/** Stable stylesheet class per provenance, so the values never leak into a class name. */
+const LEGEND_CLASSES: Record<CompletionProvenance, string> = {
+  recorded: 'legend-recorded',
+  reconstructed: 'legend-reconstructed',
+  in_progress: 'legend-in-progress',
+  not_available: 'legend-not-available',
+};
 
 interface VelocityChartProps {
   data: VelocityData | null | undefined;
 }
 
+/**
+ * Planned against completed points per Sprint.
+ *
+ * A Sprint whose completion the evidence does not establish is left blank rather than drawn at
+ * zero: a missing observation and an observation of nothing are different facts, and only one of
+ * them can be plotted honestly.
+ */
 export const VelocityChart: React.FC<VelocityChartProps> = ({ data }) => {
   const { t } = useTranslation('reports');
 
-  const sprints = useMemo(() => data?.sprints ?? [], [data?.sprints]);
-  const planned = useMemo(() => data?.planned ?? [], [data?.planned]);
-  const completed = useMemo(() => data?.completed ?? [], [data?.completed]);
+  const points = useMemo(() => data?.points ?? [], [data?.points]);
 
   const chartData = useMemo(
     () => ({
-      labels: sprints,
+      labels: points.map((point) => point.sprintName),
       datasets: [
         {
           label: t('velocityChart.planned'),
-          data: planned,
-          backgroundColor: 'rgba(156, 163, 175, 0.8)',
-          borderColor: '#9CA3AF',
+          data: points.map((point) => point.plannedPoints),
+          backgroundColor: PLANNED_FILL,
+          borderColor: PLANNED_BORDER,
           borderWidth: 1,
         },
         {
           label: t('velocityChart.completed'),
-          data: completed,
-          backgroundColor: 'rgba(26, 102, 255, 0.8)',
-          borderColor: '#1A66FF',
+          data: points.map((point) => point.completedPoints),
+          backgroundColor: COMPLETED_FILL,
+          borderColor: COMPLETED_BORDER,
           borderWidth: 1,
         },
       ],
     }),
-    [sprints, planned, completed, t]
+    [points, t]
   );
 
   const chartOptions = useMemo<ChartOptions<'bar'>>(
@@ -70,6 +93,20 @@ export const VelocityChart: React.FC<VelocityChartProps> = ({ data }) => {
           font: {
             size: 18,
             weight: 'bold',
+          },
+        },
+        tooltip: {
+          callbacks: {
+            // The provenance travels with the point, so the reader can tell what the bar rests on
+            // instead of having to trust it.
+            footer: (items: TooltipItem<'bar'>[]) => {
+              const index = items[0]?.dataIndex;
+              const point = index === undefined ? undefined : points[index];
+              if (!point) {
+                return '';
+              }
+              return t(`provenance.${point.provenance}`);
+            },
           },
         },
       },
@@ -89,8 +126,11 @@ export const VelocityChart: React.FC<VelocityChartProps> = ({ data }) => {
         },
       },
     }),
-    [t]
+    [t, points]
   );
+
+  const pointsLabel = (value: number | null): string =>
+    value === null ? t('provenance.not_available') : String(value);
 
   return (
     <div>
@@ -105,6 +145,17 @@ export const VelocityChart: React.FC<VelocityChartProps> = ({ data }) => {
         role="img"
       />
 
+      <ul className={styles['chart-legend']} data-testid="velocity-provenance-legend">
+        {(['recorded', 'reconstructed', 'in_progress', 'not_available'] as const).map(
+          (provenance) => (
+            <li key={provenance} className={styles[LEGEND_CLASSES[provenance]]}>
+              <span className={styles['legend-swatch']} aria-hidden="true" />
+              {t(`provenance.${provenance}`)}
+            </li>
+          )
+        )}
+      </ul>
+
       <table className={styles['visually-hidden']} aria-label={t('velocityChart.ariaTableLabel')}>
         <caption className={styles['visually-hidden']}>
           {t('velocityChart.ariaTableCaption')}
@@ -114,14 +165,16 @@ export const VelocityChart: React.FC<VelocityChartProps> = ({ data }) => {
             <th scope="col">{t('velocityChart.ariaTableSprint')}</th>
             <th scope="col">{t('velocityChart.planned')}</th>
             <th scope="col">{t('velocityChart.completed')}</th>
+            <th scope="col">{t('velocityChart.provenanceColumn')}</th>
           </tr>
         </thead>
         <tbody>
-          {sprints.map((sprintName, index) => (
-            <tr key={sprintName}>
-              <th scope="row">{sprintName}</th>
-              <td>{planned[index] ?? 0}</td>
-              <td>{completed[index] ?? 0}</td>
+          {points.map((point) => (
+            <tr key={point.sprintId}>
+              <th scope="row">{point.sprintName}</th>
+              <td>{pointsLabel(point.plannedPoints)}</td>
+              <td>{pointsLabel(point.completedPoints)}</td>
+              <td>{t(`provenance.${point.provenance}`)}</td>
             </tr>
           ))}
         </tbody>

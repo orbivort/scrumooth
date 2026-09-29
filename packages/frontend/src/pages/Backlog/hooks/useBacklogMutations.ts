@@ -3,6 +3,10 @@ import { useMutation, useQueryClient, type UseMutationResult } from '@tanstack/r
 import { useTranslation } from 'react-i18next';
 
 import { apiService } from '../../../services';
+import type {
+  ReorderBacklogPayload,
+  ReorderedBacklogItem,
+} from '../../../services/domain/productBacklog.service';
 import { useMutationErrorHandler } from '../../../hooks/useMutationErrorHandler';
 import { queryKeys } from '../../../hooks/queryKeys';
 import type { ProductBacklogItem, ApiResponse } from '../../../types';
@@ -52,6 +56,11 @@ interface UseBacklogMutationsReturn {
     { id: string; updates: Partial<ProductBacklogItem> }
   >;
   deleteItemMutation: UseMutationResult<ApiResponse<never>, unknown, string>;
+  reorderItemMutation: UseMutationResult<
+    ApiResponse<{ items: ReorderedBacklogItem[] }>,
+    unknown,
+    ReorderBacklogPayload
+  >;
 }
 
 /**
@@ -187,6 +196,28 @@ export const useBacklogMutations = (props: UseBacklogMutationsProps): UseBacklog
   });
 
   /**
+   * Mutation for persisting a new backlog order.
+   *
+   * Ordering is the Product Owner's accountability, so the backend refuses this for anyone else
+   * with `GATE_PRODUCT_OWNER_ONLY_BACKLOG_ORDER`; the board does not offer the gesture to
+   * non-Product-Owners. On success the backlog is refetched so the rendered order is the one the
+   * server actually stored.
+   */
+  const reorderItemMutation = useMutation({
+    mutationFn: (payload: ReorderBacklogPayload) => apiService.reorderProductBacklogItems(payload),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.productBacklog.all });
+      onSuccessToast(t('success.orderUpdated'));
+    },
+    onError: (error: unknown) => {
+      handleMutationError(error, {
+        operationName: 'reorder backlog',
+        showToast: (msg) => onErrorToast(msg),
+      });
+    },
+  });
+
+  /**
    * Mutation for deleting a backlog item
    * On success: invalidates backlog and goals cache, invokes onDeleteSuccess callback, clears selection
    * On error: sets appropriate error messages
@@ -215,5 +246,6 @@ export const useBacklogMutations = (props: UseBacklogMutationsProps): UseBacklog
     updateItemMutation,
     editItemMutation,
     deleteItemMutation,
+    reorderItemMutation,
   };
 };

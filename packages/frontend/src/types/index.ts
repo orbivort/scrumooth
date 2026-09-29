@@ -2,11 +2,16 @@
 
 import {
   IntegrationTestResult,
+  IntegrationVerificationBasis,
   ScrumValue,
   HealthCheckStatus,
+  type ImpedimentPriority,
   type Locale,
   type IntegrationTestRecord,
   type IncrementChainNode,
+  type IncrementCompositionResult,
+  type DoDVersionSnapshot,
+  type DoRVersionSnapshot,
   type EventComplianceSummary,
   type ImpedimentMetrics,
   type DoDComplianceTrend,
@@ -18,11 +23,33 @@ import {
   type HealthCheckValueScore,
   type TimeboxState,
   type TimeboxStatus,
+  type SprintChangeApprovalStatus,
+  type SprintChangeDecision,
+  type SprintGoalImpact,
+  type DailyScrumAdjustmentAction,
+  type AdaptationReflection,
+  type AdaptationReflectionBasis,
+  type WorkingDayCalendar,
+  type CompletionProvenance,
+  type SprintGoalOutcome,
+  type SprintItemCompletion,
+  type TeamGroupSummary,
+  type TeamGroupDetail,
+  type TeamGroupMember,
+  type SharedDefinitionOfDone,
+  type SharedDoDItem,
+  type JoinTeamGroupInput,
+  type UpdateTeamGroupInput,
+  type UpdateSharedDoDInput,
 } from '@scrumooth/shared';
 
 export type {
+  ImpedimentPriority,
   IntegrationTestRecord,
   IncrementChainNode,
+  IncrementCompositionResult,
+  DoDVersionSnapshot,
+  DoRVersionSnapshot,
   EventComplianceSummary,
   ImpedimentMetrics,
   DoDComplianceTrend,
@@ -34,13 +61,34 @@ export type {
   HealthCheckValueScore,
   TimeboxState,
   TimeboxStatus,
+  SprintChangeApprovalStatus,
+  SprintChangeDecision,
+  SprintGoalImpact,
+  DailyScrumAdjustmentAction,
+  AdaptationReflection,
+  AdaptationReflectionBasis,
+  WorkingDayCalendar,
+  CompletionProvenance,
+  SprintGoalOutcome,
+  SprintItemCompletion,
+  TeamGroupSummary,
+  TeamGroupDetail,
+  TeamGroupMember,
+  SharedDefinitionOfDone,
+  SharedDoDItem,
+  JoinTeamGroupInput,
+  UpdateTeamGroupInput,
+  UpdateSharedDoDInput,
 };
 
 // Enums are runtime values; re-export as values.
-export { IntegrationTestResult, ScrumValue, HealthCheckStatus };
+export { IntegrationTestResult, IntegrationVerificationBasis, ScrumValue, HealthCheckStatus };
 
+// The three roles the Guide defines, and the only three the backend can grant: a Scrum Team holds
+// one Product Owner, one Scrum Master, and its Developers. There is no administrator role in
+// Scrumooth, so none is declared here -- a role the interface can render but nobody can hold would
+// undermine the one claim this product makes about roles.
 export enum UserRole {
-  ADMINISTRATOR = 'administrator',
   PRODUCT_OWNER = 'product_owner',
   SCRUM_MASTER = 'scrum_master',
   DEVELOPERS = 'developers',
@@ -120,6 +168,15 @@ export interface Team {
   memberCount?: number;
   maxSize?: number;
   members?: TeamMember[];
+  /**
+   * The group this team shares a product with, when it works with other Scrum Teams: *"they must
+   * mutually define and comply with the same Definition of Done."* `dodVersion` is the version in
+   * force, which the team's own adoption is compared against.
+   */
+  group?: TeamGroupSummary | null;
+  /** The shared Definition of Done version the team adopted when it joined. */
+  groupDodVersionAtJoin?: number | null;
+  groupJoinedAt?: string | null;
 }
 
 export interface ProductGoal {
@@ -179,6 +236,8 @@ export interface ProductBacklogItem {
   title: string;
   description?: string;
   priority: MoSCoWPriority;
+  /** Dense, 1-based position in the team's Product Backlog order (the order of record). */
+  rank: number;
   businessValue?: number;
   effort?: ValueEffortLevel;
   storyPoints?: number;
@@ -218,6 +277,13 @@ export interface Sprint {
   sprintGoal?: string;
   status: SprintStatus;
   cancellationReason?: string;
+  /**
+   * The Scrum Master's coaching notes on the Sprint.
+   *
+   * Present only for the team's Scrum Master: the server withholds the field from every other
+   * caller, so `undefined` here means "not yours to read", not "empty".
+   */
+  smNotes?: string | null;
   createdAt: string;
   updatedAt: string;
   items?: ProductBacklogItem[];
@@ -241,11 +307,51 @@ export interface BacklogChange {
   pbiTitle?: string;
   changeType: 'ADDED' | 'REMOVED';
   reason?: string;
+  /** Whether the change supports or endangers the Sprint Goal (declared by the caller). */
+  goalImpact?: SprintGoalImpact;
+  /**
+   * `PENDING` means the change endangers the Sprint Goal and is awaiting the Product Owner's
+   * acknowledgement: it has been recorded but deliberately not applied to the Sprint Backlog.
+   */
+  approvalStatus?: SprintChangeApprovalStatus;
+  /** The Sprint Goal that was in force when the change was requested. */
+  sprintGoalAtChange?: string;
+  acknowledgedBy?: string;
+  acknowledgedByName?: string;
+  acknowledgedAt?: string;
+  acknowledgementNote?: string;
+  /** Tasks the change created (`ADDED`) or removed (`REMOVED`) in the Sprint Backlog. */
+  taskCount?: number;
   changedBy: string;
   changedByName?: string;
   changedAt: string;
   createdAt?: string;
   taskAction?: 'delete' | 'return_to_backlog' | 'keep_in_sprint';
+}
+
+/**
+ * Result of a mid-Sprint Sprint Backlog change. `pending` is true (and `sprintBacklogItem` null)
+ * when the change was recorded as awaiting the Product Owner's acknowledgement and the Sprint
+ * Backlog was deliberately left untouched.
+ */
+export interface SprintBacklogChangeResult {
+  sprintBacklogItem: SprintBacklogItem | null;
+  change: BacklogChange;
+  pending: boolean;
+}
+
+/** The Product Owner's decision on a pending, goal-endangering Sprint Backlog change. */
+export interface AcknowledgeSprintBacklogChangeRequest {
+  decision: SprintChangeDecision;
+  note?: string;
+  /** The renegotiated Sprint Goal; required when approving a goal-endangering change. */
+  sprintGoal?: string;
+}
+
+export interface AcknowledgeSprintBacklogChangeResult {
+  change: BacklogChange;
+  sprint: Sprint | null;
+  applied: boolean;
 }
 
 export interface Impediment {
@@ -257,10 +363,20 @@ export interface Impediment {
   reportedById: string;
   ownerId?: string;
   status: ImpedimentStatus;
+  /** Declared impact. `CRITICAL` first: the backend orders reads by this, then by age. */
+  priority: ImpedimentPriority;
+  /** The date the team intends to have the impediment removed by, if any. */
+  targetDate?: string | null;
   resolution?: string;
   createdAt: string;
   updatedAt: string;
   resolvedAt?: string;
+  /** Set when an unresolved impediment was escalated to the Scrum Master. */
+  escalatedAt?: string | null;
+  /** How many times the impediment has been escalated. */
+  escalationCount?: number;
+  createdBy?: string | null;
+  updatedBy?: string | null;
   reportedBy?: User;
   owner?: User;
   sprint?: { id: string; name: string };
@@ -268,8 +384,24 @@ export interface Impediment {
 
 export interface DailyScrumBacklogAdjustment {
   id: string;
-  sprintBacklogItemId: string;
+  /**
+   * Null once the item has left the Sprint Backlog, which is exactly how a `REMOVED`
+   * declaration is fulfilled.
+   */
+  sprintBacklogItemId: string | null;
+  /** Denormalised target, kept so the declaration outlives the item it describes. */
+  pbiId?: string | null;
+  pbiTitleAtAdjustment?: string | null;
+  /** Null only on declarations recorded before the typed action existed. */
+  actionType?: DailyScrumAdjustmentAction | null;
   action: string;
+  /**
+   * Whether the Sprint Backlog has moved since the declaration. Computed by the server from the
+   * stored snapshot, never asserted by the client.
+   */
+  reflection?: AdaptationReflection;
+  /** The observation behind `reflection`, so the interface can explain the verdict. */
+  reflectionBasis?: AdaptationReflectionBasis;
   createdAt: string;
   sprintBacklogItem?: {
     id: string;
@@ -309,7 +441,13 @@ export interface DailyScrum {
   adaptationsNotes?: string | null;
   planForNextDay?: string | null;
   focusMode?: DailyScrumFocusMode | null;
+  /**
+   * The Sprint Goal as it stood when this record was created. Immutable: a later goal
+   * renegotiation must not rewrite what a past Daily Scrum appears to have inspected.
+   */
   sprintGoal?: string | null;
+  /** The Developers' explicit acknowledgement that no Sprint Backlog adaptation was needed. */
+  noAdaptationNeeded?: boolean;
   participants: DailyScrumParticipant[];
   backlogAdjustments: DailyScrumBacklogAdjustment[];
   createdAt: string;
@@ -324,7 +462,73 @@ export interface DailyScrumParticipation {
 
 export interface DailyScrumBacklogAdjustmentInput {
   sprintBacklogItemId: string;
+  /** How the item was adapted. Required: an untyped declaration cannot be checked. */
+  actionType: DailyScrumAdjustmentAction;
   action: string;
+}
+
+/**
+ * The team's standing Daily Scrum commitment: held "at the same time and place every working
+ * day". The event's length is the fixed 15-minute timebox, so only its start is configured.
+ */
+export interface DailyScrumSchedule {
+  id: string;
+  teamId: string;
+  /** IANA time zone the wall-clock `startMinute` is expressed in, e.g. `Europe/Berlin`. */
+  timezone: string;
+  /** Start of the event as minutes after local midnight (0-1439). */
+  startMinute: number;
+  /** The "same place": a room, or a link. Either may be omitted, but not both. */
+  location?: string | null;
+  locationUrl?: string | null;
+  /** ISO-8601 weekday numbers (1 = Monday .. 7 = Sunday) the team works. */
+  workingDays: number[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** The writable half of the team's Daily Scrum schedule. */
+export interface DailyScrumScheduleInput {
+  timezone: string;
+  startMinute: number;
+  location?: string | null;
+  locationUrl?: string | null;
+  workingDays: number[];
+}
+
+/** A dated exception to the weekly working pattern: a holiday, a day off, a team offsite. */
+export interface TeamNonWorkingDay {
+  id: string;
+  teamId: string;
+  /** Calendar date, `YYYY-MM-DD`. */
+  date: string;
+  name?: string | null;
+  createdAt: string;
+}
+
+/**
+ * Everything needed to describe the standing cadence for one date, composed server-side from the
+ * same calendar the Scrum Master dashboard counts with.
+ */
+export interface DailyScrumCadence {
+  /** Null until a Scrum Master records the team's commitment. */
+  schedule: DailyScrumSchedule | null;
+  calendar: WorkingDayCalendar;
+  /** The date this cadence describes, `YYYY-MM-DD`. */
+  date: string;
+  isWorkingDay: boolean;
+  /** Name of the exception covering the date, when one applies. */
+  nonWorkingDayName?: string | null;
+  sprintProgress: {
+    dayNumber: number;
+    totalDays: number;
+  };
+  /** Daily Scrum records the Sprint holds. */
+  held: number;
+  /** Working days the Sprint should hold, on the team's calendar. */
+  expected: number;
+  /** Expected working days carrying no record, in date order. */
+  missedDates: string[];
 }
 
 export interface DefinitionOfDone {
@@ -342,6 +546,14 @@ export interface DoDItem {
   category?: string; // e.g., 'quality', 'documentation', 'testing'
   isActive: boolean;
   order: number;
+  /**
+   * The built-in criterion this one descends from, or null for one the team wrote itself.
+   *
+   * The key, not the English sentence, is what decides which translation to show: a team may reword
+   * "Code is properly documented" and keep the criterion readable in all five languages. Null also
+   * covers rows written before the key existed, which fall back to the sentence match.
+   */
+  defaultKey?: string | null;
 }
 
 export interface DoDChecklistVerification {
@@ -383,7 +595,23 @@ export interface DoRItem {
   category?: string;
   isActive: boolean;
   order: number;
+  /** The built-in criterion this one descends from, or null for one the team wrote itself. */
+  defaultKey?: string | null;
 }
+
+/**
+ * A Definition of Done / Definition of Ready criterion as the API expects it on a write.
+ *
+ * The identity of a criterion is what decides how the server treats it: an `id` naming a criterion
+ * of this Definition updates that row in place — so the verifications recorded against it survive
+ * the edit — while an absent `id` inserts a new criterion. `order` is accepted for payload
+ * compatibility and ignored: the final order follows the position in the list.
+ */
+export type DefinitionItemPayload<T extends { id: string }> = Omit<T, 'id'> & { id?: string };
+
+export type DoDItemPayload = DefinitionItemPayload<DoDItem>;
+
+export type DoRItemPayload = DefinitionItemPayload<DoRItem>;
 
 export interface DoRChecklistVerification {
   id: string;
@@ -419,11 +647,24 @@ export interface Increment {
   totalStoryPoints: number;
   status: IncrementStatus;
   integrationVerified?: boolean;
+  /** What the integration verification rests on: an exemption, or a pass against prior Increments. */
+  integrationVerificationBasis?: IntegrationVerificationBasis | null;
+  /** How many prior Increments the verification covered (0 for the first-Increment exemption). */
+  integrationVerifiedPriorCount?: number;
+  /** "the Increment must be in usable condition" — attested explicitly, with written evidence. */
+  usabilityVerified?: boolean;
+  usabilityEvidence?: string | null;
+  usabilityVerifiedAt?: string | null;
+  usabilityVerifiedBy?: string | null;
   createdAt: string;
   deliveredAt?: string;
   deliveryMethod?: DeliveryMethod;
+  /** Who delivered the Increment, alongside when and how. */
+  deliveredBy?: string | null;
   notes?: string;
   createdBy: string;
+  deliverer?: { id: string; firstName: string; lastName: string } | null;
+  usabilityVerifier?: { id: string; firstName: string; lastName: string } | null;
   sprint?: Sprint;
   pbis?: ProductBacklogItem[];
 }
@@ -441,6 +682,19 @@ export interface SprintReview {
   summary?: string;
   smNotes?: string | null;
   status?: string;
+  /**
+   * The Sprint Goal the Review assessed, frozen when the verdict was recorded.
+   *
+   * Its presence is what makes the verdict re-readable after a later renegotiation of the Goal.
+   */
+  sprintGoal?: string | null;
+  /**
+   * The Scrum Team's own recorded verdict on the Sprint Goal, or null when it was never assessed.
+   * Never derived from item completion.
+   */
+  sprintGoalOutcome?: SprintGoalOutcome | null;
+  /** The team's own words for the verdict. */
+  sprintGoalNote?: string | null;
   createdAt: string;
   updatedAt: string;
   increment?: Increment;
@@ -449,7 +703,8 @@ export interface SprintReview {
 
 export interface ReviewAttendee {
   id: string;
-  userId?: string;
+  /** Set when the attendee is a registered user; absent for external stakeholders. */
+  userId?: string | null;
   name: string;
   email?: string;
   role: string; // 'product_owner', 'scrum_master', 'developers', 'stakeholder'
@@ -471,10 +726,23 @@ export interface StakeholderFeedback {
   createdAt: string;
 }
 
+/** The Product Backlog item a Review adjustment produced, as returned by the API. */
+export interface LinkedAdjustmentPbi {
+  id: string;
+  title: string;
+  status?: string;
+  priority?: string;
+  storyPoints?: number | null;
+}
+
 export interface BacklogAdjustment {
   id: string;
   reviewId: string;
-  pbiId?: string;
+  /** The item the adjustment refers to (the subject of a modify/remove/reorder/split). */
+  pbiId?: string | null;
+  /** The item the adjustment produced. Present once the adjustment has been carried out. */
+  createdPbiId?: string | null;
+  createdPbi?: LinkedAdjustmentPbi | null;
   action: 'add' | 'modify' | 'remove' | 'reorder' | 'split';
   description: string;
   reason: string;
@@ -517,10 +785,31 @@ export interface SprintRetrospective {
   summary?: string;
   smNotes?: string | null;
   dodEvolutionNotes?: string; // Notes about DoD changes
+  /** The per-criterion Definition of Done reflection recorded during the event. */
+  dodReflections?: DodReflection[] | null;
+  /** The Definition of Done version this Retrospective produced, once its changes were applied. */
+  dodVersionAtPush?: number | null;
   isAnonymous: boolean;
   createdAt: string;
   updatedAt: string;
   sprint?: Sprint;
+}
+
+/**
+ * What the team decided about one Definition of Done criterion during the Retrospective.
+ *
+ * `KEEP` leaves the criterion as it is, `CHANGE` replaces its text, and `RETIRE` removes it. A
+ * reflection with no `dodItemId` proposes a criterion the team does not have yet.
+ */
+export type DodReflectionDecision = 'KEEP' | 'CHANGE' | 'RETIRE';
+
+export interface DodReflection {
+  dodItemId: string | null;
+  description: string;
+  decision: DodReflectionDecision;
+  proposedDescription?: string | null;
+  note?: string | null;
+  order?: number;
 }
 
 export interface RetrospectiveItem {
@@ -528,8 +817,8 @@ export interface RetrospectiveItem {
   retrospectiveId: string;
   category: RetrospectiveCategory;
   content: string;
-  authorId?: string; // Optional if anonymous
-  authorName?: string;
+  authorId?: string | null; // Null in an anonymous Retrospective
+  authorName?: string | null;
   votes: number;
   votedBy?: string[]; // User IDs
   order: number;
@@ -545,7 +834,11 @@ export interface RetroActionItem {
   dueDate?: string;
   status: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
   addedToSprintBacklog: boolean;
-  relatedSprintId?: string; // Sprint where action item is added
+  relatedSprintId?: string | null; // Sprint the improvement was taken into
+  /** The Product Backlog item this improvement produced, or was linked to. */
+  productBacklogItemId?: string | null;
+  /** Evidence of the follow-through: the linked item, when one exists. */
+  productBacklogItem?: { id: string; title: string } | null;
   createdAt: string;
   completedAt?: string;
   owner?: User;
@@ -558,17 +851,6 @@ export interface RetroAttendee {
   email?: string;
   role: string; // 'product_owner', 'scrum_master', 'developers', 'stakeholder'
   attended: boolean;
-}
-
-export interface Notification {
-  id: string;
-  userId: string;
-  type: 'task_assigned' | 'mention' | 'sprint_update' | 'impediment' | 'direct_message' | 'system';
-  title: string;
-  message: string;
-  data?: Record<string, string>;
-  isRead: boolean;
-  createdAt: string;
 }
 
 // API Response types
@@ -596,25 +878,98 @@ export interface PaginatedResponse<T> {
   };
 }
 
-// Chart data types
+/**
+ * One Sprint's burndown, in the shape the API serves it and both charts read it.
+ *
+ * `dates` are ISO calendar dates for the Sprint's working days and `ideal` is the
+ * straight-line forecast over the same days, both in estimated hours. `actual` is
+ * the remaining work observed on each of those days; a working day the Sprint has
+ * not reached yet carries `null` rather than a sentinel value, which is how the
+ * charts know to stop the actual line at today.
+ */
 export interface BurndownData {
-  date: string;
-  ideal: number;
-  actual: number;
+  dates: string[];
+  ideal: number[];
+  actual: (number | null)[];
 }
 
-export interface VelocityData {
+/**
+ * One entry of the demo velocity series.
+ *
+ * Distinct from `VelocityData`, which is what the API returns: this is the shape the in-browser
+ * mock data is authored in, before it is turned into a report payload.
+ */
+export interface VelocitySeriesEntry {
   sprintNumber: number;
   sprintName: string;
   planned: number;
   completed: number;
 }
 
+// Sprint Planning — recorded participation and capacity (Scrum Guide conformance)
+export interface SprintPlanningAttendee {
+  id: string;
+  name: string;
+  email: string | null;
+  role: string;
+  attended: boolean;
+}
+
+export interface SprintPlanningCapacityEntry {
+  memberId: string | null;
+  userId: string;
+  availableHours: number;
+}
+
+export interface SprintPlanningParticipation {
+  attendees: SprintPlanningAttendee[];
+  hasProductOwner: boolean;
+  developerCount: number;
+  isReadyToStart: boolean;
+}
+
+/** One Sprint in the velocity series, with the evidence its points rest on. */
+export interface VelocityPoint {
+  sprintId: string;
+  sprintName: string;
+  status: string;
+  plannedPoints: number | null;
+  completedPoints: number | null;
+  /** How the points were obtained; `not_available` is a gap, never a zero. */
+  provenance: CompletionProvenance;
+}
+
+export interface VelocityData {
+  /** The Sprints the team ran, oldest first, so a chart reads left to right. */
+  points: VelocityPoint[];
+  /**
+   * Average completed points over the observed Sprints, or null when none could be observed.
+   * An average of the evidence, not a figure to plan to.
+   */
+  averageCompletedPoints: number | null;
+  /** Sprints that contributed to the average. */
+  observedSprints: number;
+  /** Sprints whose completion the evidence does not establish. */
+  unavailableSprints: number;
+}
+
 export interface TeamMetrics {
-  averageVelocity: number;
-  velocityTrend: number;
-  /** Share of completed sprints whose planned points were fully delivered (completed >= planned). */
-  completionRate: number;
+  /** Average completed points over the observed closed Sprints; null when none were observed. */
+  averageCompletedPoints: number | null;
+  /** Closed Sprints the average rests on. */
+  observedSprints: number;
+  /** Closed Sprints the reports look back over. */
+  totalSprints: number;
+  /** The observed range, so the record is read as history rather than as a single figure. */
+  minCompletedPoints: number | null;
+  maxCompletedPoints: number | null;
+  /** Share of observed closed Sprints whose planned points were fully delivered. */
+  completionRate: number | null;
+  /** Sprints carrying the team's own recorded Sprint Goal verdict. */
+  sprintGoalAssessed: number;
+  sprintGoalVerdicts: { achieved: number; partiallyAchieved: number; notAchieved: number };
+  /** Item completion over the observed Sprints: a separate fact from goal attainment. */
+  itemCompletion: SprintItemCompletion;
   impediments: {
     resolved: number;
     total: number;
@@ -628,18 +983,36 @@ export interface SprintHistoryItem {
   endDate: string;
   status: string;
   sprintGoal?: string | null;
-  plannedPoints: number;
-  completedPoints: number;
+  plannedPoints: number | null;
+  completedPoints: number | null;
+  /** How the points were obtained; `not_available` is a gap, never a zero. */
+  provenance: CompletionProvenance;
+  itemCount: number | null;
+  completedItemCount: number | null;
+  /** The Scrum Team's recorded verdict, or null when the Sprint Goal was never assessed. */
+  sprintGoalOutcome: SprintGoalOutcome | null;
+  /** The team's own words for the verdict. */
+  sprintGoalNote?: string | null;
   teamMembers: number;
   impediments: number;
 }
 
+/**
+ * A signal worth inspecting, never a scorecard entry.
+ *
+ * `observation` states a fact about the team's own record; `attention` points at work the team may
+ * want to inspect. There is deliberately no "good" or "bad" kind: labelling an observed number
+ * would turn it into a target.
+ */
 export interface Insight {
   id: string;
-  type: 'positive' | 'warning' | 'negative';
+  kind: 'observation' | 'attention';
+  /** Stable token mapped to an icon by the interface. */
   icon: string;
   title: string;
   description: string;
+  /** The record the signal was read from, so the claim can be checked. */
+  evidence: string;
 }
 
 // Auth types
@@ -853,3 +1226,8 @@ export interface BulkCreateResponseData {
 
 // Re-export auth types
 export type { TeamMembership, DeletionEligibilityResult, PendingDeletion } from './auth.types';
+
+// The notification contract, re-exported so there is exactly one description of it. The interface
+// used to be declared twice -- here and in `notification.types.ts` -- and the mock was typed against
+// this copy, which is how it drifted from the API without `tsc` saying a word.
+export * from './notification.types';

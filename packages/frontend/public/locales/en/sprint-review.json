@@ -46,6 +46,7 @@
     "ownerPlaceholder": "Select owner...",
     "productGoalAssessment": "Product Goal Progress Assessment",
     "productGoalAssessmentPlaceholder": "How is the team progressing toward the Product Goal?",
+    "productGoalAssessmentRequired": "Please write the Product Goal assessment or clear the field. A blank assessment is not recorded as evidence.",
     "relatedPbi": "Related PBI (Optional)",
     "requiredFieldsNote": "Required fields are marked with *",
     "subtitle": "Capture valuable insights from stakeholders to improve your product",
@@ -67,6 +68,7 @@
     "cannotAddAdjustmentTitle": "Cannot add adjustment to a completed review",
     "description": "Changes to the Product Backlog based on Sprint Review feedback.",
     "empty": "No backlog adjustments made during this review.",
+    "linkedItem": "Linked item:",
     "owner": "Owner:",
     "reason": "Reason:",
     "status": {
@@ -93,6 +95,13 @@
       "completeSubtitle": "Review all items and confirm to mark this sprint review as completed",
       "completeTitle": "Complete Sprint Review",
       "confirmation": "Are you sure you want to mark this sprint review as completed? This action cannot be undone.",
+      "goalAchieved": "Achieved",
+      "goalNotAchieved": "Not achieved",
+      "goalPartiallyAchieved": "Partially achieved",
+      "goalVerdictHint": "Recorded when you complete the Review.",
+      "goalVerdictLegend": "How far was the Sprint Goal met?",
+      "goalVerdictNote": "The team's own words (optional)",
+      "goalVerdictRequired": "Record the team's verdict on the Sprint Goal: achieved, partially achieved, or not achieved. Item completion is not a substitute.",
       "gotIt": "Got it",
       "validationAttended": "At least one attendee must be marked as attended before completing the sprint review.",
       "validationAttendees": "Please add at least one attendee before completing the sprint review.",
@@ -101,6 +110,7 @@
     },
     "defaultSummary": "Sprint Review completed.",
     "failed": "Failed to complete review. Please try again.",
+    "sprintNotEnded": "The Sprint Review inspects the outcome of the Sprint. This Review can be completed from the Sprint's end date ({{endDate}}).",
     "successModal": {
       "close": "Close",
       "message": "Sprint Review completed successfully!",
@@ -121,6 +131,7 @@
   "detailLabels": {
     "endDate": "End Date:",
     "sprintGoal": "Sprint Goal:",
+    "sprintGoalOutcome": "Sprint Goal verdict",
     "startDate": "Start Date:",
     "status": "Status:"
   },
@@ -143,7 +154,7 @@
       "question": "Question",
       "suggestion": "Suggestion"
     },
-    "empty": "No feedback collected yet. Click \"Add Feedback\" to add stakeholder feedback.",
+    "empty": "No stakeholder feedback yet. Add feedback to capture what stakeholders raised.",
     "owner": "Owner:",
     "title": "Stakeholder Feedback"
   },
@@ -184,6 +195,10 @@
     "completedSprints_plural": "Completed Sprints",
     "createIncrement": "Create Increment",
     "createReview": "Create Sprint Review",
+    "emptyState": {
+      "description": "A Sprint Review can be held for an active or completed Sprint. Start a Sprint in Sprint Planning to begin.",
+      "title": "No Sprints to Review"
+    },
     "goal": "Goal:",
     "loading": "Loading sprint reviews...",
     "reviewStatus": {

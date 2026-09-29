@@ -273,16 +273,28 @@ describe('DefinitionService', () => {
   });
 
   describe('getDoRHistory', () => {
-    it('should get Definition of Ready history for a team', async () => {
+    it('should get Definition of Ready history for a team, in the shape the DoD history uses', async () => {
+      // The same shape as the Definition of Done's history, so one component renders both badges.
       const mockResponse = {
         success: true,
         data: [
           {
             id: 'dor-1',
             teamId: 'team-1',
-            items: [],
             version: 1,
-            updatedAt: '2024-01-01T00:00:00Z',
+            items: [
+              {
+                description: 'Clear title and description provided',
+                category: 'acceptance',
+                isActive: true,
+                order: 0,
+                defaultKey: 'clearTitle',
+              },
+            ],
+            createdAt: '2024-01-01T00:00:00Z',
+            createdBy: 'user-1',
+            createdByName: 'Test User',
+            isCurrent: true,
           },
         ],
       };
@@ -293,6 +305,8 @@ describe('DefinitionService', () => {
       expect(apiService.get).toHaveBeenCalledWith('/teams/team-1/definition-of-ready/history');
       expect(result.success).toBe(true);
       expect(result.data).toHaveLength(1);
+      expect(result.data?.[0]?.isCurrent).toBe(true);
+      expect(result.data?.[0]?.items[0]?.defaultKey).toBe('clearTitle');
     });
   });
 

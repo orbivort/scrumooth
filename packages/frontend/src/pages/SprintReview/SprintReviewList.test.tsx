@@ -233,8 +233,9 @@ describe('SprintReviewList', () => {
       renderComponent();
 
       await waitFor(() => {
+        expect(screen.getByText(i18nT('sprint-review:list.emptyState.title'))).toBeInTheDocument();
         expect(
-          screen.getByText(i18nT('common:emptyState.noCompletedSprint.title'))
+          screen.getByText(i18nT('sprint-review:list.emptyState.description'))
         ).toBeInTheDocument();
       });
     });

@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeAll, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 import { initTestI18n } from '@/test-utils';
@@ -157,5 +158,76 @@ describe('EventTimebox Component', () => {
     renderWithClient(<EventTimebox event="dailyScrum" sprintId="sprint-1" />);
 
     expect(await screen.findByText('Over time')).toBeInTheDocument();
+  });
+
+  it('formats a multi-hour countdown as H:MM:SS and exposes it via the timer aria-label', async () => {
+    timeboxServiceMock.getTimebox.mockResolvedValue({
+      success: true,
+      data: { ...baseState, elapsedMs: 0, timeboxSeconds: 2 * 60 * 60 },
+    });
+
+    renderWithClient(<EventTimebox event="dailyScrum" sprintId="sprint-1" />);
+
+    await waitFor(() =>
+      expect(screen.getByRole('timer')).toHaveAttribute('aria-label', 'Time remaining: 2:00:00')
+    );
+  });
+
+  it('shows the warning styling when little time remains', async () => {
+    timeboxServiceMock.getTimebox.mockResolvedValue({
+      success: true,
+      data: { ...baseState, status: 'RUNNING', elapsedMs: 14 * 60 * 1000 },
+    });
+
+    renderWithClient(<EventTimebox event="dailyScrum" sprintId="sprint-1" />);
+
+    expect(await screen.findByText('Running')).toBeInTheDocument();
+    // 1 minute remaining of a 15-minute timebox is <= 10% → warning styling.
+    expect(screen.getByRole('timer').className).toContain('warning');
+  });
+
+  it('starts the timebox when the Start control is clicked', async () => {
+    const user = userEvent.setup();
+    timeboxServiceMock.getTimebox.mockResolvedValue({ success: true, data: baseState });
+    timeboxServiceMock.startTimebox.mockResolvedValue({ success: true, data: baseState });
+
+    renderWithClient(<EventTimebox event="dailyScrum" sprintId="sprint-1" />);
+
+    await screen.findByText('Idle');
+    await user.click(screen.getByRole('button', { name: 'Start' }));
+
+    await waitFor(() => expect(timeboxServiceMock.startTimebox).toHaveBeenCalled());
+  });
+
+  it('pauses a running timebox when the Pause control is clicked', async () => {
+    const user = userEvent.setup();
+    timeboxServiceMock.getTimebox.mockResolvedValue({
+      success: true,
+      data: { ...baseState, status: 'RUNNING', elapsedMs: 60 * 1000 },
+    });
+    timeboxServiceMock.pauseTimebox.mockResolvedValue({ success: true, data: baseState });
+
+    renderWithClient(<EventTimebox event="dailyScrum" sprintId="sprint-1" />);
+
+    expect(await screen.findByText('Running')).toBeInTheDocument();
+    const pause = screen.getByRole('button', { name: 'Pause' });
+    expect(pause).not.toBeDisabled();
+
+    await user.click(pause);
+
+    await waitFor(() => expect(timeboxServiceMock.pauseTimebox).toHaveBeenCalled());
+  });
+
+  it('resets the timebox when the Reset control is clicked', async () => {
+    const user = userEvent.setup();
+    timeboxServiceMock.getTimebox.mockResolvedValue({ success: true, data: baseState });
+    timeboxServiceMock.resetTimebox.mockResolvedValue({ success: true, data: baseState });
+
+    renderWithClient(<EventTimebox event="dailyScrum" sprintId="sprint-1" />);
+
+    await screen.findByText('Idle');
+    await user.click(screen.getByRole('button', { name: 'Reset' }));
+
+    await waitFor(() => expect(timeboxServiceMock.resetTimebox).toHaveBeenCalled());
   });
 });

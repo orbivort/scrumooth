@@ -39,23 +39,12 @@ jobs:
           pnpm-version: ${{ env.PNPM_VERSION }}
           build-shared: 'true'
 
-      - name: Create production environment file
-        run: |
-          cd packages/frontend
-          cat > .env.production << 'EOF'
-          # GitHub Pages Production Configuration
-          # Mock API enabled for demonstration without backend
-
-          VITE_BASE_PATH=/scrumooth/
-          VITE_USE_MOCK_API=true
-          VITE_API_URL=https://api.example.com/api/v1
-          VITE_LOG_LEVEL=info
-          VITE_BACKLOG_ITEM_LIMIT=100
-          VITE_BACKLOG_MAX_ITEMS_PER_GOAL=200
-          EOF
-
-      - name: Build frontend
-        run: pnpm --filter=@scrumooth/frontend run build
+      # The demo build reads its flags from the committed `packages/frontend/.env.demo`.
+      # It is the only supported way to ship a build with mocks enabled: a production
+      # build refuses to run with VITE_USE_MOCK_API=true (guard in vite.config.ts), so
+      # this workflow never hand-writes a production env file.
+      - name: Build frontend (demo mode)
+        run: pnpm --filter=@scrumooth/frontend run build:demo
 
       - name: Inject Cloudflare Web Analytics
         if: vars.CF_ANALYTICS_TOKEN != ''

@@ -4,7 +4,15 @@
   display: flex;
   min-height: 100vh;
   background-color: var(--color-background-page);
-  overflow-x: hidden;
+
+  /* `clip`, not `hidden`. A non-visible `overflow-x` forces `overflow-y` to compute to `auto`, which
+     makes this element a scroll container -- and because the shell has no fixed height, it grows to fit
+     its content and therefore never scrolls. A scrollport that never scrolls is inert for scrolling but
+     fatal for `position: sticky`: every sticky descendant resolves against it, never moves, and scrolls
+     away with the page. That silently stopped the topbar from sticking, and it would stop the Team
+     module's in-page section navigation too. `clip` clips exactly as `hidden` does without creating a
+     scroll container, so the sticky ancestors keep working. */
+  overflow-x: clip;
 }
 
 /* Sidebar - Enhanced with gradient and depth */
@@ -345,16 +353,29 @@
   display: none;
 }
 
+/* The Settings band.
+   The one heading that outranks the others. A section heading names a category inside the menu;
+   this one announces that the menu has ended and configuration begins, so it is drawn as a band
+   rather than a label: full-bleed tint, a rule on both sides, larger type in a brighter neutral and
+   more air above it. It used to be typographically identical to the group labels beneath it, which
+   left the two levels indistinguishable and the nesting unknowable. */
 .nav-divider {
-  padding: var(--space-4) var(--space-5) var(--space-2);
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-gray-500);
+  margin-top: var(--space-5);
+  padding: var(--space-4) var(--space-5) var(--space-3);
+  border-top: var(--border-width-1) solid var(--color-gray-700);
+  border-bottom: var(--border-width-1) solid var(--color-gray-700);
+  background: linear-gradient(90deg, var(--color-gray-800) 0%, var(--color-gray-900) 100%);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-gray-300);
   text-transform: uppercase;
   letter-spacing: var(--letter-spacing-wider);
-  margin-top: var(--space-2);
 }
 
+/* Section headings, quiet on purpose: their job is to name a category, not to compete with the band
+   that closes the menu. They carry no rule of their own -- a rule per heading would draw as many
+   thresholds as there are categories, and a threshold is exactly what the Settings band means. The
+   rule that does appear belongs to the sections a heading cannot open, not to the headings. */
 .nav-group-label {
   padding: var(--space-4) var(--space-5) var(--space-2);
   font-size: var(--font-size-xs);
@@ -363,14 +384,15 @@
   text-transform: uppercase;
   letter-spacing: var(--letter-spacing-wider);
   margin-top: var(--space-2);
-  border-top: var(--border-width-1) solid var(--color-gray-700);
 }
 
-.nav-group-label:first-of-type {
-  margin-top: 0;
-  border-top: none;
-}
-
+/* The rule that opens a section no heading can open.
+   It is drawn in two places: before the run of app concepts that declares no heading, where it closes
+   the Guide's sections, and before every section while collapsed, where it stands in for headings the
+   rail has no room to draw. Its vertical margin is the whole of its job in the expanded state -- three
+   times the four pixels that separate two rows of one group, so proximity and the rule say the same
+   thing before the eye has read anything. It stays a faded hairline on purpose: the Settings band
+   outranks it, and a rule that competed with the band would make a threshold of every category. */
 .nav-group-divider {
   height: var(--border-width-1);
   background: linear-gradient(
@@ -380,7 +402,7 @@
     var(--color-gray-700) 80%,
     transparent 100%
   );
-  margin: var(--space-2) var(--space-5);
+  margin: var(--space-3) var(--space-5);
   opacity: var(--opacity-50);
 }
 
@@ -1011,6 +1033,10 @@
     background-color var(--transition-normal),
     transform var(--transition-fast);
   text-align: start;
+
+  /* One row of this menu is a link rather than a button -- the reader's Privacy & Data surface is a
+     destination, not an action -- so the row resets the anchor's own underline and colour. */
+  text-decoration: none;
 }
 
 .user-dropdown-item:hover {
@@ -1032,11 +1058,17 @@
   color: var(--color-gray-700);
 }
 
-/* Main Content */
+/* Main Content.
+   This is the element a module's sticky sub-header resolves against, so it must not be a scroll
+   container: `overflow-y: auto` here made one, and because the box grows with its content it never
+   scrolled, which pinned the sticky offset at zero for the whole subtree. It was doing nothing for
+   scrolling -- the window is the scroller -- and it was costing every sticky descendant its behaviour.
+   The shorthand keeps the horizontal clipping the `auto` was accidentally providing, without creating a
+   scrollport. */
 .main-content {
   flex: 1;
   padding: var(--space-6);
-  overflow-y: auto;
+  overflow: clip visible;
 }
 
 /* Responsive Design */

@@ -1,5 +1,6 @@
-import { describe, it, expect, beforeAll } from 'vitest';
+import { describe, it, expect, beforeAll, vi } from 'vitest';
 import { i18nInstance } from '../../../i18n/config.js';
+import { logger } from '../../../utils/logger.js';
 import { SUPPORTED_LOCALES, DEFAULT_LOCALE } from '@scrumooth/shared';
 
 describe('i18n config', () => {
@@ -117,6 +118,42 @@ describe('i18n config', () => {
       // If a key doesn't exist in one locale, it falls back to the fallback language
       const result = i18nInstance.t('errors:invalidCredentials', { lng: 'en' });
       expect(result).toBeTruthy();
+    });
+  });
+
+  describe('missing key handlers', () => {
+    it('logs a warning through the missingKeyHandler when a key is missing', () => {
+      // Arrange
+      const warnSpy = vi.spyOn(logger, 'warn');
+      const handler = i18nInstance.options.missingKeyHandler as unknown as (
+        lngs: string[],
+        ns: string,
+        key: string
+      ) => void;
+      expect(typeof handler).toBe('function');
+
+      // Act
+      handler(['en'], 'errors', 'some.missing.key');
+
+      // Assert
+      expect(warnSpy).toHaveBeenCalledWith('Missing i18n key', {
+        lng: ['en'],
+        ns: 'errors',
+        key: 'some.missing.key',
+      });
+      warnSpy.mockRestore();
+    });
+
+    it('parseMissingKeyHandler returns the last segment of a namespaced key', () => {
+      // Arrange
+      const parse = i18nInstance.options.parseMissingKeyHandler as unknown as (
+        key: string
+      ) => string;
+      expect(typeof parse).toBe('function');
+
+      // Act & Assert
+      expect(parse('errors:someKey')).toBe('someKey');
+      expect(parse('a.b.c')).toBe('c');
     });
   });
 });

@@ -403,6 +403,50 @@ describe('Impediments Integration Tests', () => {
       expect(response.body.data.status).toBe('OPEN');
     });
 
+    it('should accept the documented date-only targetDate and declared priority', async () => {
+      const email = `create-impediment-dated-${uniqueId()}@example.com`;
+      testEmails.push(email);
+
+      const user = await createTestUserInDb(email);
+      const teamName = `Dated Impediment Team ${uniqueId()}`;
+      testTeams.push(teamName);
+
+      const team = await createTestTeam(teamName);
+      await addTeamMember(team.id, user.id, 'DEVELOPERS');
+      const sprint = await createTestSprint(team.id, 'Sprint');
+
+      const cookies = await loginAndGetCookies(email);
+      const { csrfToken } = extractCsrfFromCookies(cookies);
+
+      // `targetDate` is documented as a date-only ISO string (`YYYY-MM-DD`) — exactly what an
+      // `<input type="date">` sends. Prisma's `DateTime` input rejects that form verbatim, so it
+      // must be normalized before the write; without that, this request failed as
+      // "Invalid data provided" and stored nothing.
+      const response = await request(app)
+        .post('/api/v1/impediments')
+        .set('Cookie', cookies)
+        .set(CSRF_CONSTANTS.HEADER_NAME, csrfToken)
+        .send({
+          teamId: team.id,
+          sprintId: sprint.id,
+          title: 'Dated Impediment',
+          description: 'Blocked until the shared CI account is restored',
+          priority: 'CRITICAL',
+          targetDate: '2026-10-01',
+        })
+        .expect(201);
+
+      expect(response.body.success).toBe(true);
+      expect(response.body.data.priority).toBe('CRITICAL');
+      // Stored as the calendar date it names, anchored to UTC midnight rather than shifted by
+      // the server's timezone.
+      expect(response.body.data.targetDate).toBe('2026-10-01T00:00:00.000Z');
+
+      const stored = await prisma.impediment.findUnique({ where: { id: response.body.data.id } });
+      expect(stored?.priority).toBe('CRITICAL');
+      expect(stored?.targetDate?.toISOString()).toBe('2026-10-01T00:00:00.000Z');
+    });
+
     it('should return 400 with missing required fields', async () => {
       const email = `missing-fields-${uniqueId()}@example.com`;
       testEmails.push(email);
@@ -783,6 +827,219 @@ describe('Impediments Integration Tests', () => {
         expect(translations.impedimentCreated.it).toContain('Impediment');
         expect(translations.impedimentResolved.it).toContain('Impediment');
       });
+    });
+  });
+
+  describe('Team scoping and terminal-transition gates', () => {
+    const testEmails: string[] = [];
+    const testTeams: string[] = [];
+
+    afterEach(async () => {
+      await cleanupTeams(testTeams);
+      await cleanupTestData(testEmails);
+      testEmails.length = 0;
+      testTeams.length = 0;
+    });
+
+    /** A team plus one member of it, with a logged-in session for that member. */
+    const setupTeamWithMember = async (
+      role: 'PRODUCT_OWNER' | 'SCRUM_MASTER' | 'DEVELOPERS' = 'DEVELOPERS'
+    ) => {
+      const email = `impediment-scope-${uniqueId()}@example.com`;
+      testEmails.push(email);
+
+      const user = await createTestUserInDb(email);
+      const teamName = `Impediment Scope Team ${uniqueId()}`;
+      testTeams.push(teamName);
+
+      const team = await createTestTeam(teamName);
+      await addTeamMember(team.id, user.id, role);
+
+      const cookies = await loginAndGetCookies(email);
+      const { csrfToken } = extractCsrfFromCookies(cookies);
+
+      return { email, user, team, cookies, csrfToken };
+    };
+
+    it('should default an unassigned impediment to the team Scrum Master and write the audit columns', async () => {
+      const { user, team, cookies, csrfToken } = await setupTeamWithMember();
+
+      const smEmail = `impediment-scope-sm-${uniqueId()}@example.com`;
+      testEmails.push(smEmail);
+      const smUser = await createTestUserInDb(smEmail);
+      await addTeamMember(team.id, smUser.id, 'SCRUM_MASTER');
+
+      const response = await request(app)
+        .post('/api/v1/impediments')
+        .set('Cookie', cookies)
+        .set(CSRF_CONSTANTS.HEADER_NAME, csrfToken)
+        .send({
+          teamId: team.id,
+          title: 'Unassigned impediment',
+          description: 'Nobody has picked this up yet',
+        })
+        .expect(201);
+
+      // The Guide makes the Scrum Master accountable for causing removal, so an unowned
+      // impediment lands on them by default.
+      expect(response.body.data.ownerId).toBe(smUser.id);
+      // The audit columns the API documents are actually written on the create path.
+      expect(response.body.data.createdBy).toBe(user.id);
+      expect(response.body.data.updatedBy).toBe(user.id);
+      expect(response.body.data.priority).toBe('MEDIUM');
+    });
+
+    it('should refuse a create from someone outside the team', async () => {
+      const { team } = await setupTeamWithMember();
+
+      const outsiderEmail = `impediment-outsider-${uniqueId()}@example.com`;
+      testEmails.push(outsiderEmail);
+      await createTestUserInDb(outsiderEmail);
+      const outsiderCookies = await loginAndGetCookies(outsiderEmail);
+      const { csrfToken } = extractCsrfFromCookies(outsiderCookies);
+
+      const response = await request(app)
+        .post('/api/v1/impediments')
+        .set('Cookie', outsiderCookies)
+        .set(CSRF_CONSTANTS.HEADER_NAME, csrfToken)
+        .send({
+          teamId: team.id,
+          title: 'Tampered impediment',
+          description: 'Raised by someone outside the team',
+        })
+        .expect(403);
+
+      expect(response.body.error.code).toBe('GATE_IMPEDIMENT_TEAM_MEMBERS_ONLY');
+      expect(await prisma.impediment.count({ where: { teamId: team.id } })).toBe(0);
+    });
+
+    it('should refuse an update and a delete that target another team', async () => {
+      const owner = await setupTeamWithMember();
+      const impostor = await setupTeamWithMember();
+
+      const impediment = await createTestImpediment(
+        owner.team.id,
+        owner.user.id,
+        'Owned elsewhere'
+      );
+
+      // The impostor is a member of their own team but not of the team that owns the impediment.
+      await request(app)
+        .put(`/api/v1/impediments/${impediment.id}`)
+        .set('Cookie', impostor.cookies)
+        .set(CSRF_CONSTANTS.HEADER_NAME, impostor.csrfToken)
+        .send({ teamId: owner.team.id, status: 'IN_PROGRESS' })
+        .expect(403);
+
+      await request(app)
+        .delete(`/api/v1/impediments/${impediment.id}`)
+        .query({ teamId: owner.team.id })
+        .set('Cookie', impostor.cookies)
+        .set(CSRF_CONSTANTS.HEADER_NAME, impostor.csrfToken)
+        .expect(403);
+
+      // The record survives intact: cross-team tampering and untracked deletion are both refused.
+      const stored = await prisma.impediment.findUnique({ where: { id: impediment.id } });
+      expect(stored).not.toBeNull();
+      expect(stored?.status).toBe('OPEN');
+    });
+
+    it('should refuse a delete from a teammate who is neither the reporter, the owner nor the Scrum Master', async () => {
+      const reporter = await setupTeamWithMember();
+
+      const bystanderEmail = `impediment-bystander-${uniqueId()}@example.com`;
+      testEmails.push(bystanderEmail);
+      const bystander = await createTestUserInDb(bystanderEmail);
+      await addTeamMember(reporter.team.id, bystander.id, 'DEVELOPERS');
+
+      const impediment = await createTestImpediment(
+        reporter.team.id,
+        reporter.user.id,
+        'Reported by someone else'
+      );
+
+      const bystanderCookies = await loginAndGetCookies(bystanderEmail);
+      const { csrfToken } = extractCsrfFromCookies(bystanderCookies);
+
+      await request(app)
+        .delete(`/api/v1/impediments/${impediment.id}`)
+        .query({ teamId: reporter.team.id })
+        .set('Cookie', bystanderCookies)
+        .set(CSRF_CONSTANTS.HEADER_NAME, csrfToken)
+        .expect(403);
+
+      expect(await prisma.impediment.findUnique({ where: { id: impediment.id } })).not.toBeNull();
+    });
+
+    it('should refuse CLOSED without a resolution so the Sprint-close gate cannot be lifted cheaply', async () => {
+      const { user, team, cookies, csrfToken } = await setupTeamWithMember();
+      const impediment = await createTestImpediment(team.id, user.id, 'Still blocking');
+
+      const response = await request(app)
+        .put(`/api/v1/impediments/${impediment.id}`)
+        .set('Cookie', cookies)
+        .set(CSRF_CONSTANTS.HEADER_NAME, csrfToken)
+        .send({ teamId: team.id, status: 'CLOSED' })
+        .expect(400);
+
+      expect(response.body.error.code).toBe('GATE_IMPEDIMENT_TERMINAL_RESOLUTION_REQUIRED');
+
+      const stored = await prisma.impediment.findUnique({ where: { id: impediment.id } });
+      expect(stored?.status).toBe('OPEN');
+    });
+
+    it('should accept CLOSED with a resolution and record who made the change', async () => {
+      const { user, team, cookies, csrfToken } = await setupTeamWithMember();
+      const impediment = await createTestImpediment(team.id, user.id, 'No longer relevant');
+
+      const response = await request(app)
+        .put(`/api/v1/impediments/${impediment.id}`)
+        .set('Cookie', cookies)
+        .set(CSRF_CONSTANTS.HEADER_NAME, csrfToken)
+        .send({
+          teamId: team.id,
+          status: 'CLOSED',
+          resolution: 'The dependency was removed from scope entirely',
+        })
+        .expect(200);
+
+      expect(response.body.data.status).toBe('CLOSED');
+      expect(response.body.data.resolvedAt).not.toBeNull();
+      expect(response.body.data.updatedBy).toBe(user.id);
+    });
+
+    it('should order impediments most-critical-first', async () => {
+      const { user, team, cookies } = await setupTeamWithMember();
+
+      await createTestImpediment(team.id, user.id, 'Minor', 'Description', 'OPEN');
+      await prisma.impediment.updateMany({
+        where: { teamId: team.id, title: 'Minor' },
+        data: { priority: 'LOW' },
+      });
+      await createTestImpediment(team.id, user.id, 'Blocking release', 'Description', 'OPEN');
+      await prisma.impediment.updateMany({
+        where: { teamId: team.id, title: 'Blocking release' },
+        data: { priority: 'CRITICAL' },
+      });
+      await createTestImpediment(team.id, user.id, 'Annoying', 'Description', 'OPEN');
+      await prisma.impediment.updateMany({
+        where: { teamId: team.id, title: 'Annoying' },
+        data: { priority: 'MEDIUM' },
+      });
+
+      const response = await request(app)
+        .get('/api/v1/impediments')
+        .query({ teamId: team.id })
+        .set('Cookie', cookies)
+        .expect(200);
+
+      // `priority` is a PostgreSQL enum compared by declaration order, so ascending reads
+      // CRITICAL -> LOW. Impact, not age, decides what the Scrum Master sees first.
+      expect(response.body.data.map((item: { title: string }) => item.title)).toEqual([
+        'Blocking release',
+        'Annoying',
+        'Minor',
+      ]);
     });
   });
 });

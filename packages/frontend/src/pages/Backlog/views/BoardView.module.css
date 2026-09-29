@@ -202,6 +202,55 @@
   opacity: 0.5;
 }
 
+/* ============================================================================
+   POSITIONAL DROP ZONES
+   Each card is a drop target so a drop can express "before/after this item",
+   not only "in this MoSCoW band". The insertion line is drawn on the half the
+   pointer is over, so the landing position is visible before release.
+   ============================================================================ */
+
+.card-drop-zone {
+  position: relative;
+}
+
+.card-drop-zone::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: var(--border-width-2);
+  border-radius: var(--radius-full);
+  background: var(--color-primary-600);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--transition-fast);
+}
+
+.card-drop-zone.drop-before::after {
+  top: 0;
+  opacity: 1;
+}
+
+.card-drop-zone.drop-after::after {
+  bottom: 0;
+  opacity: 1;
+}
+
+/* Forced-colors / high-contrast: an outline survives where a tinted line may not. */
+@media (prefers-contrast: high) {
+  .card-drop-zone.drop-before::after,
+  .card-drop-zone.drop-after::after {
+    outline: var(--border-width-2) solid CanvasText;
+    outline-offset: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card-drop-zone::after {
+    transition: none;
+  }
+}
+
 .backlog-column {
   background: var(--color-gray-50);
   border-radius: var(--radius-xl);

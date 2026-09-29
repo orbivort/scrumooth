@@ -289,6 +289,12 @@ export const IncrementList: React.FC = () => {
               <div className={styles['card-header']}>
                 <h3 className={styles['increment-name']}>{increment.name}</h3>
                 <div className={styles['card-header-badges']}>
+                  {increment.usabilityVerified && (
+                    <span className={styles['integration-verified-badge']}>
+                      <CheckCircleIcon size={12} />
+                      <span>{t('card.usable')}</span>
+                    </span>
+                  )}
                   {increment.integrationVerified && (
                     <span className={styles['integration-verified-badge']}>
                       <CheckCircleIcon size={12} />

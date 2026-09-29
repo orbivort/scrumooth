@@ -455,9 +455,15 @@ describe('TeamSelectionModal Component', () => {
     });
 
     it('disables all team cards while switching', async () => {
-      const switchTeam = vi
-        .fn()
-        .mockImplementation(() => new Promise((resolve) => setTimeout(resolve, 100)));
+      // Use a manually-resolved deferred so the intermediate "switching" state is
+      // deterministic and does not depend on real timer timing (which was flaky).
+      let resolveSwitch = () => {};
+      const switchTeam = vi.fn().mockImplementation(
+        () =>
+          new Promise<void>((resolve) => {
+            resolveSwitch = resolve;
+          })
+      );
       vi.mocked(useTeamContext).mockReturnValue({
         ...mockTeamContext,
         isLoading: false,
@@ -479,6 +485,11 @@ describe('TeamSelectionModal Component', () => {
             expect(button).toBeDisabled();
           }
         });
+      });
+
+      // Let the pending switch settle so the component's state is cleaned up.
+      await act(async () => {
+        resolveSwitch();
       });
     });
 
@@ -808,9 +819,15 @@ describe('TeamSelectionModal Component', () => {
     });
 
     it('handles rapid team switching attempts', async () => {
-      const switchTeam = vi
-        .fn()
-        .mockImplementation(() => new Promise((resolve) => setTimeout(resolve, 100)));
+      // Use a manually-resolved deferred so the in-flight state is deterministic and
+      // does not depend on real timer timing (which was flaky).
+      let resolveSwitch = () => {};
+      const switchTeam = vi.fn().mockImplementation(
+        () =>
+          new Promise<void>((resolve) => {
+            resolveSwitch = resolve;
+          })
+      );
       vi.mocked(useTeamContext).mockReturnValue({
         ...mockTeamContext,
         isLoading: false,
@@ -820,22 +837,29 @@ describe('TeamSelectionModal Component', () => {
 
       renderWithProviders(<TeamSelectionModal isOpen={true} onClose={vi.fn()} />);
 
-      const firstTeamCard = screen.getByText('Test Team').closest('button');
-      const secondTeamCard = screen.getByText('Second Team').closest('button');
+      const firstTeamCard = screen.getByText('Test Team').closest('button')!;
+      const secondTeamCard = screen.getByText('Second Team').closest('button')!;
 
-      if (firstTeamCard && secondTeamCard) {
-        const user = userEvent.setup();
-        await user.click(firstTeamCard);
-
-        await waitFor(() => {
-          expect(firstTeamCard).toBeDisabled();
-        });
-
-        fireEvent.click(secondTeamCard);
-      }
+      const user = userEvent.setup();
+      await user.click(firstTeamCard);
 
       await waitFor(() => {
-        expect(switchTeam).toHaveBeenCalledTimes(1);
+        expect(firstTeamCard).toBeDisabled();
+      });
+
+      // A click on another team while the first switch is still in flight must be ignored.
+      fireEvent.click(secondTeamCard);
+
+      expect(switchTeam).toHaveBeenCalledTimes(1);
+      expect(switchTeam).toHaveBeenCalledWith('team-1');
+
+      // Let the pending switch settle so the component's state is cleaned up.
+      await act(async () => {
+        resolveSwitch();
+      });
+
+      await waitFor(() => {
+        expect(secondTeamCard).toBeEnabled();
       });
     });
   });

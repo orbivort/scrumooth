@@ -30,7 +30,7 @@ export const getResults = asyncHandler(async (req: Request, res: Response) => {
   if (!id) {
     throw new BadRequestError('Health check ID is required');
   }
-  const results = await teamHealthCheckService.getResults(id);
+  const results = await teamHealthCheckService.getResults(id, req.user?.id);
   res.json(createSuccessResponse(results));
 });
 
@@ -39,7 +39,7 @@ export const getTrend = asyncHandler(async (req: Request, res: Response) => {
   if (!teamId) {
     throw new BadRequestError('Team ID is required');
   }
-  const trend = await teamHealthCheckService.getTrend(teamId);
+  const trend = await teamHealthCheckService.getTrend(teamId, req.user?.id);
   res.json(createSuccessResponse(trend));
 });
 
@@ -48,6 +48,6 @@ export const getLatestStatus = asyncHandler(async (req: Request, res: Response) 
   if (!teamId) {
     throw new BadRequestError('Team ID is required');
   }
-  const latest = await teamHealthCheckService.getLatestStatusForTeam(teamId);
+  const latest = await teamHealthCheckService.getLatestStatusForTeam(teamId, req.user?.id);
   res.json(createSuccessResponse(latest));
 });

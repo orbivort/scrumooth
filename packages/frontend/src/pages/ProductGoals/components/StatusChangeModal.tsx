@@ -31,7 +31,11 @@ import {
 export interface StatusChangeModalProps<T extends string> {
   isOpen: boolean;
   onClose: () => void;
-  onStatusChange: (status: T) => void | Promise<void>;
+  /**
+   * Applies the status change. `reason` carries the rationale required when the target status
+   * is `abandoned`; it is omitted for every other transition.
+   */
+  onStatusChange: (status: T, reason?: string) => void | Promise<void>;
   entityTitle: string;
   entityType: 'goal' | 'backlog-item';
   currentStatus: T;
@@ -64,10 +68,12 @@ export function StatusChangeModal<T extends string>({
   const { t } = useTranslation('backlog');
   const [selectedStatus, setSelectedStatus] = useState<T>(currentStatus);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [reason, setReason] = useState('');
 
   useEffect(() => {
     if (isOpen) {
       setSelectedStatus(currentStatus);
+      setReason('');
     }
   }, [isOpen, currentStatus]);
 
@@ -87,15 +93,24 @@ export function StatusChangeModal<T extends string>({
     }
   };
 
+  const requiresReason = selectedStatus === 'abandoned';
+  const isReasonMissing = requiresReason && reason.trim() === '';
+
   const handleConfirm = async () => {
-    if (selectedStatus === currentStatus) {
-      onClose();
+    if (selectedStatus === currentStatus || isReasonMissing) {
+      if (selectedStatus === currentStatus) {
+        onClose();
+      }
       return;
     }
 
     setIsSubmitting(true);
     try {
-      await onStatusChange(selectedStatus);
+      if (requiresReason) {
+        await onStatusChange(selectedStatus, reason.trim());
+      } else {
+        await onStatusChange(selectedStatus);
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -268,6 +283,32 @@ export function StatusChangeModal<T extends string>({
             </div>
           )}
 
+          {/* Abandonment Reason - the lifecycle offers no place to drop an objective
+              without a rationale the team can inspect afterwards */}
+          {!isViewOnly && requiresReason && (
+            <div className={styles['reason-section']}>
+              <label className={styles['reason-label']} htmlFor="status-change-reason">
+                {t('productGoals.abandonmentReasonLabel') as string}{' '}
+                <span className={styles['reason-required']}>*</span>
+              </label>
+              <textarea
+                id="status-change-reason"
+                className={styles['reason-input']}
+                rows={3}
+                maxLength={5000}
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+                placeholder={t('productGoals.abandonmentReasonPlaceholder') as string}
+                aria-required="true"
+                aria-invalid={isReasonMissing ? 'true' : 'false'}
+                disabled={isSubmitting || isLoading}
+              />
+              <span className={styles['reason-help']}>
+                {t('productGoals.abandonmentReasonRequired') as string}
+              </span>
+            </div>
+          )}
+
           {/* Status History - Using shared StatusHistorySection component */}
           <div className={styles['history-section-wrapper']}>
             <StatusHistorySection
@@ -297,7 +338,7 @@ export function StatusChangeModal<T extends string>({
                 isSubmitting ? styles['button-loading'] : ''
               }`}
               onClick={handleConfirm}
-              disabled={isSubmitting || isLoading || !hasChanges}
+              disabled={isSubmitting || isLoading || !hasChanges || isReasonMissing}
               aria-busy={isSubmitting}
             >
               {isSubmitting ? (

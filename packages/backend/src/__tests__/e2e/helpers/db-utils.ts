@@ -307,7 +307,9 @@ export const createTestDoDInDb = async (
 
   return {
     id: dod.id,
-    teamId: dod.teamId,
+    // A Definition of Done is created for a team here, so this is the scope it was made with. The
+    // column is nullable since a group can own one instead, which this helper never does.
+    teamId,
   };
 };
 
@@ -506,7 +508,12 @@ export const createTestIncrementInDb = async (
   sprintId: string,
   teamId: string,
   name?: string,
-  status: 'DRAFT' | 'VERIFIED' | 'DELIVERED' | 'ARCHIVED' = 'DRAFT'
+  status: 'DRAFT' | 'VERIFIED' | 'DELIVERED' | 'ARCHIVED' = 'DRAFT',
+  /**
+   * The two verifications an Increment must carry before it can be marked VERIFIED or delivered:
+   * its integration with prior Increments, and the written attestation that it is usable.
+   */
+  verification: { integrationVerified?: boolean; usabilityVerified?: boolean } = {}
 ): Promise<{
   id: string;
   sprintId: string;
@@ -526,6 +533,14 @@ export const createTestIncrementInDb = async (
       description: `Test increment description for ${incrementName}`,
       totalStoryPoints: 0,
       status,
+      integrationVerified: verification.integrationVerified ?? false,
+      usabilityVerified: verification.usabilityVerified ?? false,
+      ...(verification.usabilityVerified
+        ? {
+            usabilityEvidence: 'Deployed and exercised by the team',
+            usabilityVerifiedAt: new Date(),
+          }
+        : {}),
     },
   });
 
@@ -855,6 +870,103 @@ export const createTestBurndownDataInDb = async (
     idealRemaining: burndown.idealRemaining,
     actualRemaining: burndown.actualRemaining,
   };
+};
+
+/**
+ * Seed the Sprint Planning participation the start gate requires: the Product Owner and at least
+ * one Developer recorded as present. Written directly so sprint-lifecycle tests can focus on the
+ * behaviour under test; the planning-attendance API is covered by its own tests.
+ */
+export const seedPlanningParticipation = async (
+  sprintId: string,
+  createdBy?: string
+): Promise<void> => {
+  await prisma.sprintPlanningAttendee.createMany({
+    data: [
+      {
+        id: generateUUIDv7(),
+        sprintId,
+        name: 'Product Owner',
+        role: 'product_owner',
+        attended: true,
+        createdBy,
+      },
+      {
+        id: generateUUIDv7(),
+        sprintId,
+        name: 'Developer',
+        role: 'developers',
+        attended: true,
+        createdBy,
+      },
+    ],
+  });
+};
+
+/**
+ * Seed the two agreements the Sprint boundary requires: a Definition of Done the team holds, and a
+ * Definition of Ready whose active criterion every given item satisfies.
+ *
+ * The boundary refuses a Sprint Backlog commit, and a Sprint start, when the team has no Definition
+ * of Done, when its readiness agreement holds no active criterion, or when a selected item has an
+ * unverified one — so a fixture that intends to open a Sprint has to represent a team that holds
+ * both. Written directly so lifecycle tests can focus on the behaviour under test; the definitions'
+ * own authorization and editing rules are covered by `integration/team-definitions.test.ts`.
+ */
+export const seedTeamDefinitions = async (
+  teamId: string,
+  pbiIds: string[],
+  createdBy: string
+): Promise<void> => {
+  await prisma.definitionOfDone.create({
+    data: {
+      id: generateUUIDv7(),
+      teamId,
+      createdBy,
+      items: {
+        create: {
+          id: generateUUIDv7(),
+          description: 'Code is peer-reviewed and approved',
+          category: 'review',
+          isActive: true,
+          order: 0,
+          createdBy,
+        },
+      },
+    },
+  });
+
+  const dorItemId = generateUUIDv7();
+  await prisma.definitionOfReady.create({
+    data: {
+      id: generateUUIDv7(),
+      teamId,
+      createdBy,
+      items: {
+        create: {
+          id: dorItemId,
+          description: 'Acceptance criteria defined and agreed',
+          category: 'acceptance',
+          isActive: true,
+          order: 0,
+          createdBy,
+        },
+      },
+    },
+  });
+
+  if (pbiIds.length > 0) {
+    await prisma.doRChecklistVerification.createMany({
+      data: pbiIds.map((pbiId) => ({
+        id: generateUUIDv7(),
+        pbiId,
+        dorItemId,
+        isVerified: true,
+        verifiedBy: createdBy,
+        createdBy,
+      })),
+    });
+  }
 };
 
 export const addPBIToSprintBacklog = async (

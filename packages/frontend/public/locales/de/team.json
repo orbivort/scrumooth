@@ -110,7 +110,6 @@
     },
     "memberSince": "Mitglied seit",
     "roleNames": {
-      "administrator": "Administrator",
       "developers": "Developers",
       "productOwner": "Product Owner",
       "scrumMaster": "Scrum Master"
@@ -156,6 +155,9 @@
     }
   },
   "noTeam": "Kein Team",
+  "overview": {
+    "metricsTitle": "Auf einen Blick"
+  },
   "selectTeam": "Team auswählen",
   "sendMessageModal": {
     "cancel": "Abbrechen",
@@ -180,7 +182,14 @@
       "maxLength": "Nachricht muss weniger als {{limit}} Zeichen haben."
     }
   },
-  "subtitle": "Teammitglieder und Team-Standards verwalten",
+  "subtitle": "Mitglieder, Vereinbarungen und Scrum-Gesundheit deines Teams",
+  "tabs": {
+    "ariaLabel": "Team-Bereiche",
+    "definition": "Definition",
+    "health": "Scrum-Gesundheit",
+    "members": "Mitglieder",
+    "overview": "Übersicht"
+  },
   "teamInfo": {
     "created": "Erstellt: {{date}}",
     "lastUpdated": "Zuletzt aktualisiert: {{date}}",
@@ -198,11 +207,12 @@
     "sprintCompletionRate": "Abschlussquote des Sprint-Backlogs",
     "storyPointsCompleted": "Abgeschlossene Story Points"
   },
-  "title": "Team",
+  "title": "Mein Team",
   "welcome": {
     "selectRole": "Wählen Sie Ihre Rolle, um fortzufahren",
     "subtitle": "Ihre Agile-Reise beginnt hier...",
-    "title": "Willkommen bei Scrumooth, {{name}}!"
+    "title": "Willkommen bei Scrumooth, {{name}}!",
+    "titleAnonymous": "Willkommen bei Scrumooth!"
   },
   "yourTeams": "Ihre Teams"
 }

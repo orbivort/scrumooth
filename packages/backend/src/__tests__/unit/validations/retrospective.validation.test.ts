@@ -9,6 +9,8 @@ import {
   updateActionItemSchema,
   addAttendeeSchema,
   updateAttendeeSchema,
+  dodReflectionSchema,
+  linkActionItemSchema,
 } from '../../../validations/retrospective.validation';
 
 describe('Retrospective Validation', () => {
@@ -1036,7 +1038,7 @@ describe('Retrospective Validation', () => {
         expect(result.success).toBe(true);
       });
 
-      it('should validate valid update with relatedSprintId as UUID', () => {
+      it('should strip relatedSprintId, which only the link actions may set', () => {
         const data = {
           relatedSprintId: '550e8400-e29b-41d4-a716-446655440000',
         };
@@ -1044,16 +1046,7 @@ describe('Retrospective Validation', () => {
         const result = updateActionItemSchema.safeParse(data);
 
         expect(result.success).toBe(true);
-      });
-
-      it('should validate valid update with null relatedSprintId', () => {
-        const data = {
-          relatedSprintId: null,
-        };
-
-        const result = updateActionItemSchema.safeParse(data);
-
-        expect(result.success).toBe(true);
+        expect(result.data).not.toHaveProperty('relatedSprintId');
       });
 
       it('should validate valid update with multiple fields', () => {
@@ -1063,7 +1056,6 @@ describe('Retrospective Validation', () => {
           status: 'IN_PROGRESS',
           dueDate: '2024-03-01',
           addedToSprintBacklog: true,
-          relatedSprintId: '550e8400-e29b-41d4-a716-446655440000',
         };
 
         const result = updateActionItemSchema.safeParse(data);
@@ -1169,25 +1161,25 @@ describe('Retrospective Validation', () => {
       });
     });
 
-    describe('relatedSprintId validation', () => {
-      it('should accept valid UUID', () => {
-        const data = {
+    describe('relatedSprintId is not client-settable', () => {
+      // The Sprint an improvement was taken into is evidence, not an input: only materializing or
+      // linking a backlog item establishes it, so the field is absent from the schema entirely.
+      it('should drop a well-formed value', () => {
+        const result = updateActionItemSchema.safeParse({
           relatedSprintId: '550e8400-e29b-41d4-a716-446655440000',
-        };
-
-        const result = updateActionItemSchema.safeParse(data);
+        });
 
         expect(result.success).toBe(true);
+        expect(result.data).not.toHaveProperty('relatedSprintId');
       });
 
-      it('should reject invalid UUID format', () => {
-        const data = {
+      it('should drop a malformed value rather than reject the request', () => {
+        const result = updateActionItemSchema.safeParse({
           relatedSprintId: 'invalid-uuid',
-        };
+        });
 
-        const result = updateActionItemSchema.safeParse(data);
-
-        expect(result.success).toBe(false);
+        expect(result.success).toBe(true);
+        expect(result.data).not.toHaveProperty('relatedSprintId');
       });
     });
   });
@@ -1525,6 +1517,151 @@ describe('Retrospective Validation', () => {
           expect(result.success).toBe(true);
         });
       });
+    });
+  });
+
+  describe('authorship is not client-supplied', () => {
+    it('should strip authorId and authorName from an added item', () => {
+      const result = addItemSchema.safeParse({
+        category: 'WENT_WELL',
+        content: 'Great teamwork',
+        authorId: 'someone-else',
+        authorName: 'Someone Else',
+      });
+
+      expect(result.success).toBe(true);
+      expect(result.data).not.toHaveProperty('authorId');
+      expect(result.data).not.toHaveProperty('authorName');
+    });
+  });
+
+  describe('anonymity is chosen at creation', () => {
+    it('should default to a named Retrospective', () => {
+      const result = createRetrospectiveSchema.safeParse({
+        sprintId: 'sprint-1',
+        teamId: 'team-1',
+        facilitatorId: 'user-1',
+      });
+
+      expect(result.success).toBe(true);
+      expect(result.data?.isAnonymous).toBe(false);
+    });
+
+    it('should accept an anonymous Retrospective', () => {
+      const result = createRetrospectiveSchema.safeParse({
+        sprintId: 'sprint-1',
+        teamId: 'team-1',
+        facilitatorId: 'user-1',
+        isAnonymous: true,
+      });
+
+      expect(result.success).toBe(true);
+      expect(result.data?.isAnonymous).toBe(true);
+    });
+
+    it('should not be updatable after creation', () => {
+      const result = updateRetrospectiveSchema.safeParse({
+        summary: 'A long enough summary',
+        isAnonymous: true,
+      });
+
+      expect(result.success).toBe(true);
+      expect(result.data).not.toHaveProperty('isAnonymous');
+    });
+  });
+
+  describe('dodReflectionSchema', () => {
+    it('should accept a keep decision without a replacement', () => {
+      const result = dodReflectionSchema.safeParse({
+        dodItemId: '550e8400-e29b-41d4-a716-446655440000',
+        description: 'Peer reviewed',
+        decision: 'KEEP',
+      });
+
+      expect(result.success).toBe(true);
+    });
+
+    it('should accept a proposed criterion with no existing item', () => {
+      const result = dodReflectionSchema.safeParse({
+        dodItemId: null,
+        description: 'Deployed to staging',
+        decision: 'KEEP',
+      });
+
+      expect(result.success).toBe(true);
+    });
+
+    it('should require the new text for a change', () => {
+      const result = dodReflectionSchema.safeParse({
+        dodItemId: '550e8400-e29b-41d4-a716-446655440000',
+        description: 'Unit tests pass',
+        decision: 'CHANGE',
+      });
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.issues[0]?.path).toEqual(['proposedDescription']);
+      }
+    });
+
+    it('should accept a change that states its new text', () => {
+      const result = dodReflectionSchema.safeParse({
+        dodItemId: '550e8400-e29b-41d4-a716-446655440000',
+        description: 'Unit tests pass',
+        decision: 'CHANGE',
+        proposedDescription: 'Unit tests pass with 80% coverage',
+      });
+
+      expect(result.success).toBe(true);
+    });
+
+    it('should reject an unknown decision', () => {
+      const result = dodReflectionSchema.safeParse({
+        dodItemId: null,
+        description: 'Something',
+        decision: 'MAYBE',
+      });
+
+      expect(result.success).toBe(false);
+    });
+  });
+
+  describe('the Definition of Done reflection on an update', () => {
+    it('should accept a bounded reflection and count as an update on its own', () => {
+      const result = updateRetrospectiveSchema.safeParse({
+        dodReflections: [
+          { dodItemId: null, description: 'Deployed to staging', decision: 'KEEP' },
+          {
+            dodItemId: '550e8400-e29b-41d4-a716-446655440000',
+            description: 'Manual sign-off',
+            decision: 'RETIRE',
+          },
+        ],
+      });
+
+      expect(result.success).toBe(true);
+      expect(result.data?.dodReflections).toHaveLength(2);
+    });
+
+    it('should reject more criteria than a Retrospective can inspect', () => {
+      const result = updateRetrospectiveSchema.safeParse({
+        dodReflections: Array.from({ length: 101 }, (_, index) => ({
+          dodItemId: null,
+          description: `Criterion ${index}`,
+          decision: 'KEEP',
+        })),
+      });
+
+      expect(result.success).toBe(false);
+    });
+  });
+
+  describe('linkActionItemSchema', () => {
+    it('should require a Product Backlog item id', () => {
+      expect(linkActionItemSchema.safeParse({}).success).toBe(false);
+      expect(
+        linkActionItemSchema.safeParse({ pbiId: '550e8400-e29b-41d4-a716-446655440000' }).success
+      ).toBe(true);
     });
   });
 });

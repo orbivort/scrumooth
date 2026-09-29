@@ -30,21 +30,7 @@ The Product Goals API provides comprehensive product goal management capabilitie
 
 ## Authentication
 
-All product goal endpoints require authentication. Include the access token in your request:
-
-**Using Cookies (Recommended)**
-
-```http
-GET /api/v1/product-goals
-Cookie: accessToken=eyJhbGc...
-```
-
-**Using Bearer Token**
-
-```http
-GET /api/v1/product-goals
-Authorization: Bearer eyJhbGc...
-```
+All product goal endpoints require authentication. See [Authentication](./README.md#authentication) for the cookie and bearer-token forms.
 
 ## Goal Statuses
 
@@ -151,7 +137,7 @@ Content-Type: application/json
 **Example Request**
 
 ```bash
-curl -X GET "https://api.scrumooth.dev/api/v1/product-goals?teamId=550e8400-e29b-41d4-a716-446655440000" \
+curl -X GET "https://api.example.com/api/v1/product-goals?teamId=550e8400-e29b-41d4-a716-446655440000" \
   -b cookies.txt
 ```
 
@@ -222,7 +208,7 @@ Content-Type: application/json
 **Example Request**
 
 ```bash
-curl -X GET "https://api.scrumooth.dev/api/v1/product-goals/active?teamId=550e8400-e29b-41d4-a716-446655440000" \
+curl -X GET "https://api.example.com/api/v1/product-goals/active?teamId=550e8400-e29b-41d4-a716-446655440000" \
   -b cookies.txt
 ```
 
@@ -317,14 +303,14 @@ Content-Type: application/json
 }
 ```
 
-**403 Forbidden - Insufficient Permissions**
+**403 Forbidden - Product Owner Role Required**
 
 ```json
 {
   "success": false,
   "error": {
-    "code": "AUTHORIZATION_ERROR",
-    "message": "Product Owner role required"
+    "code": "GATE_PRODUCT_OWNER_ONLY_PRODUCT_GOAL",
+    "message": "Only the Product Owner can create, edit, or delete a Product Goal."
   }
 }
 ```
@@ -335,8 +321,8 @@ Content-Type: application/json
 {
   "success": false,
   "error": {
-    "code": "CONFLICT",
-    "message": "An active product goal already exists for this team"
+    "code": "GATE_PRODUCT_GOAL_ALREADY_ACTIVE",
+    "message": "An active Product Goal already exists for this team. Fulfil or abandon it before activating another."
   }
 }
 ```
@@ -344,7 +330,7 @@ Content-Type: application/json
 **Example Request**
 
 ```bash
-curl -X POST https://api.scrumooth.dev/api/v1/product-goals \
+curl -X POST https://api.example.com/api/v1/product-goals \
   -H "Content-Type: application/json" \
   -b cookies.txt \
   -d '{
@@ -425,7 +411,7 @@ Content-Type: application/json
 **Example Request**
 
 ```bash
-curl -X GET https://api.scrumooth.dev/api/v1/product-goals/660e8400-e29b-41d4-a716-446655440000 \
+curl -X GET https://api.example.com/api/v1/product-goals/660e8400-e29b-41d4-a716-446655440000 \
   -b cookies.txt
 ```
 
@@ -522,14 +508,14 @@ Content-Type: application/json
 }
 ```
 
-**403 Forbidden - Insufficient Permissions**
+**403 Forbidden - Product Owner Role Required**
 
 ```json
 {
   "success": false,
   "error": {
-    "code": "AUTHORIZATION_ERROR",
-    "message": "Product Owner role required"
+    "code": "GATE_PRODUCT_OWNER_ONLY_PRODUCT_GOAL",
+    "message": "Only the Product Owner can create, edit, or delete a Product Goal."
   }
 }
 ```
@@ -552,8 +538,22 @@ Content-Type: application/json
 {
   "success": false,
   "error": {
-    "code": "CONFLICT",
-    "message": "An active product goal already exists for this team"
+    "code": "GATE_PRODUCT_GOAL_ALREADY_ACTIVE",
+    "message": "An active Product Goal already exists for this team. Fulfil or abandon it before activating another."
+  }
+}
+```
+
+**409 Conflict - Evidence Required to Complete**
+
+A Product Goal is the commitment of the Product Backlog, so completing it is an assertion unless the team has something to inspect: a qualifying Sprint Review assessment or measured success-metric values recorded as a Product Goal snapshot.
+
+```json
+{
+  "success": false,
+  "error": {
+    "code": "GATE_PRODUCT_GOAL_EVIDENCE_REQUIRED",
+    "message": "A Product Goal cannot be completed without evidence. Record a Sprint Review assessment or measured success-metric values for this goal first."
   }
 }
 ```
@@ -561,7 +561,7 @@ Content-Type: application/json
 **Example Request**
 
 ```bash
-curl -X PUT https://api.scrumooth.dev/api/v1/product-goals/660e8400-e29b-41d4-a716-446655440000 \
+curl -X PUT https://api.example.com/api/v1/product-goals/660e8400-e29b-41d4-a716-446655440000 \
   -H "Content-Type: application/json" \
   -b cookies.txt \
   -d '{
@@ -612,14 +612,14 @@ Content-Type: application/json
 
 **Error Responses**
 
-**403 Forbidden - Insufficient Permissions**
+**403 Forbidden - Product Owner Role Required**
 
 ```json
 {
   "success": false,
   "error": {
-    "code": "AUTHORIZATION_ERROR",
-    "message": "Product Owner role required"
+    "code": "GATE_PRODUCT_OWNER_ONLY_PRODUCT_GOAL",
+    "message": "Only the Product Owner can create, edit, or delete a Product Goal."
   }
 }
 ```
@@ -639,7 +639,7 @@ Content-Type: application/json
 **Example Request**
 
 ```bash
-curl -X DELETE https://api.scrumooth.dev/api/v1/product-goals/660e8400-e29b-41d4-a716-446655440000 \
+curl -X DELETE https://api.example.com/api/v1/product-goals/660e8400-e29b-41d4-a716-446655440000 \
   -b cookies.txt
 ```
 
@@ -717,7 +717,7 @@ Content-Type: application/json
 **Example Request**
 
 ```bash
-curl -X GET https://api.scrumooth.dev/api/v1/product-goals/660e8400-e29b-41d4-a716-446655440000/status-history \
+curl -X GET https://api.example.com/api/v1/product-goals/660e8400-e29b-41d4-a716-446655440000/status-history \
   -b cookies.txt
 ```
 
@@ -725,27 +725,39 @@ curl -X GET https://api.scrumooth.dev/api/v1/product-goals/660e8400-e29b-41d4-a7
 
 ## Error Codes
 
-| Code                   | HTTP Status | Description                                          |
-| ---------------------- | ----------- | ---------------------------------------------------- |
-| `VALIDATION_ERROR`     | 400         | Request validation failed                            |
-| `AUTHENTICATION_ERROR` | 401         | Authentication required                              |
-| `AUTHORIZATION_ERROR`  | 403         | Insufficient permissions                             |
-| `NOT_FOUND`            | 404         | Product goal not found                               |
-| `CONFLICT`             | 409         | Resource conflict (e.g., active goal already exists) |
+| Code                                   | HTTP Status | Description                                                       |
+| -------------------------------------- | ----------- | ----------------------------------------------------------------- |
+| `VALIDATION_ERROR`                     | 400         | Request validation failed                                         |
+| `AUTHENTICATION_ERROR`                 | 401         | Authentication required                                           |
+| `AUTHORIZATION_ERROR`                  | 403         | Insufficient permissions                                          |
+| `NOT_FOUND`                            | 404         | Product goal not found                                            |
+| `CONFLICT`                             | 409         | Resource conflict (e.g., active goal already exists)              |
+| `GATE_PRODUCT_OWNER_ONLY_PRODUCT_GOAL` | 403         | Only the Product Owner may create, edit, or delete a Product Goal |
+| `GATE_PRODUCT_GOAL_ALREADY_ACTIVE`     | 409         | Another Product Goal of the team is already `ACTIVE`              |
+| `GATE_PRODUCT_GOAL_EVIDENCE_REQUIRED`  | 409         | Completing a Product Goal requires recorded evidence of progress  |
+
+Two further gates guard the backlog side of the Product Goal. They are raised by the
+[Product Backlog API](./product-backlog.md), not by these endpoints, and are listed here because they
+are part of the same commitment:
+
+- `GATE_PRODUCT_GOAL_REQUIRED_FOR_BACKLOG` (400) — a team with no `ACTIVE` Product Goal cannot add
+  backlog items, because the backlog is the emergent expression of the goal.
+- `GATE_PRODUCT_GOAL_NOT_ACTIVE` (409) — a backlog item can only be linked to the team's single
+  `ACTIVE` Product Goal.
 
 ## Best Practices
 
 ### Goal Management
 
-1. **One Active Goal**: Only one product goal should be active per team at a time
+1. **One Active Goal**: Only one Product Goal can be active per team at a time — enforced by the API
 2. **Clear Metrics**: Define measurable success metrics when creating goals
 3. **Strategic Alignment**: Tag goals with strategic alignment for reporting
 4. **Target Dates**: Set realistic target dates to maintain team focus
 
 ### Status Transitions
 
-1. **NEW to ACTIVE**: Activate a goal only when the team is ready to commit
-2. **ACTIVE to COMPLETED**: Mark completed only when success metrics are met
+1. **NEW to ACTIVE**: Activate a goal only when the team is ready to commit. A team can hold one `ACTIVE` goal at a time — activating a second is refused with `GATE_PRODUCT_GOAL_ALREADY_ACTIVE`.
+2. **ACTIVE to COMPLETED**: Mark completed only when success metrics are met. Completion is refused with `GATE_PRODUCT_GOAL_EVIDENCE_REQUIRED` unless a Sprint Review assessment or measured success-metric values have been recorded, so a completed goal is inspectable rather than asserted.
 3. **Abandoning Goals**: Document the reason when abandoning a goal
 4. **Status History**: Review status history during retrospectives
 
@@ -757,7 +769,7 @@ curl -X GET https://api.scrumooth.dev/api/v1/product-goals/660e8400-e29b-41d4-a7
 
 ---
 
-**Last Updated**: 2026-05-10
+**Last Updated**: 2026-09-28
 
 **Related Documentation**
 

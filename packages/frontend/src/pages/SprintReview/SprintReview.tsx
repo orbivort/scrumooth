@@ -2,7 +2,7 @@ import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useParams, useNavigate, useSearchParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
-import { formatLocaleDate, SCRUM_EVENTS } from '@scrumooth/shared';
+import { formatLocaleDate, mayCompleteSprintEvents, SCRUM_EVENTS } from '@scrumooth/shared';
 
 import {
   IncrementStatus,
@@ -13,6 +13,7 @@ import {
   type ReviewAttendee,
   type ProductBacklogItem,
   type BacklogAdjustment,
+  type SprintGoalOutcome,
 } from '../../types';
 import { useModalFocus } from '../../hooks/useModalFocus';
 import { useMutationErrorHandler } from '../../hooks/useMutationErrorHandler';
@@ -108,6 +109,32 @@ const initialAdjustmentForm: AdjustmentFormData = {
 // Tab IDs for section navigation
 const SECTION_TAB_IDS: SectionType[] = ['overview', 'increment', 'feedback', 'adjustments'];
 
+/** The verdicts on Sprint Goal attainment the Scrum Team can record, in reading order. */
+const GOAL_OUTCOME_OPTIONS: ReadonlyArray<{
+  value: SprintGoalOutcome;
+  labelKey:
+    | 'completeReview.confirmationModal.goalAchieved'
+    | 'completeReview.confirmationModal.goalPartiallyAchieved'
+    | 'completeReview.confirmationModal.goalNotAchieved';
+}> = [
+  { value: 'ACHIEVED', labelKey: 'completeReview.confirmationModal.goalAchieved' },
+  {
+    value: 'PARTIALLY_ACHIEVED',
+    labelKey: 'completeReview.confirmationModal.goalPartiallyAchieved',
+  },
+  { value: 'NOT_ACHIEVED', labelKey: 'completeReview.confirmationModal.goalNotAchieved' },
+];
+
+/** The same copy, indexed by a recorded verdict, so the selector and the record read alike. */
+const GOAL_VERDICT_LABEL_KEYS: Record<
+  SprintGoalOutcome,
+  (typeof GOAL_OUTCOME_OPTIONS)[number]['labelKey']
+> = {
+  ACHIEVED: 'completeReview.confirmationModal.goalAchieved',
+  PARTIALLY_ACHIEVED: 'completeReview.confirmationModal.goalPartiallyAchieved',
+  NOT_ACHIEVED: 'completeReview.confirmationModal.goalNotAchieved',
+};
+
 // Pure helper functions moved outside component
 const getCategoryColor = (category: string): { bg: string; text: string } => {
   switch (category) {
@@ -201,6 +228,10 @@ export const SprintReview: React.FC = () => {
     summary: '',
   });
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  // The Scrum Team's own verdict on its Sprint Goal. Held here until the team records it: it is a
+  // judgement, so it is never derived from how many items were finished.
+  const [sprintGoalOutcome, setSprintGoalOutcome] = useState<SprintGoalOutcome | ''>('');
+  const [sprintGoalNote, setSprintGoalNote] = useState('');
 
   const teamId = currentTeam?.id;
 
@@ -276,6 +307,27 @@ export const SprintReview: React.FC = () => {
     return reviews.find((r) => r.sprintId === sprintId);
   }, [reviewsData, sprintId]);
 
+  /**
+   * The Sprint Goal this Review judges, and whether there is one to judge.
+   *
+   * The Review's own frozen copy is preferred; the Sprint's Goal is the fallback for a Review
+   * created before the verdict existed. A Sprint without a Goal is never asked for a verdict.
+   */
+  const sprintGoalForReview =
+    review?.sprintGoal ?? sprint?.sprintGoal ?? review?.sprint?.sprintGoal ?? '';
+  const hasSprintGoal = sprintGoalForReview.trim().length > 0;
+
+  /**
+   * "The purpose of the Sprint Review is to inspect the outcome of the Sprint", so the Review
+   * cannot be completed while the Sprint is still running. The rule is the shared one the backend
+   * enforces -- including its exemption for a Sprint that has already concluded -- so the button
+   * and the gate cannot disagree about when this Review may be completed.
+   */
+  const mayCompleteReview = mayCompleteSprintEvents(sprint);
+  const sprintNotEndedHint = t('completeReview.sprintNotEnded', {
+    endDate: sprint?.endDate ? formatLocaleDate(sprint.endDate, locale, 'PPPP') : '',
+  });
+
   const { data: productGoalData } = useQuery({
     queryKey: ['sprint-review-product-goal', review?.id],
     queryFn: () => {
@@ -292,6 +344,13 @@ export const SprintReview: React.FC = () => {
       setIsReviewCompleted(true);
     }
   }, [review?.status]);
+
+  // Seed the verdict controls from whatever the Review already recorded, so a team correcting its
+  // own verdict edits the recorded one rather than starting from nothing.
+  useEffect(() => {
+    setSprintGoalOutcome(review?.sprintGoalOutcome ?? '');
+    setSprintGoalNote(review?.sprintGoalNote ?? '');
+  }, [review?.id, review?.sprintGoalOutcome, review?.sprintGoalNote]);
 
   // A Sprint may produce several Increments (e.g. via early releases and the Sprint Review
   // delivery). The Sprint Review presents all of them, so we render every Increment of the
@@ -434,12 +493,14 @@ export const SprintReview: React.FC = () => {
     mutationFn: async (feedback: Partial<StakeholderFeedback>) => {
       const reviewId = review?.id ?? '';
       const result = await apiService.addStakeholderFeedback(reviewId, feedback);
-      // Persist the Product Goal assessment as a snapshot so it can be surfaced
-      // in the Product Goal detail timeline.
-      if (feedback.productGoalAssessment) {
+      // Persist the Product Goal assessment as a snapshot so it can be surfaced in the
+      // Product Goal detail timeline. Only a non-blank assessment is submitted: a snapshot
+      // must carry evidence, and an empty one is refused by the backend.
+      const assessment = feedback.productGoalAssessment?.trim();
+      if (assessment) {
         await apiService
           .submitProductGoalAssessment(reviewId, {
-            assessment: feedback.productGoalAssessment,
+            assessment,
           })
           .catch(() => {
             // Snapshot creation is best-effort; the feedback itself was saved.
@@ -513,8 +574,13 @@ export const SprintReview: React.FC = () => {
   });
 
   const addMutation = useMutation({
-    mutationFn: (data: { name: string; email?: string; role: string; attended: boolean }) =>
-      apiService.addAttendee(review?.id ?? '', data),
+    mutationFn: (data: {
+      userId?: string | null;
+      name: string;
+      email?: string;
+      role: string;
+      attended: boolean;
+    }) => apiService.addAttendee(review?.id ?? '', data),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.sprintReview.all });
     },
@@ -546,6 +612,12 @@ export const SprintReview: React.FC = () => {
     if (feedbackForm.actionRequired && !feedbackForm.ownerId) {
       errors.ownerId = t('addFeedbackModal.owner').replace(' *', '');
     }
+    // A whitespace-only Product Goal assessment is not evidence: ask the reviewer to either
+    // write it or clear the field, rather than silently recording nothing.
+    const rawAssessment = feedbackForm.productGoalAssessment ?? '';
+    if (rawAssessment !== '' && rawAssessment.trim() === '') {
+      errors.productGoalAssessment = t('addFeedbackModal.productGoalAssessmentRequired');
+    }
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   }, [
@@ -554,6 +626,7 @@ export const SprintReview: React.FC = () => {
     feedbackForm.content,
     feedbackForm.actionRequired,
     feedbackForm.ownerId,
+    feedbackForm.productGoalAssessment,
   ]);
 
   const validateAdjustmentForm = useCallback((): boolean => {
@@ -656,6 +729,14 @@ export const SprintReview: React.FC = () => {
 
     const errors: string[] = [];
 
+    // "The purpose of the Sprint Review is to inspect the outcome of the Sprint": a Review whose
+    // Sprint has not reached the day its end date names would inspect an outcome that is not final
+    // yet. Surfacing it through the existing "cannot complete" list keeps the refusal inside the
+    // flow the team already sees; the backend refuses the same way.
+    if (!mayCompleteReview) {
+      errors.push(sprintNotEndedHint);
+    }
+
     const attendeesList = review.attendees;
     if (attendeesList.length === 0) {
       errors.push(t('completeReview.confirmationModal.validationAttendees'));
@@ -696,6 +777,13 @@ export const SprintReview: React.FC = () => {
       );
     }
 
+    // "The Scrum Team discusses ... progress toward the Sprint Goal." A Review of a Sprint that
+    // has a Goal cannot conclude without the team's own verdict -- the alternative is the tool
+    // inferring one from item completion, which measures something else entirely.
+    if (hasSprintGoal && !review.sprintGoalOutcome && sprintGoalOutcome === '') {
+      errors.push(t('completeReview.confirmationModal.goalVerdictRequired'));
+    }
+
     if (errors.length > 0) {
       setValidationErrors(errors);
       setShowCompleteConfirmation(true);
@@ -704,7 +792,16 @@ export const SprintReview: React.FC = () => {
 
     setValidationErrors([]);
     setShowCompleteConfirmation(true);
-  }, [review, teamMembers, updateReviewMutation.isPending, t]);
+  }, [
+    review,
+    teamMembers,
+    updateReviewMutation.isPending,
+    hasSprintGoal,
+    sprintGoalOutcome,
+    t,
+    mayCompleteReview,
+    sprintNotEndedHint,
+  ]);
 
   const confirmCompleteReview = useCallback(() => {
     if (validationErrors.length > 0) {
@@ -714,15 +811,40 @@ export const SprintReview: React.FC = () => {
     const updateData = {
       summary: review?.summary ?? t('completeReview.defaultSummary'),
       status: 'completed',
+      ...(sprintGoalOutcome !== '' ? { sprintGoalOutcome } : {}),
+      ...(sprintGoalNote.trim().length > 0 ? { sprintGoalNote: sprintGoalNote.trim() } : {}),
     };
     updateReviewMutation.mutate(updateData);
     setShowCompleteConfirmation(false);
-  }, [updateReviewMutation, validationErrors, review?.summary, t]);
+  }, [
+    updateReviewMutation,
+    validationErrors,
+    review?.summary,
+    sprintGoalOutcome,
+    sprintGoalNote,
+    t,
+  ]);
 
   const cancelCompleteReview = useCallback(() => {
     setShowCompleteConfirmation(false);
     setValidationErrors([]);
   }, []);
+
+  /**
+   * Load the notes revision history on demand.
+   *
+   * The loader is a callback so the notes component does not refetch on every render, and the
+   * endpoint refuses anyone but the team's Scrum Master -- the history *is* the notes.
+   */
+  const loadSmNotesHistory = useCallback(async () => {
+    if (!review?.id) {
+      return [];
+    }
+
+    const response = await smDashboardService.getSprintReviewSmNotesRevisions(review.id);
+
+    return response.data?.revisions ?? [];
+  }, [review?.id]);
 
   // Tab keyboard navigation handler
   const handleTabKeyDown = useCallback(
@@ -1090,6 +1212,49 @@ export const SprintReview: React.FC = () => {
                 <p className={styles['sprint-goal-text']}>
                   {sprint?.sprintGoal ?? t('overview.noSprintGoal')}
                 </p>
+                {/* "The Scrum Team discusses ... progress toward the Sprint Goal." The verdict is
+                    the team's own judgement, recorded as part of the event rather than derived from
+                    item completion -- and only asked for when the Sprint has a Goal to assess. */}
+                {hasSprintGoal && !isReviewCompleted && review.status !== 'completed' ? (
+                  <fieldset className={styles['goal-verdict']} data-testid="goal-verdict-fieldset">
+                    <legend className={styles['goal-verdict-legend']}>
+                      {t('completeReview.confirmationModal.goalVerdictLegend')}
+                    </legend>
+                    <div className={styles['goal-verdict-options']}>
+                      {GOAL_OUTCOME_OPTIONS.map((option) => (
+                        <label key={option.value} className={styles['goal-verdict-option']}>
+                          <input
+                            type="radio"
+                            name="sprintGoalOutcome"
+                            value={option.value}
+                            checked={sprintGoalOutcome === option.value}
+                            onChange={() => setSprintGoalOutcome(option.value)}
+                          />
+                          <span>{t(option.labelKey)}</span>
+                        </label>
+                      ))}
+                    </div>
+                    <label className={styles['goal-verdict-note-label']}>
+                      {t('completeReview.confirmationModal.goalVerdictNote')}
+                      <textarea
+                        className={styles['goal-verdict-note']}
+                        value={sprintGoalNote}
+                        maxLength={2000}
+                        rows={2}
+                        onChange={(event) => setSprintGoalNote(event.target.value)}
+                      />
+                    </label>
+                    <p className={styles['goal-verdict-hint']}>
+                      {t('completeReview.confirmationModal.goalVerdictHint')}
+                    </p>
+                  </fieldset>
+                ) : null}
+                {review.sprintGoalOutcome ? (
+                  <p className={styles['goal-verdict-recorded']}>
+                    {t('detailLabels.sprintGoalOutcome')}:{' '}
+                    {t(GOAL_VERDICT_LABEL_KEYS[review.sprintGoalOutcome])}
+                  </p>
+                ) : null}
               </div>
 
               <div className={styles['overview-card']}>
@@ -1126,6 +1291,7 @@ export const SprintReview: React.FC = () => {
                   value={review.smNotes}
                   onSave={(notes) => smDashboardService.updateSprintReviewSmNotes(review.id, notes)}
                   disabled={isReviewCompleted}
+                  loadHistory={loadSmNotesHistory}
                 />
               </div>
             )}
@@ -1140,6 +1306,7 @@ export const SprintReview: React.FC = () => {
               apiConfig={{
                 addAttendee: (data: AttendeeFormData) =>
                   apiService.addAttendee(review.id || '', {
+                    userId: data.userId ?? null,
                     name: data.name,
                     email: data.email,
                     role: data.role,
@@ -1147,6 +1314,7 @@ export const SprintReview: React.FC = () => {
                   }),
                 updateAttendee: (id: string, data: AttendeeFormData) =>
                   apiService.updateAttendee(id, {
+                    userId: data.userId ?? null,
                     name: data.name,
                     email: data.email,
                     role: data.role,
@@ -1161,6 +1329,9 @@ export const SprintReview: React.FC = () => {
               }}
               onAddTeamMember={(member, attended) => {
                 addMutation.mutate({
+                  // Recording the team member's user id makes the attendance record attributable
+                  // rather than a name typed into a text field.
+                  userId: member.user?.id ?? member.userId ?? null,
                   name: `${member.user?.firstName ?? ''} ${member.user?.lastName ?? ''}`.trim(),
                   email: member.user?.email,
                   role: mapTeamRoleToAttendeeRole(member.role),
@@ -1553,6 +1724,14 @@ export const SprintReview: React.FC = () => {
                     <div className={styles['adjustment-reason']}>
                       <strong>{t('adjustments.reason')}</strong> {adjustment.reason}
                     </div>
+                    {adjustment.createdPbi && (
+                      <div className={styles['adjustment-owner']}>
+                        <span className={styles['owner-label']}>
+                          <PackageIcon /> {t('adjustments.linkedItem')}
+                        </span>
+                        <span className={styles['owner-name']}>{adjustment.createdPbi.title}</span>
+                      </div>
+                    )}
                     {!adjustment.implemented && (
                       <BacklogHint message={t('adjustments.backlogHint')} />
                     )}
@@ -1608,11 +1787,15 @@ export const SprintReview: React.FC = () => {
 
       <div className={styles['review-actions']}>
         <button
-          className={`${styles.button} ${styles['button-primary']} ${updateReviewMutation.isPending || review.status === 'completed' || isReviewCompleted ? styles['button-disabled'] : ''}`}
+          className={`${styles.button} ${styles['button-primary']} ${updateReviewMutation.isPending || review.status === 'completed' || isReviewCompleted || !mayCompleteReview ? styles['button-disabled'] : ''}`}
           onClick={handleCompleteReview}
           disabled={
-            updateReviewMutation.isPending || review.status === 'completed' || isReviewCompleted
+            updateReviewMutation.isPending ||
+            review.status === 'completed' ||
+            isReviewCompleted ||
+            !mayCompleteReview
           }
+          title={mayCompleteReview ? undefined : sprintNotEndedHint}
           type="button"
         >
           {review.status === 'completed' || isReviewCompleted ? (
@@ -1627,6 +1810,9 @@ export const SprintReview: React.FC = () => {
             </>
           )}
         </button>
+        {!mayCompleteReview && review.status !== 'completed' && !isReviewCompleted && (
+          <p className={styles['review-action-hint']}>{sprintNotEndedHint}</p>
+        )}
         {updateReviewMutation.isError && (
           <div className={styles['review-action-error']}>
             {t('completeReview.failed')}

@@ -55,6 +55,14 @@ vi.mock('./SprintBoard.modalHandlers', () => ({
   useModalHandlers: vi.fn(),
 }));
 
+// The manager is the destination of the notification deep link, so the test only needs to know
+// whether the board opened it and on which change.
+vi.mock('./SprintBacklogManager', () => ({
+  SprintBacklogManager: ({ highlightChangeId }: { highlightChangeId?: string }) => (
+    <div data-testid="sprint-backlog-manager" data-highlight-change-id={highlightChangeId ?? ''} />
+  ),
+}));
+
 const mockTeam = createMockTeam({ id: 'team-1', name: 'Test Team' });
 
 const mockSprint: Sprint = createMockSprint({
@@ -181,11 +189,11 @@ const getDefaultMutations = () => {
   };
 };
 
-const renderSprintBoard = (queryClient = createTestQueryClient()) => {
+const renderSprintBoard = (queryClient = createTestQueryClient(), initialRoute = '/') => {
   return render(
     <I18nextProvider i18n={getTestI18nInstance()}>
       <QueryClientProvider client={queryClient}>
-        <MemoryRouter>
+        <MemoryRouter initialEntries={[initialRoute]}>
           <SprintBoard />
         </MemoryRouter>
       </QueryClientProvider>
@@ -1034,6 +1042,60 @@ describe('SprintBoard Component', () => {
       await waitFor(() => {
         expect(screen.getByTestId('sprint-board')).toBeInTheDocument();
       });
+    });
+  });
+
+  describe('Sprint Backlog notification deep link', () => {
+    it('opens the Sprint Backlog Manager on the notified change', async () => {
+      renderSprintBoard(
+        queryClient,
+        '/sprint?openBacklogManager=1&sprintId=sprint-1&changeId=change-1'
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('sprint-backlog-manager')).toBeInTheDocument();
+      });
+
+      expect(screen.getByTestId('sprint-backlog-manager')).toHaveAttribute(
+        'data-highlight-change-id',
+        'change-1'
+      );
+    });
+
+    it('opens the manager for any change when the notification named no change', async () => {
+      renderSprintBoard(queryClient, '/sprint?openBacklogManager=1&sprintId=sprint-1');
+
+      await waitFor(() => {
+        expect(screen.getByTestId('sprint-backlog-manager')).toBeInTheDocument();
+      });
+
+      expect(screen.getByTestId('sprint-backlog-manager')).toHaveAttribute(
+        'data-highlight-change-id',
+        ''
+      );
+    });
+
+    it('stays on the board when the notification names another Sprint', async () => {
+      renderSprintBoard(
+        queryClient,
+        '/sprint?openBacklogManager=1&sprintId=sprint-2&changeId=change-9'
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('sprint-board')).toBeInTheDocument();
+      });
+
+      expect(screen.queryByTestId('sprint-backlog-manager')).not.toBeInTheDocument();
+    });
+
+    it('stays on the board for a plain visit without the deep link', async () => {
+      renderSprintBoard(queryClient, '/sprint');
+
+      await waitFor(() => {
+        expect(screen.getByTestId('sprint-board')).toBeInTheDocument();
+      });
+
+      expect(screen.queryByTestId('sprint-backlog-manager')).not.toBeInTheDocument();
     });
   });
 });

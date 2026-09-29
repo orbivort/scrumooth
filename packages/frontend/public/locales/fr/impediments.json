@@ -1,10 +1,13 @@
 {
   "allStatus": "Tous les statuts",
   "card": {
+    "escalated": "Escaladé au Scrum Master",
     "owner": "Propriétaire",
     "reportedBy": "Signalé par",
     "resolution": "Résolution",
     "sprint": "Sprint",
+    "targetDate": "Cible : {{date}}",
+    "targetDateOverdue": "En retard : {{date}}",
     "unknown": "Inconnu",
     "viewDetailsAria": "Voir les détails pour l'Impediment : {{title}}. Statut : {{status}}"
   },
@@ -14,8 +17,11 @@
     "creating": "Création...",
     "descriptionLabel": "Description",
     "descriptionPlaceholder": "Fournir des détails sur l'Impediment",
+    "optional": "Facultatif",
+    "priorityLabel": "Priorité",
     "sprintLabel": "Sprint",
     "subtitle": "Documenter les bloquants affectant la progression de votre équipe",
+    "targetDateLabel": "Date cible",
     "title": "Signaler un nouvel Impediment",
     "titleLabel": "Titre",
     "titlePlaceholder": "Description brève de l'Impediment"
@@ -36,17 +42,22 @@
     "close": "Fermer",
     "createdLabel": "Créé",
     "deleteLabel": "Supprimer",
+    "deleteNotPermitted": "Seuls la personne qui a signalé l'impediment, son propriétaire ou le Scrum Master peuvent le supprimer.",
     "deleting": "Suppression...",
     "descriptionLabel": "Description",
+    "escalated": "Cet impediment a dépassé le seuil d'escalade ; le Scrum Master a été notifié.",
     "ownerLabel": "Propriétaire",
+    "priorityLabel": "Priorité",
     "reportedByLabel": "Signalé par",
     "resolutionLabel": "Résolution",
     "resolutionPlaceholder": "Décrivez comment cet Impediment a été résolu...",
+    "resolutionRequiredFor": "Une résolution écrite est requise pour marquer cet impediment comme {{status}}.",
     "saveResolution": "Sauvegarder la résolution",
     "saving": "Sauvegarde...",
     "sprintLabel": "Sprint",
     "statusLabel": "Statut",
     "subtitle": "Voir et gérer les informations de l'Impediment",
+    "targetDateLabel": "Date cible",
     "title": "Détails de l'Impediment",
     "titleLabel": "Titre"
   },
@@ -64,6 +75,13 @@
     "title": "Erreur de chargement des données"
   },
   "filterByStatus": "Filtrer par statut",
+  "moduleSubtitle": "Ce qui bloque l'équipe aujourd'hui, et les barrières que seule l'organisation peut lever.",
+  "priority": {
+    "critical": "Critique",
+    "high": "Élevée",
+    "low": "Faible",
+    "medium": "Moyenne"
+  },
   "reportImpediment": "Signaler un Impediment",
   "stats": {
     "CLOSED": "Fermé",
@@ -86,6 +104,11 @@
     "resolved": "Résolu"
   },
   "subtitle": "{{sprintName}} - Suivre et résoudre les bloquants affectant l'équipe",
+  "tabs": {
+    "ariaLabel": "Registres d'Impediments",
+    "barriers": "Barrières organisationnelles",
+    "impediments": "Impediments"
+  },
   "title": "Impediments",
   "toast": {
     "created": "Impediment créé avec succès",

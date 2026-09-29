@@ -5,6 +5,9 @@ import {
   updateSprintSmNotes,
   updateSprintReviewSmNotes,
   updateRetrospectiveSmNotes,
+  getSprintSmNotesRevisions,
+  getSprintReviewSmNotesRevisions,
+  getRetrospectiveSmNotesRevisions,
 } from '../../../controllers/smDashboard.controller';
 import { smDashboardService } from '../../../services/smDashboard.service';
 import { smNotesService } from '../../../services/smNotes.service';
@@ -24,6 +27,7 @@ vi.mock('../../../services/smNotes.service', () => ({
     updateSprintNotes: vi.fn(),
     updateSprintReviewNotes: vi.fn(),
     updateRetrospectiveNotes: vi.fn(),
+    getRevisions: vi.fn(),
   },
 }));
 
@@ -34,6 +38,7 @@ describe('SM Dashboard Controller', () => {
 
   const TEAM_ID = 'team-123';
   const SPRINT_ID = 'sprint-123';
+  const USER_ID = 'user-123';
 
   beforeEach(() => {
     mockReq = createMockRequest();
@@ -46,6 +51,12 @@ describe('SM Dashboard Controller', () => {
   });
 
   describe('getSmDashboard', () => {
+    // The dashboard passes the caller through to the team-owned reads it aggregates (the values
+    // health check belongs to the team's Scrum Master), so every case carries an actor.
+    beforeEach(() => {
+      mockReq.user = { id: USER_ID };
+    });
+
     it('should return the aggregated dashboard using default sprintCount of 5', async () => {
       const mockDashboard = {
         eventCompliance: [],
@@ -64,7 +75,7 @@ describe('SM Dashboard Controller', () => {
       await wait(0);
 
       expect(mockNext).not.toHaveBeenCalled();
-      expect(smDashboardService.getDashboard).toHaveBeenCalledWith(TEAM_ID, 5);
+      expect(smDashboardService.getDashboard).toHaveBeenCalledWith(TEAM_ID, 5, USER_ID);
       expect(mockRes._json).toEqual({ success: true, data: mockDashboard });
     });
 
@@ -78,7 +89,7 @@ describe('SM Dashboard Controller', () => {
       await getSmDashboard(mockReq as any, mockRes as any, mockNext);
       await wait(0);
 
-      expect(smDashboardService.getDashboard).toHaveBeenCalledWith(TEAM_ID, 10);
+      expect(smDashboardService.getDashboard).toHaveBeenCalledWith(TEAM_ID, 10, USER_ID);
       expect(mockRes._json).toEqual({ success: true, data: mockDashboard });
     });
 
@@ -94,7 +105,7 @@ describe('SM Dashboard Controller', () => {
       await getSmDashboard(mockReq as any, mockRes as any, mockNext);
       await wait(0);
 
-      expect(smDashboardService.getDashboard).toHaveBeenCalledWith(TEAM_ID, NaN);
+      expect(smDashboardService.getDashboard).toHaveBeenCalledWith(TEAM_ID, NaN, USER_ID);
       expect(mockRes._json).toEqual({ success: true, data: mockDashboard });
     });
 
@@ -108,7 +119,7 @@ describe('SM Dashboard Controller', () => {
       await getSmDashboard(mockReq as any, mockRes as any, mockNext);
       await wait(0);
 
-      expect(smDashboardService.getDashboard).toHaveBeenCalledWith(TEAM_ID, 5);
+      expect(smDashboardService.getDashboard).toHaveBeenCalledWith(TEAM_ID, 5, USER_ID);
     });
 
     it('should propagate errors to next', async () => {
@@ -249,7 +260,7 @@ describe('SM Dashboard Controller', () => {
 
       expect(mockNext).toHaveBeenCalledWith(expect.any(BadRequestError));
       const err = (mockNext as any).mock.calls[0][0];
-      expect(err.message).toBe('Sprint ID is required');
+      expect(err.message).toBe('Review ID is required');
       expect(smNotesService.updateSprintReviewNotes).not.toHaveBeenCalled();
     });
 
@@ -296,7 +307,7 @@ describe('SM Dashboard Controller', () => {
 
       expect(mockNext).toHaveBeenCalledWith(expect.any(BadRequestError));
       const err = (mockNext as any).mock.calls[0][0];
-      expect(err.message).toBe('Sprint ID is required');
+      expect(err.message).toBe('Retrospective ID is required');
       expect(smNotesService.updateRetrospectiveNotes).not.toHaveBeenCalled();
     });
 
@@ -308,6 +319,95 @@ describe('SM Dashboard Controller', () => {
       mockReq.body = { smNotes: 'Retro notes' };
 
       await updateRetrospectiveSmNotes(mockReq as any, mockRes as any, mockNext);
+      await wait(0);
+
+      expect(mockNext).toHaveBeenCalledWith(error);
+    });
+  });
+
+  describe('notes revision history', () => {
+    const page = { revisions: [], total: 0, limit: 20, offset: 0 };
+
+    beforeEach(() => {
+      mockReq.params = { id: SPRINT_ID };
+      mockReq.user = { id: USER_ID };
+      (smNotesService.getRevisions as any).mockResolvedValue(page);
+    });
+
+    it('should read the Sprint history for the authenticated caller', async () => {
+      await getSprintSmNotesRevisions(mockReq as any, mockRes as any, mockNext);
+      await wait(0);
+
+      expect(smNotesService.getRevisions).toHaveBeenCalledWith('SPRINT', SPRINT_ID, USER_ID, {
+        limit: 20,
+        offset: 0,
+      });
+      expect(mockRes._json).toEqual({ success: true, data: page });
+    });
+
+    it('should read the Review history from the Review route', async () => {
+      await getSprintReviewSmNotesRevisions(mockReq as any, mockRes as any, mockNext);
+      await wait(0);
+
+      expect(smNotesService.getRevisions).toHaveBeenCalledWith(
+        'SPRINT_REVIEW',
+        SPRINT_ID,
+        USER_ID,
+        { limit: 20, offset: 0 }
+      );
+    });
+
+    it('should read the Retrospective history from the Retrospective route', async () => {
+      await getRetrospectiveSmNotesRevisions(mockReq as any, mockRes as any, mockNext);
+      await wait(0);
+
+      expect(smNotesService.getRevisions).toHaveBeenCalledWith(
+        'SPRINT_RETROSPECTIVE',
+        SPRINT_ID,
+        USER_ID,
+        { limit: 20, offset: 0 }
+      );
+    });
+
+    it('should honour explicit paging bounds', async () => {
+      mockReq.query = { limit: '5', offset: '10' };
+
+      await getSprintSmNotesRevisions(mockReq as any, mockRes as any, mockNext);
+      await wait(0);
+
+      expect(smNotesService.getRevisions).toHaveBeenCalledWith('SPRINT', SPRINT_ID, USER_ID, {
+        limit: 5,
+        offset: 10,
+      });
+    });
+
+    it('should fall back to defaults for an unusable bound rather than refusing the read', async () => {
+      mockReq.query = { limit: 'many', offset: '-3' };
+
+      await getSprintSmNotesRevisions(mockReq as any, mockRes as any, mockNext);
+      await wait(0);
+
+      expect(smNotesService.getRevisions).toHaveBeenCalledWith('SPRINT', SPRINT_ID, USER_ID, {
+        limit: 20,
+        offset: 0,
+      });
+    });
+
+    it('should refuse a history request with no ID', async () => {
+      mockReq.params = {};
+
+      await getSprintSmNotesRevisions(mockReq as any, mockRes as any, mockNext);
+      await wait(0);
+
+      expect(mockNext).toHaveBeenCalledWith(expect.any(BadRequestError));
+      expect(smNotesService.getRevisions).not.toHaveBeenCalled();
+    });
+
+    it('should propagate a refusal from the service', async () => {
+      const error = new Error('Not the Scrum Master');
+      (smNotesService.getRevisions as any).mockRejectedValue(error);
+
+      await getSprintSmNotesRevisions(mockReq as any, mockRes as any, mockNext);
       await wait(0);
 
       expect(mockNext).toHaveBeenCalledWith(error);

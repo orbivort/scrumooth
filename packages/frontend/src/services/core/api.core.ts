@@ -2,11 +2,17 @@
 import axios, { type AxiosError, type AxiosInstance, type InternalAxiosRequestConfig } from 'axios';
 
 import type { ApiResponse } from '../../types';
+import { API_BASE_URL } from '../../config/api.config';
 import { logger } from '../../utils/logger';
 import { navigateTo, getCurrentPath } from '../../utils/navigation';
 import { i18nInstance } from '../../i18n/config';
 
-export const API_BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:5001/api/v1';
+// Re-exported for the callers that already depend on this module (the keepalive
+// flush in `SprintPlanning.tsx`, the persona catalogue). The value itself lives in
+// `config/api.config.ts` — dependency-free — so the mock backend can read it
+// without pulling this module's client, interceptors and i18n wiring along with it.
+export { API_BASE_URL };
+
 const API_TIMEOUT = parseInt(import.meta.env.VITE_API_TIMEOUT ?? '30000', 10);
 
 const CSRF_COOKIE_NAME = 'csrfToken';

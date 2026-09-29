@@ -1,9 +1,14 @@
 // Increment Integration Service
 // Ensures each Increment is additive and compatible with all prior Increments.
 import prisma from '../utils/prisma';
-import { NotFoundError, BadRequestError } from '../utils/errors';
+import { NotFoundError, BadRequestError, localizedError } from '../utils/errors';
+import { GATE_CODES } from '@scrumooth/shared';
 import { generateUUIDv7 } from '../utils/uuid';
-import type { IntegrationTestResult } from '../generated/prisma/client';
+import { assertIncrementTeamMember } from './incrementAccess';
+import type {
+  IntegrationTestResult,
+  IntegrationVerificationBasis,
+} from '../generated/prisma/client';
 
 interface CreateIntegrationTestData {
   currentIncrementId: string;
@@ -34,8 +39,15 @@ export const incrementIntegrationService = {
       throw new NotFoundError('Increment');
     }
 
+    await assertIncrementTeamMember(userId, current.teamId);
+
     if (LOCKED_INTEGRATION_STATUSES.includes(current.status)) {
-      throw new BadRequestError('Cannot update a delivered increment');
+      throw localizedError(
+        'errors:increment.deliveredLocked',
+        {},
+        400,
+        GATE_CODES.INCREMENT_LOCKED
+      );
     }
 
     const prior = await prisma.increment.findUnique({
@@ -106,11 +118,13 @@ export const incrementIntegrationService = {
     return this.serializeTest(test);
   },
 
-  async getTestsForIncrement(incrementId: string) {
+  async getTestsForIncrement(incrementId: string, userId: string) {
     const increment = await prisma.increment.findUnique({ where: { id: incrementId } });
     if (!increment) {
       throw new NotFoundError('Increment');
     }
+
+    await assertIncrementTeamMember(userId, increment.teamId);
 
     const tests = await prisma.incrementIntegrationTest.findMany({
       where: { currentIncrementId: incrementId },
@@ -136,8 +150,15 @@ export const incrementIntegrationService = {
       throw new NotFoundError('Increment');
     }
 
+    await assertIncrementTeamMember(userId, increment.teamId);
+
     if (LOCKED_INTEGRATION_STATUSES.includes(increment.status)) {
-      throw new BadRequestError('Cannot update a delivered increment');
+      throw localizedError(
+        'errors:increment.deliveredLocked',
+        {},
+        400,
+        GATE_CODES.INCREMENT_LOCKED
+      );
     }
 
     const priorIncrements = await prisma.increment.findMany({
@@ -149,9 +170,15 @@ export const incrementIntegrationService = {
       orderBy: { createdAt: 'asc' },
     });
 
-    // First increment exemption: no prior increments to test against.
+    // First increment exemption: no prior increments to test against. Recorded as an exemption
+    // with its own basis, so it is never presented as a verification against prior Increments.
+    //
+    // "Prior" means an Increment that carries a verified state — `VERIFIED`, `DELIVERED` or
+    // `ARCHIVED`. A `DRAFT` sibling is deliberately excluded: it is an Increment the team has not
+    // stood behind yet, so there is nothing for this one to be additive to and a test against it
+    // would be evidence about a draft.
     if (priorIncrements.length === 0) {
-      await this.setVerified(incrementId, true, userId);
+      await this.setVerified(incrementId, true, userId, 'FIRST_INCREMENT_EXEMPT', 0);
       return { integrationVerified: true, priorCount: 0, allPassed: true };
     }
 
@@ -174,7 +201,13 @@ export const incrementIntegrationService = {
     }
 
     const allPassed = missing.length === 0 && failed.length === 0;
-    await this.setVerified(incrementId, allPassed, userId);
+    await this.setVerified(
+      incrementId,
+      allPassed,
+      userId,
+      allPassed ? 'PRIOR_INCREMENTS' : null,
+      allPassed ? priorIncrements.length : 0
+    );
 
     return {
       integrationVerified: allPassed,
@@ -188,11 +221,13 @@ export const incrementIntegrationService = {
   /**
    * Get the dependency chain of Increments for a team, newest first.
    */
-  async getIncrementChain(incrementId: string) {
+  async getIncrementChain(incrementId: string, userId: string) {
     const increment = await prisma.increment.findUnique({ where: { id: incrementId } });
     if (!increment) {
       throw new NotFoundError('Increment');
     }
+
+    await assertIncrementTeamMember(userId, increment.teamId);
 
     const increments = await prisma.increment.findMany({
       where: { teamId: increment.teamId },
@@ -214,6 +249,10 @@ export const incrementIntegrationService = {
         name: inc.name,
         status: inc.status,
         integrationVerified: inc.integrationVerified,
+        // Carried on every node so the chain itself distinguishes a first-Increment exemption from
+        // a verification against priors, instead of showing one identical badge.
+        integrationVerificationBasis: inc.integrationVerificationBasis,
+        integrationVerifiedPriorCount: inc.integrationVerifiedPriorCount,
         deliveredAt: inc.deliveredAt,
         sprintName: inc.sprint.name,
         hasTests: (testCountMap.get(inc.id) ?? 0) > 0,
@@ -241,7 +280,7 @@ export const incrementIntegrationService = {
     });
 
     if (priorIncrements.length === 0) {
-      await this.setVerified(incrementId, true, undefined);
+      await this.setVerified(incrementId, true, undefined, 'FIRST_INCREMENT_EXEMPT', 0);
       return;
     }
 
@@ -251,14 +290,38 @@ export const incrementIntegrationService = {
     const resultByPrior = new Map(tests.map((t) => [t.priorIncrementId, t.testResult]));
 
     const allPassed = priorIncrements.every((prior) => resultByPrior.get(prior.id) === 'PASSED');
-    await this.setVerified(incrementId, allPassed, undefined);
+    await this.setVerified(
+      incrementId,
+      allPassed,
+      undefined,
+      allPassed ? 'PRIOR_INCREMENTS' : null,
+      allPassed ? priorIncrements.length : 0
+    );
   },
 
-  async setVerified(incrementId: string, value: boolean, userId?: string) {
+  /**
+   * Persist the verification verdict *and the basis it rests on*.
+   *
+   * A cleared verification drops the basis and the covered count with it, so nothing claims an
+   * Increment was verified against work it was never tested with.
+   *
+   * @param basis - `FIRST_INCREMENT_EXEMPT` when there was nothing to test against, or
+   *                `PRIOR_INCREMENTS` when the verification covers the team's prior Increments.
+   * @param priorCount - how many prior Increments the verification covered.
+   */
+  async setVerified(
+    incrementId: string,
+    value: boolean,
+    userId?: string,
+    basis?: IntegrationVerificationBasis | null,
+    priorCount = 0
+  ) {
     await prisma.increment.update({
       where: { id: incrementId },
       data: {
         integrationVerified: value,
+        integrationVerificationBasis: value ? (basis ?? null) : null,
+        integrationVerifiedPriorCount: value ? priorCount : 0,
         ...(userId ? { updatedBy: userId } : {}),
         updatedAt: new Date(),
       },

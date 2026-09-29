@@ -20,6 +20,73 @@
       "nameRequired": "El nombre del equipo es requerido"
     }
   },
+  "dailyScrumSchedule": {
+    "backToDailyScrum": "Volver al Daily Scrum",
+    "cadence": {
+      "location": "Sala o lugar",
+      "locationPlaceholder": "p. ej. Sala de reuniones 4",
+      "locationUrl": "Enlace de la reunión",
+      "nextMeeting": "Próximo Daily Scrum: {{date}} a las {{time}} ({{timezone}})",
+      "noWorkingDays": "Selecciona al menos un día laborable para ver cuándo se reúne el equipo la próxima vez.",
+      "placeHint": "Registra una sala, un enlace o ambos. Se requiere uno de los dos.",
+      "preview": "El evento comienza a las {{time}} hora local.",
+      "startTime": "Hora de inicio",
+      "timezone": "Zona horaria",
+      "timezoneHint": "La hora de inicio es la hora local de esta zona.",
+      "title": "Hora y lugar"
+    },
+    "exceptions": {
+      "add": "Añadir día",
+      "date": "Fecha",
+      "empty": "No hay excepciones registradas para este año. Añade una solo cuando un día difiera del patrón semanal anterior: un día festivo, un día libre de la empresa o una reunión fuera de la oficina.",
+      "name": "Nombre",
+      "namePlaceholder": "p. ej. Día festivo",
+      "removeLabel": "Eliminar la excepción del {{date}}",
+      "title": "Días no laborables en {{year}}",
+      "unnamed": "Día no laborable"
+    },
+    "footnote": "El Daily Scrum dura 15 minutos, por lo que solo se configura su inicio. El equipo puede celebrarlo cualquier día; el calendario informa, no restringe.",
+    "loading": "Cargando el horario del Daily Scrum del equipo…",
+    "readOnlyNote": "Solo el Scrum Master puede cambiar este horario. Estás viendo el compromiso con el que trabaja el equipo.",
+    "saveBar": {
+      "reset": "Restablecer",
+      "save": "Guardar horario",
+      "saved": "Sin cambios pendientes",
+      "unsaved": "Cambios sin guardar"
+    },
+    "subtitle": "El Daily Scrum se celebra a la misma hora y en el mismo lugar cada día laborable. Registra ese compromiso aquí para que el equipo —y sus informes— partan del mismo calendario.",
+    "title": "Horario del Daily Scrum",
+    "toast": {
+      "exceptionAddFailed": "No se pudo registrar ese día.",
+      "exceptionAdded": "Día no laborable registrado.",
+      "exceptionRemoveFailed": "No se pudo eliminar ese día.",
+      "exceptionRemoved": "Día no laborable eliminado.",
+      "saveFailed": "No se pudo guardar el horario.",
+      "saved": "Horario del Daily Scrum guardado."
+    },
+    "validation": {
+      "placeRequired": "Registra una sala, un enlace de reunión o ambos.",
+      "timeInvalid": "Introduce una hora de inicio válida.",
+      "timezoneInvalid": "Elige una zona horaria que el sistema reconozca.",
+      "workingDayRequired": "Selecciona al menos un día laborable."
+    },
+    "weekdays": {
+      "friday": "Vie",
+      "monday": "Lun",
+      "saturday": "Sáb",
+      "sunday": "Dom",
+      "thursday": "Jue",
+      "tuesday": "Mar",
+      "wednesday": "Mié"
+    },
+    "workingWeek": {
+      "legend": "Días laborables de la semana",
+      "noneSelected": "No hay días laborables seleccionados. El calendario no tiene nada que contar.",
+      "summary_one": "El equipo trabaja {{count}} día a la semana.",
+      "summary_other": "El equipo trabaja {{count}} días a la semana.",
+      "title": "Semana laboral"
+    }
+  },
   "definitionEditor": {
     "activeItems": "{{count}} elementos activos",
     "activeItems_one": "{{count}} elemento activos",
@@ -62,16 +129,68 @@
       "technical": "Técnico",
       "value": "Valor"
     },
-    "dorInfo": "La Definition of Ready es una lista de criterios que una historia de usuario debe cumplir antes de poder ser tomada en un Sprint. Asegure que el equipo tenga suficiente información para completar el trabajo exitosamente.",
+    "dorInfo": "La Definición de Preparado es una práctica declarada por este equipo, no un artefacto de la Guía de Scrum: la Guía nombra tres artefactos y ninguno es una lista de comprobación de preparación. La mantiene el Scrum Master del equipo y Scrumooth la aplica en el límite del Sprint.",
     "editTitle": "Editar {{label}}",
     "empty": "Aún no hay elementos de {{shortLabel}}. Agregue su primer criterio arriba.",
     "inactive": "{{count}} inactivos",
     "inactive_one": "{{count}} inactivos",
     "inactive_other": "{{count}} inactivos",
     "newItemPlaceholder": "Ingrese nuevo criterio de {{shortLabel}}...",
+    "noActiveWarning": "Una definición debe conservar al menos un criterio activo. Reactive uno o añada uno nuevo antes de guardar.",
     "saveChanges": "Guardar Cambios",
     "saving": "Guardando...",
     "unsavedWarning": "Tiene cambios sin guardar"
+  },
+  "definitionHistory": {
+    "authorUnknown": "Autor no registrado",
+    "changedBy": "Cambiada por {{name}}",
+    "close": "Cerrar",
+    "current": "Actual",
+    "empty": "Todavía no se ha registrado ninguna versión de este acuerdo.",
+    "error": "No se pudo cargar el historial de versiones.",
+    "loading": "Cargando el historial de versiones…",
+    "noActiveCriteria": "Esta versión no tenía ningún criterio activo.",
+    "retry": "Reintentar",
+    "title": "Historial de versiones",
+    "versionLabel": "v{{version}}"
+  },
+  "definitionNav": {
+    "label": "En este acuerdo",
+    "sectionWithCount": "{{name}} — {{count}} criterios activos",
+    "sectionWithCount_one": "{{name}} — {{count}} criterio activo",
+    "sectionWithCount_other": "{{name}} — {{count}} criterios activos"
+  },
+  "definitionScope": {
+    "adoptAction": "Adoptar v{{version}}",
+    "adoptDisclosure": "Adoptar una DoD compartida",
+    "adoptHint": "Si varios equipos Scrum trabajan en un mismo producto, deben definir y cumplir la misma Definición de Terminado.",
+    "adoptTitle": "Adoptar una Definición de Terminado compartida",
+    "adoptedAt": "Adoptada la v{{version}} el {{date}}.",
+    "chooseLabel": "Grupo de equipos",
+    "drift": "Este equipo adoptó la v{{adopted}} y la v{{current}} está en vigor.",
+    "groupHint": "Este equipo trabaja en un mismo producto con los demás equipos de {{name}}, así que cumple la Definición de Terminado que comparten.",
+    "groupTitle": "Compartida con {{name}} · {{count}} equipos.",
+    "hideReviewLink": "Ocultar el acuerdo compartido",
+    "joinFailed": "No se pudo adoptar el grupo.",
+    "leave": "Salir del grupo",
+    "leaveFailed": "No se pudo salir del grupo.",
+    "leaveMessage": "Este equipo conserva la Definición de Terminado que venía cumpliendo y podrá cambiarla por su cuenta.",
+    "leaveTitle": "¿Salir de {{name}}?",
+    "manageDisclosure": "Revisar o salir",
+    "manageLink": "Gestionar este grupo en la configuración",
+    "mutualBody": "Los equipos definen mutuamente este compromiso adoptando una versión concreta al unirse. Si después cambia, el cambio se muestra aquí hasta que este equipo adopte la nueva versión.",
+    "mutualTitle": "Definida mutuamente",
+    "readOnlyNote": "La mantiene el Product Owner o el Scrum Master de un equipo de {{name}}.",
+    "reviewAction": "Revisar",
+    "reviewCurrentAction": "Revisar la versión vigente",
+    "reviewLabel": "La Definición de Terminado que cumple cada equipo de {{name}}",
+    "reviewLink": "Revisar el acuerdo compartido",
+    "teamHint": "Cualquier miembro del equipo puede cambiarlo.",
+    "teamTitle": "Este acuerdo es de tu equipo."
+  },
+  "definitionStates": {
+    "inactiveMessage": "Todos los criterios están actualmente desactivados. Reactive uno o añada uno nuevo antes de guardar.",
+    "inactiveTitle": "Sin criterios activos"
   },
   "deleteTeamModal": {
     "awaitingConfirmation": "Awaiting confirmation",
@@ -142,14 +261,15 @@
     "editButton": "Editar DoD",
     "empty": {
       "configureButton": "Configurar DoD",
-      "message": "Configure los criterios de Definition of Done de su equipo.",
-      "title": "Sin elementos DoD activos"
+      "message": "Un Sprint no puede comprometerse ni iniciarse sin al menos un criterio, y ningún elemento puede marcarse como Done mientras no se verifique cada criterio activo.",
+      "title": "Aún no hay Definition of Done"
     },
     "error": {
-      "message": "No se pudo cargar la Definition of Done. Usando elementos por defecto.",
+      "message": "No se pudo cargar la Definition of Done.",
       "retry": "Reintentar",
       "title": "Error al cargar"
     },
+    "groupEditBanner": "Todos los equipos de {{name}} cumplen esta Definición de Terminado. Al guardar, el cambio se aplica a los {{count}} equipos a la vez y aumenta la versión compartida.",
     "inactive": "{{count}} inactivos",
     "inactive_one": "{{count}} inactivos",
     "inactive_other": "{{count}} inactivos",
@@ -162,10 +282,6 @@
     },
     "lastUpdated": "Última actualización:",
     "loading": "Cargando Definition of Done...",
-    "noTeam": {
-      "message": "Por favor seleccione un equipo para ver y gestionar la Definition of Done.",
-      "title": "Sin equipo seleccionado"
-    },
     "shortLabel": "DoD",
     "title": "Definition of Done",
     "toast": {
@@ -191,19 +307,19 @@
     "inactive_other": "{{count}} inactivos",
     "item": {
       "acceptanceCriteria": "Criterios de aceptación definidos y acordados",
-      "acceptanceCriteriaDefined": "Criterios de aceptación definidos",
       "businessValue": "Valor de negocio asignado",
       "clearTitle": "Título y descripción claros proporcionados",
       "dependencies": "Dependencias identificadas y documentadas",
-      "dependenciesIdentified": "Dependencias identificadas",
       "noBlockers": "Sin bloqueadores ni Impediments",
-      "storyPointsEstimated": "Story Points estimados por el equipo",
-      "storyPointsEstimatedOld": "Story Points estimados",
-      "userStoryWritten": "Historia de usuario claramente escrita"
+      "storyPointsEstimated": "Story Points estimados por el equipo"
     },
     "lastUpdated": "Última actualización:",
     "loading": "Cargando Definition of Ready...",
-    "noTeam": "Por favor seleccione un equipo para ver la Definition of Ready.",
+    "practice": {
+      "message": "No es uno de los tres artefactos de la Guía de Scrum 2020 —el Product Backlog, el Sprint Backlog y el Incremento—, por lo que Scrumooth la identifica como práctica complementaria. Aun así se aplica: no se puede comprometer un Sprint Backlog ni iniciar un Sprint mientras un elemento seleccionado tenga un criterio sin verificar. El equipo registra las verificaciones y el Scrum Master del equipo mantiene este acuerdo.",
+      "scrumMasterOnly": "El Scrum Master del equipo mantiene este acuerdo.",
+      "title": "Práctica complementaria, no un artefacto de la Guía."
+    },
     "retry": "Reintentar",
     "shortLabel": "DoR",
     "title": "Definition of Ready",
@@ -391,16 +507,85 @@
     "COMPLETED": "Completado",
     "PLANNED": "Planificado"
   },
-  "teamDefinitions": {
-    "ariaLabels": {
-      "definitionTabs": "Pestañas de definición"
+  "teamGroups": {
+    "delete": {
+      "message": "Se eliminan el grupo, su lista de equipos y su Definición de Terminado compartida. Esta acción no se puede deshacer.",
+      "title": "¿Eliminar {{name}}?"
     },
-    "subtitle": "Configure los criterios de Definition of Ready y Definition of Done de su equipo",
-    "tabs": {
-      "definitionOfDone": "Definition of Done",
-      "definitionOfReady": "Definition of Ready"
+    "detail": {
+      "delete": "Eliminar grupo",
+      "deleteBlocked": "Un grupo no se puede eliminar mientras haya equipos que cumplan su Definición de Terminado: les quitaría su compromiso en lugar de llevarlos a otro. Cada equipo debe salir primero.",
+      "readOnlyNotice": "Puedes leer este compromiso, pero no lideras ningún equipo de este grupo. Sus equipos lo mantienen desde su pestaña de definición.",
+      "rename": "Cambiar nombre"
     },
-    "title": "Definiciones de equipo"
+    "directoryAriaLabel": "Grupos de equipos",
+    "directoryHeading": "Grupos",
+    "empty": {
+      "action": "Crear el primer grupo",
+      "description": "Si varios equipos Scrum trabajan en un mismo producto, deben cumplir la misma Definición de Terminado. Un grupo es la forma de sostener ese único compromiso: créelo y cada equipo lo adopta.",
+      "title": "Aún no hay grupos de equipos"
+    },
+    "form": {
+      "beforeUnload": "Tiene cambios sin guardar en este grupo de equipos.",
+      "cancel": "Cancelar",
+      "close": "Cerrar",
+      "create": "Crear grupo",
+      "createTitle": "Crear un grupo de equipos",
+      "description": "Descripción",
+      "descriptionMaxLength": "La descripción debe tener 500 caracteres o menos.",
+      "descriptionPlaceholder": "Dos equipos, un producto, una Definición de Terminado.",
+      "editTitle": "Editar {{name}}",
+      "name": "Nombre",
+      "nameMaxLength": "El nombre debe tener 100 caracteres o menos.",
+      "namePlaceholder": "Producto de pagos",
+      "nameRequired": "El nombre es obligatorio.",
+      "optional": "Opcional",
+      "save": "Guardar cambios",
+      "subtitle": "Un grupo son los equipos Scrum que trabajan juntos en un mismo producto, vinculados a la única Definición de Terminado que posee."
+    },
+    "groupCount": "{{count}} grupos",
+    "groupCount_one": "{{count}} grupo",
+    "groupCount_other": "{{count}} grupos",
+    "groupLoadError": "No se pudo cargar este grupo. Es posible que su lista de equipos haya cambiado mientras la leía.",
+    "listAriaLabel": "Grupos de equipos",
+    "loadError": "No se pudieron cargar los grupos de equipos.",
+    "loading": "Cargando grupos de equipos…",
+    "meta": {
+      "sharedVersion": "Versión compartida",
+      "teams": "Equipos"
+    },
+    "newGroup": "Nuevo grupo",
+    "roster": {
+      "adopted": "Adoptada",
+      "caption": "Equipos que cumplen la Definición de Terminado compartida de {{name}}",
+      "drift": "Adoptó la v{{adopted}} — la v{{current}} está en vigor",
+      "empty": "Ningún equipo se ha unido a este grupo todavía.",
+      "inStep": "Al día",
+      "joined": "Se unió",
+      "notRecorded": "Sin registrar",
+      "status": "Estado",
+      "team": "Equipo",
+      "title": "Equipos",
+      "unknown": "—"
+    },
+    "selectPrompt": "Elige un grupo para ver los equipos que cumplen su Definición de Terminado.",
+    "sharedDoD": {
+      "delegated": "Cada equipo de este grupo lee y cambia esta Definición de Terminado en su propia pestaña de definición, donde se muestran todos sus criterios.",
+      "openAction": "Leerlo y cambiarlo en Mi equipo",
+      "title": "Definición de Terminado",
+      "updated": "Actualizada el {{date}}"
+    },
+    "subtitle": "Los equipos Scrum que trabajan en un mismo producto y la única Definición de Terminado que todos cumplen.",
+    "teamCount": "{{count}} equipos",
+    "teamCount_one": "{{count}} equipo",
+    "teamCount_other": "{{count}} equipos",
+    "title": "Grupos de equipos",
+    "toast": {
+      "created": "Se creó el grupo de equipos.",
+      "deleted": "Se eliminó el grupo de equipos.",
+      "updated": "Se actualizó el grupo de equipos."
+    },
+    "versionShort": "v{{version}}"
   },
   "teamList": {
     "ariaLabel": "Equipos",
@@ -456,11 +641,11 @@
       "deleteTeam": "No tiene permiso para eliminar este equipo.",
       "editTeam": "No tiene permiso para editar este equipo."
     },
-    "subtitle": "Crear y gestionar equipos en la organización",
+    "subtitle": "Todos los equipos de la organización. Cualquiera puede consultarlos y crear uno; solo su Product Owner o Scrum Master puede modificarlo o eliminarlo.",
     "teamCount": "{{count}} equipo",
     "teamCount_one": "{{count}} equipo",
     "teamCount_other": "{{count}} equipos",
-    "title": "Gestión de Equipos",
+    "title": "Todos los equipos",
     "toast": {
       "cannotDeleteWithGoals": "No se puede eliminar equipo con Product Goals existentes",
       "teamCreateFailed": "Falló la creación del equipo",

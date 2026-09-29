@@ -65,9 +65,21 @@
     "empty": "No {{shortLabel}} items yet. Add your first criterion above.",
     "inactive": "{{count}} inactive",
     "newItemPlaceholder": "Enter new {{shortLabel}} criterion...",
+    "noActiveWarning": "A definition must keep at least one active criterion. Reactivate one, or add a new one, before saving.",
     "saveChanges": "Save Changes",
     "saving": "Saving...",
     "unsavedWarning": "You have unsaved changes"
+  },
+  "definitionScope": {
+    "groupHint": "This team works with other Scrum Teams on one product in {{name}}, so it complies with the same Definition of Done. Changes are made there.",
+    "groupTitle": "Shared with {{name}} · v{{version}}.",
+    "manageLink": "Manage it in Team Groups",
+    "teamHint": "Any team member can change it.",
+    "teamTitle": "Your team owns this agreement."
+  },
+  "definitionStates": {
+    "inactiveMessage": "Every criterion is currently deactivated. Reactivate one, or add a new one, before saving.",
+    "inactiveTitle": "No active criteria"
   },
   "deleteTeamModal": {
     "blockedSubtitle": "This team cannot be deleted due to active product goals",
@@ -109,11 +121,11 @@
     "editButton": "Edit DoD",
     "empty": {
       "configureButton": "Configure DoD",
-      "message": "Configure your team's Definition of Done criteria.",
-      "title": "No Active DoD Items"
+      "message": "A Sprint cannot be committed or started without at least one criterion, and no item can be marked Done until every active criterion is verified.",
+      "title": "No Definition of Done yet"
     },
     "error": {
-      "message": "Unable to load Definition of Done. Using default items instead.",
+      "message": "Unable to load the Definition of Done.",
       "retry": "Retry",
       "title": "Failed to Load"
     },
@@ -127,10 +139,6 @@
     },
     "lastUpdated": "Last updated:",
     "loading": "Loading Definition of Done...",
-    "noTeam": {
-      "message": "Please select a team to view and manage the Definition of Done.",
-      "title": "No Team Selected"
-    },
     "shortLabel": "DoD",
     "title": "Definition of Done",
     "toast": {
@@ -164,7 +172,11 @@
     },
     "lastUpdated": "Last updated:",
     "loading": "Loading Definition of Ready...",
-    "noTeam": "Please select a team to view Definition of Ready.",
+    "practice": {
+      "message": "It is not one of the three artifacts of the 2020 Scrum Guide — the Product Backlog, the Sprint Backlog and the Increment — so Scrumooth labels it a complementary practice. It is still enforced: a Sprint Backlog cannot be committed, and a Sprint cannot start, while a selected item has an unverified criterion. Team members record the verifications; the team's Scrum Master maintains this agreement.",
+      "scrumMasterOnly": "[Thé téàm's Scrúm Màstér màíntàíns thís àgrééménttttttttttttt.]",
+      "title": "[Cómpléméntàry pràctícé, nót à Gúídé àrtífàctttttttt]"
+    },
     "retry": "Retry",
     "shortLabel": "DoR",
     "title": "Definition of Ready",
@@ -343,17 +355,6 @@
     "COMPLETED": "Completed",
     "PLANNED": "Planned"
   },
-  "teamDefinitions": {
-    "ariaLabels": {
-      "definitionTabs": "Definition tabs"
-    },
-    "subtitle": "Configure your team's Definition of Ready and Definition of Done criteria",
-    "tabs": {
-      "definitionOfDone": "Definition of Done",
-      "definitionOfReady": "Definition of Ready"
-    },
-    "title": "Team Definitions"
-  },
   "teamList": {
     "ariaLabel": "Teams",
     "card": {
@@ -402,9 +403,9 @@
       "deleteTeam": "You do not have permission to delete this team.",
       "editTeam": "You do not have permission to edit this team."
     },
-    "subtitle": "Create and manage teams across the organization",
+    "subtitle": "Every team in the organization. Anyone can look and create one; only its Product Owner or Scrum Master can change or remove it.",
     "teamCount": "{{count}} team",
-    "title": "Team Management",
+    "title": "All Teams",
     "toast": {
       "cannotDeleteWithGoals": "Cannot delete team with existing product goals",
       "teamCreateFailed": "Failed to create team",

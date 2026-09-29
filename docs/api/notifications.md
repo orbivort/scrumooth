@@ -31,42 +31,46 @@ All notification endpoints are subject to a dedicated rate limit of **200 reques
 
 ## Authentication
 
-All notification endpoints require authentication. Include the access token in your request:
-
-**Using Cookies (Recommended)**
-
-```http
-GET /api/v1/notifications
-Cookie: accessToken=eyJhbGc...
-```
-
-**Using Bearer Token**
-
-```http
-GET /api/v1/notifications
-Authorization: Bearer eyJhbGc...
-```
+All notification endpoints require authentication. See [Authentication](./README.md#authentication) for the cookie and bearer-token forms.
 
 ## Notification Types
 
 Notifications are categorized by type. The following types are supported:
 
-| Type                    | Description                                  |
-| ----------------------- | -------------------------------------------- |
-| `SPRINT_STARTED`        | A sprint has been started                    |
-| `SPRINT_COMPLETED`      | A sprint has been completed                  |
-| `SPRINT_CANCELLED`      | A sprint has been cancelled                  |
-| `TASK_ASSIGNED`         | A task has been assigned to the user         |
-| `TASK_UPDATED`          | A task assigned to the user has been updated |
-| `IMPEDIMENT_CREATED`    | A new impediment has been reported           |
-| `IMPEDIMENT_RESOLVED`   | An impediment has been resolved              |
-| `MEMBER_ADDED`          | A new member has been added to the team      |
-| `MEMBER_REMOVED`        | A member has been removed from the team      |
-| `GOAL_STATUS_CHANGED`   | A product goal status has changed            |
-| `BACKLOG_ITEM_UPDATED`  | A backlog item has been updated              |
-| `RETROSPECTIVE_CREATED` | A retrospective has been created             |
-| `DAILY_UPDATE_REMINDER` | Reminder to submit daily scrum update        |
-| `SYSTEM_ANNOUNCEMENT`   | System-wide announcement from administrators |
+| Type                            | Description                                                       |
+| ------------------------------- | ----------------------------------------------------------------- |
+| `TEAM_INVITATION`               | The user has been added to a team                                 |
+| `TEAM_REMOVAL`                  | The user has been removed from a team                             |
+| `TASK_ASSIGNMENT`               | A task, review feedback or a backlog adjustment is theirs         |
+| `IMPEDIMENT_ASSIGNMENT`         | The user owns an impediment                                       |
+| `IMPEDIMENT_ESCALATION`         | An impediment has gone unresolved past its threshold              |
+| `DAILY_SCRUM_SIGNAL`            | The team has been signalled to gather for the Daily Scrum         |
+| `TEAM_CREATED`                  | The user created a team                                           |
+| `TEAM_UPDATED`                  | A team the user belongs to was updated                            |
+| `TEAM_DELETED`                  | A team the user belongs to was deleted                            |
+| `DIRECT_MESSAGE`                | A team member sent the user a direct message                      |
+| `ACCOUNT_DELETION_SCHEDULED`    | A Product Owner in the user's team scheduled account deletion     |
+| `ACCOUNT_DELETION_CANCELLED`    | That scheduled deletion was cancelled                             |
+| `ORGANIZATIONAL_BARRIER`        | The user owns a barrier that lies outside the team                |
+| `SPRINT_BACKLOG_CHANGE_PENDING` | A goal-endangering Sprint Backlog change awaits the Product Owner |
+
+This list is the Prisma `NotificationType` enum. `NOTIFICATION_TYPES` in
+`packages/shared` and the client's `NotificationType` enum are kept in step with it,
+and `packages/frontend/src/types/notification.types.test.ts` fails when they drift.
+
+### Localized notifications
+
+A notification created through `NotificationService.createLocalized` stores both the
+text rendered in the recipient's locale and the canonical i18n context it was rendered
+from:
+
+- `title` / `message` — rendered text, for email and push, and the interface's fallback.
+- `messageKey` — the message's i18n key.
+- `params` — `{ titleKey, titleParams, messageKey, messageParams }`.
+
+The interface re-translates from `params` at display time, so switching language
+re-labels notifications that already exist instead of leaving them frozen in the
+language they were created in.
 
 ## Endpoints
 
@@ -87,7 +91,7 @@ GET /api/v1/notifications
 **Query Parameters**
 
 - `page` (integer, optional): Page number (default: 1)
-- `limit` (integer, optional): Items per page (default: 20, max: 100)
+- `limit` (integer, optional): Items per page (default: 50, capped at the deployment's `NOTIFICATION_MAX_PAGE_SIZE`, 10–100)
 - `type` (string, optional): Filter by notification type (see [Notification Types](#notification-types))
 - `isRead` (boolean, optional): Filter by read status - true/false
 
@@ -103,37 +107,64 @@ Content-Type: application/json
     "notifications": [
       {
         "id": "550e8400-e29b-41d4-a716-446655440010",
-        "type": "TASK_ASSIGNED",
-        "title": "Task Assigned",
-        "message": "You have been assigned to 'Implement login page'",
+        "userId": "550e8400-e29b-41d4-a716-446655440001",
+        "type": "TASK_ASSIGNMENT",
+        "title": "New task assigned: \"Implement login page\"",
+        "message": "In sprint \"Sprint 5\"",
+        "messageKey": "newTaskAssignedMessage",
+        "params": {
+          "titleKey": "newTaskAssignedTitle",
+          "titleParams": { "taskTitle": "Implement login page" },
+          "messageKey": "newTaskAssignedMessage",
+          "messageParams": { "taskTitle": "Implement login page", "sprintName": "Sprint 5" }
+        },
+        "data": {
+          "taskId": "550e8400-e29b-41d4-a716-446655440020",
+          "sprintId": "550e8400-e29b-41d4-a716-446655440030",
+          "pbiId": "550e8400-e29b-41d4-a716-446655440040"
+        },
         "isRead": false,
+        "readAt": null,
         "createdAt": "2026-04-29T12:00:00.000Z"
       },
       {
         "id": "550e8400-e29b-41d4-a716-446655440011",
-        "type": "SPRINT_STARTED",
-        "title": "Sprint Started",
-        "message": "Sprint 'Sprint 5' has been started",
+        "userId": "550e8400-e29b-41d4-a716-446655440001",
+        "type": "DIRECT_MESSAGE",
+        "title": "Message from Tobin Veleth",
+        "message": "Can you review the PR when you get a chance?",
+        "messageKey": "directMessageBody",
+        "params": {
+          "titleKey": "directMessageTitle",
+          "titleParams": { "senderName": "Tobin Veleth" },
+          "messageKey": "directMessageBody",
+          "messageParams": { "message": "Can you review the PR when you get a chance?" }
+        },
+        "data": { "senderId": "550e8400-e29b-41d4-a716-446655440002" },
         "isRead": true,
+        "readAt": "2026-04-28T09:05:00.000Z",
         "createdAt": "2026-04-28T09:00:00.000Z"
       }
     ],
     "pagination": {
       "page": 1,
-      "limit": 20,
+      "limit": 50,
       "total": 2,
-      "totalPages": 1,
-      "hasNext": false,
-      "hasPrev": false
-    }
+      "totalPages": 1
+    },
+    "unreadCount": 1
   }
 }
 ```
 
+`limit` defaults to 50 and is capped at the deployment's `NOTIFICATION_MAX_PAGE_SIZE`
+(10–100). `unreadCount` counts the whole inbox, not just the page returned.
+`pagination` carries exactly `page`, `limit`, `total` and `totalPages`.
+
 **Example Request**
 
 ```bash
-curl -X GET "https://api.scrumooth.dev/api/v1/notifications?type=TASK_ASSIGNED&isRead=false" \
+curl -X GET "https://api.example.com/api/v1/notifications?type=TASK_ASSIGNMENT&isRead=false" \
   -b cookies.txt
 ```
 
@@ -162,15 +193,19 @@ Content-Type: application/json
 {
   "success": true,
   "data": {
-    "count": 5
+    "count": 5,
+    "lastCheckedAt": "2026-04-29T14:00:00.000Z"
   }
 }
 ```
 
+The count is wrapped in the standard envelope, like every other notification
+endpoint: the interface reads `data.count`.
+
 **Example Request**
 
 ```bash
-curl -X GET https://api.scrumooth.dev/api/v1/notifications/unread-count \
+curl -X GET https://api.example.com/api/v1/notifications/unread-count \
   -b cookies.txt
 ```
 
@@ -201,40 +236,51 @@ POST /api/v1/notifications/send-message
 
 **Success Response**
 
+The message is stored as the recipient's `DIRECT_MESSAGE` notification, with
+`params.titleKey = "directMessageTitle"` and `params.messageKey = "directMessageBody"`,
+so the title re-labels itself with the recipient's interface language while the body
+stays the sender's own words.
+
 ```http
-HTTP/1.1 201 Created
+HTTP/1.1 200 OK
 Content-Type: application/json
 
 {
   "success": true,
   "data": {
-    "message": {
+    "notification": {
       "id": "550e8400-e29b-41d4-a716-446655440020",
-      "senderId": "550e8400-e29b-41d4-a716-446655440001",
-      "recipientId": "550e8400-e29b-41d4-a716-446655440004",
-      "content": "Hey, can you review the PR when you get a chance?",
+      "userId": "550e8400-e29b-41d4-a716-446655440004",
+      "type": "DIRECT_MESSAGE",
+      "title": "Message from Tobin Veleth",
+      "message": "Hey, can you review the PR when you get a chance?",
+      "messageKey": "directMessageBody",
+      "params": {
+        "titleKey": "directMessageTitle",
+        "titleParams": { "senderName": "Tobin Veleth" },
+        "messageKey": "directMessageBody",
+        "messageParams": { "message": "Hey, can you review the PR when you get a chance?" }
+      },
+      "data": { "senderId": "550e8400-e29b-41d4-a716-446655440001" },
+      "isRead": false,
       "createdAt": "2026-04-29T14:00:00.000Z"
     }
   }
 }
 ```
 
+The endpoint answers `200`, not `201`: it records a notification rather than creating
+an addressable resource.
+
 **Error Responses**
 
-**400 Bad Request - Validation Error**
+**400 Bad Request - Missing Field**
 
 ```json
 {
   "success": false,
   "error": {
-    "code": "VALIDATION_ERROR",
-    "message": "Validation failed",
-    "details": [
-      {
-        "field": "recipientId",
-        "message": "Recipient ID is required"
-      }
-    ]
+    "message": "Recipient ID and message are required"
   }
 }
 ```
@@ -254,7 +300,7 @@ Content-Type: application/json
 **Example Request**
 
 ```bash
-curl -X POST https://api.scrumooth.dev/api/v1/notifications/send-message \
+curl -X POST https://api.example.com/api/v1/notifications/send-message \
   -H "Content-Type: application/json" \
   -b cookies.txt \
   -d '{
@@ -294,10 +340,12 @@ Content-Type: application/json
   "data": {
     "notification": {
       "id": "550e8400-e29b-41d4-a716-446655440010",
-      "type": "TASK_ASSIGNED",
-      "title": "Task Assigned",
-      "message": "You have been assigned to 'Implement login page'",
+      "userId": "550e8400-e29b-41d4-a716-446655440001",
+      "type": "TASK_ASSIGNMENT",
+      "title": "New task assigned: \"Implement login page\"",
+      "message": "In sprint \"Sprint 5\"",
       "isRead": true,
+      "readAt": "2026-04-29T14:05:00.000Z",
       "createdAt": "2026-04-29T12:00:00.000Z"
     }
   }
@@ -321,7 +369,7 @@ Content-Type: application/json
 **Example Request**
 
 ```bash
-curl -X PATCH https://api.scrumooth.dev/api/v1/notifications/550e8400-e29b-41d4-a716-446655440010/read \
+curl -X PATCH https://api.example.com/api/v1/notifications/550e8400-e29b-41d4-a716-446655440010/read \
   -b cookies.txt
 ```
 
@@ -368,7 +416,7 @@ Content-Type: application/json
 Mark all notifications as read:
 
 ```bash
-curl -X PATCH https://api.scrumooth.dev/api/v1/notifications/mark-all-read \
+curl -X PATCH https://api.example.com/api/v1/notifications/mark-all-read \
   -H "Content-Type: application/json" \
   -b cookies.txt
 ```
@@ -376,7 +424,7 @@ curl -X PATCH https://api.scrumooth.dev/api/v1/notifications/mark-all-read \
 Mark specific notifications as read:
 
 ```bash
-curl -X PATCH https://api.scrumooth.dev/api/v1/notifications/mark-all-read \
+curl -X PATCH https://api.example.com/api/v1/notifications/mark-all-read \
   -H "Content-Type: application/json" \
   -b cookies.txt \
   -d '{
@@ -417,7 +465,7 @@ Content-Type: application/json
 {
   "success": true,
   "data": {
-    "message": "Notification deleted"
+    "message": "Notification deleted successfully"
   }
 }
 ```
@@ -439,7 +487,7 @@ Content-Type: application/json
 **Example Request**
 
 ```bash
-curl -X DELETE https://api.scrumooth.dev/api/v1/notifications/550e8400-e29b-41d4-a716-446655440010 \
+curl -X DELETE https://api.example.com/api/v1/notifications/550e8400-e29b-41d4-a716-446655440010 \
   -b cookies.txt
 ```
 
@@ -447,13 +495,18 @@ curl -X DELETE https://api.scrumooth.dev/api/v1/notifications/550e8400-e29b-41d4
 
 ## Error Codes
 
-| Code                   | HTTP Status | Description                                  |
-| ---------------------- | ----------- | -------------------------------------------- |
-| `VALIDATION_ERROR`     | 400         | Request validation failed                    |
-| `AUTHENTICATION_ERROR` | 401         | Authentication required                      |
-| `AUTHORIZATION_ERROR`  | 403         | Insufficient permissions                     |
-| `NOT_FOUND`            | 404         | Notification or recipient not found          |
-| `RATE_LIMIT_EXCEEDED`  | 429         | Notification rate limit exceeded (200/15min) |
+| Code                  | HTTP Status | Description                                     |
+| --------------------- | ----------- | ----------------------------------------------- |
+| `BAD_REQUEST`         | 400         | A required field is missing (see Send Message)  |
+| `UNAUTHORIZED`        | 401         | Authentication required                         |
+| `FORBIDDEN`           | 403         | Insufficient permissions                        |
+| `NOT_FOUND`           | 404         | Notification or recipient not found             |
+| `VALIDATION_ERROR`    | 422         | Request validation failed, with `error.details` |
+| `RATE_LIMIT_EXCEEDED` | 429         | Notification rate limit exceeded (200/15min)    |
+
+The codes are the ones `AppError` subclasses in `packages/backend/src/utils/errors.ts`
+carry; the interface branches on `error.code`, so a code that does not match is a
+failure it cannot present.
 
 ## Best Practices
 
@@ -478,7 +531,7 @@ curl -X DELETE https://api.scrumooth.dev/api/v1/notifications/550e8400-e29b-41d4
 
 ---
 
-**Last Updated**: 2026-05-10
+**Last Updated**: 2026-09-27
 
 **Related Documentation**
 

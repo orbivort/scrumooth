@@ -20,6 +20,18 @@ vi.mock('node:crypto', () => ({
   },
 }));
 
+// The logger is imported dynamically inside config/index.ts; mocking it lets us control both the
+// success and the failure (`.catch`) replay paths.
+vi.mock('../../../utils/logger.js', () => ({
+  logger: {
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    debug: vi.fn(),
+    log: vi.fn(),
+  },
+}));
+
 describe('config', () => {
   const originalEnv = { ...process.env };
 
@@ -594,6 +606,498 @@ describe('config', () => {
       const { replayDeferredLogs } = await import('../../../config');
 
       expect(() => replayDeferredLogs()).not.toThrow();
+    });
+  });
+
+  describe('extended coverage', () => {
+    const flush = (): Promise<void> => new Promise((resolve) => setImmediate(resolve));
+
+    const setRequiredEnv = (): void => {
+      process.env.DATABASE_URL = 'postgresql://user:pass@localhost:5432/app';
+      process.env.JWT_SECRET = 'a'.repeat(64);
+      delete process.env.NODE_ENV;
+    };
+
+    const setValidProductionEnv = (): void => {
+      process.env.NODE_ENV = 'production';
+      process.env.DATABASE_URL = 'postgresql://user:StrongP@ssw0rd!@db.example.com:5432/app';
+      process.env.JWT_SECRET = 'a'.repeat(80);
+      process.env.CORS_ORIGIN = 'https://app.example.com';
+      process.env.EMAIL_PROVIDER = 'smtp';
+      process.env.SMTP_HOST = 'smtp.example.com';
+      process.env.SMTP_PORT = '587';
+      process.env.SMTP_USER = 'mailer@example.com';
+      process.env.SMTP_PASS = 'smtp-secret';
+      process.env.EMAIL_FROM_ADDRESS = 'noreply@example.com';
+      process.env.FRONTEND_URL = 'https://app.example.com';
+      process.env.EMAIL_TEST_MODE = 'false';
+    };
+
+    describe('registration allowed email domains', () => {
+      it('returns an empty list when the env var is unset', async () => {
+        // Arrange
+        setRequiredEnv();
+        delete process.env.REGISTRATION_ALLOWED_EMAIL_DOMAINS;
+
+        // Act
+        const { config } = await import('../../../config');
+
+        // Assert
+        expect(config.registration.allowedEmailDomains).toEqual([]);
+        expect(config.registration.isRestricted).toBe(false);
+      });
+
+      it('deduplicates and warns on duplicate domains', async () => {
+        // Arrange
+        setRequiredEnv();
+        process.env.REGISTRATION_ALLOWED_EMAIL_DOMAINS = 'acme.com, ACME.com ,acme.eu';
+        const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+        // Act
+        const { config } = await import('../../../config');
+
+        // Assert
+        expect(config.registration.allowedEmailDomains).toEqual(['acme.com', 'acme.eu']);
+        expect(config.registration.isRestricted).toBe(true);
+        expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('duplicate entries'));
+        warnSpy.mockRestore();
+      });
+
+      it('throws for an invalid registration domain', async () => {
+        // Arrange
+        setRequiredEnv();
+        process.env.REGISTRATION_ALLOWED_EMAIL_DOMAINS = 'Invalid_Domain';
+
+        // Act
+        const { validateConfig } = await import('../../../config');
+
+        // Assert
+        expect(() => validateConfig()).toThrow('contains an invalid domain');
+      });
+    });
+
+    describe('replayDeferredLogs', () => {
+      it('replays queued messages through logger.log', async () => {
+        // Arrange
+        setRequiredEnv();
+        delete process.env.JWT_SECRET;
+        const { logger } = await import('../../../utils/logger.js');
+        const logMock = logger.log as unknown as ReturnType<typeof vi.fn>;
+        const { replayDeferredLogs } = await import('../../../config');
+
+        // Act
+        replayDeferredLogs();
+        await flush();
+
+        // Assert
+        expect(logMock).toHaveBeenCalled();
+      });
+
+      it('swallows errors raised while replaying', async () => {
+        // Arrange
+        setRequiredEnv();
+        delete process.env.JWT_SECRET;
+        const { logger } = await import('../../../utils/logger.js');
+        const logMock = logger.log as unknown as ReturnType<typeof vi.fn>;
+        logMock.mockImplementation(() => {
+          throw new Error('logger exploded');
+        });
+        const { replayDeferredLogs } = await import('../../../config');
+
+        // Act & Assert
+        expect(() => replayDeferredLogs()).not.toThrow();
+        await flush();
+        logMock.mockReset();
+      });
+    });
+
+    describe('backlog config', () => {
+      it('defaults the max items per goal when the env var is unset', async () => {
+        // Arrange
+        delete process.env.BACKLOG_MAX_ITEMS_PER_GOAL;
+
+        // Act
+        const { BACKLOG_CONFIG, isBacklogLimitEnabled } =
+          await import('../../../config/backlog.config');
+
+        // Assert
+        expect(BACKLOG_CONFIG.MAX_ITEMS_PER_GOAL).toBe(200);
+        expect(isBacklogLimitEnabled()).toBe(true);
+      });
+
+      it('uses the configured max items per goal and disables the limit at zero', async () => {
+        // Arrange
+        process.env.BACKLOG_MAX_ITEMS_PER_GOAL = '0';
+
+        // Act
+        const { BACKLOG_CONFIG, isBacklogLimitEnabled } =
+          await import('../../../config/backlog.config');
+
+        // Assert
+        expect(BACKLOG_CONFIG.MAX_ITEMS_PER_GOAL).toBe(0);
+        expect(isBacklogLimitEnabled()).toBe(false);
+      });
+    });
+
+    describe('email default fallbacks', () => {
+      it('uses defaults when the email env vars are unset', async () => {
+        // Arrange
+        setRequiredEnv();
+        for (const key of [
+          'EMAIL_PROVIDER',
+          'FRONTEND_URL',
+          'EMAIL_TEST_OUTPUT_DIR',
+          'SMTP_HOST',
+          'SMTP_PORT',
+          'SMTP_USER',
+          'SMTP_PASS',
+          'SMTP_MAX_CONNECTIONS',
+          'SMTP_RATE_LIMIT_MAX_MESSAGES',
+          'SMTP_RATE_LIMIT_WINDOW_MS',
+          'EMAIL_FROM_NAME',
+          'EMAIL_FROM_ADDRESS',
+        ]) {
+          delete process.env[key];
+        }
+
+        // Act
+        const { config } = await import('../../../config');
+
+        // Assert
+        expect(config.email.provider).toBe('smtp');
+        expect(config.email.frontendUrl).toBe('http://localhost:5173');
+        expect(config.email.testMode.outputDirectory).toBe('logs/test-emails');
+        expect(config.email.smtp.host).toBe('localhost');
+        expect(config.email.smtp.port).toBe(587);
+        expect(config.email.smtp.auth.user).toBe('');
+        expect(config.email.smtp.auth.pass).toBe('');
+        expect(config.email.smtp.maxConnections).toBe(5);
+        expect(config.email.smtp.rateLimit.maxMessages).toBe(100);
+        expect(config.email.smtp.rateLimit.windowMs).toBe(60000);
+        expect(config.email.defaults.fromName).toBe('Scrumooth');
+        expect(config.email.defaults.fromAddress).toBe('noreply@scrumooth.local');
+      });
+    });
+
+    describe('notification warnings with the logger available', () => {
+      it('warns for a long polling interval and zero retention', async () => {
+        // Arrange
+        setRequiredEnv();
+        process.env.NOTIFICATION_POLLING_INTERVAL_SECONDS = '120';
+        process.env.NOTIFICATION_RETENTION_DAYS = '0';
+        const { logger } = await import('../../../utils/logger.js');
+        const warnMock = logger.warn as unknown as ReturnType<typeof vi.fn>;
+        const { validateConfig } = await import('../../../config');
+
+        // Act
+        validateConfig();
+        await flush();
+
+        // Assert
+        expect(warnMock).toHaveBeenCalledWith(expect.stringContaining('more than 60 seconds'));
+        expect(warnMock).toHaveBeenCalledWith(expect.stringContaining('is set to 0'));
+      });
+
+      it('warns for a retention longer than a year', async () => {
+        // Arrange
+        setRequiredEnv();
+        process.env.NOTIFICATION_POLLING_INTERVAL_SECONDS = '5';
+        process.env.NOTIFICATION_RETENTION_DAYS = '400';
+        const { logger } = await import('../../../utils/logger.js');
+        const warnMock = logger.warn as unknown as ReturnType<typeof vi.fn>;
+        const { validateConfig } = await import('../../../config');
+
+        // Act
+        validateConfig();
+        await flush();
+
+        // Assert
+        expect(warnMock).toHaveBeenCalledWith(expect.stringContaining('more than 1 year'));
+      });
+    });
+
+    describe('notification warnings with the logger unavailable', () => {
+      it('falls back to deferred logging for a long interval and zero retention', async () => {
+        // Arrange
+        setRequiredEnv();
+        process.env.NOTIFICATION_POLLING_INTERVAL_SECONDS = '120';
+        process.env.NOTIFICATION_RETENTION_DAYS = '0';
+        const { logger } = await import('../../../utils/logger.js');
+        const warnMock = logger.warn as unknown as ReturnType<typeof vi.fn>;
+        warnMock.mockImplementation(() => {
+          throw new Error('logger unavailable');
+        });
+        const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+        const { validateConfig } = await import('../../../config');
+
+        // Act
+        validateConfig();
+        await flush();
+
+        // Assert
+        expect(consoleWarnSpy).toHaveBeenCalledWith(
+          expect.stringContaining('more than 60 seconds')
+        );
+        consoleWarnSpy.mockRestore();
+        warnMock.mockReset();
+      });
+
+      it('falls back to deferred logging for a retention longer than a year', async () => {
+        // Arrange
+        setRequiredEnv();
+        process.env.NOTIFICATION_POLLING_INTERVAL_SECONDS = '5';
+        process.env.NOTIFICATION_RETENTION_DAYS = '400';
+        const { logger } = await import('../../../utils/logger.js');
+        const warnMock = logger.warn as unknown as ReturnType<typeof vi.fn>;
+        warnMock.mockImplementation(() => {
+          throw new Error('logger unavailable');
+        });
+        const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+        const { validateConfig } = await import('../../../config');
+
+        // Act
+        validateConfig();
+        await flush();
+
+        // Assert
+        expect(consoleWarnSpy).toHaveBeenCalledWith(expect.stringContaining('more than 1 year'));
+        consoleWarnSpy.mockRestore();
+        warnMock.mockReset();
+      });
+    });
+
+    describe('non-production guard clauses', () => {
+      it('rejects a non-numeric impediment escalation threshold', async () => {
+        setRequiredEnv();
+        process.env.IMPEDIMENT_ESCALATION_THRESHOLD_DAYS = 'abc';
+        const { validateConfig } = await import('../../../config');
+        expect(() => validateConfig()).toThrow(
+          'IMPEDIMENT_ESCALATION_THRESHOLD_DAYS must be a positive integer'
+        );
+      });
+
+      it('rejects a non-numeric sprint capacity tolerance', async () => {
+        setRequiredEnv();
+        process.env.SPRINT_CAPACITY_TOLERANCE_PCT = 'abc';
+        const { validateConfig } = await import('../../../config');
+        expect(() => validateConfig()).toThrow(
+          'SPRINT_CAPACITY_TOLERANCE_PCT must be a non-negative number'
+        );
+      });
+
+      it('rejects an out-of-range email retry attempt count', async () => {
+        setRequiredEnv();
+        process.env.EMAIL_RETRY_MAX_ATTEMPTS = '0';
+        const { validateConfig } = await import('../../../config');
+        expect(() => validateConfig()).toThrow('EMAIL_RETRY_MAX_ATTEMPTS must be between 1 and 10');
+      });
+
+      it('rejects an email retry backoff under 100ms', async () => {
+        setRequiredEnv();
+        process.env.EMAIL_RETRY_BACKOFF_MS = '50';
+        const { validateConfig } = await import('../../../config');
+        expect(() => validateConfig()).toThrow('EMAIL_RETRY_BACKOFF_MS must be at least 100ms');
+      });
+
+      it('rejects a max backoff smaller than the backoff', async () => {
+        setRequiredEnv();
+        process.env.EMAIL_RETRY_BACKOFF_MS = '1000';
+        process.env.EMAIL_RETRY_MAX_BACKOFF_MS = '500';
+        const { validateConfig } = await import('../../../config');
+        expect(() => validateConfig()).toThrow(
+          'EMAIL_RETRY_MAX_BACKOFF_MS must be greater than or equal to EMAIL_RETRY_BACKOFF_MS'
+        );
+      });
+
+      it('rejects negative successful-email retention days', async () => {
+        setRequiredEnv();
+        process.env.EMAIL_RETENTION_SUCCESSFUL_DAYS = '-1';
+        const { validateConfig } = await import('../../../config');
+        expect(() => validateConfig()).toThrow(
+          'EMAIL_RETENTION_SUCCESSFUL_DAYS must be a non-negative integer'
+        );
+      });
+
+      it('rejects negative failed-email retention days', async () => {
+        setRequiredEnv();
+        process.env.EMAIL_RETENTION_FAILED_DAYS = '-1';
+        const { validateConfig } = await import('../../../config');
+        expect(() => validateConfig()).toThrow(
+          'EMAIL_RETENTION_FAILED_DAYS must be a non-negative integer'
+        );
+      });
+
+      it('rejects negative bounced-email retention days', async () => {
+        setRequiredEnv();
+        process.env.EMAIL_RETENTION_BOUNCED_DAYS = '-1';
+        const { validateConfig } = await import('../../../config');
+        expect(() => validateConfig()).toThrow(
+          'EMAIL_RETENTION_BOUNCED_DAYS must be a non-negative integer'
+        );
+      });
+
+      it('rejects a non-positive email circuit breaker failure threshold', async () => {
+        setRequiredEnv();
+        process.env.EMAIL_CIRCUIT_BREAKER_FAILURE_THRESHOLD = '0';
+        const { validateConfig } = await import('../../../config');
+        expect(() => validateConfig()).toThrow(
+          'EMAIL_CIRCUIT_BREAKER_FAILURE_THRESHOLD must be a positive integer'
+        );
+      });
+
+      it('rejects an email circuit breaker reset timeout under 1000ms', async () => {
+        setRequiredEnv();
+        process.env.EMAIL_CIRCUIT_BREAKER_RESET_TIMEOUT_MS = '500';
+        const { validateConfig } = await import('../../../config');
+        expect(() => validateConfig()).toThrow(
+          'EMAIL_CIRCUIT_BREAKER_RESET_TIMEOUT_MS must be at least 1000ms'
+        );
+      });
+
+      it('rejects a non-positive SMTP rate limit when enabled', async () => {
+        setRequiredEnv();
+        process.env.SMTP_RATE_LIMIT_ENABLED = 'true';
+        process.env.SMTP_RATE_LIMIT_MAX_MESSAGES = '0';
+        const { validateConfig } = await import('../../../config');
+        expect(() => validateConfig()).toThrow(
+          'SMTP_RATE_LIMIT_MAX_MESSAGES must be a positive integer when rate limiting is enabled'
+        );
+      });
+
+      it('rejects a SMTP rate limit window under 1000ms when enabled', async () => {
+        setRequiredEnv();
+        process.env.SMTP_RATE_LIMIT_ENABLED = 'true';
+        process.env.SMTP_RATE_LIMIT_MAX_MESSAGES = '100';
+        process.env.SMTP_RATE_LIMIT_WINDOW_MS = '500';
+        const { validateConfig } = await import('../../../config');
+        expect(() => validateConfig()).toThrow(
+          'SMTP_RATE_LIMIT_WINDOW_MS must be at least 1000ms when rate limiting is enabled'
+        );
+      });
+
+      it('accepts a valid SMTP rate limit configuration when enabled', async () => {
+        setRequiredEnv();
+        process.env.SMTP_RATE_LIMIT_ENABLED = 'true';
+        process.env.SMTP_RATE_LIMIT_MAX_MESSAGES = '100';
+        process.env.SMTP_RATE_LIMIT_WINDOW_MS = '60000';
+        const { validateConfig } = await import('../../../config');
+        expect(() => validateConfig()).not.toThrow();
+      });
+    });
+
+    describe('production email validation', () => {
+      it('rejects email test mode in production', async () => {
+        setValidProductionEnv();
+        process.env.EMAIL_TEST_MODE = 'true';
+        const { validateConfig } = await import('../../../config');
+        expect(() => validateConfig()).toThrow('EMAIL_TEST_MODE cannot be enabled in production');
+      });
+
+      it('requires EMAIL_PROVIDER in production', async () => {
+        setValidProductionEnv();
+        delete process.env.EMAIL_PROVIDER;
+        const { validateConfig } = await import('../../../config');
+        expect(() => validateConfig()).toThrow('EMAIL_PROVIDER must be set in production');
+      });
+
+      it('rejects an unknown EMAIL_PROVIDER in production', async () => {
+        setValidProductionEnv();
+        process.env.EMAIL_PROVIDER = 'carrier-pigeon';
+        const { validateConfig } = await import('../../../config');
+        expect(() => validateConfig()).toThrow('EMAIL_PROVIDER must be one of');
+      });
+
+      it('requires SMTP_HOST when the provider is smtp', async () => {
+        setValidProductionEnv();
+        process.env.SMTP_HOST = '';
+        const { validateConfig } = await import('../../../config');
+        expect(() => validateConfig()).toThrow('SMTP_HOST must be set');
+      });
+
+      it('rejects an invalid SMTP port', async () => {
+        setValidProductionEnv();
+        process.env.SMTP_PORT = '70000';
+        const { validateConfig } = await import('../../../config');
+        expect(() => validateConfig()).toThrow('SMTP_PORT must be a valid port number');
+      });
+
+      it('requires SMTP_USER when the provider is smtp', async () => {
+        setValidProductionEnv();
+        process.env.SMTP_USER = '';
+        const { validateConfig } = await import('../../../config');
+        expect(() => validateConfig()).toThrow('SMTP_USER must be set');
+      });
+
+      it('requires SMTP_PASS when the provider is smtp', async () => {
+        setValidProductionEnv();
+        process.env.SMTP_PASS = '';
+        const { validateConfig } = await import('../../../config');
+        expect(() => validateConfig()).toThrow('SMTP_PASS must be set');
+      });
+
+      it('accepts a valid sendgrid configuration', async () => {
+        setValidProductionEnv();
+        process.env.EMAIL_PROVIDER = 'sendgrid';
+        process.env.SENDGRID_API_KEY = 'SG.abc123';
+        const { validateConfig } = await import('../../../config');
+        expect(() => validateConfig()).not.toThrow();
+      });
+
+      it('requires SENDGRID_API_KEY when the provider is sendgrid', async () => {
+        setValidProductionEnv();
+        process.env.EMAIL_PROVIDER = 'sendgrid';
+        delete process.env.SENDGRID_API_KEY;
+        const { validateConfig } = await import('../../../config');
+        expect(() => validateConfig()).toThrow('SENDGRID_API_KEY must be set');
+      });
+
+      it('requires the SG. prefix on SENDGRID_API_KEY', async () => {
+        setValidProductionEnv();
+        process.env.EMAIL_PROVIDER = 'sendgrid';
+        process.env.SENDGRID_API_KEY = 'not-sg';
+        const { validateConfig } = await import('../../../config');
+        expect(() => validateConfig()).toThrow('SENDGRID_API_KEY must start with');
+      });
+
+      it('accepts a valid SES configuration', async () => {
+        setValidProductionEnv();
+        process.env.EMAIL_PROVIDER = 'ses';
+        process.env.SES_ACCESS_KEY_ID = 'AKIAEXAMPLE';
+        process.env.SES_SECRET_ACCESS_KEY = 'secret';
+        const { validateConfig } = await import('../../../config');
+        expect(() => validateConfig()).not.toThrow();
+      });
+
+      it('requires SES_ACCESS_KEY_ID when the provider is ses', async () => {
+        setValidProductionEnv();
+        process.env.EMAIL_PROVIDER = 'ses';
+        delete process.env.SES_ACCESS_KEY_ID;
+        const { validateConfig } = await import('../../../config');
+        expect(() => validateConfig()).toThrow('SES_ACCESS_KEY_ID must be set');
+      });
+
+      it('requires SES_SECRET_ACCESS_KEY when the provider is ses', async () => {
+        setValidProductionEnv();
+        process.env.EMAIL_PROVIDER = 'ses';
+        process.env.SES_ACCESS_KEY_ID = 'AKIAEXAMPLE';
+        delete process.env.SES_SECRET_ACCESS_KEY;
+        const { validateConfig } = await import('../../../config');
+        expect(() => validateConfig()).toThrow('SES_SECRET_ACCESS_KEY must be set');
+      });
+
+      it('requires EMAIL_FROM_ADDRESS in production', async () => {
+        setValidProductionEnv();
+        delete process.env.EMAIL_FROM_ADDRESS;
+        const { validateConfig } = await import('../../../config');
+        expect(() => validateConfig()).toThrow('EMAIL_FROM_ADDRESS must be set in production');
+      });
+
+      it('requires FRONTEND_URL in production for email links', async () => {
+        setValidProductionEnv();
+        delete process.env.FRONTEND_URL;
+        const { validateConfig } = await import('../../../config');
+        expect(() => validateConfig()).toThrow('FRONTEND_URL must be set in production');
+      });
     });
   });
 });

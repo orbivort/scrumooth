@@ -4,7 +4,7 @@
 
 **Scrumooth** est une application web auto-hébergée et open source destinée aux équipes qui pratiquent Scrum. Elle est conçue pour les Scrum Masters, les Product Owners et les équipes pilotées par l'ingénierie qui veulent que le processus se tienne au Guide. Elle transforme les règles du **Scrum Guide 2020** en barrières que le backend fait respecter partout où un outil le peut — et déclare les endroits où elle ne le fait délibérément pas.
 
-Elle **ne remplace pas** votre outil de suivi des tickets. En tant que couche d'application du Scrum Guide que votre outil n'a pas, elle est responsable du cycle de vie du Sprint, des rôles et des barrières, et elle refuse qu'une violation du processus passe sous silence. Votre outil conserve votre enregistrement ; Scrumooth conserve vos règles. Chaque règle qu'elle applique est listée dans [Ce que Scrumooth applique](#what-scrumooth-enforces) — et aucune règle en dehors de cette liste n'est revendiquée.
+Elle **ne remplace pas** votre outil de suivi des tickets. En tant que couche d'application du Scrum Guide que votre outil n'a pas, elle est responsable du cycle de vie du Sprint, des rôles et des barrières, et elle refuse qu'une violation du processus passe sous silence. Votre outil conserve votre enregistrement ; Scrumooth conserve vos règles. Chaque règle qu'elle applique est résumée dans [Ce que Scrumooth applique](#what-scrumooth-enforces) et cataloguée code par code dans le [catalogue des refus](docs/api/README.md#gate-rejections) — et aucune règle en dehors de ce catalogue n'est revendiquée.
 
 Faire tourner un second outil a un coût réel — quelque chose de plus à déployer, sécuriser, sauvegarder et maintenir. Scrumooth est délibérément le plus petit système capable de le porter : une seule pile Compose —proxy inverse, backend, frontend, PostgreSQL et sauvegardes planifiées— et une seule base de données à surveiller.
 
@@ -36,7 +36,7 @@ Essayez Scrumooth instantanément dans votre navigateur — aucune installation 
   </a>
 </p>
 
-> **Remarque :** La démo utilise des données simulées en mémoire — toute modification que vous apportez reste locale à votre session de navigateur et est réinitialisée lors du rafraîchissement. Pour des données persistantes et une collaboration multi-utilisateurs, suivez le guide d'[Installation](#installation) afin d'auto-héberger votre propre instance.
+> **Remarque :** La démo s'exécute entièrement dans votre navigateur, sur un univers fictif de personnes, d'équipes et de produits inventés — aucun nom réel, employeur ou donnée n'y apparaît. Connectez-vous en un clic depuis les cartes de personas de la page de connexion, puis choisissez un rôle pour voir ce que ce rôle peut faire (une personne détient délibérément un rôle différent dans chaque équipe). Les requêtes sont traitées par un backend simulé, de sorte que toute modification que vous apportez ne dure que le temps de votre session et est réinitialisée au rafraîchissement. Pour des données persistantes et une collaboration multi-utilisateurs, suivez le guide d'[Installation](#installation) afin d'auto-héberger votre propre instance.
 
 ---
 
@@ -96,16 +96,62 @@ Essayez Scrumooth instantanément dans votre navigateur — aucune installation 
 
 Ce sont des barrières, pas des avertissements ni des suggestions. Dans tous les cas ci-dessous, la réponse est non — et chaque réponse tient dans la couche de service du backend, de sorte qu'un raccourci côté frontend ne peut pas la contourner.
 
-| Une règle du Scrum Guide 2020, posée comme une question                             | La réponse de Scrumooth                                                                                                                                                                              |
-| ----------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Un Sprint peut-il être clôturé avant son Sprint Review et sa Sprint Retrospective ? | La clôture du Sprint est refusée tant que les deux événements ne sont pas enregistrés ([API sprints](docs/api/sprints.md)).                                                                          |
-| Un élément peut-il être déclaré Done sans sa Definition of Done ?                   | Terminer un Sprint ne marque jamais les éléments comme Done — chaque élément doit franchir sa liste de contrôle de la Definition of Done ([API Definition of Done](docs/api/definition-of-done.md)). |
-| Une équipe peut-elle avoir plus d'un Product Owner ou plus d'un Scrum Master ?      | L'ajout d'un second titulaire de l'un ou l'autre rôle est refusé ([API teams](docs/api/teams.md)).                                                                                                   |
-| Une équipe peut-elle dépasser la taille d'une Scrum Team ?                          | La taille de l'équipe est plafonnée — `TEAM_MAX_SIZE`, par défaut `10` ([API teams](docs/api/teams.md)).                                                                                             |
-| Quelqu'un d'autre qu'un Developer peut-il estimer le travail ?                      | Seuls les Developers peuvent estimer les éléments du Product Backlog — tout autre rôle reçoit `403 Forbidden` ([API Product Backlog](docs/api/product-backlog.md)).                                  |
-| Le Product Owner ou le Scrum Master peuvent-ils rédiger le Daily Scrum ?            | Seuls les Developers peuvent rédiger ou rejoindre l'enregistrement quotidien ; le Product Owner et le Scrum Master observent ([API Daily Scrum](docs/api/daily-scrum.md)).                           |
-| Un Sprint peut-il être annulé par quelqu'un d'autre que le Product Owner ?          | L'annulation est réservée au Product Owner, et uniquement tant que le Sprint est `ACTIVE` ([API sprints](docs/api/sprints.md)).                                                                      |
-| Un Increment livré peut-il être réécrit ?                                           | Les Increments livrés sont verrouillés contre toute modification ultérieure ([API increments](docs/api/increments.md)).                                                                              |
+Chacun est un refus distinct que le backend peut renvoyer, et le contrat en compte **68** : 39 barrières du Guide, 5 barrières de pratiques complémentaires et 24 barrières d'intégrité du processus — comptées à partir de ce contrat unique et vérifiées en CI, de sorte que les totaux ici ne peuvent pas diverger de ce que le code applique.
+
+Les tableaux ci-dessous regroupent les barrières par ce qu'elles protègent et nomment la règle phare que chacune applique. Le **catalogue complet, code par code** — chaque code de refus `GATE_*` avec le statut HTTP avec lequel il est renvoyé — se trouve dans le [catalogue des refus](docs/api/README.md#gate-rejections), qui est la source de vérité unique. Cette section est une visite guidée de ce catalogue, et non un substitut.
+
+| Une règle du Scrum Guide 2020, posée comme une question                                                                   | La réponse de Scrumooth                                                                                                                                                                                                                                                                                                    |
+| ------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Un Sprint peut-il être clôturé avant son Sprint Review et sa Sprint Retrospective ?                                       | La clôture du Sprint est refusée tant que les deux événements ne sont pas enregistrés ([API sprints](docs/api/sprints.md)).                                                                                                                                                                                                |
+| Un élément peut-il être déclaré Done sans sa Definition of Done ?                                                         | Terminer un Sprint ne marque jamais les éléments comme Done — chaque élément doit franchir sa liste de contrôle de la Definition of Done ([API Definition of Done](docs/api/definition-of-done.md)).                                                                                                                       |
+| Une équipe peut-elle avoir plus d'un Product Owner ou plus d'un Scrum Master ?                                            | L'ajout d'un second titulaire de l'un ou l'autre rôle est refusé ([API teams](docs/api/teams.md)).                                                                                                                                                                                                                         |
+| Une équipe peut-elle dépasser la taille d'une Scrum Team ?                                                                | La taille de l'équipe est plafonnée — `TEAM_MAX_SIZE`, par défaut `10` ([API teams](docs/api/teams.md)).                                                                                                                                                                                                                   |
+| Deux équipes sur un même produit peuvent-elles avoir deux Definitions of Done ?                                           | Non : un groupe d'équipes possède une seule Definition of Done que ses équipes lisent, une équipe regroupée ne peut pas modifier la sienne, et l'adhésion enregistre la version adoptée ([API Team Groups](docs/api/team-groups.md)).                                                                                      |
+| Quelqu'un d'autre qu'un Developer peut-il estimer le travail ?                                                            | Seuls les Developers peuvent estimer les éléments du Product Backlog — tout autre rôle reçoit `403 Forbidden` ([API Product Backlog](docs/api/product-backlog.md)).                                                                                                                                                        |
+| Le Product Owner ou le Scrum Master peuvent-ils rédiger le Daily Scrum ?                                                  | Seuls les Developers peuvent rédiger ou rejoindre l'enregistrement quotidien ; le Product Owner et le Scrum Master observent ([API Daily Scrum](docs/api/daily-scrum.md)).                                                                                                                                                 |
+| Un Sprint peut-il être annulé par quelqu'un d'autre que le Product Owner ?                                                | L'annulation est réservée au Product Owner, et uniquement tant que le Sprint est `ACTIVE` ([API sprints](docs/api/sprints.md)).                                                                                                                                                                                            |
+| Un Increment livré peut-il être réécrit ?                                                                                 | Les Increments livrés et archivés sont terminaux — ni l'un ni l'autre ne peut être réécrit, relivré ou réactivé ([API increments](docs/api/increments.md)).                                                                                                                                                                |
+| La Definition of Done peut-elle être vidée ?                                                                              | Une Definition of Done doit conserver au moins un élément actif ; un Sprint Backlog ne peut pas être engagé, et un Sprint ne peut pas démarrer, tant qu'une équipe n'en a aucune ; et un travail ne peut pas être marqué Done tant qu'une équipe n'en a aucune ([API Definition of Done](docs/api/definition-of-done.md)). |
+| Un Increment peut-il être marqué utilisable, ou livré, sans preuve ?                                                      | Un Increment doit être attesté utilisable par écrit — avec qui l'a attesté et quand — avant de pouvoir être vérifié ou livré ([API increments](docs/api/increments.md)).                                                                                                                                                   |
+| Quelqu'un en dehors de l'équipe peut-il lire ou livrer un Increment ?                                                     | Un Increment appartient à sa Scrum Team : le lire, le vérifier ou le livrer exige d'en être membre ([API increments](docs/api/increments.md)).                                                                                                                                                                             |
+| Un Increment peut-il omettre en silence un travail arrivé à Done ?                                                        | La composition rapporte son résultat (composé, ignoré avec une raison, ou échoué), et l'Increment d'un Sprint peut être réconcilié à partir de ses éléments Done ([API increments](docs/api/increments.md)).                                                                                                               |
+| Un Sprint peut-il être clôturé alors qu'il a encore des Impediments non résolus ?                                         | Non : un Sprint ne peut pas être terminé tant qu'un Impediment est encore `OPEN` ou `IN_PROGRESS`, et les deux états terminaux d'un Impediment exigent une résolution écrite ([API impediments](docs/api/impediments.md), [API sprints](docs/api/sprints.md)).                                                             |
+| Le Sprint Review ou la Sprint Retrospective peuvent-ils se dérouler dans le désordre, ou avant la date de fin du Sprint ? | Non : la Sprint Retrospective ne peut pas se terminer avant son Sprint Review, et aucun des deux événements ne peut se terminer avant le jour que nomme la date de fin du Sprint ([API sprint reviews](docs/api/sprint-reviews.md), [API retrospectives](docs/api/retrospectives.md)).                                     |
+| Le Sprint Goal peut-il changer, ou le Sprint Backlog s'en écarter, une fois le Sprint lancé ?                             | Non : le Goal est verrouillé une fois le Sprint lancé, et un changement qui met le Goal en péril reste en attente jusqu'à ce que le Product Owner en accuse réception ([API sprints](docs/api/sprints.md)).                                                                                                                |
+| L'enregistrement du Daily Scrum peut-il omettre ce qu'il a adapté ?                                                       | Non : un enregistrement doit déclarer au moins un ajustement du Sprint Backlog, ou reconnaître explicitement qu'aucun n'était nécessaire ([API daily scrum](docs/api/daily-scrum.md)).                                                                                                                                     |
+| Un Sprint peut-il durer plus d'un mois, chevaucher un autre Sprint, ou démarrer après une interruption ?                  | Non : un Sprint peut couvrir au plus `SPRINT_MAX_DURATION_DAYS`, une équipe mène un seul Sprint à la fois, et un nouveau Sprint démarre immédiatement après le précédent ([API sprints](docs/api/sprints.md)).                                                                                                             |
+| Le Sprint Backlog peut-il être créé sans toute la Scrum Team ?                                                            | Non : un Sprint ne peut pas démarrer à moins que la présence à la planification soit enregistrée et inclue le Product Owner et au moins un Developer, et à moins que le plan corresponde à la capacité enregistrée ([API sprints](docs/api/sprints.md)).                                                                   |
+| Quelqu'un d'autre que le Product Owner peut-il ordonner le Product Backlog ?                                              | Non : l'ordre du backlog et la bande MoSCoW relèvent de la seule décision du Product Owner ([API Product Backlog](docs/api/product-backlog.md)).                                                                                                                                                                           |
+| Une équipe peut-elle poursuivre plus d'un Product Goal, ou laisser le travail du backlog s'en éloigner ?                  | Non : un seul Product Goal `ACTIVE` à la fois ; les éléments y sont ancrés ; le Goal est réservé au Product Owner et ne peut pas se terminer sans preuve enregistrée ([API Product Goals](docs/api/product-goals.md)).                                                                                                     |
+| Un Sprint peut-il démarrer sans Product Goal ?                                                                            | Non : un Sprint ne peut pas démarrer tant qu'il n'est pas lié à un Product Goal ([API sprints](docs/api/sprints.md)).                                                                                                                                                                                                      |
+| Un Increment peut-il être vérifié avant de s'intégrer aux Increments précédents ?                                         | Non : « additif à tous les Increments précédents et soigneusement vérifié » est contrôlé avant qu'un Increment puisse être `VERIFIED` ou livré ([API increments](docs/api/increments.md)).                                                                                                                                 |
+| Un Increment peut-il être livré par une simple écriture de statut ?                                                       | Non : `DELIVERED` n'est atteignable que par l'action de livraison, qui enregistre comment la valeur a atteint les utilisateurs ([API increments](docs/api/increments.md)).                                                                                                                                                 |
+| Une amélioration de Retrospective peut-elle être dissociée en silence ?                                                   | Non : dès qu'une amélioration a produit, ou a été liée à, un élément du Product Backlog, ce lien est la preuve qu'elle a été traitée et ne peut pas être effacé ([API retrospectives](docs/api/retrospectives.md)).                                                                                                        |
+| Un Sprint Review peut-il se terminer sans juger le Sprint Goal ?                                                          | Non : un Sprint Review d'un Sprint qui a un Goal ne peut pas se terminer sans le verdict enregistré de l'équipe, et un Sprint sans Goal ne peut pas en porter du tout ([API sprint reviews](docs/api/sprint-reviews.md)).                                                                                                  |
+
+### Pratiques complémentaires que Scrumooth applique également
+
+Ce ne sont **pas des règles du Scrum Guide 2020** — les trois artefacts du Guide sont le Product Backlog, le Sprint Backlog et l'Increment, et la Definition of Ready n'en fait partie d'aucun. Ce sont les ajouts propres au produit, étiquetés comme tels dans l'interface, et ils sont listés ici séparément pour que le tableau ci-dessus continue de signifier exactement ce qu'il dit.
+
+| Une pratique que Scrumooth applique, posée comme une question                                                   | La réponse de Scrumooth                                                                                                                                                                                                                                                                                                                                                             |
+| --------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Une équipe peut-elle convenir de ce que signifie « ready », puis planifier quand même ?                         | Non : la Definition of Ready de l'équipe est appliquée à la frontière du Sprint. Engager un Sprint Backlog ou démarrer un Sprint est refusé tant qu'un élément sélectionné a encore un critère de disponibilité actif non vérifié — le refus nomme les éléments — et refusé tant que l'équipe n'a aucun critère actif ([API Definition of Ready](docs/api/definition-of-ready.md)). |
+| Un Sprint Backlog peut-il inclure un élément qui n'a pas été raffiné jusqu'à « ready » ?                        | Non : un élément doit être raffiné jusqu'à `READY` avant de pouvoir entrer dans un Sprint — au moment de la planification exactement comme lorsqu'il est ajouté en cours de Sprint ([API Product Backlog](docs/api/product-backlog.md)).                                                                                                                                            |
+| Qui maintient l'accord de disponibilité ?                                                                       | Le Scrum Master de l'équipe, seul. L'accord de disponibilité est la pratique déclarée d'un seul rôle plutôt que l'engagement partagé de la Scrum Team, il appartient donc au Scrum Master de le façonner ou de le retirer ([API Definition of Ready](docs/api/definition-of-ready.md)).                                                                                             |
+| Quelqu'un en dehors de l'équipe peut-il lire l'accord de disponibilité, ou enregistrer un verdict à son sujet ? | Non : le lire ou enregistrer une vérification de disponibilité exige d'être membre de l'équipe qui le détient ([API Definition of Ready](docs/api/definition-of-ready.md)).                                                                                                                                                                                                         |
+
+Deux conséquences méritent d'être énoncées clairement. Comme il s'agit d'une règle du produit et non d'une règle du Guide, une équipe qui ne veut pas de Definition of Ready la rencontre quand même : Scrumooth crée six critères par défaut pertinents la première fois que l'accord est lu, et le Scrum Master de l'équipe peut les façonner ou les retirer. Et comme refuser un Sprint à cause d'un artefact hors Guide est un vrai compromis, la liste de contrôle dit ce qu'il est dans ses propres termes — une pratique complémentaire, non un artefact du Guide — plutôt que d'emprunter l'autorité du Guide.
+
+### Barrières d'intégrité du processus et de transparence
+
+Une troisième classe n'est ni une barrière du Guide ni une pratique complémentaire, mais la lecture par le produit de la transparence et de l'autogestion du Guide : le travail d'une Scrum Team appartient à cette équipe, et les contenus francs appartiennent au rôle qui en est responsable. Ils sont listés séparément pour la même raison que les pratiques ci-dessus.
+
+| Une limite que Scrumooth applique, posée comme une question                                       | La réponse de Scrumooth                                                                                                                                                                                                                                                                                                                                                                                      |
+| ------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Quelqu'un en dehors de l'équipe peut-il lire ou modifier les artefacts d'une équipe ?             | Non : un Sprint, un Impediment, une Definition of Done, un Increment, un Sprint Review, une Sprint Retrospective, un bilan des valeurs Scrum, une barrière organisationnelle, un rapport et les accords de travail de l'équipe sont chacun circonscrits à l'équipe qui les détient — les lire ou les écrire exige d'être membre de cette équipe ([catalogue des refus](docs/api/README.md#gate-rejections)). |
+| Quelqu'un d'autre que le Scrum Master peut-il lire ou écrire le matériel propre au Scrum Master ? | Non : les notes du Scrum Master sur un Sprint, un Sprint Review et une Sprint Retrospective, le journal de coaching, l'évaluation de la plurifonctionnalité, les résultats d'un bilan des valeurs et l'accord de disponibilité lui appartiennent en propre ([catalogue des refus](docs/api/README.md#gate-rejections)).                                                                                      |
+| Un Impediment peut-il être escaladé en barrière deux fois, ou par une autre équipe ?              | Non : une seule barrière par Impediment, levée uniquement par l'équipe qui a levé l'Impediment, et seul le Scrum Master de l'équipe peut la lever, la modifier, la résoudre ou la clôturer — un état terminal exige une résolution écrite ([API Organizational Barriers](docs/api/organizational-barriers.md)).                                                                                              |
+| Une équipe peut-elle changer la Definition of Done partagée qui la régit sans sa direction ?      | Non : rejoindre ou quitter un groupe décide de l'engagement auquel l'équipe est tenue, c'est donc la décision du Product Owner ou du Scrum Master de l'équipe ; une équipe appartient à au plus un groupe, et un groupe qui compte encore des équipes ne peut pas être supprimé sous leurs pieds ([API Team Groups](docs/api/team-groups.md)).                                                               |
 
 **Là où Scrumooth n'applique délibérément rien :** la Prime Directive de la Sprint Retrospective reste du ressort de la facilitation, et les timeboxes des événements sont rendues visibles par un minuteur d'équipe partagé plutôt que de mettre fin à un événement de force. Le Guide demande l'autogestion exactement à ces endroits, Scrumooth ne décide donc pas à la place de l'équipe.
 
@@ -113,7 +159,7 @@ Ce sont des barrières, pas des avertissements ni des suggestions. Dans tous les
 
 Pourquoi les outils que vous utilisez déjà n'ajouteraient-ils pas simplement cela ? À notre avis, parce qu'une barrière que l'on peut désactiver est un réglage, pas une règle, et que la configurabilité est leur argument de vente et non leur omission. Pas plus qu'un service hébergé ne peut facilement promettre que vos données de processus ne quitteront jamais votre infrastructure. Scrumooth n'est pas une fonctionnalité qui leur manque ; c'est un compromis qu'ils ont déjà tranché dans l'autre sens.
 
-Les barrières ci-dessus constituent toute la revendication : si une règle ne figure pas dans le tableau, Scrumooth ne l'applique pas — et comme une configuration qui enfreint le Scrum Guide 2020 n'est jamais proposée, **le refus est le produit.**
+Les tableaux ci-dessus constituent la revendication sur le Scrum Guide 2020, regroupés par ce qu'ils protègent, et le [catalogue des refus](docs/api/README.md#gate-rejections) est le catalogue complet, code par code, de chaque refus que Scrumooth peut renvoyer. Si une règle n'y est pas appliquée, Scrumooth ne l'applique pas — et comme une configuration qui enfreint le Guide n'est jamais proposée, **le refus est le produit.** Les pratiques complémentaires et les barrières d'intégrité du processus sont des ajouts propres au produit, maintenus dans des tableaux séparés et étiquetés afin que les trois ne puissent jamais être confondus l'un avec l'autre — la classe de chaque barrière est déclarée à côté du contrat, de sorte que la séparation est vérifiée en CI plutôt qu'affirmée ici.
 
 <a id="who-its-for"></a>
 
@@ -162,31 +208,34 @@ Les barrières ci-dessus constituent toute la revendication : si une règle ne f
 
 ### Le flux de travail Scrum
 
-Tout ce qu'il faut pour mener le Sprint — les cinq événements, trois artefacts et trois engagements du Guide — avec la règle qu'il porte attachée à chacun. Les clauses en gras reprennent les barrières de [Ce que Scrumooth applique](#what-scrumooth-enforces) ; ce tableau reste la seule liste des règles que Scrumooth revendique.
+Tout ce qu'il faut pour mener le Sprint — les cinq événements, trois artefacts et trois engagements du Guide — avec la règle qu'il porte attachée à chacun. Les clauses en gras reprennent les barrières de [Ce que Scrumooth applique](#what-scrumooth-enforces) ; le catalogue complet est le [catalogue des refus](docs/api/README.md#gate-rejections).
 
-- **Product Goal** - Alignement stratégique et suivi des objectifs ; l'engagement au service du backlog
-- **Product Backlog** - Priorisation MoSCoW (Must, Should, Could, Won't) ; **seuls les Developers estiment le travail**
-- **Sprint Planning** - Durées de Sprint configurables et planification de la capacité ; **seuls les Developers enregistrent le Sprint Backlog**
-- **Sprint Execution** - Tableau Kanban interactif avec glisser-déposer ; **seul le Product Owner peut annuler, et uniquement tant que le Sprint est `ACTIVE`**
-- **Daily Scrum** - Enregistrement quotidien partagé, avec remontée des Impediments ; **seuls les Developers le rédigent — le Product Owner et le Scrum Master observent**
-- **Impediment** - Identification des blocages et suivi de leur résolution ; **un Sprint ne peut pas être clôturé avant que ses Impediments soient résolus**
-- **Increment** - Gestion des Increments du produit ; **dès qu'un élément du Product Backlog satisfait la Definition of Done, un Increment naît**
-- **Sprint Review** - Gestion de la revue, retours des parties prenantes et ajustement du backlog ; **un Sprint ne peut pas être clôturé avant que son Sprint Review ne soit enregistré**
-- **Sprint Retrospective** - Réflexion d'équipe et amélioration suivie ; **un Sprint ne peut pas être clôturé avant que sa Sprint Retrospective ne soit enregistrée**
+- **Product Goal** - Alignement stratégique et suivi des objectifs ; l'engagement au service du backlog ; **seul le Product Owner en crée ou en modifie un, un seul peut être `ACTIVE` à la fois, et il ne peut pas se terminer sans preuve enregistrée**
+- **Product Backlog** - Priorisation MoSCoW (Must, Should, Could, Won't) ; **seuls les Developers estiment le travail, et seul le Product Owner l'ordonne et fixe sa bande**
+- **Sprint Planning** - Durées de Sprint configurables et planification de la capacité ; **seuls les Developers enregistrent le Sprint Backlog**, un Sprint ne peut pas démarrer tant que la présence à la planification n'est pas enregistrée avec le Product Owner et un Developer, et aucun élément n'entre dans le Sprint avant d'être raffiné jusqu'à `READY`
+- **Sprint Execution** - Tableau Kanban interactif avec glisser-déposer ; **seul le Product Owner peut annuler, et uniquement tant que le Sprint est `ACTIVE`** ; le Sprint Goal est verrouillé une fois lancé, et un changement qui met le Goal en péril attend l'accusé de réception du Product Owner
+- **Daily Scrum** - Enregistrement quotidien partagé, avec remontée des Impediments ; **seuls les Developers le rédigent — le Product Owner et le Scrum Master observent** ; un enregistrement doit déclarer ce qu'il a adapté, ou que rien n'avait besoin d'être adapté
+- **Impediment** - Identification des blocages et suivi de leur résolution, avec priorisation par impact (Critique/Élevé/Moyen/Faible) et dates cibles ; **un Sprint ne peut pas être clôturé avant que ses Impediments soient résolus**, les deux états terminaux exigent une résolution écrite, chaque écriture est circonscrite à l'équipe qui a levé l'Impediment, et un Impediment sans responsable revient au Scrum Master — qui est notifié quand l'un dépasse le seuil d'escalade
+- **Increment** - Gestion des Increments du produit ; **dès qu'un élément du Product Backlog satisfait la Definition of Done, un Increment naît** ; un Increment n'est vérifié qu'après s'être intégré à chaque Increment précédent, attesté utilisable par écrit avant de pouvoir être vérifié ou livré, et livré uniquement avec une méthode de livraison enregistrée
+- **Sprint Review** - Gestion de la revue, retours des parties prenantes et ajustement du backlog ; **un Sprint ne peut pas être clôturé avant que son Sprint Review ne soit enregistré** ; le Sprint Review ne peut pas se terminer avant la date de fin du Sprint, un Sprint avec un Goal ne peut pas se terminer sans le verdict de l'équipe elle-même à son sujet, et un Sprint sans Goal ne peut pas en porter du tout
+- **Sprint Retrospective** - Réflexion d'équipe et amélioration suivie ; **un Sprint ne peut pas être clôturé avant que sa Sprint Retrospective ne soit enregistrée** ; elle ne peut pas se terminer avant son Sprint Review, appliquer des changements à la Definition of Done exige une réflexion enregistrée, et une amélioration déjà liée à un élément du Product Backlog ne peut pas être dissociée
 
 ### Gouvernance et exploitation
 
 - **Moteur de workflow** - Autorisations basées sur les rôles et transitions d'état contrôlées, **appliquées côté serveur**
-- **Definition of Done/Ready** - Listes de contrôle personnalisables ; **rien n'est Done tant que sa liste de contrôle n'est pas franchie**
+- **Definition of Done/Ready** - Listes de contrôle personnalisables ; **rien n'est Done tant que sa liste de contrôle n'est pas franchie**, l'accord de disponibilité est à maintenir par le Scrum Master de l'équipe, et une équipe dans un groupe est régie par l'unique Definition of Done du groupe
 - **Intégrité des Increments** - **Le travail livré ne peut pas être réécrit en silence**
 
 ### Équipe et organisation
 
 - **Composition de l'équipe** - Un Product Owner et un Scrum Master ; **taille de l'équipe plafonnée** (`TEAM_MAX_SIZE`, par défaut `10`)
+- **Team Groups** - Plusieurs Scrum Teams sur un même produit partagent une Definition of Done ; **une équipe regroupée ne peut pas modifier la sienne, l'adhésion enregistre la version adoptée, et seule la direction d'une équipe peut rejoindre ou quitter un groupe**
 - **Journalisation d'audit** - Journal dédié et séparé pour la conformité ; **chaque changement de rôle et chaque transition d'état enregistrés**
-- **Tableau de bord et rapports** - Métriques et visualisations en temps réel
+- **Tableau de bord et rapports** - Métriques et visualisations en temps réel ; **chaque rapport est circonscrit à l'équipe dont il décrit l'historique**
 - **Communication d'équipe** - Notifications et messagerie intégrées
-- **Team Health Check** - Point périodique sur les cinq valeurs Scrum
+- **Team Health Check** - Point périodique sur les cinq valeurs Scrum ; **les résultats ne sont lisibles que par le Scrum Master de l'équipe**
+- **Organizational Barriers** - Le registre de ce qui bloque une équipe depuis l'extérieur et des actions menées pour y remédier ; **seul le Scrum Master de l'équipe peut en lever, modifier, résoudre ou clôturer une, et la clôture exige une résolution écrite**
+- **Facilitation** - Le journal de coaching du Scrum Master, les accords de travail de l'équipe et l'évaluation de la plurifonctionnalité ; **les contenus francs appartiennent au Scrum Master et les accords de l'équipe à l'équipe**
 - **Timeboxes d'événements partagées** - Une horloge pour tous les participants ; **les timeboxes sont affichées, jamais closes de force**
 - **Contrôles de confidentialité** - Droits d'export et d'effacement des données, plus suivi du consentement
 
@@ -336,35 +385,20 @@ cp packages/backend/.env.example packages/backend/.env
 cp packages/frontend/.env.example packages/frontend/.env
 ```
 
-Modifiez les fichiers d'environnement avec votre configuration :
+Les deux fichiers d'exemple sont documentés en intégralité par leurs propres commentaires. Une exécution locale du backend ne nécessite que trois valeurs :
 
-**Backend** (`packages/backend/.env`) :
+| Variable       | Objet                                                             |
+| -------------- | ----------------------------------------------------------------- |
+| `DATABASE_URL` | Chaîne de connexion PostgreSQL                                    |
+| `JWT_SECRET`   | Clé de signature, au moins 64 caractères (`openssl rand -hex 64`) |
+| `CORS_ORIGIN`  | L'origine du frontend, par ex. `http://localhost:5173`            |
 
-```env
-# Database Configuration
-DATABASE_URL=postgresql://postgres:password@localhost:5432/scrumooth
-
-# JWT Configuration (generate with: openssl rand -hex 64)
-JWT_SECRET=your-64-character-secret-key-here
-
-# CORS Configuration
-CORS_ORIGIN=http://localhost:5173
-
-# Optional: restrict new-account registration to specific email domains.
-# Leave empty/unset for open registration. Enforced server-side (HTTP 403 on
-# disallowed domains). Tenant-control gate only, not email verification.
-REGISTRATION_ALLOWED_EMAIL_DOMAINS=example.com,example.eu
-```
-
-**Frontend** (`packages/frontend/.env`) :
-
-```env
-# Backend API URL
-VITE_API_URL=http://localhost:5001/api/v1
-
-# Use mock API (set to false for real backend)
-VITE_USE_MOCK_API=false
-```
+Le frontend ne nécessite aucune configuration pour le développement local : `VITE_API_URL` se résout vers le proxy de développement.
+Pour développer sans backend du tout, définissez `VITE_USE_MOCK_API=true` et exécutez `pnpm run dev:frontend` —
+consultez [Développer sans backend](./CONTRIBUTING.md#developing-without-a-backend) et
+[l'architecture des mocks](./docs/architecture/frontend-mock-architecture.md). Toutes les autres variables sont
+listées dans [`packages/backend/.env.example`](packages/backend/.env.example) et
+[`packages/frontend/.env.example`](packages/frontend/.env.example).
 
 ### 4. Configuration de la base de données
 
@@ -594,7 +628,7 @@ Scrumooth est en développement actif. Les priorités ci-dessous approfondissent
 
 - [ ] **Rapport de conformité au Scrum Guide** — un état par Sprint des règles qui s'appliquaient et de la manière dont chacune a été satisfaite
 - [ ] **Pack de preuves de Sprint exportable** — un enregistrement partageable pour les audits et les revues de conformité
-- [ ] **Davantage de règles applicables** — étendre la surface couverte du Scrum Guide 2020
+- [ ] **Davantage de règles applicables** — les barrières du cycle de vie du Sprint, du Product Goal, des Team Groups, du bilan de santé et des barrières organisationnelles permettent désormais à une Scrum Team de mener de bout en bout les événements, artefacts et engagements du Guide ; l'extension de la surface couverte se poursuit
 - [ ] **Automatisation plus poussée de la Definition of Done / Definition of Ready**
 - [ ] **Des rapports qui font remonter la dérive du processus**, et pas seulement les métriques de livraison
 - [ ] **Intégrations et webhooks**, pour que Scrumooth cohabite avec les outils que vous utilisez déjà

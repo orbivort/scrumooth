@@ -1,73 +1,111 @@
 {
+  "coverage": {
+    "goalAssessed": "Obiettivi dello sprint valutati",
+    "notAvailable": "Non registrato",
+    "note": "La copertura dice quanto di questa pagina è realmente registrato. I punti provengono dal verbale scritto alla chiusura di ogni sprint; dove quel verbale non esiste si usa lo storico degli stati degli elementi dello sprint, e dove non sopravvive nessuno dei due il punto appare come un vuoto e non come zero.",
+    "reconstructed": "Ricostruito dallo storico",
+    "recorded": "Registrato alla chiusura",
+    "sprintsInScope": "Sprint considerati",
+    "title": "Su cosa si basa questa pagina"
+  },
   "dod": {
-    "empty": "Nessuna Definizione di Fatto definita. Aggiungine una per garantire una qualità costante.",
-    "title": "Definizione di Fatto"
+    "empty": "Nessuna Definition of Done definita. Aggiungine una per garantire qualità costante.",
+    "title": "Definition of Done"
   },
   "error": {
     "message": "Impossibile caricare i dati del report. Riprova più tardi.",
-    "title": "Errore durante il caricamento dei report"
-  },
-  "insights": {
-    "empty": "Nessun insight disponibile ancora. Completa più Sprint per generare insights.",
-    "title": "Insights chiave"
+    "title": "Errore nel caricamento dei report"
   },
   "loading": {
-    "insights": "Caricamento approfondimenti...",
-    "metrics": "Caricamento metriche...",
-    "sprintHistory": "Caricamento storico sprint...",
-    "velocityChart": "Caricamento grafico velocità..."
+    "insights": "Caricamento delle osservazioni...",
+    "metrics": "Caricamento delle metriche...",
+    "sprintHistory": "Caricamento dello storico degli sprint...",
+    "velocityChart": "Caricamento del grafico della velocità..."
   },
   "metrics": {
-    "avgVelocity": {
-      "fromLastSprint": "dall'ultimo Sprint",
-      "title": "Velocity media",
-      "unit": "Story Points per Sprint"
+    "avgCompletedPoints": {
+      "coverage": "{{observed}} dei {{total}} sprint conclusi registrati",
+      "title": "Punti completati in media",
+      "unit": "Punti storia per sprint"
     },
+    "caption": "Il registro osservato. Le medie sono calcolate sugli sprint la cui chiusura è stata accertata e descrivono ciò che è accaduto, non ciò che va pianificato dopo.",
     "completionRate": {
-      "title": "Tasso di completamento del Sprint Backlog",
-      "unit": "Sprint completamente consegnati"
+      "disclaimer": "Solo completamento dei punti, non raggiungimento dell'obiettivo",
+      "title": "Tasso di completamento dello Sprint Backlog",
+      "unit": "Sprint consegnati per intero"
     },
     "impediments": {
-      "openCount": "Impediments aperti",
+      "openCount": "impediment(i) aperto(i)",
       "resolved": "Risolti",
       "title": "Impediments"
-    }
+    },
+    "observedRange": {
+      "title": "Intervallo osservato",
+      "unit": "Dal valore registrato più basso al più alto"
+    },
+    "title": "Registro osservato"
+  },
+  "observations": {
+    "empty": "Non c'è ancora nulla da ispezionare. Concludi uno sprint e tieni la sua Sprint Review per registrare qualcosa qui.",
+    "intro": "Segnali letti dal registro del team stesso. Ognuno indica la prova su cui si basa, e nessuno è un obiettivo: sono cose da guardare, ed è nella retrospettiva dello sprint che diventano miglioramenti.",
+    "title": "Osservazioni da ispezionare"
   },
   "productGoal": {
-    "empty": "Nessun Obiettivo di Prodotto attivo. Definisci un obiettivo per dare al team un target chiaro.",
+    "empty": "Nessun obiettivo di prodotto attivo. Definisci un obiettivo per dare al team una direzione chiara.",
     "title": "Product Goal",
     "viewLink": "Vedi obiettivi"
   },
-  "pts": "pts",
-  "skipToMainContent": "Passa al contenuto principale",
+  "provenance": {
+    "in_progress": "Sprint in corso",
+    "not_available": "Non registrato",
+    "reconstructed": "Ricostruito dallo storico degli stati",
+    "recorded": "Registrato alla chiusura"
+  },
+  "pts": "pti",
+  "skipToMainContent": "Vai al contenuto principale",
+  "sprintGoalOutcome": {
+    "achieved": "raggiunto",
+    "assessed": "Obiettivo dello sprint: {{verdict}}",
+    "notAchieved": "non raggiunto",
+    "notRecorded": "Obiettivo dello sprint non valutato",
+    "partiallyAchieved": "parzialmente raggiunto"
+  },
   "sprintHistory": {
-    "empty": "Nessuno storico di Sprint disponibile.",
+    "empty": "Nessuno storico degli sprint disponibile.",
     "sprintGoalLabel": "Sprint Goal",
     "stats": {
-      "completed": "Completato",
+      "completed": "Completati",
       "impediments": "Impediments",
-      "planned": "Pianificato",
+      "items": "Elementi completati",
+      "planned": "Pianificati",
       "teamMembers": "Membri del team"
     },
-    "title": "Storico degli Sprint"
+    "title": "Storico degli sprint"
   },
   "sprintStatusLabels": {
     "ACTIVE": "Attivo",
-    "COMPLETED": "Completato",
+    "CANCELLED": "Annullato",
+    "COMPLETED": "Concluso",
+    "DRAFT": "Bozza",
     "PLANNED": "Pianificato"
   },
-  "subtitle": "Seguire le prestazioni del team e le metriche del Sprint",
+  "subtitle": "Lo storico osservato del team, presentato per l'ispezione",
   "title": "Report",
   "velocityChart": {
-    "accessibilityDescription": "Grafico a barre che confronta Story Points pianificati e completati per Sprint.",
-    "ariaLabel": "Grafico della velocity del Sprint che confronta Story Points pianificati e completati.",
-    "ariaTableCaption": "Dati della velocity del Sprint",
-    "ariaTableLabel": "Tabella dei dati della velocity del Sprint",
+    "accessibilityDescription": "Grafico a barre che confronta i punti storia pianificati e completati per sprint. Uno sprint la cui chiusura non è registrata non ha la barra dei punti completati.",
+    "ariaLabel": "Grafico della velocità degli sprint che confronta i punti storia pianificati e completati.",
+    "ariaTableCaption": "Punti storia pianificati e completati per sprint, con l'origine di ogni cifra",
+    "ariaTableLabel": "Tabella dei dati di velocità degli sprint",
     "ariaTableSprint": "Sprint",
-    "completed": "Completato",
-    "planned": "Pianificato",
-    "title": "Velocity del Sprint",
+    "completed": "Completati",
+    "planned": "Pianificati",
+    "provenanceColumn": "Provenienza",
+    "title": "Punti pianificati e completati",
     "xAxisLabel": "Sprint",
-    "yAxisLabel": "Story Points"
+    "yAxisLabel": "Punti storia"
+  },
+  "velocityHistory": {
+    "caption": "Questo è storico descrittivo: non è un obiettivo e non è confrontabile tra team.",
+    "title": "Storico dei punti completati"
   }
 }

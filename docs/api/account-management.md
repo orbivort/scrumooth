@@ -39,21 +39,7 @@ The Account Management API provides comprehensive account lifecycle and privacy 
 
 ## Authentication
 
-All account management endpoints require authentication unless otherwise noted. Include the access token in your request:
-
-**Using Cookies (Recommended)**
-
-```http
-GET /api/v1/auth/me/deletion-check
-Cookie: accessToken=eyJhbGc...
-```
-
-**Using Bearer Token**
-
-```http
-GET /api/v1/auth/me/deletion-check
-Authorization: Bearer eyJhbGc...
-```
+All account management endpoints require authentication unless otherwise noted. See [Authentication](./README.md#authentication) for the cookie and bearer-token forms.
 
 ## Account Deletion Options
 
@@ -182,7 +168,7 @@ Content-Type: application/json
 **Example Request**
 
 ```bash
-curl -X GET https://api.scrumooth.dev/api/v1/auth/me/deletion-check \
+curl -X GET https://api.example.com/api/v1/auth/me/deletion-check \
   -b cookies.txt
 ```
 
@@ -253,7 +239,7 @@ Content-Type: application/json
 **Example Request**
 
 ```bash
-curl -X DELETE https://api.scrumooth.dev/api/v1/auth/me \
+curl -X DELETE https://api.example.com/api/v1/auth/me \
   -H "Content-Type: application/json" \
   -b cookies.txt \
   -d '{
@@ -330,7 +316,7 @@ Content-Type: application/json
 **Example Request**
 
 ```bash
-curl -X POST https://api.scrumooth.dev/api/v1/auth/me/schedule-deletion \
+curl -X POST https://api.example.com/api/v1/auth/me/schedule-deletion \
   -H "Content-Type: application/json" \
   -b cookies.txt \
   -d '{
@@ -385,7 +371,7 @@ Content-Type: application/json
 **Example Request**
 
 ```bash
-curl -X DELETE https://api.scrumooth.dev/api/v1/auth/me/schedule-deletion \
+curl -X DELETE https://api.example.com/api/v1/auth/me/schedule-deletion \
   -b cookies.txt
 ```
 
@@ -456,7 +442,7 @@ Content-Type: application/json
 **Example Request**
 
 ```bash
-curl -X POST https://api.scrumooth.dev/api/v1/auth/me/force-delete \
+curl -X POST https://api.example.com/api/v1/auth/me/force-delete \
   -H "Content-Type: application/json" \
   -b cookies.txt \
   -d '{
@@ -523,7 +509,7 @@ Content-Type: application/json
 **Example Request**
 
 ```bash
-curl -X GET https://api.scrumooth.dev/api/v1/auth/me/deletion-status \
+curl -X GET https://api.example.com/api/v1/auth/me/deletion-status \
   -b cookies.txt
 ```
 
@@ -606,7 +592,7 @@ Content-Type: application/json
 **Example Request**
 
 ```bash
-curl -X POST https://api.scrumooth.dev/api/v1/consent/record \
+curl -X POST https://api.example.com/api/v1/consent/record \
   -H "Content-Type: application/json" \
   -b cookies.txt \
   -d '{
@@ -689,7 +675,7 @@ Content-Type: application/json
 **Example Request**
 
 ```bash
-curl -X GET "https://api.scrumooth.dev/api/v1/consent/history?limit=10&offset=0" \
+curl -X GET "https://api.example.com/api/v1/consent/history?limit=10&offset=0" \
   -b cookies.txt
 ```
 
@@ -751,7 +737,7 @@ Content-Type: application/json
 **Example Request**
 
 ```bash
-curl -X GET https://api.scrumooth.dev/api/v1/consent/latest \
+curl -X GET https://api.example.com/api/v1/consent/latest \
   -b cookies.txt
 ```
 
@@ -788,7 +774,7 @@ Content-Type: application/json
 **Example Request**
 
 ```bash
-curl -X POST https://api.scrumooth.dev/api/v1/consent/withdraw \
+curl -X POST https://api.example.com/api/v1/consent/withdraw \
   -b cookies.txt
 ```
 
@@ -854,7 +840,7 @@ Content-Type: application/json
 **Example Request**
 
 ```bash
-curl -X GET https://api.scrumooth.dev/api/v1/consent/550e8400-e29b-41d4-a716-446655440010 \
+curl -X GET https://api.example.com/api/v1/consent/550e8400-e29b-41d4-a716-446655440010 \
   -b cookies.txt
 ```
 

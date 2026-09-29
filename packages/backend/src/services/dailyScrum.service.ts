@@ -1,5 +1,22 @@
 import prisma from '../utils/prisma';
-import { NotFoundError, BadRequestError, ConflictError, ForbiddenError } from '../utils/errors';
+import { NotFoundError, BadRequestError, ConflictError, localizedError } from '../utils/errors';
+import {
+  DEFAULT_IMPEDIMENT_PRIORITY,
+  GATE_CODES,
+  evaluateAdaptationReflection,
+  hasAdaptationEvidence,
+  hasContradictoryAdaptationEvidence,
+  isDailyScrumAdjustmentAction,
+  isWorkingDay as isWorkingDayOn,
+  listWorkingDays,
+  sprintWorkingDayProgress,
+  toIsoDate,
+  type AdaptationReflection,
+  type AdaptationReflectionBasis,
+  type DailyScrumAdjustmentAction,
+  type DailyScrumCadence,
+  type ImpedimentPriority,
+} from '@scrumooth/shared';
 import { generateUUIDv7 } from '../utils/uuid';
 import {
   NotificationType,
@@ -7,11 +24,26 @@ import {
   UserRole,
   type DailyScrum,
   type Impediment,
+  type ItemStatus,
   type User,
   type Prisma,
 } from '../generated/prisma/client';
 import { t } from '../i18n/requestT.js';
 import { notificationService } from './notification.service';
+import {
+  dailyScrumScheduleService,
+  fromDateOnly,
+  resolveCadenceWindow,
+  toLocalIsoDate,
+  toScheduleDto,
+} from './dailyScrumSchedule.service';
+
+/** An adaptation as the caller declares it: what was done, and a note explaining it. */
+export interface DailyScrumAdjustmentInput {
+  sprintBacklogItemId: string;
+  actionType: DailyScrumAdjustmentAction;
+  action: string;
+}
 
 export interface CreateDailyScrumData {
   sprintId: string;
@@ -20,10 +52,8 @@ export interface CreateDailyScrumData {
   adaptationsNotes?: string;
   planForNextDay?: string;
   focusMode?: string | null;
-  backlogAdjustments?: Array<{
-    sprintBacklogItemId: string;
-    action: string;
-  }>;
+  noAdaptationNeeded?: boolean;
+  backlogAdjustments?: DailyScrumAdjustmentInput[];
 }
 
 export interface UpdateDailyScrumData {
@@ -31,10 +61,36 @@ export interface UpdateDailyScrumData {
   adaptationsNotes?: string;
   planForNextDay?: string;
   focusMode?: string | null;
-  backlogAdjustments?: Array<{
-    sprintBacklogItemId: string;
-    action: string;
-  }>;
+  noAdaptationNeeded?: boolean;
+  backlogAdjustments?: DailyScrumAdjustmentInput[];
+}
+
+/**
+ * A declared Sprint Backlog adjustment, with a verdict on whether the Sprint Backlog has since
+ * borne it out. The verdict is computed on read from the snapshot stored at declaration time,
+ * so it describes the Sprint Backlog now rather than the note's own claim.
+ */
+export interface DailyScrumAdjustmentDto {
+  id: string;
+  /** Null once the item has left the Sprint Backlog, which fulfils a `REMOVED` declaration. */
+  sprintBacklogItemId: string | null;
+  /** Denormalised target, so the declaration outlives the item it describes. */
+  pbiId: string | null;
+  pbiTitleAtAdjustment: string | null;
+  actionType: DailyScrumAdjustmentAction | null;
+  action: string;
+  reflection: AdaptationReflection;
+  reflectionBasis: AdaptationReflectionBasis;
+  createdAt: Date;
+  updatedAt: Date;
+  sprintBacklogItem: {
+    id: string;
+    pbiId: string;
+    pbi?: {
+      id: string;
+      title: string;
+    } | null;
+  } | null;
 }
 
 export interface DailyScrumWithRelations extends DailyScrum {
@@ -48,20 +104,127 @@ export interface DailyScrumWithRelations extends DailyScrum {
       email: string;
     };
   }>;
-  backlogAdjustments: Array<{
-    id: string;
-    sprintBacklogItemId: string;
-    action: string;
-    sprintBacklogItem?: {
-      id: string;
-      pbiId: string;
-      pbi?: {
-        id: string;
-        title: string;
-      };
-    } | null;
-  }>;
+  backlogAdjustments: DailyScrumAdjustmentDto[];
 }
+
+/**
+ * Everything a Daily Scrum is read with.
+ *
+ * The adjustment branch carries both the declared target and that target's *current* state, so
+ * the reflection verdict can be computed from one joined read instead of a query per
+ * adjustment. `pbi` is loaded alongside the Sprint Backlog item because a declaration whose
+ * item has since left the Sprint Backlog must still be judgeable -- that absence is precisely
+ * what fulfils a `REMOVED` declaration.
+ */
+const DAILY_SCRUM_INCLUDE = {
+  participants: {
+    include: {
+      user: {
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          email: true,
+        },
+      },
+    },
+  },
+  backlogAdjustments: {
+    include: {
+      pbi: {
+        select: {
+          id: true,
+          title: true,
+          status: true,
+          updatedAt: true,
+        },
+      },
+      sprintBacklogItem: {
+        select: {
+          id: true,
+          pbiId: true,
+          updatedAt: true,
+          pbi: {
+            select: {
+              id: true,
+              title: true,
+              status: true,
+              updatedAt: true,
+            },
+          },
+        },
+      },
+    },
+  },
+} satisfies Prisma.DailyScrumInclude;
+
+type DailyScrumRow = Prisma.DailyScrumGetPayload<{ include: typeof DAILY_SCRUM_INCLUDE }>;
+
+const isoOrNull = (value: Date | null | undefined): string | null =>
+  value ? value.toISOString() : null;
+
+/**
+ * Map a stored record onto the published shape, computing each adjustment's reflection verdict
+ * on the way out.
+ *
+ * The verdict is derived here rather than stored because it describes the Sprint Backlog at the
+ * moment of reading: a stored verdict would be a snapshot of a moving thing and would go stale
+ * the first time someone acted on the adaptation.
+ */
+const toAdjustmentDto = (
+  adjustment: DailyScrumRow['backlogAdjustments'][number]
+): DailyScrumAdjustmentDto => {
+  // The item's own view of its PBI is authoritative while the item exists; the denormalised
+  // `pbi` relation is what remains once it does not.
+  const pbi = adjustment.sprintBacklogItem?.pbi ?? adjustment.pbi ?? null;
+  const actionType = isDailyScrumAdjustmentAction(adjustment.actionType)
+    ? adjustment.actionType
+    : null;
+
+  const { reflection, basis } = evaluateAdaptationReflection(
+    {
+      actionType,
+      pbiStatusAtAdjustment: adjustment.pbiStatusAtAdjustment,
+      itemUpdatedAtAtAdjustment: isoOrNull(adjustment.itemUpdatedAtAtAdjustment),
+      pbiUpdatedAtAtAdjustment: isoOrNull(adjustment.pbiUpdatedAtAtAdjustment),
+    },
+    {
+      itemPresentInSprintBacklog: adjustment.sprintBacklogItem !== null,
+      pbiStatus: pbi?.status ?? null,
+      itemUpdatedAt: isoOrNull(adjustment.sprintBacklogItem?.updatedAt),
+      pbiUpdatedAt: isoOrNull(pbi?.updatedAt),
+    }
+  );
+
+  return {
+    id: adjustment.id,
+    sprintBacklogItemId: adjustment.sprintBacklogItemId,
+    pbiId: adjustment.pbiId,
+    pbiTitleAtAdjustment: adjustment.pbiTitleAtAdjustment,
+    actionType,
+    action: adjustment.action,
+    reflection,
+    reflectionBasis: basis,
+    createdAt: adjustment.createdAt,
+    updatedAt: adjustment.updatedAt,
+    sprintBacklogItem: adjustment.sprintBacklogItem
+      ? {
+          id: adjustment.sprintBacklogItem.id,
+          pbiId: adjustment.sprintBacklogItem.pbiId,
+          // The item's PBI is a required relation, so it is present whenever the item is.
+          pbi: {
+            id: adjustment.sprintBacklogItem.pbi.id,
+            title: adjustment.sprintBacklogItem.pbi.title,
+          },
+        }
+      : null,
+  };
+};
+
+const toDailyScrumDto = (row: DailyScrumRow): DailyScrumWithRelations => ({
+  ...row,
+  backlogAdjustments: row.backlogAdjustments.map(toAdjustmentDto),
+});
 
 class DailyScrumService {
   private parseDate(dateStr: string): Date {
@@ -80,35 +243,92 @@ class DailyScrumService {
     return new Date(now.getFullYear(), now.getMonth(), now.getDate());
   }
 
-  private includeRelations() {
-    return {
-      participants: {
-        include: {
-          user: {
-            select: {
-              id: true,
-              firstName: true,
-              lastName: true,
-              email: true,
-            },
-          },
+  /**
+   * Enforce that the record declares what the event concluded about the Sprint Backlog.
+   *
+   * The Guide's purpose for the Daily Scrum is to "adapt the Sprint Backlog", so a record
+   * declaring neither an adjustment nor a considered decision that none was needed leaves that
+   * purpose unproven. Declaring both is a contradiction, and is refused as malformed input
+   * rather than silently resolved in either direction.
+   */
+  private assertAdaptationEvidence(adjustmentCount: number, noAdaptationNeeded: boolean): void {
+    if (hasContradictoryAdaptationEvidence({ adjustmentCount, noAdaptationNeeded })) {
+      throw localizedError('validation:dailyScrum.adaptationExclusive', {}, 400);
+    }
+    if (!hasAdaptationEvidence({ adjustmentCount, noAdaptationNeeded })) {
+      throw localizedError(
+        'validation:dailyScrum.adaptationRequired',
+        {},
+        400,
+        GATE_CODES.DAILY_SCRUM_ADAPTATION_REQUIRED
+      );
+    }
+  }
+
+  /**
+   * Resolve each declared adjustment against the Sprint Backlog it claims to act on.
+   *
+   * The snapshot is read from the database, never taken from the caller: a declaration the
+   * client could describe its own baseline for would be unverifiable by construction. One
+   * batched query resolves every declaration, and a declaration naming an item that is not in
+   * *this* Sprint's Sprint Backlog is refused rather than recorded against an unrelated item.
+   */
+  private async resolveAdjustmentSnapshots(
+    sprintId: string,
+    adjustments: DailyScrumAdjustmentInput[]
+  ): Promise<
+    Array<{
+      sprintBacklogItemId: string;
+      pbiId: string;
+      pbiTitleAtAdjustment: string;
+      actionType: DailyScrumAdjustmentAction;
+      action: string;
+      pbiStatusAtAdjustment: ItemStatus;
+      itemUpdatedAtAtAdjustment: Date;
+      pbiUpdatedAtAtAdjustment: Date;
+    }>
+  > {
+    if (adjustments.length === 0) {
+      return [];
+    }
+
+    // The same item twice would violate the record's unique constraint and, worse, would
+    // describe two mutually exclusive outcomes. The last declaration for an item wins, which
+    // is the caller's latest intent.
+    const byItemId = new Map<string, DailyScrumAdjustmentInput>();
+    for (const adjustment of adjustments) {
+      byItemId.set(adjustment.sprintBacklogItemId, adjustment);
+    }
+
+    const items = await prisma.sprintBacklogItem.findMany({
+      where: { id: { in: [...byItemId.keys()] }, sprintId },
+      select: {
+        id: true,
+        updatedAt: true,
+        pbi: {
+          select: { id: true, title: true, status: true, updatedAt: true },
         },
       },
-      backlogAdjustments: {
-        include: {
-          sprintBacklogItem: {
-            include: {
-              pbi: {
-                select: {
-                  id: true,
-                  title: true,
-                },
-              },
-            },
-          },
-        },
-      },
-    } satisfies Prisma.DailyScrumInclude;
+    });
+    const itemById = new Map(items.map((item) => [item.id, item]));
+
+    return [...byItemId.values()].map((adjustment) => {
+      const item = itemById.get(adjustment.sprintBacklogItemId);
+      if (!item) {
+        throw localizedError('validation:dailyScrum.adjustmentItemNotInSprint', {}, 400);
+      }
+      return {
+        sprintBacklogItemId: item.id,
+        pbiId: item.pbi.id,
+        pbiTitleAtAdjustment: item.pbi.title,
+        actionType: adjustment.actionType,
+        action: adjustment.action,
+        pbiStatusAtAdjustment: item.pbi.status,
+        // The state the declaration will later be judged against, taken now.
+        itemUpdatedAtAtAdjustment: item.updatedAt,
+        pbiUpdatedAtAtAdjustment: item.pbi.updatedAt,
+      };
+    });
   }
 
   /**
@@ -140,21 +360,27 @@ class DailyScrumService {
     });
 
     if (membership?.role !== UserRole.DEVELOPERS) {
-      throw new ForbiddenError(t('validation:dailyScrum.developersOnly'));
+      throw localizedError(
+        'validation:dailyScrum.developersOnly',
+        {},
+        403,
+        GATE_CODES.DEVELOPER_ONLY_DAILY_SCRUM
+      );
     }
   }
 
   async getDailyScrum(sprintId: string, date?: string): Promise<DailyScrumWithRelations | null> {
     const scrumDate = date ? this.parseDate(date) : this.getTodayDate();
-    return prisma.dailyScrum.findUnique({
+    const record = await prisma.dailyScrum.findUnique({
       where: {
         sprintId_scrumDate: {
           sprintId,
           scrumDate,
         },
       },
-      include: this.includeRelations(),
+      include: DAILY_SCRUM_INCLUDE,
     });
+    return record ? toDailyScrumDto(record) : null;
   }
 
   async getDailyScrums(sprintId: string, date?: string): Promise<DailyScrumWithRelations[]> {
@@ -166,13 +392,88 @@ class DailyScrumService {
       whereClause.scrumDate = this.parseDate(date);
     }
 
-    return prisma.dailyScrum.findMany({
+    const records = await prisma.dailyScrum.findMany({
       where: whereClause,
-      include: this.includeRelations(),
+      include: DAILY_SCRUM_INCLUDE,
       orderBy: {
         scrumDate: 'desc',
       },
     });
+    return records.map(toDailyScrumDto);
+  }
+
+  /**
+   * The team's standing cadence for a date, composed into one payload so the page needs no
+   * follow-up calls.
+   *
+   * Everything is derived from the team's own calendar, and nothing here gates a Daily Scrum.
+   * The counts describe what the calendar expected and what the Sprint recorded; a record on a
+   * day the calendar did not expect still counts as held, because the Developers are free to
+   * meet whenever they judge it useful.
+   */
+  async getCadence(sprintId: string, date?: string): Promise<DailyScrumCadence> {
+    const sprint = await prisma.sprint.findUnique({
+      where: { id: sprintId },
+      select: { id: true, teamId: true, startDate: true, endDate: true },
+    });
+
+    if (!sprint) {
+      throw new NotFoundError('Sprint');
+    }
+
+    const reference = date ? this.parseDate(date) : this.getTodayDate();
+    // The reference is a local wall-clock day, so it is pinned to its own calendar date before
+    // any calendar arithmetic sees it.
+    const referenceIso = toLocalIsoDate(reference);
+
+    const { schedule, exceptions, calendar } = await dailyScrumScheduleService.resolveCalendar(
+      sprint.teamId,
+      resolveCadenceWindow([sprint.startDate, sprint.endDate, referenceIso])
+    );
+
+    const expectedDates = listWorkingDays(sprint.startDate, sprint.endDate, calendar);
+    const recorded = await prisma.dailyScrum.findMany({
+      where: { sprintId },
+      select: { scrumDate: true },
+    });
+    // Read from the database, so these are `@db.Date` values and their UTC date is the calendar
+    // date they name.
+    const recordedDates = new Set(
+      recorded
+        .map((record) => toIsoDate(record.scrumDate))
+        .filter((iso): iso is string => iso !== null)
+    );
+
+    // A Sprint still running has not missed tomorrow: only expected days that have already
+    // passed without a record are reported as missed.
+    const todayIso = toLocalIsoDate(new Date());
+    const missedDates = expectedDates.filter(
+      (expectedDate) => !recordedDates.has(expectedDate) && expectedDate <= todayIso
+    );
+
+    const exceptionForDate = exceptions.find(
+      (exception) => fromDateOnly(exception.date) === referenceIso
+    );
+
+    return {
+      schedule: schedule ? toScheduleDto(schedule) : null,
+      calendar: {
+        workingDays: [...calendar.workingDays],
+        nonWorkingDays: [...calendar.nonWorkingDays],
+      },
+      date: referenceIso,
+      isWorkingDay: isWorkingDayOn(referenceIso, calendar),
+      nonWorkingDayName: exceptionForDate?.name ?? null,
+      sprintProgress: sprintWorkingDayProgress(
+        sprint.startDate,
+        sprint.endDate,
+        referenceIso,
+        calendar
+      ),
+      held: recordedDates.size,
+      expected: expectedDates.length,
+      missedDates,
+    };
   }
 
   async createDailyScrum(
@@ -212,6 +513,12 @@ class DailyScrumService {
       );
     }
 
+    const noAdaptationNeeded = data.noAdaptationNeeded === true;
+    const adjustments = data.backlogAdjustments ?? [];
+    this.assertAdaptationEvidence(adjustments.length, noAdaptationNeeded);
+
+    const snapshots = await this.resolveAdjustmentSnapshots(data.sprintId, adjustments);
+
     const dailyScrum = await prisma.dailyScrum.create({
       data: {
         id: generateUUIDv7(),
@@ -221,6 +528,11 @@ class DailyScrumService {
         adaptationsNotes: data.adaptationsNotes ?? null,
         planForNextDay: data.planForNextDay ?? null,
         focusMode: data.focusMode ?? null,
+        // The inspected baseline, captured once and never rewritten. The Sprint row is already
+        // in hand, and the goal is read from it rather than from the request, so a caller cannot
+        // record having inspected a goal the Sprint never had.
+        sprintGoal: sprint.sprintGoal ?? null,
+        noAdaptationNeeded,
         createdBy: userId,
         updatedBy: userId,
         participants: {
@@ -231,20 +543,18 @@ class DailyScrumService {
           },
         },
         backlogAdjustments: {
-          create:
-            data.backlogAdjustments?.map((adjustment) => ({
-              id: generateUUIDv7(),
-              sprintBacklogItemId: adjustment.sprintBacklogItemId,
-              action: adjustment.action,
-              createdBy: userId,
-              updatedBy: userId,
-            })) ?? [],
+          create: snapshots.map((snapshot) => ({
+            id: generateUUIDv7(),
+            ...snapshot,
+            createdBy: userId,
+            updatedBy: userId,
+          })),
         },
       },
-      include: this.includeRelations(),
+      include: DAILY_SCRUM_INCLUDE,
     });
 
-    return dailyScrum;
+    return toDailyScrumDto(dailyScrum);
   }
 
   async updateDailyScrum(
@@ -254,7 +564,12 @@ class DailyScrumService {
   ): Promise<DailyScrumWithRelations> {
     const existing = await prisma.dailyScrum.findUnique({
       where: { id },
-      select: { id: true, sprintId: true },
+      select: {
+        id: true,
+        sprintId: true,
+        noAdaptationNeeded: true,
+        backlogAdjustments: { select: { id: true } },
+      },
     });
 
     if (!existing) {
@@ -264,6 +579,20 @@ class DailyScrumService {
     // Only Developers may edit the shared Daily Scrum record (Scrum Guide).
     await this.assertDeveloperRole(existing.sprintId, userId);
 
+    // The rule applies to the record's resulting state, not to the payload alone: editing only
+    // the next-day plan on a record that already carries evidence must not be refused.
+    const adjustmentsProvided = data.backlogAdjustments !== undefined;
+    const effectiveAdjustmentCount = adjustmentsProvided
+      ? (data.backlogAdjustments?.length ?? 0)
+      : existing.backlogAdjustments.length;
+    const effectiveNoAdaptationNeeded = data.noAdaptationNeeded ?? existing.noAdaptationNeeded;
+
+    this.assertAdaptationEvidence(effectiveAdjustmentCount, effectiveNoAdaptationNeeded);
+
+    const snapshots = adjustmentsProvided
+      ? await this.resolveAdjustmentSnapshots(existing.sprintId, data.backlogAdjustments ?? [])
+      : [];
+
     await prisma.$transaction(async (tx) => {
       await tx.dailyScrum.update({
         where: { id },
@@ -272,6 +601,8 @@ class DailyScrumService {
           adaptationsNotes: data.adaptationsNotes ?? undefined,
           planForNextDay: data.planForNextDay ?? undefined,
           focusMode: data.focusMode === undefined ? undefined : data.focusMode,
+          // `undefined` leaves the column unchanged, which is what an absent field means here.
+          noAdaptationNeeded: data.noAdaptationNeeded,
           updatedBy: userId,
           // Anyone who contributes to today's Daily Scrum is a participant.
           participants: {
@@ -287,18 +618,19 @@ class DailyScrumService {
         },
       });
 
-      // Replace backlog adjustments wholesale when provided (Developers choose).
-      if (data.backlogAdjustments !== undefined) {
+      // Replace backlog adjustments wholesale when provided (Developers choose). Editing the
+      // adaptations re-takes the state snapshot: the declaration is new, so the baseline it will
+      // be judged against must be the state at the new declaration, not the original one.
+      if (adjustmentsProvided) {
         await tx.dailyScrumBacklogItem.deleteMany({
           where: { dailyScrumId: id },
         });
-        if (data.backlogAdjustments.length > 0) {
+        if (snapshots.length > 0) {
           await tx.dailyScrumBacklogItem.createMany({
-            data: data.backlogAdjustments.map((adjustment) => ({
+            data: snapshots.map((snapshot) => ({
               id: generateUUIDv7(),
               dailyScrumId: id,
-              sprintBacklogItemId: adjustment.sprintBacklogItemId,
-              action: adjustment.action,
+              ...snapshot,
               createdBy: userId,
               updatedBy: userId,
             })),
@@ -315,10 +647,11 @@ class DailyScrumService {
   }
 
   async getDailyScrumById(id: string): Promise<DailyScrumWithRelations | null> {
-    return prisma.dailyScrum.findUnique({
+    const record = await prisma.dailyScrum.findUnique({
       where: { id },
-      include: this.includeRelations(),
+      include: DAILY_SCRUM_INCLUDE,
     });
+    return record ? toDailyScrumDto(record) : null;
   }
 
   /**
@@ -530,6 +863,8 @@ class DailyScrumService {
       description: string;
       ownerId?: string;
       sprintId?: string;
+      priority?: ImpedimentPriority;
+      targetDate?: string | Date | null;
     }
   ): Promise<{
     dailyScrum: DailyScrumWithRelations;
@@ -580,7 +915,12 @@ class DailyScrumService {
           reportedById: userId,
           ownerId: data.ownerId,
           status: ImpedimentStatus.OPEN,
+          // An impediment promoted from the Daily Scrum carries the same impact defaults and
+          // audit trail as one reported directly, so every entry point tells the same story.
+          priority: data.priority ?? DEFAULT_IMPEDIMENT_PRIORITY,
+          targetDate: data.targetDate ?? null,
           createdBy: userId,
+          updatedBy: userId,
         },
         include: {
           reportedBy: {

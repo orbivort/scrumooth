@@ -5,11 +5,19 @@ import eslintConfigPrettier from 'eslint-config-prettier';
 import react from 'eslint-plugin-react';
 import reactHooks from 'eslint-plugin-react-hooks';
 import reactRefresh from 'eslint-plugin-react-refresh';
-import importX from 'eslint-plugin-import-x';
+import importX, { createNodeResolver } from 'eslint-plugin-import-x';
 import unicorn from 'eslint-plugin-unicorn';
 import iconRules from './scripts/utility/eslint-plugin-icon-rules.js';
 import i18nSecurity from './scripts/utility/eslint-plugin-i18n-security.js';
 import noLiteralJsxString from './scripts/utility/eslint-plugin-no-literal-jsx-string.js';
+
+// Resolver for import-x. Without one, rules that walk the module graph
+// (import-x/no-cycle) cannot traverse a package whose export map declares a
+// `"node": null` condition - `msw/browser` is browser-only by design - and fail
+// with an internal resolver error instead of reporting anything useful.
+const importResolverSettings = {
+  'import-x/resolver-next': [createNodeResolver()],
+};
 
 export default tseslint.config(
   {
@@ -93,6 +101,7 @@ export default tseslint.config(
       },
     },
     settings: {
+      ...importResolverSettings,
       'import-x/parsers': {
         '@typescript-eslint/parser': ['.ts', '.tsx'],
       },
@@ -184,6 +193,7 @@ export default tseslint.config(
       },
     },
     settings: {
+      ...importResolverSettings,
       react: {
         version: 'detect',
       },
@@ -216,6 +226,49 @@ export default tseslint.config(
       // Date formatting - enforce shared formatters
       'no-restricted-syntax': [
         'error',
+        {
+          selector: 'CallExpression[callee.property.name="toLocaleDateString"]',
+          message:
+            'Use formatLocaleDate from @scrumooth/shared instead of toLocaleDateString(). This ensures consistent locale-aware date formatting.',
+        },
+        {
+          selector: 'CallExpression[callee.property.name="toLocaleString"]',
+          message:
+            'Use formatLocaleDate from @scrumooth/shared instead of toLocaleString(). This ensures consistent locale-aware date/time formatting.',
+        },
+      ],
+    },
+  },
+  // Barrel (facade) index files are excluded from coverage (see the coverage.exclude globs in
+  // packages/frontend/vitest.config.ts). That exemption is only safe as long as these files stay
+  // pure re-export facades, so this guard fails lint as soon as one of them gains runtime code —
+  // which would mean silently losing coverage of real logic.
+  // The globs must stay in sync with packages/frontend/vitest.config.ts and .github/codecov.yml.
+  // Note: no-restricted-syntax is redefined here, so the frontend selectors above are repeated.
+  {
+    files: [
+      'packages/frontend/src/components/**/index.ts',
+      'packages/frontend/src/pages/**/index.ts',
+      'packages/frontend/src/config/index.ts',
+      'packages/frontend/src/hooks/index.ts',
+      'packages/frontend/src/services/index.ts',
+      'packages/frontend/src/styles/index.ts',
+    ],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector:
+            'Program > VariableDeclaration, Program > ExpressionStatement, Program > IfStatement, Program > ForStatement, Program > ForOfStatement, Program > ForInStatement, Program > WhileStatement, Program > SwitchStatement, Program > TryStatement, Program > ThrowStatement',
+          message:
+            'Barrel index files are coverage-excluded and must only re-export. Move this runtime code into a named module (and keep the barrel a pure facade).',
+        },
+        {
+          selector:
+            'ExportNamedDeclaration[declaration.type=/^(VariableDeclaration|FunctionDeclaration|ClassDeclaration)$/]',
+          message:
+            'Barrel index files are coverage-excluded and must only re-export. Move this runtime export into a named module (and keep the barrel a pure facade).',
+        },
         {
           selector: 'CallExpression[callee.property.name="toLocaleDateString"]',
           message:

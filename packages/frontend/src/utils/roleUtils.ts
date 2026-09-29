@@ -54,16 +54,19 @@ export function getRoleBadgeColor(role: string | null): string {
  * Readiness inputs that determine whether a Sprint can be started.
  *
  * Starting a Sprint is no longer role-gated (any team member may do it). It is instead
- * gated on the Scrum Planning outputs being ready: a committed Sprint Goal AND a saved,
- * non-empty Sprint Backlog.
+ * gated on the Scrum Planning outputs being ready: a committed Sprint Goal, a saved,
+ * non-empty Sprint Backlog, AND recorded planning participation that includes the Product
+ * Owner and at least one Developer (the Sprint Backlog is "created by the collaborative work
+ * of the entire Scrum Team").
  */
 export interface SprintStartReadiness {
   hasSprintGoal: boolean;
   hasSavedBacklog: boolean;
+  hasPlanningParticipation: boolean;
 }
 
 export function canStartSprint(readiness: SprintStartReadiness): boolean {
-  return readiness.hasSprintGoal && readiness.hasSavedBacklog;
+  return readiness.hasSprintGoal && readiness.hasSavedBacklog && readiness.hasPlanningParticipation;
 }
 
 /**
@@ -85,4 +88,30 @@ export function canMutateSprintBacklog(role: string | null | undefined): boolean
  */
 export function canCancelSprint(role: string | null | undefined): boolean {
   return String(role ?? '').toLowerCase() === 'product_owner';
+}
+
+/**
+ * Whether the given team role may order the Product Backlog.
+ *
+ * "The Product Owner orders Product Backlog items" (Scrum Guide), so moving an item in the
+ * backlog or changing its MoSCoW band is the Product Owner's call. The backend enforces this
+ * with `GATE_PRODUCT_OWNER_ONLY_BACKLOG_ORDER`; the interface mirrors it so the affordance is
+ * not offered where it would be refused. The role may be uppercase (backend enum) or lowercase.
+ */
+export function canOrderBacklog(role: string | null | undefined): boolean {
+  return String(role ?? '').toLowerCase() === 'product_owner';
+}
+
+/**
+ * Whether the given team role may edit the team's Definition of Ready.
+ *
+ * The readiness agreement is a complementary practice rather than a 2020 Scrum Guide artifact — the
+ * Guide's three artifacts are the Product Backlog, the Sprint Backlog and the Increment — and its
+ * published contract assigns it to the team's Scrum Master. The backend enforces that with
+ * `GATE_DOR_SCRUM_MASTER_ONLY`; the interface mirrors it so the affordance is not offered where it
+ * would be refused. Everyone in the team can still read it, and the team records the readiness
+ * verifications. The role may be uppercase (backend enum) or lowercase.
+ */
+export function canEditDefinitionOfReady(role: string | null | undefined): boolean {
+  return String(role ?? '').toLowerCase() === 'scrum_master';
 }

@@ -15,9 +15,9 @@ The Scrumooth team takes security seriously. We are committed to ensuring the se
 
 We provide security updates for the following versions of Scrumooth:
 
-| Version | Supported | End of Life | Notes                  |
-| ------- | --------- | ----------- | ---------------------- |
-| 2.x     | ✅ Yes    | <br />      | Current stable release |
+| Version | Supported | Notes                  |
+| ------- | --------- | ---------------------- |
+| 3.x     | ✅ Yes    | Current stable release |
 
 ### Version Support Policy
 
@@ -185,7 +185,7 @@ Scrumooth implements comprehensive security measures:
   - API endpoints: 100 requests per 15 minutes (configurable)
   - Password reset endpoints: 3 requests per 15 minutes
   - Forgot password endpoints: 3 requests per 15 minutes
-- **CORS Configuration**: Explicit origin whitelisting
+- **CORS Configuration**: Explicit origin allowlisting
 - **HTTP Security Headers**: Helmet middleware with:
   - Content Security Policy (CSP)
   - HTTP Strict Transport Security (HSTS)

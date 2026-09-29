@@ -15,6 +15,12 @@
     "title": "Points d'action",
     "unassigned": "Non assigné"
   },
+  "anonymity": {
+    "authorHidden": "Anonyme",
+    "badge": "Anonyme",
+    "chooseLabel": "Tenir cette rétrospective en anonyme",
+    "hint": "L'auteur des éléments n'est enregistré pour personne, pas même pour le Scrum Master."
+  },
   "ariaLabels": {
     "columnsRegion": "Colonnes de retour de la Retrospective",
     "sprintInfoRegion": "Informations du Sprint",
@@ -68,7 +74,8 @@
     "ariaLabel": "Marquer la Retrospective comme terminée",
     "button": "Terminer la Retrospective",
     "completing": "Finalisation...",
-    "description": "Marquer cette Retrospective comme terminée pour la finaliser et empêcher les modifications ultérieures."
+    "description": "Marquer cette Retrospective comme terminée pour la finaliser et empêcher les modifications ultérieures.",
+    "sprintNotEnded": "La Sprint Review inspecte le résultat du Sprint et la Retrospective le conclut. Cette Retrospective peut être terminée à partir de la date de fin du Sprint ({{endDate}})."
   },
   "confirmationModal": {
     "cancel": "Annuler",
@@ -109,6 +116,44 @@
     "message": "Supprimer le point d'action",
     "title": "Confirmer la suppression"
   },
+  "dodInspection": {
+    "addCriterion": "Ajouter un critère",
+    "addCriterionPlaceholder": "Un critère que l'équipe devrait ajouter",
+    "adoptedVersion": "Adoptée v{{version}}",
+    "applyChanges": "Appliquer à la Definition of Done",
+    "applyFailed": "La Definition of Done n'a pas pu être mise à jour. Rien n'a été modifié : ajustez les décisions et réessayez.",
+    "applying": "Application…",
+    "arriving": "Ajoutés",
+    "cancel": "Annuler",
+    "changeIncomplete": "Chaque critère modifié doit indiquer sa nouvelle formulation",
+    "confirmApply": "Appliquer les changements",
+    "confirmSubtitle": "Cela remplace la Definition of Done v{{from}} par la v{{to}} et conserve la v{{from}} dans l'historique.",
+    "confirmTitle": "Appliquer ces changements à la Definition of Done ?",
+    "currentVersion": "Definition of Done v{{version}}",
+    "decisionLabel": "Décision pour {{criterion}}",
+    "decisions": {
+      "CHANGE": "Modifier",
+      "KEEP": "Conserver",
+      "RETIRE": "Retirer"
+    },
+    "discardProposal": "Écarter la proposition",
+    "loading": "Chargement de la Definition of Done…",
+    "noCriteria": "Cette équipe n'a encore aucun critère actif dans sa Definition of Done. Ajoutez les critères selon lesquels elle travaille, ou définissez-les dans les Définitions d'équipe.",
+    "none": "Aucun",
+    "noteLabel": "Raison (facultatif)",
+    "notePlaceholder": "Pourquoi cette décision ?",
+    "notesLabel": "Ce que l'équipe a conclu sur sa Definition of Done",
+    "notesPlaceholder": "Consignez le raisonnement derrière ces décisions…",
+    "proposedLabel": "Nouvelle formulation",
+    "proposedPlaceholder": "Comment ce critère devrait-il être formulé ?",
+    "retiring": "Retirés",
+    "rewording": "Reformulés",
+    "saveFailed": "La réflexion n'a pas pu être enregistrée. Vos décisions restent affichées.",
+    "saveReflection": "Enregistrer la réflexion",
+    "saving": "Enregistrement…",
+    "subtitle": "Le Guide Scrum demande à cet événement d'inspecter la Definition of Done et d'identifier les changements les plus utiles. Statuez sur chaque critère, puis appliquez ce que l'équipe accepte.",
+    "title": "Inspection de la Definition of Done"
+  },
   "errorState": {
     "backToRetrospectives": "Retour aux Retrospectives",
     "message": "La Retrospective pour ce Sprint n'a pas pu être chargée.",
@@ -130,8 +175,14 @@
     "completedSprint": "Sprint terminé",
     "completedSprints": "Sprints terminés",
     "completedSprints_plural": "Sprints terminés",
+    "createCancel": "Annuler",
+    "createConfirm": "Créer",
     "createRetrospective": "Créer une Retrospective",
     "creating": "Création...",
+    "emptyState": {
+      "description": "Une Rétrospective peut être tenue pour un Sprint actif ou terminé. Démarrez un Sprint dans le Sprint Planning pour commencer.",
+      "title": "Aucun Sprint pour la Rétrospective"
+    },
     "goal": "Objectif :",
     "items": "éléments",
     "loading": "Chargement des Retrospectives...",
@@ -155,6 +206,24 @@
     "viewRetrospective": "Voir la Retrospective"
   },
   "loading": "Chargement de la Retrospective...",
+  "phases": {
+    "close": {
+      "description": "Consignez ce que l'équipe a décidé, indiquez qui était présent et clôturez la Retrospective.",
+      "title": "Consigner et clôturer"
+    },
+    "decide": {
+      "description": "Inspectez la Definition of Done, puis transformez les améliorations retenues en points d'action.",
+      "title": "Ce que nous changeons"
+    },
+    "reflect": {
+      "description": "Rassemblez ce qui a bien marché, ce qui n'a pas marché et ce que l'équipe veut améliorer — une idée par élément.",
+      "title": "Ce qui s'est passé"
+    },
+    "stage": {
+      "description": "Ramenez le Sprint que vous allez inspecter, ainsi que les Valeurs Scrum qui donnent le ton.",
+      "title": "Poser le cadre"
+    }
+  },
   "pts": "pts",
   "sprintInfo": {
     "businessDay_one": "{{count}} jour de travail",

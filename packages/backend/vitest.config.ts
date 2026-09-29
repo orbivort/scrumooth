@@ -32,12 +32,22 @@ export default defineConfig({
         'src/*.d.ts',
         'prisma/',
         'src/generated/',
+        // Barrel files without a runtime statement and type-only declaration files are not
+        // instrumentable: V8 reports them as 0 % on every metric, which is never actionable.
+        // `src/services/email/templates/index.ts` is intentionally NOT excluded — it declares
+        // the runtime `TEMPLATE_PATHS` constant and is fully covered.
+        'src/services/email/index.ts',
+        'src/services/email/providers/index.ts',
+        'src/services/email/types/',
       ],
       thresholds: {
         lines: 80,
         functions: 80,
         branches: 80,
         statements: 80,
+        // The gate is per file, not only on the aggregate: a single file may not regress
+        // below the floor while the rest of the package keeps the average high.
+        perFile: true,
       },
       all: true,
       include: ['src/**/*.ts'],

@@ -15,6 +15,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { formatChartDate } from '@scrumooth/shared';
 
+import type { BurndownData } from '../../../types';
 import { useI18nStore } from '../../../i18n/useI18nStore';
 import { logger } from '../../../utils/logger';
 
@@ -28,12 +29,6 @@ ChartJS.register(
   Legend,
   Filler
 );
-
-interface BurndownData {
-  dates: string[];
-  ideal: number[];
-  actual: (number | null)[];
-}
 
 interface BurndownChartProps {
   data: BurndownData | null | undefined;
@@ -88,7 +83,7 @@ export const BurndownChart: React.FC<BurndownChartProps> = ({ data }) => {
         labels: [],
         datasets: [
           {
-            label: t('burndown.ideal'),
+            label: t('burndown.forecast'),
             data: [],
             borderColor: '#9CA3AF',
             backgroundColor: 'transparent',
@@ -115,7 +110,7 @@ export const BurndownChart: React.FC<BurndownChartProps> = ({ data }) => {
         labels: [],
         datasets: [
           {
-            label: t('burndown.ideal'),
+            label: t('burndown.forecast'),
             data: [],
             borderColor: '#9CA3AF',
             backgroundColor: 'transparent',
@@ -138,7 +133,7 @@ export const BurndownChart: React.FC<BurndownChartProps> = ({ data }) => {
       labels: dates.map((d) => formatChartDate(d, locale)),
       datasets: [
         {
-          label: t('burndown.ideal'),
+          label: t('burndown.forecast'),
           data: ideal,
           borderColor: '#9CA3AF',
           backgroundColor: 'transparent',

@@ -39,6 +39,21 @@ See [deployment/README.md](./deployment/README.md) for detailed documentation.
 
 Scripts for maintaining the application, including database operations.
 
+#### maintenance/
+
+Guards that keep the product's published claims in step with the code that backs them.
+
+| Script                      | Purpose                                                           | Usage                   |
+| --------------------------- | ----------------------------------------------------------------- | ----------------------- |
+| `verify-gate-catalogue.mjs` | Verifies the gate contract, taxonomy, catalogue and README totals | `pnpm run gates:verify` |
+
+**Gate catalogue verification:**
+
+The README claims that a rule it does not enforce is not claimed at all, and it states how many
+refusal codes the contract holds. Both claims are checked: every gate code must be defined,
+classified, published in `docs/api/README.md` with the same HTTP status, and counted identically in
+the README, and the rule-level README must name no individual code.
+
 #### maintenance/database/
 
 PostgreSQL database maintenance scripts for backup, restore, and validation.
@@ -125,6 +140,6 @@ When adding new scripts:
 
 ## Related Documentation
 
-- [Deployment Guide](../docs/deployment/deployment-guide.md)
+- [Deployment Guide](../docs/deployment/DEPLOYMENT.md)
 - [Database Maintenance](./maintenance/database/DATABASE_MAINTENANCE.md)
-- [Development Standards](../docs/development/)
+- [Development Standards](../CONTRIBUTING.md#code-quality-standards)

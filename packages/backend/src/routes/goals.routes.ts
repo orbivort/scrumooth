@@ -17,7 +17,13 @@ const createGoalSchema = z.object({
   title: z.string().min(1, 'Title is required').max(200),
   description: z.string().max(5000).optional(),
   targetDate: z.string().datetime().optional().nullable(),
-  successMetrics: z.string().max(1000).optional(),
+  // Scrum Guide: the Product Goal is a future state the team must be able to recognise as
+  // reached, so its success metrics are required rather than optional.
+  successMetrics: z
+    .string({ error: 'errors:productGoal.successMetricsRequired' })
+    .trim()
+    .min(1, 'errors:productGoal.successMetricsRequired')
+    .max(1000, 'Success metrics must be at most 1000 characters'),
   strategicAlignment: z.string().max(100).optional(),
   status: z
     .string()
@@ -35,6 +41,9 @@ const updateGoalSchema = createGoalSchema
       .transform((val) => val.toUpperCase())
       .pipe(z.enum(['NEW', 'ACTIVE', 'COMPLETED', 'ABANDONED']))
       .optional(),
+    // Rationale for the status change. The service requires it when the target status is
+    // ABANDONED; it is persisted in the status history rather than in a dedicated column.
+    reason: z.string().max(5000).optional(),
   });
 
 const goalIdSchema = z.object({

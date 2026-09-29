@@ -1,7 +1,8 @@
 {
   "backToIncrements": "Back to Increments",
   "card": {
-    "integrationVerified": "Integration verified"
+    "integrationVerified": "Integration verified",
+    "usable": "Usable"
   },
   "create": {
     "actions": {
@@ -115,6 +116,7 @@
       "title": "Deliver Increment"
     },
     "deliverRequiresIntegration": "Integration must be verified before this Increment can be delivered.",
+    "deliverRequiresUsability": "The usable condition must be attested before this Increment can be delivered.",
     "dodVerification": {
       "byCategory": "Verification by Category",
       "byPbi": "Verification by PBI",
@@ -152,6 +154,7 @@
     },
     "sprintCompletionWorkflow": "Sprint Completion Workflow",
     "timeline": {
+      "deliveredBy": "Delivered by {{name}}",
       "deliveredViaEarlyRelease": "Delivered via Early Release",
       "deliveredViaSprintReview": "Delivered via Sprint Review",
       "incrementCreated": "Increment Created",
@@ -176,6 +179,7 @@
     "dependenciesMissing": "Some prior Increments have not passed integration tests",
     "fail": "Failed",
     "firstIncrement": "First Increment — no prior Increment to test against",
+    "firstIncrementExempt": "Exempt — first Increment",
     "integrationTests": "Integration Tests",
     "integrationVerified": "Integration verified",
     "lockedHint": "This Increment has been delivered and is locked. Integration tests cannot be changed.",
@@ -189,8 +193,26 @@
     "unverified": "Not verified",
     "verificationRequired": "Integration verification is required before marking as verified",
     "verified": "Verified",
+    "verifiedAgainst": "Verified against {{count}} prior Increments",
     "verifyHint": "Verify that this Increment integrates with all prior Increments",
     "verifyNow": "Verify Integration"
+  },
+  "incrementUsability": {
+    "attest": "Record Attestation",
+    "attestFailed": "Failed to record the attestation. Please try again.",
+    "attested": "Usable condition attested",
+    "attestedBy": "Attested by {{name}} on {{date}}",
+    "evidence": "Evidence",
+    "evidencePlaceholder": "e.g. Deployed to staging and exercised end to end by the Product Owner",
+    "formLabel": "What did you check, and where?",
+    "lockedHint": "This Increment has been delivered or archived and is locked. Its attestation can no longer be changed.",
+    "noEvidenceText": "No evidence text was recorded.",
+    "notAttested": "Usable condition not attested",
+    "notRecorded": "Not recorded",
+    "notRecordedHint": "No usability attestation was recorded for this Increment. It was delivered before the attestation was required.",
+    "rule": "An Increment must be in usable condition. Record what was checked and where, so the Sprint Review inspects evidence rather than a label.",
+    "title": "Usable Condition",
+    "unknownMember": "a team member"
   },
   "list": {
     "ariaLabelFilter": "Filter increments by status",

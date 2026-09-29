@@ -33,7 +33,49 @@ vi.mock('../../../utils/prisma', () => ({
       update: vi.fn(),
       delete: vi.fn(),
     },
+    sprint: {
+      findUnique: vi.fn(),
+      findFirst: vi.fn(),
+    },
+    sprintReview: {
+      findUnique: vi.fn(),
+    },
+    teamMember: {
+      findUnique: vi.fn(),
+      findFirst: vi.fn(),
+    },
+    user: {
+      findUnique: vi.fn(),
+    },
+    productBacklogItem: {
+      findUnique: vi.fn(),
+      delete: vi.fn(),
+    },
   },
+}));
+
+// The Definition of Done and Product Backlog services are collaborators, not the unit under test:
+// their own suites cover version bumps and item creation, so they are stubbed here to keep this
+// suite focused on the Retrospective's decisions.
+vi.mock('../../../services/dod.service', () => ({
+  definitionOfDoneService: {
+    getDefinitionOfDone: vi.fn(),
+    updateDefinitionOfDone: vi.fn(),
+  },
+}));
+
+vi.mock('../../../services/backlog.service', () => ({
+  productBacklogService: {
+    createPBI: vi.fn(),
+  },
+}));
+
+vi.mock('../../../utils/auditLogger', () => ({
+  auditResourceEvent: vi.fn(),
+  auditLog: vi.fn(),
+  AuditActions: { CREATE: 'CREATE', UPDATE: 'UPDATE', ASSIGN: 'ASSIGN' },
+  AuditEventTypes: { RETROSPECTIVE: 'RETROSPECTIVE' },
+  AuditResults: { SUCCESS: 'SUCCESS' },
 }));
 
 vi.mock('uuid', () => ({
@@ -42,8 +84,19 @@ vi.mock('uuid', () => ({
 
 // Now import the service and other dependencies
 import { retrospectiveService } from '../../../services/retrospective.service';
+import { definitionOfDoneService } from '../../../services/dod.service';
+import { productBacklogService } from '../../../services/backlog.service';
 import prisma from '../../../utils/prisma';
-import { NotFoundError } from '../../../utils/errors';
+import { NotFoundError, ForbiddenError } from '../../../utils/errors';
+import { GATE_CODES } from '@scrumooth/shared';
+
+const USER_ID = 'user-1';
+const TEAM_ID = 'team-1';
+
+/** Grant the caller membership of the team that owns the resource under test. */
+const grantMembership = (role = 'DEVELOPERS') => {
+  vi.mocked(prisma.teamMember.findUnique).mockResolvedValue({ role } as never);
+};
 
 describe('RetrospectiveService', () => {
   beforeEach(() => {
@@ -74,9 +127,10 @@ describe('RetrospectiveService', () => {
         },
       ];
 
-      vi.mocked(prisma.sprintRetrospective.findMany).mockResolvedValue(mockRetrospectives as any);
+      grantMembership();
+      vi.mocked(prisma.sprintRetrospective.findMany).mockResolvedValue(mockRetrospectives as never);
 
-      const result = await retrospectiveService.getRetrospectivesByTeam(teamId);
+      const result = await retrospectiveService.getRetrospectivesByTeam(teamId, USER_ID);
 
       expect(result).toHaveLength(2);
       expect(prisma.sprintRetrospective.findMany).toHaveBeenCalledWith(
@@ -85,6 +139,22 @@ describe('RetrospectiveService', () => {
           orderBy: { retroDate: 'desc' },
         })
       );
+    });
+
+    it('should refuse a caller who is not a member of the team', async () => {
+      vi.mocked(prisma.teamMember.findUnique).mockResolvedValue(null as never);
+
+      await expect(
+        retrospectiveService.getRetrospectivesByTeam(TEAM_ID, USER_ID)
+      ).rejects.toMatchObject({ code: GATE_CODES.RETROSPECTIVE_TEAM_MEMBERS_ONLY });
+      expect(prisma.sprintRetrospective.findMany).not.toHaveBeenCalled();
+    });
+
+    it('should refuse a caller with no session, rather than treating them as exempt', async () => {
+      await expect(
+        retrospectiveService.getRetrospectivesByTeam(TEAM_ID, undefined)
+      ).rejects.toBeInstanceOf(ForbiddenError);
+      expect(prisma.sprintRetrospective.findMany).not.toHaveBeenCalled();
     });
   });
 
@@ -107,19 +177,58 @@ describe('RetrospectiveService', () => {
         },
       };
 
-      vi.mocked(prisma.sprintRetrospective.findUnique).mockResolvedValue(mockRetrospective as any);
+      grantMembership();
+      vi.mocked(prisma.sprintRetrospective.findUnique).mockResolvedValue(
+        mockRetrospective as never
+      );
 
-      const result = await retrospectiveService.getRetrospectiveById(retroId);
+      const result = await retrospectiveService.getRetrospectiveById(retroId, USER_ID);
 
       expect(result.id).toBe(retroId);
     });
 
     it('should throw NotFoundError for non-existent retrospective', async () => {
-      vi.mocked(prisma.sprintRetrospective.findUnique).mockResolvedValue(null as any);
+      vi.mocked(prisma.sprintRetrospective.findUnique).mockResolvedValue(null as never);
 
-      await expect(retrospectiveService.getRetrospectiveById('non-existent')).rejects.toThrow(
-        NotFoundError
-      );
+      await expect(
+        retrospectiveService.getRetrospectiveById('non-existent', USER_ID)
+      ).rejects.toThrow(NotFoundError);
+    });
+
+    it('should refuse a caller from another team', async () => {
+      vi.mocked(prisma.sprintRetrospective.findUnique).mockResolvedValue({
+        id: 'retro-1',
+        teamId: TEAM_ID,
+      } as never);
+      vi.mocked(prisma.teamMember.findUnique).mockResolvedValue(null as never);
+
+      await expect(
+        retrospectiveService.getRetrospectiveById('retro-1', 'outsider')
+      ).rejects.toMatchObject({ code: GATE_CODES.RETROSPECTIVE_TEAM_MEMBERS_ONLY });
+    });
+
+    it('should withhold the Scrum Master notes from everyone but the Scrum Master', async () => {
+      const row = {
+        id: 'retro-1',
+        teamId: TEAM_ID,
+        sprintId: 'sprint-1',
+        retroDate: new Date(),
+        status: 'COMPLETED',
+        smNotes: 'Coaching observation about the facilitator',
+        items: [],
+        actionItems: [],
+        attendees: [],
+      };
+
+      vi.mocked(prisma.sprintRetrospective.findUnique).mockResolvedValue(row as never);
+
+      grantMembership('DEVELOPERS');
+      const asDeveloper = await retrospectiveService.getRetrospectiveById('retro-1', USER_ID);
+      expect(asDeveloper.smNotes).toBeUndefined();
+
+      grantMembership('SCRUM_MASTER');
+      const asScrumMaster = await retrospectiveService.getRetrospectiveById('retro-1', USER_ID);
+      expect(asScrumMaster.smNotes).toBe('Coaching observation about the facilitator');
     });
   });
 
@@ -142,20 +251,35 @@ describe('RetrospectiveService', () => {
         },
       };
 
-      vi.mocked(prisma.sprintRetrospective.findUnique).mockResolvedValue(mockRetrospective as any);
+      grantMembership();
+      vi.mocked(prisma.sprintRetrospective.findUnique).mockResolvedValue(
+        mockRetrospective as never
+      );
 
-      const result = await retrospectiveService.getRetrospectiveBySprintId(sprintId);
+      const result = await retrospectiveService.getRetrospectiveBySprintId(sprintId, USER_ID);
 
       expect(result).not.toBeNull();
       expect(result!.sprintId).toBe(sprintId);
     });
 
     it('should return null when no retrospective exists for sprint', async () => {
-      vi.mocked(prisma.sprintRetrospective.findUnique).mockResolvedValue(null as any);
+      vi.mocked(prisma.sprintRetrospective.findUnique).mockResolvedValue(null as never);
 
-      const result = await retrospectiveService.getRetrospectiveBySprintId('sprint-1');
+      const result = await retrospectiveService.getRetrospectiveBySprintId('sprint-1', USER_ID);
 
       expect(result).toBeNull();
+    });
+
+    it('should refuse a caller from another team', async () => {
+      vi.mocked(prisma.sprintRetrospective.findUnique).mockResolvedValue({
+        id: 'retro-1',
+        teamId: TEAM_ID,
+      } as never);
+      vi.mocked(prisma.teamMember.findUnique).mockResolvedValue(null as never);
+
+      await expect(
+        retrospectiveService.getRetrospectiveBySprintId('sprint-1', 'outsider')
+      ).rejects.toMatchObject({ code: GATE_CODES.RETROSPECTIVE_TEAM_MEMBERS_ONLY });
     });
   });
 
@@ -173,68 +297,169 @@ describe('RetrospectiveService', () => {
         actionItems: [],
       };
 
-      vi.mocked(prisma.sprintRetrospective.findUnique).mockResolvedValue(null as any);
-      vi.mocked(prisma.sprintRetrospective.create).mockResolvedValue(mockRetrospective as any);
+      grantMembership('SCRUM_MASTER');
+      vi.mocked(prisma.sprint.findUnique).mockResolvedValue({ teamId: TEAM_ID } as never);
+      vi.mocked(prisma.sprintRetrospective.findUnique).mockResolvedValue(null as never);
+      vi.mocked(prisma.sprintRetrospective.create).mockResolvedValue(mockRetrospective as never);
 
-      const result = await retrospectiveService.createRetrospective({
-        sprintId: 'sprint-1',
-        teamId: 'team-1',
-        facilitatorId: 'user-1',
-      });
+      const result = await retrospectiveService.createRetrospective(
+        {
+          sprintId: 'sprint-1',
+          teamId: 'team-1',
+          facilitatorId: 'user-1',
+        },
+        USER_ID
+      );
 
       expect(result.sprintId).toBe('sprint-1');
       expect(result.status).toBe('DRAFT');
     });
 
     it('should throw error if retrospective already exists for sprint', async () => {
-      vi.mocked(prisma.sprintRetrospective.findUnique).mockResolvedValue({ id: 'existing' } as any);
+      grantMembership('SCRUM_MASTER');
+      vi.mocked(prisma.sprint.findUnique).mockResolvedValue({ teamId: TEAM_ID } as never);
+      vi.mocked(prisma.sprintRetrospective.findUnique).mockResolvedValue({
+        id: 'existing',
+      } as never);
 
       await expect(
-        retrospectiveService.createRetrospective({
-          sprintId: 'sprint-1',
-          teamId: 'team-1',
-          facilitatorId: 'user-1',
-        })
+        retrospectiveService.createRetrospective(
+          {
+            sprintId: 'sprint-1',
+            teamId: 'team-1',
+            facilitatorId: 'user-1',
+          },
+          USER_ID
+        )
       ).rejects.toThrow('A retrospective already exists for sprint');
+    });
+
+    it('should refuse a Sprint that belongs to another team', async () => {
+      grantMembership('SCRUM_MASTER');
+      vi.mocked(prisma.sprint.findUnique).mockResolvedValue({ teamId: 'other-team' } as never);
+
+      await expect(
+        retrospectiveService.createRetrospective(
+          { sprintId: 'sprint-1', teamId: TEAM_ID, facilitatorId: USER_ID },
+          USER_ID
+        )
+      ).rejects.toMatchObject({ code: GATE_CODES.RETROSPECTIVE_TEAM_MEMBERS_ONLY });
+      expect(prisma.sprintRetrospective.create).not.toHaveBeenCalled();
+    });
+
+    it('should refuse a caller who is not a member of the team', async () => {
+      vi.mocked(prisma.teamMember.findUnique).mockResolvedValue(null as never);
+
+      await expect(
+        retrospectiveService.createRetrospective(
+          { sprintId: 'sprint-1', teamId: TEAM_ID, facilitatorId: USER_ID },
+          'outsider'
+        )
+      ).rejects.toMatchObject({ code: GATE_CODES.RETROSPECTIVE_TEAM_MEMBERS_ONLY });
+      expect(prisma.sprintRetrospective.create).not.toHaveBeenCalled();
     });
   });
 
   describe('addItem', () => {
-    it('should add item to retrospective', async () => {
-      const mockRetrospective = { id: 'retro-1' };
+    it('should add item to retrospective and attribute it to the session user', async () => {
+      const mockRetrospective = { id: 'retro-1', teamId: TEAM_ID, isAnonymous: false };
       const mockItem = {
         id: 'test-uuid',
         retrospectiveId: 'retro-1',
         category: 'WENT_WELL',
         content: 'Great teamwork!',
-        authorId: 'user-1',
+        authorId: USER_ID,
         votes: 0,
         order: 1,
       };
 
-      vi.mocked(prisma.sprintRetrospective.findUnique).mockResolvedValue(mockRetrospective as any);
-      vi.mocked(prisma.retrospectiveItem.findFirst).mockResolvedValue(null as any);
-      vi.mocked(prisma.retrospectiveItem.create).mockResolvedValue(mockItem as any);
+      grantMembership();
+      vi.mocked(prisma.sprintRetrospective.findUnique).mockResolvedValue(
+        mockRetrospective as never
+      );
+      vi.mocked(prisma.user.findUnique).mockResolvedValue({
+        firstName: 'Jo',
+        lastName: 'Doe',
+      } as never);
+      vi.mocked(prisma.retrospectiveItem.findFirst).mockResolvedValue(null as never);
+      vi.mocked(prisma.retrospectiveItem.create).mockResolvedValue(mockItem as never);
 
-      const result = await retrospectiveService.addItem('retro-1', {
-        category: 'WENT_WELL',
-        content: 'Great teamwork!',
-        authorId: 'user-1',
-      });
+      const result = await retrospectiveService.addItem(
+        'retro-1',
+        {
+          category: 'WENT_WELL',
+          content: 'Great teamwork!',
+          // A client-supplied author must be ignored, not stored.
+          authorId: 'someone-else',
+          authorName: 'Someone Else',
+        },
+        USER_ID
+      );
 
       expect(result.content).toBe('Great teamwork!');
       expect(result.category).toBe('WENT_WELL');
+      expect(prisma.retrospectiveItem.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ authorId: USER_ID, authorName: 'Jo Doe' }),
+        })
+      );
+    });
+
+    it('should record no author at all in an anonymous retrospective', async () => {
+      grantMembership();
+      vi.mocked(prisma.sprintRetrospective.findUnique).mockResolvedValue({
+        id: 'retro-1',
+        teamId: TEAM_ID,
+        isAnonymous: true,
+      } as never);
+      vi.mocked(prisma.retrospectiveItem.findFirst).mockResolvedValue(null as never);
+      vi.mocked(prisma.retrospectiveItem.create).mockResolvedValue({} as never);
+
+      await retrospectiveService.addItem(
+        'retro-1',
+        { category: 'WENT_WELL', content: 'Anonymous contribution' },
+        USER_ID
+      );
+
+      expect(prisma.retrospectiveItem.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ authorId: null, authorName: null }),
+        })
+      );
+      expect(prisma.user.findUnique).not.toHaveBeenCalled();
     });
 
     it('should throw NotFoundError for non-existent retrospective', async () => {
-      vi.mocked(prisma.sprintRetrospective.findUnique).mockResolvedValue(null as any);
+      vi.mocked(prisma.sprintRetrospective.findUnique).mockResolvedValue(null as never);
 
       await expect(
-        retrospectiveService.addItem('non-existent', {
-          category: 'WENT_WELL',
-          content: 'Test',
-        })
+        retrospectiveService.addItem(
+          'non-existent',
+          {
+            category: 'WENT_WELL',
+            content: 'Test',
+          },
+          USER_ID
+        )
       ).rejects.toThrow(NotFoundError);
+    });
+
+    it('should refuse a caller from another team', async () => {
+      vi.mocked(prisma.sprintRetrospective.findUnique).mockResolvedValue({
+        id: 'retro-1',
+        teamId: TEAM_ID,
+        isAnonymous: false,
+      } as never);
+      vi.mocked(prisma.teamMember.findUnique).mockResolvedValue(null as never);
+
+      await expect(
+        retrospectiveService.addItem(
+          'retro-1',
+          { category: 'WENT_WELL', content: 'Outsider' },
+          'outsider'
+        )
+      ).rejects.toMatchObject({ code: GATE_CODES.RETROSPECTIVE_TEAM_MEMBERS_ONLY });
+      expect(prisma.retrospectiveItem.create).not.toHaveBeenCalled();
     });
   });
 
@@ -246,13 +471,17 @@ describe('RetrospectiveService', () => {
         votes: 1,
       };
 
-      vi.mocked(prisma.retrospectiveItem.findUnique).mockResolvedValue(mockItem as any);
-      vi.mocked(prisma.retroItemVote.findUnique).mockResolvedValue(null as any);
-      vi.mocked(prisma.retroItemVote.create).mockResolvedValue({} as any);
+      grantMembership();
+      vi.mocked(prisma.sprintRetrospective.findUnique).mockResolvedValue({
+        teamId: TEAM_ID,
+      } as never);
+      vi.mocked(prisma.retrospectiveItem.findUnique).mockResolvedValue(mockItem as never);
+      vi.mocked(prisma.retroItemVote.findUnique).mockResolvedValue(null as never);
+      vi.mocked(prisma.retroItemVote.create).mockResolvedValue({} as never);
       vi.mocked(prisma.retrospectiveItem.update).mockResolvedValue({
         ...mockItem,
         votes: 1,
-      } as any);
+      } as never);
 
       const result = await retrospectiveService.voteItem('retro-1', 'item-1', 'user-1');
 
@@ -265,12 +494,28 @@ describe('RetrospectiveService', () => {
         retrospectiveId: 'retro-1',
       };
 
-      vi.mocked(prisma.retrospectiveItem.findUnique).mockResolvedValue(mockItem as any);
-      vi.mocked(prisma.retroItemVote.findUnique).mockResolvedValue({ id: 'vote-1' } as any);
+      grantMembership();
+      vi.mocked(prisma.sprintRetrospective.findUnique).mockResolvedValue({
+        teamId: TEAM_ID,
+      } as never);
+      vi.mocked(prisma.retrospectiveItem.findUnique).mockResolvedValue(mockItem as never);
+      vi.mocked(prisma.retroItemVote.findUnique).mockResolvedValue({ id: 'vote-1' } as never);
 
       await expect(retrospectiveService.voteItem('retro-1', 'item-1', 'user-1')).rejects.toThrow(
         'User has already voted for this item'
       );
+    });
+
+    it('should refuse a caller from another team', async () => {
+      vi.mocked(prisma.sprintRetrospective.findUnique).mockResolvedValue({
+        teamId: TEAM_ID,
+      } as never);
+      vi.mocked(prisma.teamMember.findUnique).mockResolvedValue(null as never);
+
+      await expect(
+        retrospectiveService.voteItem('retro-1', 'item-1', 'outsider')
+      ).rejects.toMatchObject({ code: GATE_CODES.RETROSPECTIVE_TEAM_MEMBERS_ONLY });
+      expect(prisma.retroItemVote.create).not.toHaveBeenCalled();
     });
   });
 
@@ -282,10 +527,14 @@ describe('RetrospectiveService', () => {
         votes: 0,
       };
 
-      vi.mocked(prisma.retrospectiveItem.findUnique).mockResolvedValue(mockItem as any);
-      vi.mocked(prisma.retroItemVote.findUnique).mockResolvedValue({ id: 'vote-1' } as any);
-      vi.mocked(prisma.retroItemVote.delete).mockResolvedValue({} as any);
-      vi.mocked(prisma.retrospectiveItem.update).mockResolvedValue(mockItem as any);
+      grantMembership();
+      vi.mocked(prisma.sprintRetrospective.findUnique).mockResolvedValue({
+        teamId: TEAM_ID,
+      } as never);
+      vi.mocked(prisma.retrospectiveItem.findUnique).mockResolvedValue(mockItem as never);
+      vi.mocked(prisma.retroItemVote.findUnique).mockResolvedValue({ id: 'vote-1' } as never);
+      vi.mocked(prisma.retroItemVote.delete).mockResolvedValue({} as never);
+      vi.mocked(prisma.retrospectiveItem.update).mockResolvedValue(mockItem as never);
 
       const result = await retrospectiveService.unvoteItem('retro-1', 'item-1', 'user-1');
 
@@ -298,8 +547,12 @@ describe('RetrospectiveService', () => {
         retrospectiveId: 'retro-1',
       };
 
-      vi.mocked(prisma.retrospectiveItem.findUnique).mockResolvedValue(mockItem as any);
-      vi.mocked(prisma.retroItemVote.findUnique).mockResolvedValue(null as any);
+      grantMembership();
+      vi.mocked(prisma.sprintRetrospective.findUnique).mockResolvedValue({
+        teamId: TEAM_ID,
+      } as never);
+      vi.mocked(prisma.retrospectiveItem.findUnique).mockResolvedValue(mockItem as never);
+      vi.mocked(prisma.retroItemVote.findUnique).mockResolvedValue(null as never);
 
       await expect(retrospectiveService.unvoteItem('retro-1', 'item-1', 'user-1')).rejects.toThrow(
         NotFoundError
@@ -315,12 +568,21 @@ describe('RetrospectiveService', () => {
         content: 'Updated content',
       };
 
-      vi.mocked(prisma.retrospectiveItem.findUnique).mockResolvedValue(mockItem as any);
-      vi.mocked(prisma.retrospectiveItem.update).mockResolvedValue(mockItem as any);
+      grantMembership();
+      vi.mocked(prisma.sprintRetrospective.findUnique).mockResolvedValue({
+        teamId: TEAM_ID,
+      } as never);
+      vi.mocked(prisma.retrospectiveItem.findUnique).mockResolvedValue(mockItem as never);
+      vi.mocked(prisma.retrospectiveItem.update).mockResolvedValue(mockItem as never);
 
-      const result = await retrospectiveService.updateItem('retro-1', 'item-1', {
-        content: 'Updated content',
-      });
+      const result = await retrospectiveService.updateItem(
+        'retro-1',
+        'item-1',
+        {
+          content: 'Updated content',
+        },
+        USER_ID
+      );
 
       expect(result.content).toBe('Updated content');
     });
@@ -333,16 +595,21 @@ describe('RetrospectiveService', () => {
         retrospectiveId: 'retro-1',
       };
 
-      vi.mocked(prisma.retrospectiveItem.findUnique).mockResolvedValue(mockItem as any);
-      vi.mocked(prisma.retrospectiveItem.delete).mockResolvedValue(mockItem as any);
+      grantMembership();
+      vi.mocked(prisma.sprintRetrospective.findUnique).mockResolvedValue({
+        teamId: TEAM_ID,
+      } as never);
+      vi.mocked(prisma.retrospectiveItem.findUnique).mockResolvedValue(mockItem as never);
+      vi.mocked(prisma.retrospectiveItem.delete).mockResolvedValue(mockItem as never);
 
-      await expect(retrospectiveService.deleteItem('retro-1', 'item-1')).resolves.not.toThrow();
+      await expect(
+        retrospectiveService.deleteItem('retro-1', 'item-1', USER_ID)
+      ).resolves.not.toThrow();
     });
   });
 
   describe('addActionItem', () => {
     it('should add action item to retrospective', async () => {
-      const mockRetrospective = { id: 'retro-1' };
       const mockActionItem = {
         id: 'test-uuid',
         retrospectiveId: 'retro-1',
@@ -352,14 +619,21 @@ describe('RetrospectiveService', () => {
         status: 'PENDING',
       };
 
-      vi.mocked(prisma.sprintRetrospective.findUnique).mockResolvedValue(mockRetrospective as any);
-      vi.mocked(prisma.retroActionItem.create).mockResolvedValue(mockActionItem as any);
+      grantMembership();
+      vi.mocked(prisma.sprintRetrospective.findUnique).mockResolvedValue({
+        teamId: TEAM_ID,
+      } as never);
+      vi.mocked(prisma.retroActionItem.create).mockResolvedValue(mockActionItem as never);
 
-      const result = await retrospectiveService.addActionItem('retro-1', {
-        title: 'Improve CI/CD',
-        description: 'Set up automated testing',
-        ownerId: 'user-1',
-      });
+      const result = await retrospectiveService.addActionItem(
+        'retro-1',
+        {
+          title: 'Improve CI/CD',
+          description: 'Set up automated testing',
+          ownerId: 'user-1',
+        },
+        USER_ID
+      );
 
       expect(result.title).toBe('Improve CI/CD');
       expect(result.status).toBe('PENDING');
@@ -373,15 +647,25 @@ describe('RetrospectiveService', () => {
         retrospectiveId: 'retro-1',
         title: 'Updated Title',
         status: 'IN_PROGRESS',
+        productBacklogItemId: null,
       };
 
-      vi.mocked(prisma.retroActionItem.findUnique).mockResolvedValue(mockActionItem as any);
-      vi.mocked(prisma.retroActionItem.update).mockResolvedValue(mockActionItem as any);
+      grantMembership();
+      vi.mocked(prisma.sprintRetrospective.findUnique).mockResolvedValue({
+        teamId: TEAM_ID,
+      } as never);
+      vi.mocked(prisma.retroActionItem.findUnique).mockResolvedValue(mockActionItem as never);
+      vi.mocked(prisma.retroActionItem.update).mockResolvedValue(mockActionItem as never);
 
-      const result = await retrospectiveService.updateActionItem('retro-1', 'action-1', {
-        title: 'Updated Title',
-        status: 'IN_PROGRESS',
-      });
+      const result = await retrospectiveService.updateActionItem(
+        'retro-1',
+        'action-1',
+        {
+          title: 'Updated Title',
+          status: 'IN_PROGRESS',
+        },
+        USER_ID
+      );
 
       expect(result.title).toBe('Updated Title');
       expect(result.status).toBe('IN_PROGRESS');
@@ -393,16 +677,80 @@ describe('RetrospectiveService', () => {
         retrospectiveId: 'retro-1',
         status: 'COMPLETED',
         completedAt: new Date(),
+        productBacklogItemId: null,
       };
 
-      vi.mocked(prisma.retroActionItem.findUnique).mockResolvedValue(mockActionItem as any);
-      vi.mocked(prisma.retroActionItem.update).mockResolvedValue(mockActionItem as any);
+      grantMembership();
+      vi.mocked(prisma.sprintRetrospective.findUnique).mockResolvedValue({
+        teamId: TEAM_ID,
+      } as never);
+      vi.mocked(prisma.retroActionItem.findUnique).mockResolvedValue(mockActionItem as never);
+      vi.mocked(prisma.retroActionItem.update).mockResolvedValue(mockActionItem as never);
 
-      const result = await retrospectiveService.updateActionItem('retro-1', 'action-1', {
-        status: 'COMPLETED',
-      });
+      const result = await retrospectiveService.updateActionItem(
+        'retro-1',
+        'action-1',
+        {
+          status: 'COMPLETED',
+        },
+        USER_ID
+      );
 
       expect(result.status).toBe('COMPLETED');
+    });
+
+    it('should never let a client move the linked Sprint', async () => {
+      const mockActionItem = {
+        id: 'action-1',
+        retrospectiveId: 'retro-1',
+        title: 'Improve CI/CD',
+        productBacklogItemId: null,
+      };
+
+      grantMembership();
+      vi.mocked(prisma.sprintRetrospective.findUnique).mockResolvedValue({
+        teamId: TEAM_ID,
+      } as never);
+      vi.mocked(prisma.retroActionItem.findUnique).mockResolvedValue(mockActionItem as never);
+      vi.mocked(prisma.retroActionItem.update).mockResolvedValue(mockActionItem as never);
+
+      await retrospectiveService.updateActionItem(
+        'retro-1',
+        'action-1',
+        { relatedSprintId: 'sprint-999' },
+        USER_ID
+      );
+
+      expect(prisma.retroActionItem.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.not.objectContaining({ relatedSprintId: expect.anything() }),
+        })
+      );
+    });
+
+    it('should refuse to un-mark an improvement that is carried by a linked item', async () => {
+      const mockActionItem = {
+        id: 'action-1',
+        retrospectiveId: 'retro-1',
+        productBacklogItemId: 'pbi-1',
+        productBacklogItem: { id: 'pbi-1', title: 'Improve CI/CD' },
+      };
+
+      grantMembership();
+      vi.mocked(prisma.sprintRetrospective.findUnique).mockResolvedValue({
+        teamId: TEAM_ID,
+      } as never);
+      vi.mocked(prisma.retroActionItem.findUnique).mockResolvedValue(mockActionItem as never);
+
+      await expect(
+        retrospectiveService.updateActionItem(
+          'retro-1',
+          'action-1',
+          { addedToSprintBacklog: false },
+          USER_ID
+        )
+      ).rejects.toMatchObject({ code: GATE_CODES.RETROSPECTIVE_ACTION_ITEM_LINKED });
+      expect(prisma.retroActionItem.update).not.toHaveBeenCalled();
     });
   });
 
@@ -413,11 +761,15 @@ describe('RetrospectiveService', () => {
         retrospectiveId: 'retro-1',
       };
 
-      vi.mocked(prisma.retroActionItem.findUnique).mockResolvedValue(mockActionItem as any);
-      vi.mocked(prisma.retroActionItem.delete).mockResolvedValue(mockActionItem as any);
+      grantMembership();
+      vi.mocked(prisma.sprintRetrospective.findUnique).mockResolvedValue({
+        teamId: TEAM_ID,
+      } as never);
+      vi.mocked(prisma.retroActionItem.findUnique).mockResolvedValue(mockActionItem as never);
+      vi.mocked(prisma.retroActionItem.delete).mockResolvedValue(mockActionItem as never);
 
       await expect(
-        retrospectiveService.deleteActionItem('retro-1', 'action-1')
+        retrospectiveService.deleteActionItem('retro-1', 'action-1', USER_ID)
       ).resolves.not.toThrow();
     });
   });
@@ -432,16 +784,506 @@ describe('RetrospectiveService', () => {
         status: 'COMPLETED',
       };
 
-      vi.mocked(prisma.sprintRetrospective.findUnique).mockResolvedValue(mockRetrospective as any);
-      vi.mocked(prisma.sprintRetrospective.update).mockResolvedValue(mockRetrospective as any);
+      grantMembership();
+      vi.mocked(prisma.sprintRetrospective.findUnique).mockResolvedValue(
+        mockRetrospective as never
+      );
+      vi.mocked(prisma.sprintRetrospective.update).mockResolvedValue(mockRetrospective as never);
 
-      const result = await retrospectiveService.updateRetrospective('retro-1', {
-        summary: 'Sprint summary',
-        status: 'COMPLETED',
-      });
+      const result = await retrospectiveService.updateRetrospective(
+        'retro-1',
+        {
+          summary: 'Sprint summary',
+          status: 'COMPLETED',
+        },
+        USER_ID
+      );
 
       expect(result.summary).toBe('Sprint summary');
       expect(result.status).toBe('COMPLETED');
+    });
+
+    it('should persist the Definition of Done reflection', async () => {
+      const mockRetrospective = {
+        id: 'retro-1',
+        sprintId: 'sprint-1',
+        teamId: 'team-1',
+        status: 'IN_PROGRESS',
+        items: [],
+        actionItems: [],
+        attendees: [],
+      };
+
+      grantMembership();
+      vi.mocked(prisma.sprintRetrospective.findUnique).mockResolvedValue(
+        mockRetrospective as never
+      );
+      vi.mocked(prisma.sprintRetrospective.update).mockResolvedValue({
+        ...mockRetrospective,
+        dodReflections: [{ dodItemId: 'dod-item-1', description: 'Reviewed', decision: 'KEEP' }],
+      } as never);
+
+      await retrospectiveService.updateRetrospective(
+        'retro-1',
+        {
+          dodReflections: [{ dodItemId: 'dod-item-1', description: 'Reviewed', decision: 'KEEP' }],
+        },
+        USER_ID
+      );
+
+      expect(prisma.sprintRetrospective.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            dodReflections: [
+              { dodItemId: 'dod-item-1', description: 'Reviewed', decision: 'KEEP' },
+            ],
+          }),
+        })
+      );
+    });
+
+    it('should refuse completion before the sprint has ended', async () => {
+      const mockRetrospective = {
+        id: 'retro-1',
+        sprintId: 'sprint-1',
+        teamId: 'team-1',
+        status: 'IN_PROGRESS',
+      };
+
+      grantMembership();
+      vi.mocked(prisma.sprintRetrospective.findUnique).mockResolvedValue(
+        mockRetrospective as never
+      );
+      vi.mocked(prisma.sprint.findUnique).mockResolvedValue({
+        endDate: new Date(Date.now() + 86_400_000),
+      } as never);
+
+      await expect(
+        retrospectiveService.updateRetrospective('retro-1', { status: 'COMPLETED' }, USER_ID)
+      ).rejects.toMatchObject({ code: GATE_CODES.SPRINT_EVENT_BEFORE_END_DATE });
+      expect(prisma.sprintRetrospective.update).not.toHaveBeenCalled();
+    });
+
+    it('should complete on the day the sprint ends, whatever time its end date stores', async () => {
+      // "The Sprint Retrospective concludes the Sprint", so it belongs to the day the end date
+      // names -- not to the instant that date happens to store.
+      const mockRetrospective = {
+        id: 'retro-1',
+        sprintId: 'sprint-1',
+        teamId: 'team-1',
+        status: 'IN_PROGRESS',
+        items: [],
+        actionItems: [],
+        attendees: [],
+      };
+      const endOfToday = new Date();
+      endOfToday.setHours(23, 59, 59, 999);
+
+      grantMembership();
+      vi.mocked(prisma.sprintRetrospective.findUnique).mockResolvedValue(
+        mockRetrospective as never
+      );
+      vi.mocked(prisma.sprint.findUnique).mockResolvedValue({
+        endDate: endOfToday,
+        status: 'ACTIVE',
+      } as never);
+      vi.mocked(prisma.sprintReview.findUnique).mockResolvedValue({
+        status: 'completed',
+      } as never);
+      vi.mocked(prisma.sprintRetrospective.update).mockResolvedValue({
+        ...mockRetrospective,
+        status: 'COMPLETED',
+      } as never);
+
+      const result = await retrospectiveService.updateRetrospective(
+        'retro-1',
+        { status: 'COMPLETED' },
+        USER_ID
+      );
+
+      expect(result.status).toBe('COMPLETED');
+    });
+
+    it('should complete a retrospective of a sprint that was cancelled before its end date', async () => {
+      const mockRetrospective = {
+        id: 'retro-1',
+        sprintId: 'sprint-1',
+        teamId: 'team-1',
+        status: 'IN_PROGRESS',
+        items: [],
+        actionItems: [],
+        attendees: [],
+      };
+
+      grantMembership();
+      vi.mocked(prisma.sprintRetrospective.findUnique).mockResolvedValue(
+        mockRetrospective as never
+      );
+      vi.mocked(prisma.sprint.findUnique).mockResolvedValue({
+        endDate: new Date(Date.now() + 86_400_000),
+        status: 'CANCELLED',
+      } as never);
+      vi.mocked(prisma.sprintReview.findUnique).mockResolvedValue({
+        status: 'completed',
+      } as never);
+      vi.mocked(prisma.sprintRetrospective.update).mockResolvedValue({
+        ...mockRetrospective,
+        status: 'COMPLETED',
+      } as never);
+
+      const result = await retrospectiveService.updateRetrospective(
+        'retro-1',
+        { status: 'COMPLETED' },
+        USER_ID
+      );
+
+      expect(result.status).toBe('COMPLETED');
+    });
+
+    it('should refuse completion before the sprint review is completed', async () => {
+      const mockRetrospective = {
+        id: 'retro-1',
+        sprintId: 'sprint-1',
+        teamId: 'team-1',
+        status: 'IN_PROGRESS',
+      };
+
+      grantMembership();
+      vi.mocked(prisma.sprintRetrospective.findUnique).mockResolvedValue(
+        mockRetrospective as never
+      );
+      vi.mocked(prisma.sprint.findUnique).mockResolvedValue({
+        endDate: new Date(Date.now() - 86_400_000),
+      } as never);
+      vi.mocked(prisma.sprintReview.findUnique).mockResolvedValue({
+        status: 'in_progress',
+      } as never);
+
+      await expect(
+        retrospectiveService.updateRetrospective('retro-1', { status: 'COMPLETED' }, USER_ID)
+      ).rejects.toMatchObject({ code: GATE_CODES.SPRINT_RETROSPECTIVE_REQUIRES_REVIEW });
+      expect(prisma.sprintRetrospective.update).not.toHaveBeenCalled();
+    });
+
+    it('should complete once the review is completed and the sprint has ended', async () => {
+      const mockRetrospective = {
+        id: 'retro-1',
+        sprintId: 'sprint-1',
+        teamId: 'team-1',
+        status: 'IN_PROGRESS',
+        items: [],
+        actionItems: [],
+        attendees: [],
+      };
+
+      grantMembership();
+      vi.mocked(prisma.sprintRetrospective.findUnique).mockResolvedValue(
+        mockRetrospective as never
+      );
+      vi.mocked(prisma.sprint.findUnique).mockResolvedValue({
+        endDate: new Date(Date.now() - 86_400_000),
+      } as never);
+      vi.mocked(prisma.sprintReview.findUnique).mockResolvedValue({
+        status: 'completed',
+      } as never);
+      vi.mocked(prisma.sprintRetrospective.update).mockResolvedValue({
+        ...mockRetrospective,
+        status: 'COMPLETED',
+      } as never);
+
+      const result = await retrospectiveService.updateRetrospective(
+        'retro-1',
+        {
+          status: 'COMPLETED',
+        },
+        USER_ID
+      );
+
+      expect(result.status).toBe('COMPLETED');
+    });
+
+    it('should refuse a caller from another team', async () => {
+      vi.mocked(prisma.sprintRetrospective.findUnique).mockResolvedValue({
+        id: 'retro-1',
+        teamId: TEAM_ID,
+        status: 'IN_PROGRESS',
+      } as never);
+      vi.mocked(prisma.teamMember.findUnique).mockResolvedValue(null as never);
+
+      await expect(
+        retrospectiveService.updateRetrospective('retro-1', { summary: 'Outsider' }, 'outsider')
+      ).rejects.toMatchObject({ code: GATE_CODES.RETROSPECTIVE_TEAM_MEMBERS_ONLY });
+      expect(prisma.sprintRetrospective.update).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('applyDodChanges', () => {
+    const reflectionRow = (reflections: unknown[]) => ({
+      id: 'retro-1',
+      teamId: TEAM_ID,
+      dodReflections: reflections,
+      items: [],
+      actionItems: [],
+      attendees: [],
+    });
+
+    it('should refuse to apply an empty reflection', async () => {
+      grantMembership();
+      vi.mocked(prisma.sprintRetrospective.findUnique).mockResolvedValue(
+        reflectionRow([]) as never
+      );
+
+      await expect(retrospectiveService.applyDodChanges('retro-1', USER_ID)).rejects.toMatchObject({
+        code: GATE_CODES.RETROSPECTIVE_DOD_CHANGES_MISSING,
+      });
+      expect(definitionOfDoneService.updateDefinitionOfDone).not.toHaveBeenCalled();
+    });
+
+    it('should apply keep, change and retire, append proposals and stamp the version', async () => {
+      grantMembership();
+      vi.mocked(prisma.sprintRetrospective.findUnique).mockResolvedValue(
+        reflectionRow([
+          { dodItemId: 'dod-1', description: 'Peer reviewed', decision: 'KEEP' },
+          {
+            dodItemId: 'dod-2',
+            description: 'Unit tests pass',
+            decision: 'CHANGE',
+            proposedDescription: 'Unit tests pass with 80% coverage',
+          },
+          { dodItemId: 'dod-3', description: 'Manual sign-off', decision: 'RETIRE' },
+          { dodItemId: null, description: 'Deployed to staging', decision: 'KEEP' },
+        ]) as never
+      );
+      vi.mocked(definitionOfDoneService.getDefinitionOfDone).mockResolvedValue({
+        items: [
+          {
+            id: 'dod-1',
+            description: 'Peer reviewed',
+            category: 'review',
+            isActive: true,
+            order: 0,
+          },
+          {
+            id: 'dod-2',
+            description: 'Unit tests pass',
+            category: 'testing',
+            isActive: true,
+            order: 1,
+          },
+          {
+            id: 'dod-3',
+            description: 'Manual sign-off',
+            category: 'quality',
+            isActive: true,
+            order: 2,
+          },
+          {
+            id: 'dod-4',
+            description: 'Uninspected criterion',
+            category: 'quality',
+            isActive: true,
+            order: 3,
+          },
+        ],
+      } as never);
+      vi.mocked(definitionOfDoneService.updateDefinitionOfDone).mockResolvedValue({
+        version: 4,
+      } as never);
+      vi.mocked(prisma.sprintRetrospective.update).mockResolvedValue({
+        ...reflectionRow([]),
+        dodVersionAtPush: 4,
+      } as never);
+
+      const result = await retrospectiveService.applyDodChanges('retro-1', USER_ID);
+
+      expect(definitionOfDoneService.updateDefinitionOfDone).toHaveBeenCalledWith(
+        TEAM_ID,
+        [
+          {
+            id: 'dod-1',
+            description: 'Peer reviewed',
+            category: 'review',
+            isActive: true,
+            order: 0,
+          },
+          {
+            id: 'dod-2',
+            description: 'Unit tests pass with 80% coverage',
+            category: 'testing',
+            isActive: true,
+            order: 1,
+          },
+          // dod-3 was retired, and dod-4 was never inspected so it survives untouched.
+          {
+            id: 'dod-4',
+            description: 'Uninspected criterion',
+            category: 'quality',
+            isActive: true,
+            order: 2,
+          },
+          { description: 'Deployed to staging', isActive: true, order: 3 },
+        ],
+        USER_ID
+      );
+      expect(prisma.sprintRetrospective.update).toHaveBeenCalledWith(
+        expect.objectContaining({ data: expect.objectContaining({ dodVersionAtPush: 4 }) })
+      );
+      expect(result.dodVersionAtPush).toBe(4);
+    });
+
+    it('should refuse a caller from another team', async () => {
+      vi.mocked(prisma.sprintRetrospective.findUnique).mockResolvedValue(
+        reflectionRow([{ dodItemId: 'dod-1', description: 'X', decision: 'KEEP' }]) as never
+      );
+      vi.mocked(prisma.teamMember.findUnique).mockResolvedValue(null as never);
+
+      await expect(
+        retrospectiveService.applyDodChanges('retro-1', 'outsider')
+      ).rejects.toMatchObject({ code: GATE_CODES.RETROSPECTIVE_TEAM_MEMBERS_ONLY });
+      expect(definitionOfDoneService.updateDefinitionOfDone).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('materializeActionItem', () => {
+    const actionItemRow = (overrides: Record<string, unknown> = {}) => ({
+      id: 'action-1',
+      retrospectiveId: 'retro-1',
+      title: 'Improve CI/CD',
+      description: 'Set up automated testing',
+      retrospective: { id: 'retro-1', teamId: TEAM_ID },
+      productBacklogItemId: null,
+      productBacklogItem: null,
+      ...overrides,
+    });
+
+    it('should create the backlog item, link it and record the target Sprint', async () => {
+      grantMembership();
+      vi.mocked(prisma.retroActionItem.findUnique).mockResolvedValue(actionItemRow() as never);
+      vi.mocked(prisma.sprint.findFirst).mockResolvedValue({ id: 'sprint-next' } as never);
+      vi.mocked(productBacklogService.createPBI).mockResolvedValue({
+        id: 'pbi-1',
+        title: 'Improve CI/CD',
+      } as never);
+      vi.mocked(prisma.retroActionItem.update).mockResolvedValue(
+        actionItemRow({
+          productBacklogItemId: 'pbi-1',
+          addedToSprintBacklog: true,
+          relatedSprintId: 'sprint-next',
+          productBacklogItem: { id: 'pbi-1', title: 'Improve CI/CD' },
+        }) as never
+      );
+
+      const result = await retrospectiveService.materializeActionItem('action-1', USER_ID);
+
+      expect(productBacklogService.createPBI).toHaveBeenCalledWith(
+        USER_ID,
+        expect.objectContaining({
+          teamId: TEAM_ID,
+          title: 'Improve CI/CD',
+          labels: ['retro-action'],
+        })
+      );
+      expect(prisma.retroActionItem.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            productBacklogItemId: 'pbi-1',
+            addedToSprintBacklog: true,
+            relatedSprintId: 'sprint-next',
+          }),
+        })
+      );
+      expect(result.productBacklogItemId).toBe('pbi-1');
+    });
+
+    it('should refuse an improvement that is already linked', async () => {
+      grantMembership();
+      vi.mocked(prisma.retroActionItem.findUnique).mockResolvedValue(
+        actionItemRow({
+          productBacklogItemId: 'pbi-1',
+          productBacklogItem: { id: 'pbi-1', title: 'Improve CI/CD' },
+        }) as never
+      );
+
+      await expect(
+        retrospectiveService.materializeActionItem('action-1', USER_ID)
+      ).rejects.toMatchObject({ code: GATE_CODES.RETROSPECTIVE_ACTION_ITEM_LINKED });
+      expect(productBacklogService.createPBI).not.toHaveBeenCalled();
+    });
+
+    it('should remove the just-created item when the link cannot be written', async () => {
+      grantMembership();
+      vi.mocked(prisma.retroActionItem.findUnique).mockResolvedValue(actionItemRow() as never);
+      vi.mocked(prisma.sprint.findFirst).mockResolvedValue(null as never);
+      vi.mocked(productBacklogService.createPBI).mockResolvedValue({ id: 'pbi-1' } as never);
+      vi.mocked(prisma.retroActionItem.update).mockRejectedValue(new Error('link failed'));
+      vi.mocked(prisma.productBacklogItem.delete).mockResolvedValue({} as never);
+
+      await expect(retrospectiveService.materializeActionItem('action-1', USER_ID)).rejects.toThrow(
+        'link failed'
+      );
+      expect(prisma.productBacklogItem.delete).toHaveBeenCalledWith({ where: { id: 'pbi-1' } });
+    });
+  });
+
+  describe('linkActionItemToPbi', () => {
+    const actionItemRow = (overrides: Record<string, unknown> = {}) => ({
+      id: 'action-1',
+      retrospectiveId: 'retro-1',
+      retrospective: { id: 'retro-1', teamId: TEAM_ID },
+      productBacklogItemId: null,
+      productBacklogItem: null,
+      ...overrides,
+    });
+
+    it('should link an existing item of the same team', async () => {
+      grantMembership();
+      vi.mocked(prisma.retroActionItem.findUnique).mockResolvedValue(actionItemRow() as never);
+      vi.mocked(prisma.productBacklogItem.findUnique).mockResolvedValue({
+        id: 'pbi-1',
+        teamId: TEAM_ID,
+      } as never);
+      vi.mocked(prisma.sprint.findFirst).mockResolvedValue({ id: 'sprint-next' } as never);
+      vi.mocked(prisma.retroActionItem.update).mockResolvedValue(
+        actionItemRow({
+          productBacklogItemId: 'pbi-1',
+          addedToSprintBacklog: true,
+          relatedSprintId: 'sprint-next',
+        }) as never
+      );
+
+      const result = await retrospectiveService.linkActionItemToPbi('action-1', 'pbi-1', USER_ID);
+
+      expect(result.productBacklogItemId).toBe('pbi-1');
+      expect(prisma.retroActionItem.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ addedToSprintBacklog: true }),
+        })
+      );
+    });
+
+    it('should refuse an item that belongs to another team', async () => {
+      grantMembership();
+      vi.mocked(prisma.retroActionItem.findUnique).mockResolvedValue(actionItemRow() as never);
+      vi.mocked(prisma.productBacklogItem.findUnique).mockResolvedValue({
+        id: 'pbi-1',
+        teamId: 'other-team',
+      } as never);
+
+      await expect(
+        retrospectiveService.linkActionItemToPbi('action-1', 'pbi-1', USER_ID)
+      ).rejects.toThrow('must belong to the same team');
+      expect(prisma.retroActionItem.update).not.toHaveBeenCalled();
+    });
+
+    it('should refuse an improvement that is already linked', async () => {
+      grantMembership();
+      vi.mocked(prisma.retroActionItem.findUnique).mockResolvedValue(
+        actionItemRow({ productBacklogItemId: 'pbi-0' }) as never
+      );
+
+      await expect(
+        retrospectiveService.linkActionItemToPbi('action-1', 'pbi-1', USER_ID)
+      ).rejects.toMatchObject({ code: GATE_CODES.RETROSPECTIVE_ACTION_ITEM_LINKED });
     });
   });
 
@@ -454,9 +1296,18 @@ describe('RetrospectiveService', () => {
           actionItems: [
             {
               id: 'action-1',
+              retrospectiveId: 'retro-1',
               title: 'Action 1',
+              description: null,
+              ownerId: 'user-1',
+              dueDate: null,
               status: 'PENDING',
               addedToSprintBacklog: false,
+              relatedSprintId: null,
+              productBacklogItemId: null,
+              completedAt: null,
+              createdAt: new Date(),
+              updatedAt: new Date(),
               owner: { id: 'user-1', firstName: 'John', lastName: 'Doe', email: 'john@test.com' },
             },
           ],
@@ -464,18 +1315,27 @@ describe('RetrospectiveService', () => {
         },
       ];
 
-      vi.mocked(prisma.sprintRetrospective.findMany).mockResolvedValue(mockRetrospectives as any);
+      grantMembership();
+      vi.mocked(prisma.sprintRetrospective.findMany).mockResolvedValue(mockRetrospectives as never);
 
-      const result = await retrospectiveService.getPendingActionItemsByTeam(teamId);
+      const result = await retrospectiveService.getPendingActionItemsByTeam(teamId, USER_ID);
 
       expect(result).toHaveLength(1);
       expect(result[0]!.title).toBe('Action 1');
     });
+
+    it('should refuse a caller who is not a member of the team', async () => {
+      vi.mocked(prisma.teamMember.findUnique).mockResolvedValue(null as never);
+
+      await expect(
+        retrospectiveService.getPendingActionItemsByTeam(TEAM_ID, 'outsider')
+      ).rejects.toMatchObject({ code: GATE_CODES.RETROSPECTIVE_TEAM_MEMBERS_ONLY });
+      expect(prisma.sprintRetrospective.findMany).not.toHaveBeenCalled();
+    });
   });
 
-  describe('addAttendee', () => {
+  describe('attendees', () => {
     it('should add attendee to retrospective', async () => {
-      const mockRetrospective = { id: 'retro-1' };
       const mockAttendee = {
         id: 'test-uuid',
         retrospectiveId: 'retro-1',
@@ -485,52 +1345,843 @@ describe('RetrospectiveService', () => {
         attended: true,
       };
 
-      vi.mocked(prisma.sprintRetrospective.findUnique).mockResolvedValue(mockRetrospective as any);
-      vi.mocked(prisma.retroAttendee.create).mockResolvedValue(mockAttendee as any);
+      grantMembership();
+      vi.mocked(prisma.sprintRetrospective.findUnique).mockResolvedValue({
+        teamId: TEAM_ID,
+      } as never);
+      vi.mocked(prisma.retroAttendee.create).mockResolvedValue(mockAttendee as never);
 
-      const result = await retrospectiveService.addAttendee('retro-1', {
-        name: 'John Doe',
-        email: 'john@test.com',
-        role: 'DEVELOPERS',
-        attended: true,
-      });
+      const result = await retrospectiveService.addAttendee(
+        'retro-1',
+        {
+          name: 'John Doe',
+          email: 'john@test.com',
+          role: 'DEVELOPERS',
+          attended: true,
+        },
+        USER_ID
+      );
 
       expect(result.name).toBe('John Doe');
       expect(result.attended).toBe(true);
     });
-  });
 
-  describe('updateAttendee', () => {
     it('should update attendee', async () => {
       const mockAttendee = {
         id: 'attendee-1',
+        retrospectiveId: 'retro-1',
         name: 'Jane Doe',
         email: 'jane@test.com',
         role: 'SCRUM_MASTER',
         attended: false,
       };
 
-      vi.mocked(prisma.retroAttendee.findUnique).mockResolvedValue(mockAttendee as any);
-      vi.mocked(prisma.retroAttendee.update).mockResolvedValue(mockAttendee as any);
+      grantMembership();
+      vi.mocked(prisma.retroAttendee.findUnique).mockResolvedValue(mockAttendee as never);
+      vi.mocked(prisma.sprintRetrospective.findUnique).mockResolvedValue({
+        teamId: TEAM_ID,
+      } as never);
+      vi.mocked(prisma.retroAttendee.update).mockResolvedValue(mockAttendee as never);
 
-      const result = await retrospectiveService.updateAttendee('attendee-1', {
-        name: 'Jane Doe',
-        attended: false,
-      });
+      const result = await retrospectiveService.updateAttendee(
+        'attendee-1',
+        {
+          name: 'Jane Doe',
+          attended: false,
+        },
+        USER_ID
+      );
 
       expect(result.name).toBe('Jane Doe');
       expect(result.attended).toBe(false);
     });
+
+    it('should delete attendee', async () => {
+      const mockAttendee = { id: 'attendee-1', retrospectiveId: 'retro-1' };
+
+      grantMembership();
+      vi.mocked(prisma.retroAttendee.findUnique).mockResolvedValue(mockAttendee as never);
+      vi.mocked(prisma.sprintRetrospective.findUnique).mockResolvedValue({
+        teamId: TEAM_ID,
+      } as never);
+      vi.mocked(prisma.retroAttendee.delete).mockResolvedValue(mockAttendee as never);
+
+      await expect(
+        retrospectiveService.deleteAttendee('attendee-1', USER_ID)
+      ).resolves.not.toThrow();
+    });
+
+    it('should refuse to rewrite an attendee of another team', async () => {
+      vi.mocked(prisma.retroAttendee.findUnique).mockResolvedValue({
+        id: 'attendee-1',
+        retrospectiveId: 'retro-1',
+      } as never);
+      vi.mocked(prisma.sprintRetrospective.findUnique).mockResolvedValue({
+        teamId: TEAM_ID,
+      } as never);
+      vi.mocked(prisma.teamMember.findUnique).mockResolvedValue(null as never);
+
+      await expect(
+        retrospectiveService.deleteAttendee('attendee-1', 'outsider')
+      ).rejects.toMatchObject({ code: GATE_CODES.RETROSPECTIVE_TEAM_MEMBERS_ONLY });
+      expect(prisma.retroAttendee.delete).not.toHaveBeenCalled();
+    });
   });
 
-  describe('deleteAttendee', () => {
-    it('should delete attendee', async () => {
-      const mockAttendee = { id: 'attendee-1' };
+  describe('guard clauses and serialization (branch coverage)', () => {
+    it('createRetrospective should require sprint, team and facilitator ids', async () => {
+      await expect(
+        retrospectiveService.createRetrospective({ sprintId: 'sprint-1' }, USER_ID)
+      ).rejects.toThrow('Sprint ID, Team ID, and Facilitator ID are required');
+      expect(prisma.sprint.findUnique).not.toHaveBeenCalled();
+    });
 
-      vi.mocked(prisma.retroAttendee.findUnique).mockResolvedValue(mockAttendee as any);
-      vi.mocked(prisma.retroAttendee.delete).mockResolvedValue(mockAttendee as any);
+    it('createRetrospective should throw NotFoundError when the sprint does not exist', async () => {
+      grantMembership();
+      vi.mocked(prisma.sprint.findUnique).mockResolvedValue(null as never);
 
-      await expect(retrospectiveService.deleteAttendee('attendee-1')).resolves.not.toThrow();
+      await expect(
+        retrospectiveService.createRetrospective(
+          { sprintId: 'sprint-x', teamId: TEAM_ID, facilitatorId: USER_ID },
+          USER_ID
+        )
+      ).rejects.toThrow(NotFoundError);
+      expect(prisma.sprintRetrospective.create).not.toHaveBeenCalled();
+    });
+
+    it('addItem should require content', async () => {
+      grantMembership();
+      vi.mocked(prisma.sprintRetrospective.findUnique).mockResolvedValue({
+        id: 'retro-1',
+        teamId: TEAM_ID,
+        isAnonymous: false,
+      } as never);
+
+      await expect(
+        retrospectiveService.addItem('retro-1', { category: 'WENT_WELL' }, USER_ID)
+      ).rejects.toThrow('Item content is required');
+      expect(prisma.retrospectiveItem.create).not.toHaveBeenCalled();
+    });
+
+    it('addItem should tolerate a missing author record', async () => {
+      grantMembership();
+      vi.mocked(prisma.sprintRetrospective.findUnique).mockResolvedValue({
+        id: 'retro-1',
+        teamId: TEAM_ID,
+        isAnonymous: false,
+      } as never);
+      vi.mocked(prisma.user.findUnique).mockResolvedValue(null as never);
+      vi.mocked(prisma.retrospectiveItem.findFirst).mockResolvedValue(null as never);
+      vi.mocked(prisma.retrospectiveItem.create).mockResolvedValue({ id: 'item-1' } as never);
+
+      await retrospectiveService.addItem(
+        'retro-1',
+        { category: 'WENT_WELL', content: 'x' },
+        USER_ID
+      );
+
+      expect(prisma.retrospectiveItem.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ authorId: USER_ID, authorName: null }),
+        })
+      );
+    });
+
+    it('unvoteItem should reject an item that belongs to another retrospective', async () => {
+      grantMembership();
+      vi.mocked(prisma.sprintRetrospective.findUnique).mockResolvedValue({
+        teamId: TEAM_ID,
+      } as never);
+      vi.mocked(prisma.retrospectiveItem.findUnique).mockResolvedValue({
+        id: 'item-1',
+        retrospectiveId: 'other-retro',
+      } as never);
+
+      await expect(retrospectiveService.unvoteItem('retro-1', 'item-1', USER_ID)).rejects.toThrow(
+        NotFoundError
+      );
+      expect(prisma.retroItemVote.delete).not.toHaveBeenCalled();
+    });
+
+    it('updateItem should reject an item that belongs to another retrospective', async () => {
+      grantMembership();
+      vi.mocked(prisma.sprintRetrospective.findUnique).mockResolvedValue({
+        teamId: TEAM_ID,
+      } as never);
+      vi.mocked(prisma.retrospectiveItem.findUnique).mockResolvedValue({
+        id: 'item-1',
+        retrospectiveId: 'other-retro',
+      } as never);
+
+      await expect(
+        retrospectiveService.updateItem('retro-1', 'item-1', { content: 'x' }, USER_ID)
+      ).rejects.toThrow(NotFoundError);
+      expect(prisma.retrospectiveItem.update).not.toHaveBeenCalled();
+    });
+
+    it('deleteItem should reject an item that belongs to another retrospective', async () => {
+      grantMembership();
+      vi.mocked(prisma.sprintRetrospective.findUnique).mockResolvedValue({
+        teamId: TEAM_ID,
+      } as never);
+      vi.mocked(prisma.retrospectiveItem.findUnique).mockResolvedValue({
+        id: 'item-1',
+        retrospectiveId: 'other-retro',
+      } as never);
+
+      await expect(retrospectiveService.deleteItem('retro-1', 'item-1', USER_ID)).rejects.toThrow(
+        NotFoundError
+      );
+      expect(prisma.retrospectiveItem.delete).not.toHaveBeenCalled();
+    });
+
+    it('addActionItem should require a title', async () => {
+      grantMembership();
+      vi.mocked(prisma.sprintRetrospective.findUnique).mockResolvedValue({
+        teamId: TEAM_ID,
+      } as never);
+
+      await expect(
+        retrospectiveService.addActionItem('retro-1', { ownerId: USER_ID }, USER_ID)
+      ).rejects.toThrow('Action item title is required');
+      expect(prisma.retroActionItem.create).not.toHaveBeenCalled();
+    });
+
+    it('addActionItem should require an owner', async () => {
+      grantMembership();
+      vi.mocked(prisma.sprintRetrospective.findUnique).mockResolvedValue({
+        teamId: TEAM_ID,
+      } as never);
+
+      await expect(
+        retrospectiveService.addActionItem('retro-1', { title: 'Improve CI' }, USER_ID)
+      ).rejects.toThrow('Action item owner is required');
+      expect(prisma.retroActionItem.create).not.toHaveBeenCalled();
+    });
+
+    it('updateActionItem should reject an action item from another retrospective', async () => {
+      grantMembership();
+      vi.mocked(prisma.sprintRetrospective.findUnique).mockResolvedValue({
+        teamId: TEAM_ID,
+      } as never);
+      vi.mocked(prisma.retroActionItem.findUnique).mockResolvedValue({
+        id: 'action-1',
+        retrospectiveId: 'other-retro',
+      } as never);
+
+      await expect(
+        retrospectiveService.updateActionItem('retro-1', 'action-1', { title: 'x' }, USER_ID)
+      ).rejects.toThrow(NotFoundError);
+      expect(prisma.retroActionItem.update).not.toHaveBeenCalled();
+    });
+
+    it('updateActionItem should write description, due date and the backlog flag when supplied', async () => {
+      const row = { id: 'action-1', retrospectiveId: 'retro-1', productBacklogItemId: null };
+      grantMembership();
+      vi.mocked(prisma.sprintRetrospective.findUnique).mockResolvedValue({
+        teamId: TEAM_ID,
+      } as never);
+      vi.mocked(prisma.retroActionItem.findUnique).mockResolvedValue(row as never);
+      vi.mocked(prisma.retroActionItem.update).mockResolvedValue(row as never);
+
+      await retrospectiveService.updateActionItem(
+        'retro-1',
+        'action-1',
+        { description: 'Details', dueDate: new Date('2024-05-01'), addedToSprintBacklog: true },
+        USER_ID
+      );
+
+      expect(prisma.retroActionItem.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            description: 'Details',
+            dueDate: new Date('2024-05-01'),
+            addedToSprintBacklog: true,
+          }),
+        })
+      );
+    });
+
+    it('updateActionItem should clear description and due date when set to null', async () => {
+      const row = { id: 'action-1', retrospectiveId: 'retro-1', productBacklogItemId: null };
+      grantMembership();
+      vi.mocked(prisma.sprintRetrospective.findUnique).mockResolvedValue({
+        teamId: TEAM_ID,
+      } as never);
+      vi.mocked(prisma.retroActionItem.findUnique).mockResolvedValue(row as never);
+      vi.mocked(prisma.retroActionItem.update).mockResolvedValue(row as never);
+
+      await retrospectiveService.updateActionItem(
+        'retro-1',
+        'action-1',
+        { description: null, dueDate: null },
+        USER_ID
+      );
+
+      expect(prisma.retroActionItem.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ dueDate: null }),
+        })
+      );
+    });
+
+    it('deleteActionItem should reject an action item from another retrospective', async () => {
+      grantMembership();
+      vi.mocked(prisma.sprintRetrospective.findUnique).mockResolvedValue({
+        teamId: TEAM_ID,
+      } as never);
+      vi.mocked(prisma.retroActionItem.findUnique).mockResolvedValue({
+        id: 'action-1',
+        retrospectiveId: 'other-retro',
+      } as never);
+
+      await expect(
+        retrospectiveService.deleteActionItem('retro-1', 'action-1', USER_ID)
+      ).rejects.toThrow(NotFoundError);
+      expect(prisma.retroActionItem.delete).not.toHaveBeenCalled();
+    });
+
+    it('materializeActionItem should throw NotFoundError when the improvement does not exist', async () => {
+      vi.mocked(prisma.retroActionItem.findUnique).mockResolvedValue(null as never);
+
+      await expect(retrospectiveService.materializeActionItem('missing', USER_ID)).rejects.toThrow(
+        NotFoundError
+      );
+      expect(productBacklogService.createPBI).not.toHaveBeenCalled();
+    });
+
+    it('materializeActionItem should record a null target sprint when the team has none active', async () => {
+      grantMembership();
+      vi.mocked(prisma.retroActionItem.findUnique).mockResolvedValue({
+        id: 'action-1',
+        retrospectiveId: 'retro-1',
+        title: 'Improve CI',
+        description: null,
+        retrospective: { id: 'retro-1', teamId: TEAM_ID },
+        productBacklogItemId: null,
+        productBacklogItem: null,
+      } as never);
+      vi.mocked(prisma.sprint.findFirst).mockResolvedValue(null as never);
+      vi.mocked(productBacklogService.createPBI).mockResolvedValue({
+        id: 'pbi-1',
+        title: 'Improve CI',
+      } as never);
+      vi.mocked(prisma.retroActionItem.update).mockResolvedValue({
+        id: 'action-1',
+        retrospectiveId: 'retro-1',
+        productBacklogItemId: 'pbi-1',
+      } as never);
+
+      await retrospectiveService.materializeActionItem('action-1', USER_ID);
+
+      expect(prisma.retroActionItem.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ relatedSprintId: null }),
+        })
+      );
+    });
+
+    it('materializeActionItem should swallow a failed cleanup without masking the original error', async () => {
+      grantMembership();
+      vi.mocked(prisma.retroActionItem.findUnique).mockResolvedValue({
+        id: 'action-1',
+        retrospectiveId: 'retro-1',
+        title: 'Improve CI',
+        description: null,
+        retrospective: { id: 'retro-1', teamId: TEAM_ID },
+        productBacklogItemId: null,
+        productBacklogItem: null,
+      } as never);
+      vi.mocked(prisma.sprint.findFirst).mockResolvedValue(null as never);
+      vi.mocked(productBacklogService.createPBI).mockResolvedValue({
+        id: 'pbi-1',
+        title: 'Improve CI',
+      } as never);
+      vi.mocked(prisma.retroActionItem.update).mockRejectedValue(new Error('link failed'));
+      vi.mocked(prisma.productBacklogItem.delete).mockRejectedValue(new Error('cleanup failed'));
+
+      await expect(retrospectiveService.materializeActionItem('action-1', USER_ID)).rejects.toThrow(
+        'link failed'
+      );
+      expect(prisma.productBacklogItem.delete).toHaveBeenCalledWith({ where: { id: 'pbi-1' } });
+    });
+
+    it('linkActionItemToPbi should throw NotFoundError when the improvement does not exist', async () => {
+      vi.mocked(prisma.retroActionItem.findUnique).mockResolvedValue(null as never);
+
+      await expect(
+        retrospectiveService.linkActionItemToPbi('missing', 'pbi-1', USER_ID)
+      ).rejects.toThrow(NotFoundError);
+      expect(prisma.productBacklogItem.findUnique).not.toHaveBeenCalled();
+    });
+
+    it('linkActionItemToPbi should throw NotFoundError when the backlog item does not exist', async () => {
+      grantMembership();
+      vi.mocked(prisma.retroActionItem.findUnique).mockResolvedValue({
+        id: 'action-1',
+        retrospectiveId: 'retro-1',
+        retrospective: { id: 'retro-1', teamId: TEAM_ID },
+        productBacklogItemId: null,
+        productBacklogItem: null,
+      } as never);
+      vi.mocked(prisma.productBacklogItem.findUnique).mockResolvedValue(null as never);
+
+      await expect(
+        retrospectiveService.linkActionItemToPbi('action-1', 'pbi-1', USER_ID)
+      ).rejects.toThrow(NotFoundError);
+      expect(prisma.retroActionItem.update).not.toHaveBeenCalled();
+    });
+
+    it('linkActionItemToPbi should record a null target sprint when the team has none active', async () => {
+      grantMembership();
+      vi.mocked(prisma.retroActionItem.findUnique).mockResolvedValue({
+        id: 'action-1',
+        retrospectiveId: 'retro-1',
+        retrospective: { id: 'retro-1', teamId: TEAM_ID },
+        productBacklogItemId: null,
+        productBacklogItem: null,
+      } as never);
+      vi.mocked(prisma.productBacklogItem.findUnique).mockResolvedValue({
+        id: 'pbi-1',
+        teamId: TEAM_ID,
+      } as never);
+      vi.mocked(prisma.sprint.findFirst).mockResolvedValue(null as never);
+      vi.mocked(prisma.retroActionItem.update).mockResolvedValue({
+        id: 'action-1',
+        retrospectiveId: 'retro-1',
+        productBacklogItemId: 'pbi-1',
+      } as never);
+
+      await retrospectiveService.linkActionItemToPbi('action-1', 'pbi-1', USER_ID);
+
+      expect(prisma.retroActionItem.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ relatedSprintId: null }),
+        })
+      );
+    });
+
+    it('updateRetrospective should clear the reflection to SQL NULL when explicitly null', async () => {
+      const mockRetrospective = {
+        id: 'retro-1',
+        sprintId: 'sprint-1',
+        teamId: 'team-1',
+        status: 'IN_PROGRESS',
+        items: [],
+        actionItems: [],
+        attendees: [],
+      };
+      grantMembership();
+      vi.mocked(prisma.sprintRetrospective.findUnique).mockResolvedValue(
+        mockRetrospective as never
+      );
+      vi.mocked(prisma.sprintRetrospective.update).mockResolvedValue(mockRetrospective as never);
+
+      await retrospectiveService.updateRetrospective('retro-1', { dodReflections: null }, USER_ID);
+
+      expect(prisma.sprintRetrospective.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ dodReflections: expect.anything() }),
+        })
+      );
+    });
+
+    it('applyDodChanges should throw NotFoundError when the retrospective does not exist', async () => {
+      vi.mocked(prisma.sprintRetrospective.findUnique).mockResolvedValue(null as never);
+
+      await expect(retrospectiveService.applyDodChanges('missing', USER_ID)).rejects.toThrow(
+        NotFoundError
+      );
+      expect(definitionOfDoneService.updateDefinitionOfDone).not.toHaveBeenCalled();
+    });
+
+    it('applyDodChanges should fall back to the recorded description for a CHANGE without a proposal', async () => {
+      grantMembership();
+      vi.mocked(prisma.sprintRetrospective.findUnique).mockResolvedValue({
+        id: 'retro-1',
+        teamId: TEAM_ID,
+        dodReflections: [
+          { dodItemId: 'dod-1', description: 'Peer reviewed', decision: 'CHANGE' },
+          { dodItemId: null, description: 'Deployed', decision: 'CHANGE' },
+        ],
+        items: [],
+        actionItems: [],
+        attendees: [],
+      } as never);
+      vi.mocked(definitionOfDoneService.getDefinitionOfDone).mockResolvedValue({
+        items: [{ id: 'dod-1', description: 'Peer reviewed', isActive: true, order: 0 }],
+      } as never);
+      vi.mocked(definitionOfDoneService.updateDefinitionOfDone).mockResolvedValue({
+        version: 2,
+      } as never);
+      vi.mocked(prisma.sprintRetrospective.update).mockResolvedValue({
+        id: 'retro-1',
+        teamId: TEAM_ID,
+        dodVersionAtPush: 2,
+        items: [],
+        actionItems: [],
+        attendees: [],
+      } as never);
+
+      await retrospectiveService.applyDodChanges('retro-1', USER_ID);
+
+      expect(definitionOfDoneService.updateDefinitionOfDone).toHaveBeenCalledWith(
+        TEAM_ID,
+        [
+          { id: 'dod-1', description: 'Peer reviewed', isActive: true, order: 0 },
+          { description: 'Deployed', isActive: true, order: 1 },
+        ],
+        USER_ID
+      );
+    });
+
+    it('addAttendee should throw NotFoundError when the retrospective does not exist', async () => {
+      vi.mocked(prisma.sprintRetrospective.findUnique).mockResolvedValue(null as never);
+
+      await expect(
+        retrospectiveService.addAttendee(
+          'missing',
+          { name: 'X', role: 'DEVELOPERS', attended: true },
+          USER_ID
+        )
+      ).rejects.toThrow(NotFoundError);
+      expect(prisma.retroAttendee.create).not.toHaveBeenCalled();
+    });
+
+    it('updateAttendee should throw NotFoundError when the attendee does not exist', async () => {
+      vi.mocked(prisma.retroAttendee.findUnique).mockResolvedValue(null as never);
+
+      await expect(
+        retrospectiveService.updateAttendee('missing', { name: 'X' }, USER_ID)
+      ).rejects.toThrow(NotFoundError);
+    });
+
+    it('updateAttendee should write the email and role when supplied', async () => {
+      grantMembership();
+      vi.mocked(prisma.retroAttendee.findUnique).mockResolvedValue({
+        id: 'attendee-1',
+        retrospectiveId: 'retro-1',
+      } as never);
+      vi.mocked(prisma.sprintRetrospective.findUnique).mockResolvedValue({
+        teamId: TEAM_ID,
+      } as never);
+      vi.mocked(prisma.retroAttendee.update).mockResolvedValue({
+        id: 'attendee-1',
+        retrospectiveId: 'retro-1',
+      } as never);
+
+      await retrospectiveService.updateAttendee(
+        'attendee-1',
+        { email: 'new@test.com', role: 'SCRUM_MASTER' },
+        USER_ID
+      );
+
+      expect(prisma.retroAttendee.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ email: 'new@test.com', role: 'SCRUM_MASTER' }),
+        })
+      );
+    });
+
+    it('deleteAttendee should throw NotFoundError when the attendee does not exist', async () => {
+      vi.mocked(prisma.retroAttendee.findUnique).mockResolvedValue(null as never);
+
+      await expect(retrospectiveService.deleteAttendee('missing', USER_ID)).rejects.toThrow(
+        NotFoundError
+      );
+      expect(prisma.retroAttendee.delete).not.toHaveBeenCalled();
+    });
+
+    it('getRetrospectivesByTeam should serialize votes, action items and attendees', async () => {
+      grantMembership('SCRUM_MASTER');
+      vi.mocked(prisma.sprintRetrospective.findMany).mockResolvedValue([
+        {
+          id: 'retro-1',
+          sprintId: 'sprint-1',
+          teamId: TEAM_ID,
+          retroDate: new Date('2024-01-15'),
+          facilitatorId: USER_ID,
+          status: 'COMPLETED',
+          isAnonymous: false,
+          smNotes: 'Coach note',
+          summary: 'Summary',
+          items: [
+            {
+              id: 'item-1',
+              retrospectiveId: 'retro-1',
+              category: 'WENT_WELL',
+              content: 'Great',
+              authorId: USER_ID,
+              authorName: 'Jo Doe',
+              createdBy: USER_ID,
+              createdAt: new Date(),
+              updatedAt: new Date(),
+              order: 1,
+              votes: 1,
+              votesBy: [{ userId: 'voter-1' }],
+            },
+          ],
+          actionItems: [
+            {
+              id: 'action-1',
+              retrospectiveId: 'retro-1',
+              title: 'Improve CI',
+              description: null,
+              ownerId: USER_ID,
+              dueDate: null,
+              status: 'PENDING',
+              addedToSprintBacklog: false,
+              relatedSprintId: null,
+              productBacklogItemId: null,
+              completedAt: null,
+              createdAt: new Date(),
+              updatedAt: new Date(),
+              owner: { id: USER_ID, firstName: 'Jo', lastName: 'Doe', email: 'jo@test.com' },
+              productBacklogItem: null,
+            },
+          ],
+          attendees: [
+            {
+              id: 'attendee-1',
+              name: 'Guest',
+              email: 'guest@test.com',
+              role: 'DEVELOPERS',
+              attended: true,
+            },
+          ],
+        },
+      ] as never);
+
+      const result = await retrospectiveService.getRetrospectivesByTeam(TEAM_ID, USER_ID);
+
+      expect(result[0]!.items[0]!.votes).toBe(1);
+      expect(result[0]!.actionItems[0]!.owner?.email).toBe('jo@test.com');
+      expect(result[0]!.attendees).toHaveLength(1);
+      expect(result[0]!.attendees?.[0]!.email).toBe('guest@test.com');
+      expect(result[0]!.smNotes).toBe('Coach note');
+    });
+
+    it('getRetrospectivesByTeam should redact authorship for an anonymous retrospective', async () => {
+      grantMembership();
+      vi.mocked(prisma.sprintRetrospective.findMany).mockResolvedValue([
+        {
+          id: 'retro-1',
+          sprintId: 'sprint-1',
+          teamId: TEAM_ID,
+          retroDate: new Date('2024-01-15'),
+          facilitatorId: USER_ID,
+          status: 'COMPLETED',
+          isAnonymous: true,
+          items: [
+            {
+              id: 'item-1',
+              retrospectiveId: 'retro-1',
+              category: 'WENT_WELL',
+              content: 'Great',
+              authorId: USER_ID,
+              authorName: 'Jo Doe',
+              createdBy: USER_ID,
+              createdAt: new Date(),
+              updatedAt: new Date(),
+              order: 1,
+              votes: 0,
+              votesBy: [],
+            },
+          ],
+          actionItems: [],
+          attendees: [{ id: 'attendee-1', name: 'Guest', role: 'DEVELOPERS', attended: false }],
+        },
+      ] as never);
+
+      const result = await retrospectiveService.getRetrospectivesByTeam(TEAM_ID, USER_ID);
+
+      expect(result[0]!.items[0]!.authorId).toBeNull();
+      expect(result[0]!.items[0]!.authorName).toBeNull();
+      expect(result[0]!.smNotes).toBeUndefined();
+      expect(result[0]!.attendees?.[0]!.email).toBeUndefined();
+    });
+
+    it('getRetrospectivesByTeam should treat a missing votes relation as zero votes', async () => {
+      grantMembership();
+      vi.mocked(prisma.sprintRetrospective.findMany).mockResolvedValue([
+        {
+          id: 'retro-1',
+          sprintId: 'sprint-1',
+          teamId: TEAM_ID,
+          retroDate: new Date(),
+          facilitatorId: USER_ID,
+          status: 'COMPLETED',
+          isAnonymous: false,
+          items: [
+            {
+              id: 'item-1',
+              retrospectiveId: 'retro-1',
+              category: 'WENT_WELL',
+              content: 'Great',
+              authorId: null,
+              authorName: null,
+              createdAt: new Date(),
+              updatedAt: new Date(),
+              order: 1,
+              votes: 0,
+            },
+          ],
+          actionItems: [],
+          attendees: [],
+        },
+      ] as never);
+
+      const result = await retrospectiveService.getRetrospectivesByTeam(TEAM_ID, USER_ID);
+
+      expect(result[0]!.items[0]!.votes).toBe(0);
+    });
+
+    it('getRetrospectiveById should serialize the sprint team as participants', async () => {
+      grantMembership();
+      vi.mocked(prisma.sprintRetrospective.findUnique).mockResolvedValue({
+        id: 'retro-1',
+        teamId: TEAM_ID,
+        sprintId: 'sprint-1',
+        retroDate: new Date(),
+        status: 'COMPLETED',
+        items: [],
+        actionItems: [],
+        attendees: [],
+        sprint: {
+          team: {
+            members: [
+              {
+                userId: 'user-2',
+                role: 'DEVELOPERS',
+                user: {
+                  id: 'user-2',
+                  firstName: 'Ann',
+                  lastName: 'Lee',
+                  email: 'ann@test.com',
+                },
+              },
+            ],
+          },
+        },
+      } as never);
+
+      const result = await retrospectiveService.getRetrospectiveById('retro-1', USER_ID);
+
+      expect(result.participants).toHaveLength(1);
+      expect(result.participants[0]!.firstName).toBe('Ann');
+      expect(result.participants[0]!.role).toBe('DEVELOPERS');
+    });
+
+    it('voteItem should reject an item that belongs to another retrospective', async () => {
+      grantMembership();
+      vi.mocked(prisma.sprintRetrospective.findUnique).mockResolvedValue({
+        teamId: TEAM_ID,
+      } as never);
+      vi.mocked(prisma.retrospectiveItem.findUnique).mockResolvedValue({
+        id: 'item-1',
+        retrospectiveId: 'other-retro',
+      } as never);
+
+      await expect(retrospectiveService.voteItem('retro-1', 'item-1', USER_ID)).rejects.toThrow(
+        NotFoundError
+      );
+      expect(prisma.retroItemVote.create).not.toHaveBeenCalled();
+    });
+
+    it('createRetrospective should honour an explicit retrospective date', async () => {
+      grantMembership('SCRUM_MASTER');
+      vi.mocked(prisma.sprint.findUnique).mockResolvedValue({ teamId: TEAM_ID } as never);
+      vi.mocked(prisma.sprintRetrospective.findUnique).mockResolvedValue(null as never);
+      vi.mocked(prisma.sprintRetrospective.create).mockResolvedValue({
+        id: 'retro-1',
+        sprintId: 'sprint-1',
+        teamId: TEAM_ID,
+        retroDate: new Date('2024-02-01'),
+        facilitatorId: USER_ID,
+        status: 'DRAFT',
+        isAnonymous: false,
+        items: [],
+        actionItems: [],
+        attendees: [],
+      } as never);
+
+      await retrospectiveService.createRetrospective(
+        {
+          sprintId: 'sprint-1',
+          teamId: TEAM_ID,
+          facilitatorId: USER_ID,
+          retroDate: '2024-02-01' as never,
+        },
+        USER_ID
+      );
+
+      expect(prisma.sprintRetrospective.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ retroDate: new Date('2024-02-01') }),
+        })
+      );
+    });
+
+    it('addActionItem should accept an action item without description or due date', async () => {
+      grantMembership();
+      vi.mocked(prisma.sprintRetrospective.findUnique).mockResolvedValue({
+        teamId: TEAM_ID,
+      } as never);
+      vi.mocked(prisma.retroActionItem.create).mockResolvedValue({
+        id: 'action-1',
+        retrospectiveId: 'retro-1',
+        title: 'Improve CI',
+        status: 'PENDING',
+      } as never);
+
+      await retrospectiveService.addActionItem(
+        'retro-1',
+        { title: 'Improve CI', ownerId: USER_ID },
+        USER_ID
+      );
+
+      expect(prisma.retroActionItem.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ description: undefined, dueDate: null }),
+        })
+      );
+    });
+
+    it('updateRetrospective should throw NotFoundError when the retrospective does not exist', async () => {
+      vi.mocked(prisma.sprintRetrospective.findUnique).mockResolvedValue(null as never);
+
+      await expect(
+        retrospectiveService.updateRetrospective('missing', { summary: 'x' }, USER_ID)
+      ).rejects.toThrow(NotFoundError);
+    });
+
+    it('updateRetrospective should persist the Definition of Done evolution notes', async () => {
+      const mockRetrospective = {
+        id: 'retro-1',
+        sprintId: 'sprint-1',
+        teamId: 'team-1',
+        status: 'IN_PROGRESS',
+        items: [],
+        actionItems: [],
+        attendees: [],
+      };
+      grantMembership();
+      vi.mocked(prisma.sprintRetrospective.findUnique).mockResolvedValue(
+        mockRetrospective as never
+      );
+      vi.mocked(prisma.sprintRetrospective.update).mockResolvedValue(mockRetrospective as never);
+
+      await retrospectiveService.updateRetrospective(
+        'retro-1',
+        { dodEvolutionNotes: 'We tightened testing' },
+        USER_ID
+      );
+
+      expect(prisma.sprintRetrospective.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ dodEvolutionNotes: 'We tightened testing' }),
+        })
+      );
     });
   });
 });

@@ -13,6 +13,7 @@ export const apiService: Record<string, Mock<AnyFn>> = {
   updateTeam: vi.fn(),
   deleteTeam: vi.fn(),
   getSprint: vi.fn(),
+  getSprints: vi.fn(),
   createSprint: vi.fn(),
   updateSprint: vi.fn(),
   deleteSprint: vi.fn(),
@@ -76,6 +77,8 @@ export const apiService: Record<string, Mock<AnyFn>> = {
   getIncrement: vi.fn(),
   createIncrement: vi.fn(),
   updateIncrement: vi.fn(),
+  verifyUsability: vi.fn(),
+  reconcileIncrement: vi.fn(),
   startIncrement: vi.fn(),
   completeIncrement: vi.fn(),
   getIncrementMetrics: vi.fn(),
@@ -86,6 +89,7 @@ export const apiService: Record<string, Mock<AnyFn>> = {
   getTasksByPbiId: vi.fn(),
   addPBIToSprint: vi.fn(),
   removePBIFromSprint: vi.fn(),
+  acknowledgeSprintBacklogChange: vi.fn(),
   getSprintBacklogChanges: vi.fn(),
   createImpediment: vi.fn(),
   updateImpediment: vi.fn(),
@@ -114,6 +118,58 @@ export const sessionManager: Record<string, Mock<AnyFn>> = {
 export const smDashboardService: Record<string, Mock<AnyFn>> = {
   getDashboard: vi.fn(),
   getEventSchedule: vi.fn(),
+  updateSprintSmNotes: vi.fn(),
+  updateSprintReviewSmNotes: vi.fn(),
+  updateRetrospectiveSmNotes: vi.fn(),
+  getSprintSmNotesRevisions: vi.fn(),
+  getSprintReviewSmNotesRevisions: vi.fn(),
+  getRetrospectiveSmNotesRevisions: vi.fn(),
+};
+
+// The facilitation surfaces added for the Scrum Master dashboard remediation.
+export const organizationalBarriersService: Record<string, Mock<AnyFn>> = {
+  getBarriers: vi.fn(),
+  getStats: vi.fn(),
+  getEscalatableImpediments: vi.fn(),
+  getBarrier: vi.fn(),
+  createBarrier: vi.fn(),
+  escalateImpediment: vi.fn(),
+  updateBarrier: vi.fn(),
+  deleteBarrier: vi.fn(),
+  addStakeholderAction: vi.fn(),
+  updateStakeholderAction: vi.fn(),
+  deleteStakeholderAction: vi.fn(),
+};
+
+export const coachingService: Record<string, Mock<AnyFn>> = {
+  getEntries: vi.fn(),
+  createEntry: vi.fn(),
+  updateEntry: vi.fn(),
+  deleteEntry: vi.fn(),
+};
+
+export const workingAgreementsService: Record<string, Mock<AnyFn>> = {
+  getAgreements: vi.fn(),
+  createAgreement: vi.fn(),
+  updateAgreement: vi.fn(),
+};
+
+export const crossFunctionalityService: Record<string, Mock<AnyFn>> = {
+  getRecord: vi.fn(),
+  getAssessment: vi.fn(),
+  createAssessment: vi.fn(),
+};
+
+export const teamGroupService: Record<string, Mock<AnyFn>> = {
+  listGroups: vi.fn(),
+  getGroup: vi.fn(),
+  createGroup: vi.fn(),
+  updateGroup: vi.fn(),
+  deleteGroup: vi.fn(),
+  getSharedDefinitionOfDone: vi.fn(),
+  updateSharedDefinitionOfDone: vi.fn(),
+  joinGroup: vi.fn(),
+  leaveGroup: vi.fn(),
 };
 
 export const healthCheckService: Record<string, Mock<AnyFn>> = {
@@ -143,25 +199,38 @@ export const definitionService: Record<string, Mock<AnyFn>> = {
 export const notificationApi: Record<string, Mock<AnyFn>> = {
   getNotifications: vi.fn(),
   getConfig: vi.fn(),
-  updateConfig: vi.fn(),
+  getUnreadCount: vi.fn(),
   markAsRead: vi.fn(),
   markAllAsRead: vi.fn(),
   deleteNotification: vi.fn(),
-  deleteAllNotifications: vi.fn(),
+  sendDirectMessage: vi.fn(),
 };
 
+/**
+ * The envelope the API answers with, mirroring `src/types/index.ts`.
+ *
+ * Kept in step with the real types on purpose: a test that mocks a service and
+ * returns `{ success: false, error: 'nope' }` would type-check against a stale
+ * shape and then fail against the real one, which is the opposite of what a mock
+ * is for.
+ */
 export type ApiResponse<T = unknown> = {
   success: boolean;
   data?: T;
-  error?: string;
-  message?: string;
+  error?: {
+    code: string;
+    message: string;
+    details?: Array<{ field: string; message: string }>;
+  };
 };
 
 export type PaginatedResponse<T = unknown> = {
   success: boolean;
   data: T[];
-  total: number;
-  page: number;
-  pageSize: number;
-  hasMore: boolean;
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
 };

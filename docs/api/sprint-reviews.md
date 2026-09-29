@@ -35,21 +35,7 @@ The Sprint Reviews API provides comprehensive sprint review management capabilit
 
 ## Authentication
 
-All sprint review endpoints require authentication. Include the access token in your request:
-
-**Using Cookies (Recommended)**
-
-```http
-GET /api/v1/sprint-reviews
-Cookie: accessToken=eyJhbGc...
-```
-
-**Using Bearer Token**
-
-```http
-GET /api/v1/sprint-reviews
-Authorization: Bearer eyJhbGc...
-```
+All sprint review endpoints require authentication. See [Authentication](./README.md#authentication) for the cookie and bearer-token forms.
 
 ## Endpoints
 
@@ -121,7 +107,7 @@ Content-Type: application/json
 **Example Request**
 
 ```bash
-curl -X GET "https://api.scrumooth.dev/api/v1/sprint-reviews?teamId=550e8400-e29b-41d4-a716-446655440002" \
+curl -X GET "https://api.example.com/api/v1/sprint-reviews?teamId=550e8400-e29b-41d4-a716-446655440002" \
   -b cookies.txt
 ```
 
@@ -193,7 +179,7 @@ Content-Type: application/json
 **Example Request**
 
 ```bash
-curl -X GET "https://api.scrumooth.dev/api/v1/sprint-reviews/adjustments/pending?teamId=550e8400-e29b-41d4-a716-446655440002" \
+curl -X GET "https://api.example.com/api/v1/sprint-reviews/adjustments/pending?teamId=550e8400-e29b-41d4-a716-446655440002" \
   -b cookies.txt
 ```
 
@@ -257,8 +243,142 @@ Content-Type: application/json
 **Example Request**
 
 ```bash
-curl -X PUT https://api.scrumooth.dev/api/v1/sprint-reviews/adjustments/550e8400-e29b-41d4-a716-446655440010/implement \
+curl -X PUT https://api.example.com/api/v1/sprint-reviews/adjustments/550e8400-e29b-41d4-a716-446655440010/implement \
   -b cookies.txt
+```
+
+The manual flag is for adjustments whose outcome is not a backlog item (a reorder, or a removal already performed). An adjustment that has produced an item is returned unchanged: its `createdPbiId` is the evidence, and the flag must not contradict it.
+
+---
+
+### Materialize Adjustment
+
+Create a new Product Backlog item from a Review adjustment, link it, and mark the adjustment implemented. This is what makes "the Product Backlog may also be adjusted" provable: the created item is recorded on the adjustment as `createdPbiId`.
+
+**Endpoint**
+
+```
+POST /api/v1/sprint-reviews/adjustments/:id/materialize
+```
+
+**Authentication**
+
+- Required — the caller must be a member of the team that owns the Review
+
+**Path Parameters**
+
+- `id` (string, required): Adjustment UUID
+
+**Request Body** (all fields optional; they override the derived defaults)
+
+| Field                | Type   | Description                                                  |
+| -------------------- | ------ | ------------------------------------------------------------ |
+| `title`              | string | Item title. Defaults to the adjustment description.          |
+| `description`        | string | Item description. Defaults to `Reason: <adjustment reason>`. |
+| `storyPoints`        | number | Estimate. Only Developers on the team may size an item.      |
+| `acceptanceCriteria` | string | Acceptance criteria for the new item.                        |
+
+**Success Response**
+
+```http
+HTTP/1.1 201 Created
+Content-Type: application/json
+
+{
+  "success": true,
+  "data": {
+    "adjustment": {
+      "id": "550e8400-e29b-41d4-a716-446655440010",
+      "createdPbiId": "550e8400-e29b-41d4-a716-446655440030",
+      "implemented": true
+    },
+    "pbi": {
+      "id": "550e8400-e29b-41d4-a716-446655440030",
+      "title": "Add new login feature to backlog",
+      "status": "NEW",
+      "priority": "COULD_HAVE"
+    }
+  }
+}
+```
+
+**Error Responses**
+
+**400 Bad Request - Already Materialized**
+
+```json
+{
+  "success": false,
+  "error": {
+    "code": "BAD_REQUEST",
+    "message": "This adjustment has already produced a backlog item"
+  }
+}
+```
+
+**Example Request**
+
+```bash
+curl -X POST https://api.example.com/api/v1/sprint-reviews/adjustments/550e8400-e29b-41d4-a716-446655440010/materialize \
+  -H "Content-Type: application/json" \
+  -b cookies.txt \
+  -d '{ "title": "Add new login feature" }'
+```
+
+---
+
+### Link Adjustment to Backlog Item
+
+Record an existing Product Backlog item as the outcome of a Review adjustment (for a `modify`, `remove`, `reorder`, or `split` that was carried out against a real item). The item must belong to the same team as the Review.
+
+**Endpoint**
+
+```
+PUT /api/v1/sprint-reviews/adjustments/:id/link
+```
+
+**Authentication**
+
+- Required — the caller must be a member of the team that owns the Review
+
+**Path Parameters**
+
+- `id` (string, required): Adjustment UUID
+
+**Request Body**
+
+| Field   | Type   | Required | Description               |
+| ------- | ------ | -------- | ------------------------- |
+| `pbiId` | string | Yes      | Product Backlog item UUID |
+
+**Success Response**
+
+```http
+HTTP/1.1 200 OK
+Content-Type: application/json
+
+{
+  "success": true,
+  "data": {
+    "id": "550e8400-e29b-41d4-a716-446655440010",
+    "createdPbiId": "550e8400-e29b-41d4-a716-446655440020",
+    "implemented": true,
+    "createdPbi": {
+      "id": "550e8400-e29b-41d4-a716-446655440020",
+      "title": "Checkout - retry",
+      "status": "READY"
+    }
+  }
+}
+```
+
+**Example Request**
+
+```bash
+curl -X PUT https://api.example.com/api/v1/sprint-reviews/adjustments/550e8400-e29b-41d4-a716-446655440010/link \
+  -H "Content-Type: application/json" \
+  -b cookies.txt \
+  -d '{ "pbiId": "550e8400-e29b-41d4-a716-446655440020" }'
 ```
 
 ---
@@ -330,7 +450,7 @@ Content-Type: application/json
 **Example Request**
 
 ```bash
-curl -X GET "https://api.scrumooth.dev/api/v1/sprint-reviews/feedback/pending?teamId=550e8400-e29b-41d4-a716-446655440002" \
+curl -X GET "https://api.example.com/api/v1/sprint-reviews/feedback/pending?teamId=550e8400-e29b-41d4-a716-446655440002" \
   -b cookies.txt
 ```
 
@@ -395,7 +515,7 @@ Content-Type: application/json
 **Example Request**
 
 ```bash
-curl -X PUT https://api.scrumooth.dev/api/v1/sprint-reviews/feedback/550e8400-e29b-41d4-a716-446655440030/address \
+curl -X PUT https://api.example.com/api/v1/sprint-reviews/feedback/550e8400-e29b-41d4-a716-446655440030/address \
   -b cookies.txt
 ```
 
@@ -492,7 +612,7 @@ Content-Type: application/json
 **Example Request**
 
 ```bash
-curl -X GET https://api.scrumooth.dev/api/v1/sprint-reviews/550e8400-e29b-41d4-a716-446655440000 \
+curl -X GET https://api.example.com/api/v1/sprint-reviews/550e8400-e29b-41d4-a716-446655440000 \
   -b cookies.txt
 ```
 
@@ -520,7 +640,9 @@ POST /api/v1/sprint-reviews
   "teamId": "string (required, UUID)",
   "incrementId": "string (optional, UUID)",
   "reviewDate": "string (required, valid ISO 8601 date)",
-  "summary": "string (optional, max 2000 chars)"
+  "summary": "string (optional, max 2000 chars)",
+  "sprintGoalOutcome": "string (optional, one of: ACHIEVED, PARTIALLY_ACHIEVED, NOT_ACHIEVED)",
+  "sprintGoalNote": "string (optional, max 2000 chars)"
 }
 ```
 
@@ -583,7 +705,7 @@ Content-Type: application/json
 **Example Request**
 
 ```bash
-curl -X POST https://api.scrumooth.dev/api/v1/sprint-reviews \
+curl -X POST https://api.example.com/api/v1/sprint-reviews \
   -H "Content-Type: application/json" \
   -b cookies.txt \
   -d '{
@@ -620,6 +742,8 @@ PUT /api/v1/sprint-reviews/:id
 {
   "summary": "string (optional, max 2000 chars)",
   "status": "string (optional, one of: in_progress, completed)",
+  "sprintGoalOutcome": "string (optional, one of: ACHIEVED, PARTIALLY_ACHIEVED, NOT_ACHIEVED)",
+  "sprintGoalNote": "string (optional, max 2000 chars)",
   "reviewDate": "string (optional, valid ISO 8601 date)",
   "attendees": [
     {
@@ -672,11 +796,31 @@ Content-Type: application/json
       "reviewDate": "2026-04-29T12:00:00.000Z",
       "summary": "Updated sprint review summary",
       "status": "completed",
+      "sprintGoal": "Ship the review workflow",
+      "sprintGoalOutcome": "PARTIALLY_ACHIEVED",
+      "sprintGoalNote": "The backlog adjustments slipped into the next Sprint.",
       "updatedAt": "2026-04-29T13:00:00.000Z"
     }
   }
 }
 ```
+
+**The Sprint Goal verdict**
+
+`SprintReview.sprintGoalOutcome` is the Scrum Team's own judgement on whether the Sprint Goal was
+met, recorded at the event:
+
+- it is **required** when a Review is completed for a Sprint that has a Sprint Goal, because "the
+  Scrum Team discusses ... progress toward the Sprint Goal" -- concluding the event without the
+  team's verdict would leave the tool to infer attainment from item completion. Refused with
+  `GATE_SPRINT_REVIEW_GOAL_OUTCOME_REQUIRED` (400).
+- it is **refused** for a Sprint with no Sprint Goal, since a verdict about nothing would let an
+  unassessed Sprint read as assessed -- `GATE_SPRINT_REVIEW_GOAL_OUTCOME_NOT_APPLICABLE` (400).
+- the Goal the verdict judged is copied into `SprintReview.sprintGoal` so a later renegotiation
+  cannot make the record appear to have assessed a goal it never saw.
+
+A Review completed before the verdict existed simply has none, and is reported as unassessed rather
+than as unmet.
 
 **Error Responses**
 
@@ -698,6 +842,20 @@ Content-Type: application/json
 }
 ```
 
+**400 Bad Request - Sprint Goal verdict required**
+
+```json
+{
+  "success": false,
+  "error": {
+    "code": "GATE_SPRINT_REVIEW_GOAL_OUTCOME_REQUIRED",
+    "message": "The Sprint Review is where the team discusses progress toward the Sprint Goal, so completing this Review requires the team's own verdict on it: achieved, partially achieved, or not achieved."
+  }
+}
+```
+
+````
+
 **404 Not Found**
 
 ```json
@@ -708,12 +866,12 @@ Content-Type: application/json
     "message": "Sprint review not found"
   }
 }
-```
+````
 
 **Example Request**
 
 ```bash
-curl -X PUT https://api.scrumooth.dev/api/v1/sprint-reviews/550e8400-e29b-41d4-a716-446655440000 \
+curl -X PUT https://api.example.com/api/v1/sprint-reviews/550e8400-e29b-41d4-a716-446655440000 \
   -H "Content-Type: application/json" \
   -b cookies.txt \
   -d '{
@@ -814,7 +972,7 @@ Content-Type: application/json
 **Example Request**
 
 ```bash
-curl -X POST https://api.scrumooth.dev/api/v1/sprint-reviews/550e8400-e29b-41d4-a716-446655440000/feedback \
+curl -X POST https://api.example.com/api/v1/sprint-reviews/550e8400-e29b-41d4-a716-446655440000/feedback \
   -H "Content-Type: application/json" \
   -b cookies.txt \
   -d '{
@@ -911,7 +1069,7 @@ Content-Type: application/json
 **Example Request**
 
 ```bash
-curl -X POST https://api.scrumooth.dev/api/v1/sprint-reviews/550e8400-e29b-41d4-a716-446655440000/attendees \
+curl -X POST https://api.example.com/api/v1/sprint-reviews/550e8400-e29b-41d4-a716-446655440000/attendees \
   -H "Content-Type: application/json" \
   -b cookies.txt \
   -d '{
@@ -991,7 +1149,7 @@ Content-Type: application/json
 **Example Request**
 
 ```bash
-curl -X PUT https://api.scrumooth.dev/api/v1/sprint-reviews/attendees/550e8400-e29b-41d4-a716-446655440040 \
+curl -X PUT https://api.example.com/api/v1/sprint-reviews/attendees/550e8400-e29b-41d4-a716-446655440040 \
   -H "Content-Type: application/json" \
   -b cookies.txt \
   -d '{
@@ -1051,7 +1209,7 @@ Content-Type: application/json
 **Example Request**
 
 ```bash
-curl -X DELETE https://api.scrumooth.dev/api/v1/sprint-reviews/attendees/550e8400-e29b-41d4-a716-446655440040 \
+curl -X DELETE https://api.example.com/api/v1/sprint-reviews/attendees/550e8400-e29b-41d4-a716-446655440040 \
   -b cookies.txt
 ```
 
@@ -1106,7 +1264,7 @@ Content-Type: application/json
 **Example Request**
 
 ```bash
-curl -X DELETE https://api.scrumooth.dev/api/v1/sprint-reviews/550e8400-e29b-41d4-a716-446655440000 \
+curl -X DELETE https://api.example.com/api/v1/sprint-reviews/550e8400-e29b-41d4-a716-446655440000 \
   -b cookies.txt
 ```
 
@@ -1121,6 +1279,17 @@ curl -X DELETE https://api.scrumooth.dev/api/v1/sprint-reviews/550e8400-e29b-41d
 | `AUTHORIZATION_ERROR`  | 403         | Insufficient permissions                                   |
 | `NOT_FOUND`            | 404         | Sprint review, feedback, adjustment, or attendee not found |
 | `CONFLICT`             | 409         | Resource conflict (e.g., review already exists)            |
+
+### Gate Rejections
+
+A refusal that enforces a Scrum Guide rule carries a stable `GATE_*` code in `error.code`, so a client can branch on it without parsing the localized message. The full list lives in `docs/api/README.md`; the codes this module returns are:
+
+| Code                                        | HTTP | Rule enforced                                                                                                                                                           |
+| ------------------------------------------- | ---- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GATE_SPRINT_REVIEW_TEAM_MEMBERS_ONLY`      | 403  | The Sprint Review is the Scrum Team's own event: recording attendance, feedback, adjustments, or completing it requires membership                                      |
+| `GATE_SPRINT_REVIEW_SM_NOTES_SM_ONLY`       | 403  | The Scrum Master's notes are coaching observations: only the team's Scrum Master may read or write them, and `smNotes` is omitted from every other caller's response    |
+| `GATE_SPRINT_RETROSPECTIVE_REQUIRES_REVIEW` | 400  | The Retrospective cannot complete before its Sprint Review is completed                                                                                                 |
+| `GATE_SPRINT_EVENT_BEFORE_END_DATE`         | 400  | The Review and the Retrospective cannot be completed before the day the Sprint's end date names; a Sprint that has already concluded (cancelled or completed) is exempt |
 
 ## Best Practices
 
@@ -1148,6 +1317,22 @@ curl -X DELETE https://api.scrumooth.dev/api/v1/sprint-reviews/550e8400-e29b-41d
 ---
 
 **Last Updated**: 2026-05-10
+
+## Scrum Master notes and their revision history
+
+The Scrum Master's notes on a Review (`smNotes`) are coaching observations about the event, not a
+shared field:
+
+- **Read:** `smNotes` is omitted from every response to a caller who is not the team's Scrum Master.
+  Hiding the editor was never a gate; withholding the value is.
+- **Write:** `PATCH /sprint-reviews/:id/sm-notes` refuses anyone else with
+  `GATE_SPRINT_REVIEW_SM_NOTES_SM_ONLY`.
+- **History:** `GET /sprint-reviews/:id/sm-notes/revisions?limit=20&offset=0` returns the trail,
+  newest first: `{ revisions: [{ revision, content, authorName, createdAt }], total, limit, offset }`.
+  Every real edit appends a revision in the same transaction as the update, so a note and its history
+  cannot diverge; a write whose text is unchanged appends nothing. `limit` is capped at 100.
+
+Reading the trail is reading the notes, so the same rule applies to it.
 
 **Related Documentation**
 

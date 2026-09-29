@@ -14,6 +14,97 @@ import { setLocaleHeader, expectLocaleCookie, SUPPORTED_LOCALES } from '../helpe
 
 const uniqueId = () => `${Date.now()}-${Math.random().toString(36).substring(7)}`;
 
+/**
+ * Seed the planning participation the Sprint-start gate requires: the Product Owner and at least
+ * one Developer recorded as present. Written directly so lifecycle tests focus on the behaviour
+ * under test; the planning-attendance API has its own tests.
+ */
+const seedPlanningParticipation = async (sprintId: string, createdBy?: string): Promise<void> => {
+  await prisma.sprintPlanningAttendee.createMany({
+    data: [
+      {
+        id: generateUUIDv7(),
+        sprintId,
+        name: 'Product Owner',
+        role: 'product_owner',
+        attended: true,
+        createdBy,
+      },
+      {
+        id: generateUUIDv7(),
+        sprintId,
+        name: 'Developer',
+        role: 'developers',
+        attended: true,
+        createdBy,
+      },
+    ],
+  });
+};
+
+/**
+ * Seed the two agreements the Sprint boundary requires: a Definition of Done the team holds, and a
+ * Definition of Ready whose active criterion every given item satisfies. The boundary refuses a
+ * Sprint Backlog commit, and a Sprint start, without them -- so a fixture that intends to open a
+ * Sprint has to represent a team that holds both. Written directly, like the participation seed
+ * above; the definitions' own rules are covered by `integration/team-definitions.test.ts`.
+ */
+const seedTeamDefinitions = async (
+  teamId: string,
+  pbiIds: string[],
+  createdBy: string
+): Promise<void> => {
+  await prisma.definitionOfDone.create({
+    data: {
+      id: generateUUIDv7(),
+      teamId,
+      createdBy,
+      items: {
+        create: {
+          id: generateUUIDv7(),
+          description: 'Code is peer-reviewed and approved',
+          category: 'review',
+          isActive: true,
+          order: 0,
+          createdBy,
+        },
+      },
+    },
+  });
+
+  const dorItemId = generateUUIDv7();
+  await prisma.definitionOfReady.create({
+    data: {
+      id: generateUUIDv7(),
+      teamId,
+      createdBy,
+      items: {
+        create: {
+          id: dorItemId,
+          description: 'Acceptance criteria defined and agreed',
+          category: 'acceptance',
+          isActive: true,
+          order: 0,
+          createdBy,
+        },
+      },
+    },
+  });
+
+  if (pbiIds.length > 0) {
+    await prisma.doRChecklistVerification.createMany({
+      data: pbiIds.map((pbiId) => ({
+        id: generateUUIDv7(),
+        pbiId,
+        dorItemId,
+        isVerified: true,
+        verifiedBy: createdBy,
+        createdBy,
+      })),
+    });
+  }
+};
+
 describe('Sprint Configuration Integration Tests', () => {
   const createTestUserInDb = async (
     email: string,
@@ -502,6 +593,15 @@ describe('Sprint Configuration Integration Tests', () => {
 
       const team = await createTestTeam(teamName);
       await addTeamMember(team.id, user.id, 'SCRUM_MASTER');
+      // A Sprint cannot start until it is linked to a Product Goal.
+      await prisma.productGoal.create({
+        data: {
+          id: generateUUIDv7(),
+          teamId: team.id,
+          title: 'Test Product Goal',
+          status: 'ACTIVE',
+        },
+      });
       const sprint = await createTestSprint(team.id, 'Sprint To Start');
 
       // A Sprint Backlog must be saved before the sprint can start.
@@ -514,6 +614,10 @@ describe('Sprint Configuration Integration Tests', () => {
           createdBy: user.id,
         },
       });
+      // Planning participation is a start gate: record the PO and a Developer as present.
+      await seedPlanningParticipation(sprint.id, user.id);
+      // So are the team's two agreements.
+      await seedTeamDefinitions(team.id, [pbi.id], user.id);
 
       const cookies = await loginAndGetCookies(email);
 
@@ -772,6 +876,7 @@ describe('Sprint Configuration Integration Tests', () => {
         .send({
           pbiId: pbi.id,
           reason: 'Added to sprint',
+          goalImpact: 'SUPPORTS_GOAL',
         })
         .expect(201);
 

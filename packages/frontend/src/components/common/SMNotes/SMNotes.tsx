@@ -7,9 +7,10 @@
 //  - Edit mode: editable textarea with validation, dirty-state tracking and save/cancel.
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { formatDateTime, normalizeLocale, type SmNotesRevision } from '@scrumooth/shared';
 
 import { Button } from '../Button';
-import { ClipboardIcon, SaveIcon } from '../Icons';
+import { ClipboardIcon, ClockIcon, SaveIcon } from '../Icons';
 
 import styles from './SMNotes.module.css';
 
@@ -27,7 +28,43 @@ interface SMNotesProps {
   alwaysShow?: boolean;
   /** Disable editing and saving. Useful when the surrounding event is finalized. */
   disabled?: boolean;
+  /**
+   * Loads the notes' revision history, newest first.
+   *
+   * When provided, a History disclosure appears under the notes; the loader is only called when it
+   * is opened (and again after a save), so the trail costs nothing on a page that never asks for it.
+   * The endpoint refuses anyone but the team's Scrum Master, which is what makes the history safe
+   * to offer from an event page.
+   */
+  loadHistory?: () => Promise<SmNotesRevision[]>;
 }
+
+/** One revision of the notes: who wrote it, when, and what it said. */
+const RevisionTimeline: React.FC<{ revisions: SmNotesRevision[] }> = ({ revisions }) => {
+  const { t, i18n } = useTranslation(['scrum-master-dashboard', 'common']);
+  const locale = normalizeLocale(i18n.language);
+
+  return (
+    <ol className={styles['history-list']}>
+      {revisions.map((revision) => (
+        <li key={revision.id} className={styles['history-item']}>
+          <div className={styles['history-meta']}>
+            <span className={styles['history-revision']}>
+              {t('smNotes.historyRevision', { revision: revision.revision })}
+            </span>
+            <span className={styles['history-author']}>
+              {revision.authorName ?? t('smNotes.historyUnknownAuthor')}
+            </span>
+            <time className={styles['history-time']} dateTime={revision.createdAt}>
+              {formatDateTime(revision.createdAt, locale)}
+            </time>
+          </div>
+          <p className={styles['history-content']}>{revision.content}</p>
+        </li>
+      ))}
+    </ol>
+  );
+};
 
 export const SMNotes: React.FC<SMNotesProps> = ({
   value = '',
@@ -35,6 +72,7 @@ export const SMNotes: React.FC<SMNotesProps> = ({
   placeholder,
   alwaysShow = true,
   disabled = false,
+  loadHistory,
 }) => {
   const { t } = useTranslation(['scrum-master-dashboard', 'common']);
   const [draft, setDraft] = useState(value ?? '');
@@ -43,6 +81,10 @@ export const SMNotes: React.FC<SMNotesProps> = ({
   // Default to view mode when disabled (e.g. a completed event), otherwise respect alwaysShow.
   const [editing, setEditing] = useState(disabled ? false : alwaysShow);
   const [error, setError] = useState<string | null>(null);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [history, setHistory] = useState<SmNotesRevision[] | null>(null);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyError, setHistoryError] = useState<string | null>(null);
   // Tracks whether the user has ever saved or explicitly started editing. This prevents the
   // `alwaysShow && !value` auto-show from re-opening the form after a save when the parent has
   // not yet refetched the updated value (e.g. the Retrospective page does not invalidate the
@@ -81,6 +123,33 @@ export const SMNotes: React.FC<SMNotesProps> = ({
     setSaved(false);
   }, []);
 
+  /** Read the trail, lazily: nothing is fetched until the disclosure is opened. */
+  const loadRevisionHistory = useCallback(async () => {
+    if (!loadHistory) {
+      return;
+    }
+
+    setHistoryLoading(true);
+    setHistoryError(null);
+
+    try {
+      setHistory(await loadHistory());
+    } catch {
+      setHistoryError(t('smNotes.historyLoadError'));
+    } finally {
+      setHistoryLoading(false);
+    }
+  }, [loadHistory, t]);
+
+  const toggleHistory = useCallback(() => {
+    const next = !historyOpen;
+    setHistoryOpen(next);
+
+    if (next) {
+      void loadRevisionHistory();
+    }
+  }, [historyOpen, loadRevisionHistory]);
+
   const handleSave = useCallback(async () => {
     if (disabled) {
       return;
@@ -100,13 +169,18 @@ export const SMNotes: React.FC<SMNotesProps> = ({
       setError(null);
       setHasInteracted(true);
       setEditing(false);
+      // The save appended a revision, so an open history would otherwise show the version before
+      // the one the reader just wrote.
+      if (historyOpen) {
+        await loadRevisionHistory();
+      }
     } catch {
       setSaved(false);
       setError(t('smNotes.saveError'));
     } finally {
       setSaving(false);
     }
-  }, [draft, onSave, validate, t, disabled]);
+  }, [draft, onSave, validate, t, disabled, historyOpen, loadRevisionHistory]);
 
   const startEditing = useCallback(() => {
     setError(null);
@@ -201,6 +275,36 @@ export const SMNotes: React.FC<SMNotesProps> = ({
             <p className={styles.notes}>{draft}</p>
           ) : (
             <p className={styles.empty}>{t('common:noData')}</p>
+          )}
+        </div>
+      )}
+
+      {loadHistory && (
+        <div className={styles.history}>
+          <Button
+            variant="link"
+            size="sm"
+            onClick={toggleHistory}
+            aria-expanded={historyOpen}
+            aria-controls="sm-notes-history"
+          >
+            <ClockIcon size={16} className={styles['history-icon']} />
+            {historyOpen ? t('smNotes.historyHide') : t('smNotes.historyShow')}
+          </Button>
+
+          {historyOpen && (
+            <div id="sm-notes-history" className={styles['history-panel']}>
+              {historyLoading && <p className={styles['history-status']}>{t('common:loading')}</p>}
+              {historyError && (
+                <p className={styles.error} role="alert">
+                  {historyError}
+                </p>
+              )}
+              {!historyLoading && !historyError && history?.length === 0 && (
+                <p className={styles.empty}>{t('smNotes.historyEmpty')}</p>
+              )}
+              {history && history.length > 0 && <RevisionTimeline revisions={history} />}
+            </div>
           )}
         </div>
       )}

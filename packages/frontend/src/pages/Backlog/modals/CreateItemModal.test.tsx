@@ -10,6 +10,21 @@ import { initTestI18n } from '../../../test-utils';
 import { CreateItemModal } from './CreateItemModal';
 import * as teamContextModule from '../../../contexts/TeamContext';
 
+const capacityState = vi.hoisted(() => ({
+  isLimitEnabled: false,
+  maxItemsPerGoal: 200,
+  validateCapacity: vi.fn(),
+}));
+
+vi.mock('../hooks/useBacklogCapacityValidation', () => ({
+  useBacklogCapacityValidation: () => ({
+    validateCapacity: capacityState.validateCapacity,
+    validateBulkImport: vi.fn().mockResolvedValue({ isValid: true }),
+    isLimitEnabled: capacityState.isLimitEnabled,
+    maxItemsPerGoal: capacityState.maxItemsPerGoal,
+  }),
+}));
+
 /** Helper to set context state for testing specific scenarios */
 const SetContextValues: React.FC<{
   initialFormData?: ItemFormData | null;
@@ -49,6 +64,15 @@ describe('CreateItemModal', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    capacityState.isLimitEnabled = false;
+    capacityState.maxItemsPerGoal = 200;
+    capacityState.validateCapacity.mockReset();
+    capacityState.validateCapacity.mockResolvedValue({
+      isValid: true,
+      currentCount: 0,
+      maxLimit: 200,
+      availableSlots: 200,
+    });
     vi.spyOn(teamContextModule, 'useTeamContext').mockReturnValue({
       userRole: 'DEVELOPERS',
       currentTeam: null,
@@ -451,6 +475,156 @@ describe('CreateItemModal', () => {
 
       await waitFor(() => {
         expect(handleClose).toHaveBeenCalled();
+      });
+    });
+  });
+
+  describe('Capacity validation', () => {
+    it('should show the available-slots info when the limit is enabled', async () => {
+      capacityState.isLimitEnabled = true;
+      capacityState.validateCapacity.mockResolvedValue({
+        isValid: true,
+        currentCount: 5,
+        maxLimit: 200,
+        availableSlots: 195,
+      });
+
+      renderCreateModal({ activeGoalId: 'goal-1' });
+
+      expect(await screen.findByText(/195 slots available/i)).toBeInTheDocument();
+    });
+
+    it('should use the singular slot wording when exactly one slot remains', async () => {
+      capacityState.isLimitEnabled = true;
+      capacityState.validateCapacity.mockResolvedValue({
+        isValid: true,
+        currentCount: 199,
+        maxLimit: 200,
+        availableSlots: 1,
+      });
+
+      renderCreateModal({ activeGoalId: 'goal-1' });
+
+      expect(await screen.findByText(/1 slot available/i)).toBeInTheDocument();
+    });
+
+    it('should fall back to config defaults and show the reached notice when none remain', async () => {
+      capacityState.isLimitEnabled = true;
+      // maxLimit / availableSlots omitted -> the component falls back to maxItemsPerGoal and 0.
+      capacityState.validateCapacity.mockResolvedValue({ isValid: true, currentCount: 3 });
+
+      renderCreateModal({ activeGoalId: 'goal-1' });
+
+      expect(
+        await screen.findByText(/reached its maximum capacity of 200 items/i)
+      ).toBeInTheDocument();
+    });
+
+    it('should block submit with a capacity error and let it be dismissed', async () => {
+      capacityState.isLimitEnabled = true;
+      capacityState.validateCapacity.mockImplementation(
+        (_goalId: string | undefined, itemsToAdd: number) =>
+          Promise.resolve(
+            itemsToAdd === 0
+              ? { isValid: true, currentCount: 5, maxLimit: 200, availableSlots: 195 }
+              : { isValid: false, error: 'Capacity limit reached' }
+          )
+      );
+
+      renderCreateModal({ activeGoalId: 'goal-1', onSubmit: mockOnSubmit });
+
+      await screen.findByText(/195 slots available/i);
+
+      await userEvent.click(screen.getByRole('button', { name: /create item/i }));
+
+      expect(await screen.findByText('Capacity limit reached')).toBeInTheDocument();
+      expect(mockOnSubmit).not.toHaveBeenCalled();
+
+      await userEvent.click(screen.getByLabelText('Close capacity error message'));
+
+      await waitFor(() => {
+        expect(screen.queryByText('Capacity limit reached')).not.toBeInTheDocument();
+      });
+    });
+  });
+
+  describe('Unsaved changes prompt', () => {
+    it('should keep the form open when the prompt is dismissed', async () => {
+      renderWithProviders(
+        <BacklogProvider>
+          <SetContextValues
+            initialFormData={{
+              title: 'Original',
+              description: '',
+              estimate: undefined,
+              moscowPriority: 'COULD_HAVE' as never,
+              businessValue: undefined,
+              labels: '',
+              acceptanceCriteria: '',
+              status: 'NEW' as never,
+            }}
+          />
+          <CreateItemModal
+            isOpen={true}
+            onClose={vi.fn()}
+            onSubmit={vi.fn()}
+            isSubmitting={false}
+          />
+        </BacklogProvider>
+      );
+
+      const titleInput = screen.getByLabelText(/title/i);
+      await userEvent.clear(titleInput);
+      await userEvent.type(titleInput, 'Modified Title');
+
+      await userEvent.click(screen.getByRole('button', { name: /cancel/i }));
+      await screen.findByText(/discard changes/i);
+
+      await userEvent.click(screen.getByRole('button', { name: /go back/i }));
+
+      await waitFor(() => {
+        expect(screen.queryByText(/discard changes/i)).not.toBeInTheDocument();
+      });
+    });
+  });
+
+  describe('Field interactions', () => {
+    it('should edit description, criteria, business value, MoSCoW and labels', async () => {
+      renderWithProviders(
+        <BacklogProvider>
+          <SetContextValues formErrors={{ labels: 'At least one label is required' }} />
+          <CreateItemModal
+            isOpen={true}
+            onClose={vi.fn()}
+            onSubmit={vi.fn()}
+            isSubmitting={false}
+          />
+        </BacklogProvider>
+      );
+
+      // Labels error branch renders the input-error styling and the message.
+      expect(screen.getByText('At least one label is required')).toBeInTheDocument();
+
+      await userEvent.type(screen.getByLabelText(/description/i), 'New description');
+      await userEvent.type(screen.getByLabelText(/acceptance criteria/i), 'New criteria');
+
+      await userEvent.selectOptions(
+        document.getElementById('business-value') as HTMLSelectElement,
+        '5'
+      );
+
+      const radios = document.querySelectorAll<HTMLElement>('[role="radio"]');
+      await userEvent.click(radios[1]!);
+      fireEvent.keyDown(radios[1]!, { key: 'ArrowRight' });
+
+      const labelsInput = document.getElementById('item-labels') as HTMLInputElement;
+      await userEvent.type(labelsInput, 'frontend{Enter}');
+
+      const removeButton = await screen.findByLabelText('Remove label frontend');
+      await userEvent.click(removeButton);
+
+      await waitFor(() => {
+        expect(screen.queryByText('frontend')).not.toBeInTheDocument();
       });
     });
   });

@@ -1419,6 +1419,156 @@
 }
 
 /* ============================================================================
+   SPRINT GOAL PROTECTION - impact declaration, pending changes, PO review
+   ============================================================================ */
+
+.sbm-goal-impact {
+  border: var(--border-width-1) solid var(--color-border-default);
+  border-radius: var(--radius-lg);
+  padding: var(--space-3);
+  margin: 0;
+  background: var(--color-background-card);
+}
+
+.sbm-goal-impact legend {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+  padding: 0 var(--space-1);
+}
+
+.sbm-goal-impact-option {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  border-radius: var(--radius-md);
+}
+
+.sbm-goal-impact-option:hover {
+  background: var(--color-background-hover);
+}
+
+.sbm-goal-impact-note {
+  margin: var(--space-1) 0 0 0;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-warning-600);
+}
+
+.sbm-change-item-pending {
+  border-color: var(--color-warning-400);
+  border-style: dashed;
+}
+
+/* The change the Product Owner was notified about: reached from a notification, it is scrolled
+   into view and emphasised so the decision is visible without hunting for it. */
+.sbm-change-item-highlighted {
+  border-color: var(--color-primary-500);
+  box-shadow: var(--shadow-md);
+  background: linear-gradient(135deg, var(--color-primary-50) 0%, var(--color-primary-100) 100%);
+}
+
+.sbm-change-item-highlighted:focus-visible {
+  outline: var(--border-width-2) solid var(--color-primary-600);
+  outline-offset: var(--space-1);
+}
+
+.sbm-change-pending {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin-top: var(--space-1);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-warning-600);
+}
+
+.sbm-change-goal-warning {
+  margin-top: var(--space-1);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-error-600);
+}
+
+/* The Product Owner's recorded decision on a change that endangers the Sprint Goal. */
+.sbm-change-decision {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  margin-top: var(--space-1);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+}
+
+.sbm-change-decision-approved {
+  color: var(--color-success-600);
+}
+
+.sbm-change-decision-rejected {
+  color: var(--color-error-600);
+}
+
+/* Applied without a decision: the change supported the Sprint Goal, so no approval was needed. */
+.sbm-change-decision-applied {
+  color: var(--color-text-tertiary);
+}
+
+.sbm-change-decision-time {
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-tertiary);
+}
+
+.sbm-change-note {
+  margin-top: var(--space-1);
+  padding: var(--space-2);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  background: var(--color-background-card);
+  border-radius: var(--radius-md);
+  border-left: var(--border-width-3) solid var(--color-primary-300);
+}
+
+.sbm-change-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+.sbm-btn-approve {
+  background: linear-gradient(135deg, var(--color-success-600) 0%, var(--color-success-700) 100%);
+  color: var(--color-text-inverse);
+}
+
+.sbm-btn-reject {
+  background: var(--color-background-card);
+  color: var(--color-error-600);
+  border-color: var(--color-error-300);
+}
+
+.sbm-review-modal {
+  background: linear-gradient(
+    180deg,
+    var(--color-background-card) 0%,
+    var(--color-background-page) 100%
+  );
+  border-radius: var(--radius-2xl);
+  width: 100%;
+  max-width: 540px;
+  box-shadow: var(--shadow-2xl);
+  animation: sbm-slide-up var(--duration-slow) var(--ease-bounce);
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+}
+
+/* ============================================================================
    RESPONSIVE DESIGN - Enhanced for All Screen Sizes
    ============================================================================ */
 

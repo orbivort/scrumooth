@@ -17,6 +17,13 @@ vi.mock('../../utils/prisma', () => ({
   disconnectPrisma: vi.fn(),
 }));
 
+// The application module reads configuration at import time, so the event loop monitor
+// tests below load it dynamically after adjusting the environment (see `beforeEach`).
+// The *first* dynamic import of that module graph transforms every route/service behind
+// it, which is slow enough to trip the per-test timeout on a loaded machine. Import it
+// once here so the cost lands in the file's import phase instead of inside a test.
+await import('../../app');
+
 describe('App', () => {
   let app: Application;
 

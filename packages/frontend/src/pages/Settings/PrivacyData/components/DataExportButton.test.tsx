@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, beforeAll } from 'vitest';
-import { screen, renderWithProviders, initTestI18n } from '../../../../test-utils';
+import { screen, renderWithProviders, initTestI18n, act } from '../../../../test-utils';
 import userEvent from '@testing-library/user-event';
 
 import { DataExportButton } from './DataExportButton';
@@ -738,6 +738,77 @@ describe('DataExportButton Component', () => {
       renderWithProviders(<DataExportButton />);
 
       expect(screen.getByText('📥')).toBeInTheDocument();
+    });
+  });
+
+  describe('Modal callbacks', () => {
+    it('downloads the export and reports completion when the modal requests a download', async () => {
+      const mockDownload = vi.fn().mockResolvedValue(undefined);
+
+      (useDataExport as unknown as ReturnType<typeof vi.fn>).mockReturnValue(
+        createMockHookReturn({
+          state: createMockState({ currentJobId: 'job-1', status: 'completed' }),
+          canDownload: true,
+          downloadExport: mockDownload,
+        })
+      );
+
+      renderWithProviders(<DataExportButton onExportComplete={mockOnExportComplete} />);
+
+      const modalProps = mockDataExportModal.mock.calls[0][0];
+      await act(async () => {
+        await modalProps.onDownload();
+      });
+
+      expect(mockDownload).toHaveBeenCalledWith('job-1');
+      expect(mockOnExportComplete).toHaveBeenCalled();
+    });
+
+    it('cancels a still-running export and resets when the modal is closed', async () => {
+      const mockCancel = vi.fn().mockResolvedValue(undefined);
+      const mockReset = vi.fn();
+
+      (useDataExport as unknown as ReturnType<typeof vi.fn>).mockReturnValue(
+        createMockHookReturn({
+          state: createMockState({ currentJobId: 'job-1', status: 'processing' }),
+          isActive: true,
+          cancelExport: mockCancel,
+          reset: mockReset,
+        })
+      );
+
+      renderWithProviders(<DataExportButton />);
+
+      const modalProps = mockDataExportModal.mock.calls[0][0];
+      await act(async () => {
+        modalProps.onClose();
+      });
+
+      expect(mockCancel).toHaveBeenCalledWith('job-1');
+      expect(mockReset).toHaveBeenCalled();
+    });
+
+    it('closes without cancelling when no job is running', async () => {
+      const mockCancel = vi.fn().mockResolvedValue(undefined);
+      const mockReset = vi.fn();
+
+      (useDataExport as unknown as ReturnType<typeof vi.fn>).mockReturnValue(
+        createMockHookReturn({
+          state: createMockState({ currentJobId: null, status: null }),
+          cancelExport: mockCancel,
+          reset: mockReset,
+        })
+      );
+
+      renderWithProviders(<DataExportButton />);
+
+      const modalProps = mockDataExportModal.mock.calls[0][0];
+      await act(async () => {
+        modalProps.onClose();
+      });
+
+      expect(mockCancel).not.toHaveBeenCalled();
+      expect(mockReset).toHaveBeenCalled();
     });
   });
 });

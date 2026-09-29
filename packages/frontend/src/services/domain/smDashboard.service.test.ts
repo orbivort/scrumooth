@@ -1,4 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { SmNotesEntityType, type SmNotesRevisionPage } from '@scrumooth/shared';
+
 import { smDashboardService } from './smDashboard.service';
 import { coreApiService } from '../core/api.core';
 
@@ -39,19 +41,23 @@ describe('SmDashboardService', () => {
             { sprintId: 'sprint-1', complianceRate: 0.9, date: '2024-01-15T00:00:00Z' },
           ],
           sprintGoalAchievement: {
-            totalSprints: 5,
+            assessed: 5,
+            total: 5,
             achieved: 3,
-            partial: 1,
+            partiallyAchieved: 1,
             notAchieved: 1,
-            achievementRate: 0.6,
-            list: [
+            coveragePercentage: 100,
+            records: [
               {
                 sprintId: 'sprint-1',
                 sprintName: 'Sprint 1',
                 sprintGoal: 'Goal 1',
-                achievement: 'achieved',
+                outcome: 'ACHIEVED',
+                note: null,
+                reviewDate: '2024-01-16T00:00:00Z',
               },
             ],
+            itemCompletion: { totalItems: 10, completedItems: 8, rate: 80 },
           },
           actionItemCompletion: {
             total: 20,
@@ -232,6 +238,182 @@ describe('SmDashboardService', () => {
       await expect(
         smDashboardService.updateRetrospectiveSmNotes('retro-1', 'notes')
       ).rejects.toThrow('Server error');
+    });
+  });
+
+  /**
+   * The notes history is served newest-first as a page. The service is a thin transport, so what
+   * matters is the URL shape, the query params it forwards, and that its refusals surface untouched.
+   */
+  const buildRevisionPage = (
+    overrides: Partial<SmNotesRevisionPage> = {}
+  ): SmNotesRevisionPage => ({
+    revisions: [
+      {
+        id: 'rev-002',
+        entityType: SmNotesEntityType.SPRINT,
+        entityId: 'sprint-1',
+        revision: 2,
+        content: 'Coached the team to raise blockers first.',
+        createdBy: 'user-sm-1',
+        authorName: 'Grace Hopper',
+        createdAt: '2026-02-11T16:40:00Z',
+      },
+      {
+        id: 'rev-001',
+        entityType: SmNotesEntityType.SPRINT,
+        entityId: 'sprint-1',
+        revision: 1,
+        content: 'The team is still waiting for the staging environment.',
+        createdBy: 'user-sm-1',
+        authorName: 'Grace Hopper',
+        createdAt: '2026-02-04T16:10:00Z',
+      },
+    ],
+    total: 2,
+    limit: 20,
+    offset: 0,
+    ...overrides,
+  });
+
+  const wrapRevisionPage = (page: SmNotesRevisionPage) => ({
+    data: { success: true as const, data: page },
+  });
+
+  describe('getSprintSmNotesRevisions', () => {
+    it('should fetch the revision history with empty params by default', async () => {
+      vi.mocked(mockApi.get).mockResolvedValue(wrapRevisionPage(buildRevisionPage()));
+
+      const result = await smDashboardService.getSprintSmNotesRevisions('sprint-1');
+
+      expect(mockApi.get).toHaveBeenCalledWith('/sprints/sprint-1/sm-notes/revisions', {
+        params: {},
+      });
+      expect(result.success).toBe(true);
+      expect(result.data?.revisions).toHaveLength(2);
+      expect(result.data?.total).toBe(2);
+    });
+
+    it('should return revisions newest first with dense revision numbers', async () => {
+      vi.mocked(mockApi.get).mockResolvedValue(wrapRevisionPage(buildRevisionPage()));
+
+      const result = await smDashboardService.getSprintSmNotesRevisions('sprint-1');
+
+      expect(result.data?.revisions.map((revision) => revision.revision)).toEqual([2, 1]);
+      expect(result.data?.revisions[0].id).toBe('rev-002');
+    });
+
+    it('should forward limit and offset as query params', async () => {
+      vi.mocked(mockApi.get).mockResolvedValue(
+        wrapRevisionPage(buildRevisionPage({ limit: 5, offset: 10, total: 42 }))
+      );
+
+      const result = await smDashboardService.getSprintSmNotesRevisions('sprint-1', {
+        limit: 5,
+        offset: 10,
+      });
+
+      expect(mockApi.get).toHaveBeenCalledWith('/sprints/sprint-1/sm-notes/revisions', {
+        params: { limit: 5, offset: 10 },
+      });
+      expect(result.data?.total).toBe(42);
+      expect(result.data?.offset).toBe(10);
+    });
+
+    it('should return an empty page when the notes were never revised', async () => {
+      vi.mocked(mockApi.get).mockResolvedValue(
+        wrapRevisionPage(buildRevisionPage({ revisions: [], total: 0 }))
+      );
+
+      const result = await smDashboardService.getSprintSmNotesRevisions('sprint-1');
+
+      expect(result.success).toBe(true);
+      expect(result.data?.revisions).toHaveLength(0);
+      expect(result.data?.total).toBe(0);
+    });
+
+    it('should surface a refusal from the backend untouched', async () => {
+      vi.mocked(mockApi.get).mockRejectedValue(new Error('Forbidden'));
+
+      await expect(smDashboardService.getSprintSmNotesRevisions('sprint-1')).rejects.toThrow(
+        'Forbidden'
+      );
+    });
+  });
+
+  describe('getSprintReviewSmNotesRevisions', () => {
+    it('should fetch the revision history with empty params by default', async () => {
+      vi.mocked(mockApi.get).mockResolvedValue(wrapRevisionPage(buildRevisionPage()));
+
+      const result = await smDashboardService.getSprintReviewSmNotesRevisions('review-1');
+
+      expect(mockApi.get).toHaveBeenCalledWith('/sprint-reviews/review-1/sm-notes/revisions', {
+        params: {},
+      });
+      expect(result.success).toBe(true);
+      expect(result.data?.revisions).toHaveLength(2);
+    });
+
+    it('should forward limit and offset as query params', async () => {
+      vi.mocked(mockApi.get).mockResolvedValue(
+        wrapRevisionPage(buildRevisionPage({ limit: 1, offset: 0 }))
+      );
+
+      await smDashboardService.getSprintReviewSmNotesRevisions('review-1', {
+        limit: 1,
+        offset: 0,
+      });
+
+      expect(mockApi.get).toHaveBeenCalledWith('/sprint-reviews/review-1/sm-notes/revisions', {
+        params: { limit: 1, offset: 0 },
+      });
+    });
+
+    it('should surface a refusal from the backend untouched', async () => {
+      vi.mocked(mockApi.get).mockRejectedValue(new Error('Not found'));
+
+      await expect(smDashboardService.getSprintReviewSmNotesRevisions('review-1')).rejects.toThrow(
+        'Not found'
+      );
+    });
+  });
+
+  describe('getRetrospectiveSmNotesRevisions', () => {
+    it('should fetch the revision history with empty params by default', async () => {
+      vi.mocked(mockApi.get).mockResolvedValue(wrapRevisionPage(buildRevisionPage()));
+
+      const result = await smDashboardService.getRetrospectiveSmNotesRevisions('retro-1');
+
+      expect(mockApi.get).toHaveBeenCalledWith('/retrospectives/retro-1/sm-notes/revisions', {
+        params: {},
+      });
+      expect(result.success).toBe(true);
+      expect(result.data?.total).toBe(2);
+    });
+
+    it('should forward limit and offset as query params', async () => {
+      vi.mocked(mockApi.get).mockResolvedValue(
+        wrapRevisionPage(buildRevisionPage({ limit: 50, offset: 100, total: 500 }))
+      );
+
+      const result = await smDashboardService.getRetrospectiveSmNotesRevisions('retro-1', {
+        limit: 50,
+        offset: 100,
+      });
+
+      expect(mockApi.get).toHaveBeenCalledWith('/retrospectives/retro-1/sm-notes/revisions', {
+        params: { limit: 50, offset: 100 },
+      });
+      expect(result.data?.total).toBe(500);
+      expect(result.data?.limit).toBe(50);
+    });
+
+    it('should surface a refusal from the backend untouched', async () => {
+      vi.mocked(mockApi.get).mockRejectedValue(new Error('Unauthorized'));
+
+      await expect(smDashboardService.getRetrospectiveSmNotesRevisions('retro-1')).rejects.toThrow(
+        'Unauthorized'
+      );
     });
   });
 });

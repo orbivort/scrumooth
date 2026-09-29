@@ -1,7 +1,8 @@
 {
   "backToIncrements": "Zurück zu Increments",
   "card": {
-    "integrationVerified": "Integration verifiziert"
+    "integrationVerified": "Integration verifiziert",
+    "usable": "Nutzbar"
   },
   "create": {
     "actions": {
@@ -115,6 +116,7 @@
       "title": "Increment liefern"
     },
     "deliverRequiresIntegration": "Die Integration muss verifiziert sein, bevor dieses Increment geliefert werden kann.",
+    "deliverRequiresUsability": "Die Nutzbarkeit muss bestätigt sein, bevor dieses Increment geliefert werden kann.",
     "dodVerification": {
       "byCategory": "Überprüfung nach Kategorie",
       "byPbi": "Überprüfung nach PBI",
@@ -152,6 +154,7 @@
     },
     "sprintCompletionWorkflow": "Sprint-Abschluss-Workflow",
     "timeline": {
+      "deliveredBy": "Geliefert von {{name}}",
       "deliveredViaEarlyRelease": "Geliefert über vorzeitige Auslieferung",
       "deliveredViaSprintReview": "Geliefert über Sprint Review",
       "incrementCreated": "Increment erstellt",
@@ -176,6 +179,7 @@
     "dependenciesMissing": "Einige vorherige Increments haben die Integrationstests nicht bestanden",
     "fail": "Fehlgeschlagen",
     "firstIncrement": "Erstes Increment — kein vorheriges Increment zum Testen vorhanden",
+    "firstIncrementExempt": "Ausgenommen — erstes Increment",
     "integrationTests": "Integrationstests",
     "integrationVerified": "Integration verifiziert",
     "lockedHint": "Dieses Increment wurde geliefert und ist gesperrt. Integrationstests können nicht geändert werden.",
@@ -189,8 +193,26 @@
     "unverified": "Nicht verifiziert",
     "verificationRequired": "Vor dem Markieren als verifiziert ist eine Integrationsverifizierung erforderlich",
     "verified": "Verifiziert",
+    "verifiedAgainst": "Verifiziert gegen {{count}} vorherige Increments",
     "verifyHint": "Verifizieren, dass dieses Increment mit allen vorherigen Increments integriert",
     "verifyNow": "Integration verifizieren"
+  },
+  "incrementUsability": {
+    "attest": "Bestätigung erfassen",
+    "attestFailed": "Die Bestätigung konnte nicht erfasst werden. Bitte erneut versuchen.",
+    "attested": "Nutzbarkeit bestätigt",
+    "attestedBy": "Bestätigt von {{name}} am {{date}}",
+    "evidence": "Nachweis",
+    "evidencePlaceholder": "z. B. In der Staging-Umgebung bereitgestellt und vom Product Owner durchgängig geprüft",
+    "formLabel": "Was wurde geprüft, und wo?",
+    "lockedHint": "Dieses Increment wurde geliefert oder archiviert und ist gesperrt. Seine Bestätigung kann nicht mehr geändert werden.",
+    "noEvidenceText": "Es wurde kein Nachweistext erfasst.",
+    "notAttested": "Nutzbarkeit nicht bestätigt",
+    "notRecorded": "Nicht erfasst",
+    "notRecordedHint": "Für dieses Increment wurde keine Nutzbarkeitsbestätigung erfasst. Es wurde geliefert, bevor die Bestätigung erforderlich war.",
+    "rule": "Ein Increment muss in nutzbarem Zustand sein. Halten Sie fest, was geprüft wurde und wo, damit das Sprint Review Nachweise prüft statt eines Etiketts.",
+    "title": "Nutzbarer Zustand",
+    "unknownMember": "ein Teammitglied"
   },
   "list": {
     "ariaLabelFilter": "Increments nach Status filtern",

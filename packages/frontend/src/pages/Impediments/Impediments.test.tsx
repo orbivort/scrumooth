@@ -31,6 +31,9 @@ const SearchParamsCapture: React.FC<{ children: React.ReactNode }> = ({ children
 // Mock the store and services
 vi.mock('../../store', () => ({
   useTeamStore: vi.fn(),
+  // The page reads the current user id to decide reporter/owner delete rights.
+  useAuthStore: (selector: (state: { user: { id: string } | null }) => unknown) =>
+    selector({ user: { id: 'user-1' } }),
 }));
 
 vi.mock('../../services', () => ({
@@ -251,7 +254,8 @@ describe('Impediments Component', () => {
       renderWithProviders(<Impediments />);
 
       await waitFor(() => {
-        expect(screen.getByText('Impediments')).toBeInTheDocument();
+        // 'Impediments' is now both the module heading and the first tab, so query by role.
+        expect(screen.getByRole('heading', { level: 1, name: 'Impediments' })).toBeInTheDocument();
         expect(screen.getByText(/Sprint 1/)).toBeInTheDocument();
       });
 
@@ -302,7 +306,7 @@ describe('Impediments Component', () => {
 
       await waitFor(() => {
         // Header elements
-        expect(screen.getByText('Impediments')).toBeInTheDocument();
+        expect(screen.getByRole('heading', { level: 1, name: 'Impediments' })).toBeInTheDocument();
         expect(screen.getByRole('button', { name: /Report Impediment/i })).toBeInTheDocument();
 
         // Stats section - use getAllByText since there may be multiple elements with the same text
@@ -1541,7 +1545,7 @@ describe('Impediments Component', () => {
       renderWithProviders(<Impediments />);
 
       await waitFor(() => {
-        expect(screen.getByText('Impediments')).toBeInTheDocument();
+        expect(screen.getByRole('heading', { level: 1, name: 'Impediments' })).toBeInTheDocument();
       });
     });
 
@@ -1617,7 +1621,7 @@ describe('Impediments Component', () => {
 
       await waitFor(() => {
         // Component should render without crashing
-        expect(screen.getByText('Impediments')).toBeInTheDocument();
+        expect(screen.getByRole('heading', { level: 1, name: 'Impediments' })).toBeInTheDocument();
       });
     });
 
@@ -1634,7 +1638,7 @@ describe('Impediments Component', () => {
       renderWithProviders(<Impediments />);
 
       await waitFor(() => {
-        expect(screen.getByText('Impediments')).toBeInTheDocument();
+        expect(screen.getByRole('heading', { level: 1, name: 'Impediments' })).toBeInTheDocument();
       });
     });
 

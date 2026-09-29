@@ -41,6 +41,7 @@
     "all": "All",
     "directMessages": "Direct Messages",
     "impediments": "Impediments",
+    "sprintBacklogChanges": "Sprint Backlog Changes",
     "taskAssignments": "Task Assignments",
     "teamCreated": "Team Created",
     "teamDeleted": "Team Deleted",
@@ -50,6 +51,8 @@
   },
   "impedimentAssigned": "New impediment assigned: \"{{impedimentTitle}}\"",
   "impedimentAssignedMessage": "Reported by {{reporterName}}",
+  "impedimentEscalation": "Impediment needs your action: \"{{impedimentTitle}}\"",
+  "impedimentEscalationMessage": "This impediment has gone unresolved for {{ageDays}} days. As Scrum Master you are accountable for causing its removal.",
   "loading": {
     "ariaLabel": "Loading notifications",
     "title": "Loading notifications..."
@@ -58,6 +61,8 @@
   "marking": "Marking...",
   "newTaskAssignedMessage": "In sprint \"{{sprintName}}\"",
   "newTaskAssignedTitle": "New task assigned: \"{{taskTitle}}\"",
+  "organizationalBarrierRaised": "Organizational barrier assigned: \"{{barrierTitle}}\"",
+  "organizationalBarrierRaisedMessage": "This barrier lies outside the Scrum Team. You are accountable for removing it, so the team can continue.",
   "pagination": {
     "next": "Next",
     "pageInfo": "Page {{current}} of {{total}}",
@@ -67,6 +72,8 @@
   "remindersSent": "Reminders sent to {{count}} team member",
   "remindersSent_plural": "Reminders sent to {{count}} team members",
   "skipToMainContent": "Skip to main content",
+  "sprintBacklogChangePendingMessage": "{{changedByName}} declared that changing \"{{pbiTitle}}\" endangers the Sprint Goal of \"{{sprintName}}\". Approve the renegotiated Sprint Goal or reject the change.",
+  "sprintBacklogChangePendingTitle": "Sprint Backlog change awaits your decision",
   "subtitle": "Stay updated with team activities and important updates",
   "taskReassignedMessage": "In sprint \"{{sprintName}}\"",
   "taskReassignedTitle": "Task reassigned to you: \"{{taskTitle}}\"",

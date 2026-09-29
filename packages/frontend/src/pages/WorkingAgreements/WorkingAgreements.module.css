@@ -1,0 +1,263 @@
+/* The working agreements and cross-functionality panels: token-driven, card and table based. */
+
+/* The Team module owns the page padding, the module header and the space between sections, so a
+   panel only stacks its own content -- no inset and no gap of its own to double. */
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-6);
+  border: var(--border-width-1) solid var(--color-border-default);
+  border-radius: var(--radius-xl);
+  background: var(--color-background-card);
+  box-shadow: var(--shadow-sm);
+}
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+/* This heading is the deep-link target for the section, so it carries the offset that clears the app
+   shell's sticky bar and the Definition tab's own navigation. The offset belongs on the heading rather
+   than on the wrapping <section>: the fragment targets the heading, so an offset on the section would be
+   a silent no-op and the heading would open underneath the sticky chrome. */
+.panel-title {
+  margin: 0;
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+  scroll-margin-top: calc(
+    var(--app-topbar-height) + var(--definition-nav-height) + var(--definition-anchor-gap)
+  );
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  border: var(--border-width-1) solid var(--color-border-default);
+  border-radius: var(--radius-lg);
+  background: var(--color-background-page);
+  transition: border-color var(--transition-fast) var(--ease-out);
+}
+
+.card:hover {
+  border-color: var(--color-primary-200);
+}
+
+.card-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.card-title {
+  margin: 0;
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+}
+
+.description {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-primary);
+}
+
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+/* The buttons inside this panel do not wear this file's recipe. They are `Button` primitives, and the
+   Definition page states the appearance they take there instead -- the Definition of Done section's own
+   -- in `Team/Definition/DefinitionButton.module.css`, which is also where the rule that keeps the page's
+   single primary action in the section the reader is in now lives. */
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: var(--space-0-5) var(--space-2);
+  border-radius: var(--radius-full);
+  background: var(--color-background-disabled);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: var(--letter-spacing-wide);
+  text-transform: uppercase;
+}
+
+.coverage-none {
+  background: var(--color-error-100);
+  color: var(--color-error-700);
+}
+
+.coverage-partial {
+  background: var(--color-warning-100);
+  color: var(--color-warning-700);
+}
+
+.coverage-covered {
+  background: var(--color-success-100);
+  color: var(--color-success-700);
+}
+
+.coverage-summary {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+}
+
+.table {
+  inline-size: 100%;
+  border-collapse: collapse;
+  font-size: var(--font-size-sm);
+}
+
+.table th,
+.table td {
+  padding: var(--space-2);
+  border-block-end: var(--border-width-1) solid var(--color-border-default);
+  text-align: start;
+  vertical-align: top;
+}
+
+.table th {
+  font-size: var(--font-size-xs);
+  text-transform: uppercase;
+  letter-spacing: var(--letter-spacing-wide);
+  color: var(--color-text-secondary);
+}
+
+.history-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.history-item {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--color-background-page);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+}
+
+.skill-row {
+  display: grid;
+  grid-template-columns: 1.2fr 0.8fr 1.2fr auto;
+  gap: var(--space-2);
+  align-items: end;
+}
+
+@media (width <= 40rem) {
+  .skill-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-inline-size: 8rem;
+}
+
+.label {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-secondary);
+}
+
+.input,
+.select,
+.textarea {
+  padding: var(--space-2);
+  border: var(--input-border-width) solid var(--input-border-color);
+  border-radius: var(--input-border-radius);
+  background: var(--input-background);
+  color: var(--input-text-color);
+  font-family: var(--font-family-sans);
+  font-size: var(--font-size-sm);
+  box-sizing: border-box;
+  inline-size: 100%;
+}
+
+.textarea {
+  resize: vertical;
+}
+
+.input:focus,
+.select:focus,
+.textarea:focus {
+  border-color: var(--input-border-color-focus);
+  box-shadow: var(--focus-ring);
+  outline: none;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: var(--border-width-1) solid var(--color-border-default);
+  border-radius: var(--radius-lg);
+  background: var(--color-background-card);
+  box-shadow: var(--shadow-sm);
+}
+
+.form-title {
+  margin: 0;
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+.muted {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.error {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-error-600);
+}

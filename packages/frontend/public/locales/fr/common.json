@@ -1,4 +1,9 @@
 {
+  "accessDenied": {
+    "action": "Aller à Mon équipe",
+    "description": "Cette page appartient au Product Owner ou au Scrum Master d'une équipe. Si vous avez besoin d'une modification ici, adressez-vous à la direction de l'équipe.",
+    "title": "Vous n'avez pas accès à cette page"
+  },
   "accountDeletion": {
     "cancelFailed": "Échec de l'annulation de la suppression. Veuillez réessayer.",
     "deleteFailed": "Échec de la suppression du compte. Veuillez réessayer.",
@@ -69,11 +74,15 @@
     "formAttendedLabel": "Présent",
     "formEmailLabel": "E-mail",
     "formEmailPlaceholder": "Entrez l'adresse e-mail (optionnelle)",
+    "formLinkUserHint": "Laissez vide pour enregistrer une partie prenante externe avec un nom libre.",
+    "formLinkUserLabel": "Utilisateur enregistré (facultatif)",
+    "formLinkUserNone": "Partie prenante externe",
     "formNameLabel": "Nom",
     "formNamePlaceholder": "Entrez le nom du participant",
     "formNameRequired": "*",
     "formRoleLabel": "Rôle",
     "formRoleRequired": "*",
+    "linkedUserBadge": "Utilisateur enregistré",
     "markAsAbsent": "Marquer comme absent",
     "markAsAttended": "Marquer comme présent",
     "removeAttendee": "Supprimer le participant",
@@ -381,6 +390,11 @@
     "teamUpdated": "Équipe mise à jour",
     "unread": "Non lu"
   },
+  "gateRefusal": {
+    "dismiss": "Ignorer",
+    "guideClauseLabel": "Guide Scrum 2020",
+    "regionLabel": "Pourquoi ceci a été refusé"
+  },
   "helpPanel": {
     "avoidExample": "✗ À éviter :",
     "goodExample": "✓ Bon exemple :",
@@ -451,27 +465,29 @@
     "activeSprint": "Sprint actif",
     "dailyScrum": "Daily Scrum",
     "dashboard": "Tableau de bord",
-    "impediments": "Impediment",
+    "groups": {
+      "product": "Produit",
+      "scrumEvents": "Événements Scrum"
+    },
+    "impediments": "Impediments",
     "increments": "Increment",
+    "mainNavigation": "Navigation principale",
     "notifications": "Notifications",
     "productBacklog": "Product Backlog",
     "productGoals": "Product Goal",
     "reports": "Rapports",
-    "retrospective": "Sprint Retrospective",
     "retrospectives": "Sprint Retrospective",
-    "scrumMaster": "Tableau du Scrum Master",
     "settings": {
-      "data": "Données",
-      "privacyData": "Confidentialité et données",
+      "dailyScrumSchedule": "Calendrier du Daily Scrum",
       "sprintConfiguration": "Configuration de Sprint",
-      "team": "Équipe",
-      "teamDefinitions": "Définitions d'équipe",
-      "teamManagement": "Gestion d'équipe"
+      "teamGroups": "Groupes d'équipes",
+      "teamManagement": "Toutes les équipes",
+      "teamsAndGroups": "Équipes et groupes"
     },
     "settingsLabel": "Paramètres",
     "sprintPlanning": "Sprint Planning",
     "sprintReview": "Sprint Review",
-    "team": "Équipe"
+    "team": "Mon équipe"
   },
   "networkErrors": {
     "networkError": "Erreur réseau. Veuillez vérifier votre connexion et réessayer.",
@@ -685,7 +701,8 @@
   "userMenu": {
     "changePassword": "Changer le mot de passe",
     "editProfile": "Modifier le profil",
-    "logout": "Déconnexion"
+    "logout": "Déconnexion",
+    "privacyData": "Confidentialité et données"
   },
   "validation": {
     "acceptanceCriteriaRequired": "Les critères d'acceptation sont requis. Veuillez définir des conditions spécifiques et testables pour l'achèvement.",

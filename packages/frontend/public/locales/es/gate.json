@@ -1,0 +1,45 @@
+{
+  "dodGroupGoverned": {
+    "guideClause": "Si varios equipos Scrum trabajan juntos en un producto, deben definir y cumplir mutuamente la misma Definición de Terminado.",
+    "recovery": "Cambia la Definición de Terminado compartida desde la pestaña de definición de cualquier equipo del grupo.",
+    "rule": "Este equipo trabaja con otros equipos Scrum en un mismo producto, así que cumple la Definición de Terminado que comparten y no puede cambiar la suya."
+  },
+  "dodRequired": {
+    "guideClause": "La Definición de Terminado es una descripción formal del estado del Incremento cuando cumple las medidas de calidad exigidas para el producto.",
+    "recovery": "Reactiva o añade un criterio y vuelve a guardar la Definición de Terminado.",
+    "rule": "Una Definición de Terminado debe contener al menos un criterio activo."
+  },
+  "dodTeamMembersOnly": {
+    "recovery": "Pide a un miembro de este equipo que abra su Definición de Terminado.",
+    "rule": "La Definición de Terminado pertenece al equipo Scrum que trabaja con ella, así que solo sus miembros pueden leerla o cambiarla."
+  },
+  "dorRequired": {
+    "recovery": "Reactiva o añade un criterio y vuelve a guardar la Definición de Preparado.",
+    "rule": "La Definición de Preparado debe contener al menos un criterio activo."
+  },
+  "dorScrumMasterOnly": {
+    "recovery": "Pide a tu Scrum Master que la cambie.",
+    "rule": "La Definición de Preparado es una práctica complementaria que mantiene el Scrum Master del equipo. No es un artefacto de la Guía de Scrum."
+  },
+  "dorTeamMembersOnly": {
+    "recovery": "Pide a un miembro de este equipo que abra su Definición de Preparado.",
+    "rule": "La Definición de Preparado es un acuerdo de este equipo, así que solo sus miembros pueden leerla."
+  },
+  "teamGroupAlreadyMember": {
+    "recovery": "Sal primero del grupo al que pertenece.",
+    "rule": "Un equipo cumple una sola Definición de Terminado compartida, así que no puede unirse a un segundo grupo."
+  },
+  "teamGroupDodAcknowledgementRequired": {
+    "guideClause": "Si varios equipos Scrum trabajan juntos en un producto, deben definir y cumplir mutuamente la misma Definición de Terminado.",
+    "recovery": "Revisa la versión vigente y adóptala.",
+    "rule": "La Definición de Terminado compartida cambió después de que la revisaras, así que la versión que confirmaste ya no es la vigente."
+  },
+  "teamGroupLeadershipOnly": {
+    "recovery": "Pide al Product Owner o al Scrum Master de tu equipo que haga este cambio.",
+    "rule": "El Product Owner o el Scrum Master de un equipo decide con qué Definición de Terminado compartida cumple."
+  },
+  "teamGroupNotEmpty": {
+    "recovery": "Haz que todos los equipos salgan primero del grupo.",
+    "rule": "Un grupo cuya Definición de Terminado todavía rige para equipos no puede eliminarse, porque eliminarlo les quitaría su compromiso en lugar de trasladarlo."
+  }
+}

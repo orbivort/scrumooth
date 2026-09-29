@@ -1,7 +1,7 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { ArrowUpIcon, ArrowDownIcon } from '../../../components/common/Icons';
+import { ArrowUpIcon, ArrowDownIcon, InfoIcon } from '../../../components/common/Icons';
 
 import styles from './BurndownInsight.module.css';
 
@@ -11,7 +11,7 @@ export type BurndownInsightSize = 'compact' | 'default' | 'prominent';
 interface BurndownInsightProps {
   /** Status of the burndown (ahead, on-track, behind) */
   status: BurndownStatus;
-  /** Percentage difference from ideal (positive = ahead, negative = behind) */
+  /** Percentage difference from the forecast (positive = ahead, negative = behind) */
   percentage: number;
   /** Optional additional message */
   message?: string;
@@ -20,8 +20,13 @@ interface BurndownInsightProps {
 }
 
 /**
- * BurndownInsight component displays the current burndown status
- * with a trend indicator showing percentage ahead or behind.
+ * Compares the Sprint's remaining work with the straight-line forecast over
+ * estimated hours.
+ *
+ * The comparison is an observation, not a verdict: the forecast is not a target
+ * and the variance is meant as an input to the Daily Scrum. The note rendered
+ * alongside the indicator says so explicitly, so the number is never read as a
+ * prediction about the Sprint's outcome.
  */
 export const BurndownInsight: React.FC<BurndownInsightProps> = ({
   status,
@@ -68,18 +73,22 @@ export const BurndownInsight: React.FC<BurndownInsightProps> = ({
     >
       <div className={styles['insight-content']}>
         <span className={styles['status-indicator']} aria-hidden="true">
-          {isAhead || isOnTrack ? (
-            <ArrowUpIcon size={16} className={styles['trend-icon']} />
-          ) : (
-            <ArrowDownIcon size={16} className={styles['trend-icon']} />
-          )}
+          {isAhead || isOnTrack ? <ArrowUpIcon size={16} /> : <ArrowDownIcon size={16} />}
         </span>
-        <span className={styles.statusText}>{getStatusText()}</span>
-        <span className={styles.percentageText} aria-hidden="true">
-          {isOnTrack ? '' : isAhead ? ` ${absPercentage}% ahead` : ` ${absPercentage}% behind`}
-        </span>
+        <span className={styles['status-text']}>{getStatusText()}</span>
+        {!isOnTrack && (
+          <span className={styles['percentage-text']} aria-hidden="true">
+            {getTrendText()}
+          </span>
+        )}
       </div>
       {message && <p className={styles['insight-message']}>{message}</p>}
+      {size !== 'compact' && (
+        <p className={styles['insight-forecast-note']}>
+          <InfoIcon size={14} className={styles['insight-forecast-icon']} aria-hidden="true" />
+          {t('burndownInsight.forecastNote')}
+        </p>
+      )}
     </div>
   );
 };

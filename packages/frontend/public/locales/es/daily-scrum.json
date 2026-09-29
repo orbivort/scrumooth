@@ -19,6 +19,15 @@
     "trackedAsFormalImpediment": "Rastreado como Impediment formal",
     "viewMode": "Modo de vista"
   },
+  "cadence": {
+    "configure": "Registrar la hora y el lugar del Daily Scrum",
+    "held": "{{held}} de {{expected}} días laborables registrados",
+    "joinLink": "Unirse a la reunión",
+    "nonWorkingDay": "Hoy no es un día laborable en el calendario del equipo. El equipo puede reunirse igualmente.",
+    "nonWorkingDayNamed": "{{name}}: no es un día laborable para este equipo. El equipo puede reunirse igualmente.",
+    "notConfigured": "Aún no se ha registrado una hora y un lugar fijos",
+    "sprintDay": "Día {{current}} de {{total}} del Sprint"
+  },
   "createImpediment": "Crear impedimento",
   "datePicker": {
     "ariaLabel": "Seleccionar fecha para actualizaciones diarias",
@@ -54,16 +63,30 @@
     "viewTitle": "Enfoque del Daily Scrum"
   },
   "form": {
+    "adaptationEvidenceLabel": "¿Qué concluyó el evento sobre el Sprint Backlog?",
     "adaptationsHint": "¿Qué debemos ajustar en el Sprint Backlog según nuestro progreso?",
     "adaptationsLabel": "Adaptaciones (Sprint Backlog)",
     "adaptationsPlaceholder": "Describa los cambios acordados en el Sprint Backlog...",
     "addAdjustment": "Agregar",
+    "adjustmentActions": {
+      "ADDED": "Añadido al Sprint Backlog",
+      "REFINED": "Refinado",
+      "REMOVED": "Eliminado del Sprint Backlog",
+      "REPRIORITIZED": "Repriorizado",
+      "SPLIT": "Dividido",
+      "UNSPECIFIED": "Adaptación del Sprint Backlog"
+    },
     "backlogActionLabel": "Acción de ajuste",
     "backlogActionPlaceholder": "¿Cuál es el ajuste? (p. ej., reasignado, marcado)",
+    "backlogActionTypeLabel": "Tipo de adaptación",
     "backlogAdjustmentsLabel": "Ajustes del Sprint Backlog (opcional)",
     "backlogItemPlaceholder": "Seleccione un elemento del Sprint Backlog...",
     "backlogItemSelect": "Elemento del Sprint Backlog",
     "cancel": "Cancelar",
+    "evidenceAcknowledged": "Registrado: los Developers consideraron que hoy no era necesaria ninguna adaptación del Sprint Backlog.",
+    "evidenceAdapted": "El Sprint Backlog se adaptó",
+    "evidenceAdaptedHint": "Añade al menos una adaptación o elige «Hoy no fue necesaria ninguna adaptación».",
+    "evidenceNoAdaptation": "Hoy no fue necesaria ninguna adaptación",
     "fieldHint": "Opcional",
     "planHint": "Un plan accionable para el siguiente día de trabajo, acordado por los desarrolladores.",
     "planLabel": "Plan para el próximo día",
@@ -102,6 +125,12 @@
     "startTitle": "Daily Scrum de hoy",
     "title": "Inspeccionar y adaptar"
   },
+  "inspectedGoal": {
+    "label": "Objetivo del Sprint inspeccionado en este Daily Scrum",
+    "noAdaptation": "Los Developers consideraron que no era necesaria ninguna adaptación del Sprint Backlog.",
+    "none": "No había un Objetivo del Sprint registrado cuando se celebró este Daily Scrum.",
+    "renegotiated": "El Objetivo del Sprint se renegoció después de este Daily Scrum. Ahora dice: {{currentGoal}}"
+  },
   "loading": {
     "actions": "Cargando acciones...",
     "pageHeader": "Cargando encabezado de página...",
@@ -122,6 +151,7 @@
     "descriptionLabel": "Descripción",
     "descriptionPlaceholder": "Descripción detallada del Impediment",
     "priority": "Prioridad",
+    "priorityCritical": "Crítica",
     "priorityHigh": "Alta",
     "priorityLow": "Baja",
     "priorityMedium": "Media",
@@ -132,6 +162,10 @@
   "quickDates": {
     "today": "Hoy",
     "yesterday": "Ayer"
+  },
+  "reflection": {
+    "pending": "Declarado, aún no reflejado",
+    "reflected": "Reflejado en el Sprint Backlog"
   },
   "retryPrompt": {
     "dismiss": "Descartar",
@@ -213,6 +247,7 @@
     "yesterday": "Ayer"
   },
   "validation": {
+    "adaptationEvidenceRequired": "Declara si el Sprint Backlog se adaptó o confirma que no fue necesaria ninguna adaptación.",
     "descriptionRequired": "La descripción es requerida",
     "descriptionTooShort": "La descripción debe tener al menos 10 caracteres",
     "planRequired": "Añade un plan viable para el próximo día para guardar el Daily Scrum.",

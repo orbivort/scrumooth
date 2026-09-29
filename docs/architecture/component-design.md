@@ -130,6 +130,10 @@ components/common/
 │   ├── Button.tsx              # Primary, secondary, link, danger, warning variants
 │   ├── Button.module.css       # Variant and size styles
 │   └── index.ts                # Public export
+├── Disclosure/
+│   ├── Disclosure.tsx          # A summary row or a quiet pill that opens onto its detail
+│   ├── Disclosure.module.css   # Both trigger shapes, one body
+│   └── index.ts                # Public export
 ├── Form/
 │   ├── CharacterCounter.tsx     # Textarea character count display
 │   ├── ChunkErrorBoundary.tsx   # Catches lazy-load chunk failures
@@ -239,11 +243,15 @@ pages/                               # Page-scoped feature components
 │   └── components/                  # AddTaskModal, StartSprintModal, etc.
 ├── SprintReview/
 │   └── AddFeedbackModal, CreateSprintReviewModal, etc.
-├── Dashboard/
+├── Dashboard/                       # The dashboard module: one header, one rail, one URL
+│   ├── Dashboard.tsx                # The shell: guards, header, rail, refresh, panel mount
+│   ├── DashboardOverviewPanel.tsx   # Tab one: the operational page every role reads
 │   └── components/                  # BurndownChart, TaskList, ImpedimentList
+├── SmDashboard/                     # Tab two: the Scrum Master's facilitation lens
+│   └── FacilitationPanel.tsx        # No page shell, no landmark, no heading of its own
 ├── Settings/
 │   ├── TeamManagement/              # Team CRUD components
-│   ├── TeamDefinitions/             # Definition of Done/Ready panels
+│   ├── TeamGroups/                  # Group administration: create, rename, delete, roster
 │   ├── SprintConfiguration/         # Sprint config settings
 │   └── PrivacyData/                 # Data export and privacy controls
 ├── ProductGoals/                    # Product goal modals
@@ -253,7 +261,7 @@ pages/                               # Page-scoped feature components
 ├── Impediments/                     # Impediment tracking
 ├── Reports/                         # Velocity chart
 ├── Notifications/                   # Notification page
-├── Team/                            # Team member cards and messaging
+├── Team/                            # The team module: overview, members, Definition tab, health
 └── Auth/                            # Login, forgot/reset password
 ```
 
@@ -263,6 +271,60 @@ pages/                               # Page-scoped feature components
 - Page-level components export a default or named component that serves as the route target.
 - Sub-components are imported only by their parent page, not shared across pages.
 - Cross-cutting feature components (e.g., `Notifications/`, `TeamSwitcher/`) live in the top-level `components/` directory.
+
+### The Unified Definition Surface
+
+`pages/Team/Definition/` is one surface over one commitment, in whichever scope governs the team. It
+is worth reading as a unit because its shape is the answer to a defect rather than a preference: the
+Definition of Done used to be reachable in three places — a Settings page that could not write it for
+a grouped team, a group admin screen that could, and a governance panel under Scrum Health — and none
+of them was visible to the Developers the Guide says must conform to it.
+
+| Component                  | Owns                                                                                                   |
+| -------------------------- | ------------------------------------------------------------------------------------------------------ |
+| `DefinitionPanel`          | The order of the sections, the in-page navigation, the anchors a link can name, the namespace fallback |
+| `SectionNav`               | One anchor per agreement, the count beside it, and which section is current                            |
+| `useSectionDeepLink`       | The fragment a link named, the section being read, and the measured sticky offset                      |
+| `DefinitionOfDoneSection`  | The read, and the write **routed by the resolved scope**                                               |
+| `DefinitionScopeSwitch`    | The scope statement, and the decisions behind it: review, adopt/leave, drift, who may act              |
+| `DefinitionOfReadySection` | The readiness practice, its own history, and its pill                                                  |
+| `VersionHistoryPopover`    | One badge's history, fetched only when it is opened                                                    |
+| `DefinitionEditor`         | Add, reword, reorder, deactivate, remove — shared by every scope and both agreements                   |
+| `criterionLabel`           | One criterion's wording: the seed translated from its `defaultKey`, or the team's own sentence         |
+
+The three agreements are reached by an in-page navigation rather than by tabs, and that is a decision
+rather than an omission: the anchors are the identity the deep links already publish, the three are read
+in the order the Guide implies rather than as parallel views, and the module keeps one tab rail instead
+of nesting a second one under it.
+
+Three invariants hold this together:
+
+- **The write follows the scope, not the screen.** A team-scoped write is never issued while the team
+  is grouped, so `GATE_DOD_GROUP_GOVERNED` stays unreachable from the interface while the API keeps
+  enforcing it. Offering a control whose only possible answer is "no" is the failure mode this avoids.
+- **The editor cannot send a `defaultKey`.** Its payload type is narrower than the criterion it was
+  loaded from, so a client cannot label a sentence it wrote itself with the product's built-in wording.
+  The service owns that column.
+- **The offset a deep link has to clear is measured, never assumed.** The fragment targets a section
+  heading, so the heading carries the `scroll-margin-top` — an offset on the wrapping `<section>` would
+  be a silent no-op. Its two parts come from the running shell (the topbar is sized by its contents, and
+  below 768px it becomes `fixed` while the shell pads the content instead), so `useSectionDeepLink`
+  measures both and publishes them as custom properties that the heading and the sticky navigation
+  consume. A constant would be wrong on one of the two breakpoints, and a heading would open underneath
+  the chrome it is meant to clear.
+
+### Gate Refusals
+
+`components/common/GateRefusal/` is the one place a Scrum rule refusal is explained. Given an error,
+`useGateRefusal` resolves its `code` through `GATE_DEFINITIONS` to the copy under the `gate` i18n
+namespace and reports the rule, the 2020 Scrum Guide clause where one exists, and the remedy. The
+caller supplies the control that performs the remedy, because only the caller knows the context —
+re-reviewing a version that changed under the reader's feet is a different act from asking a Scrum
+Master for an edit.
+
+The namespace is deliberately partial: the gates the commitment surfaces can provoke have copy, and any
+other code falls back to the server's already-localized message rather than explaining nothing.
+Extending it is additive content, with no code change.
 
 ### Layout Components
 
@@ -290,7 +352,7 @@ Layout components define the application shell and are located in `packages/fron
 
 The `Layout` component (`Layout.tsx`) is the primary shell for authenticated pages. It integrates:
 
-- **Sidebar** - Collapsible navigation with team switcher, nav items, and settings groups. Uses `useUIStore` for collapsed state, `useTeamContext` for team data, and `useResponsive` for mobile detection.
+- **Sidebar** - Collapsible navigation with team switcher, Guide-named sections, the Settings band and a collapsed-mode tooltip. Uses `useUIStore` for collapsed state, `useTeamContext` for team data, and `useResponsive` for mobile detection. See [Sidebar Structure](#sidebar-structure).
 - **Header** - User menu dropdown, notification badge and panel, and team context display.
 - **Main Content** - Renders route children with proper scrolling and responsive behavior.
 
@@ -366,6 +428,28 @@ export const queryKeys = {
   // ... additional domains: burndown, definitionOfDone, myTeams, notification, etc.
 };
 ```
+
+**One question, one family**: a query key belongs to the _subject_, never to the screen reading it. The
+Definition of Done is the clearest case: a team and its group read the same commitment row, and the
+same row is read by the team's Definition tab, its Sprint boundary hint and the group's own screen.
+They all live in `queryKeys.definitionOfDone`:
+
+```typescript
+definitionOfDone: {
+  all: ['definition-of-done'] as const,
+  byTeam: (teamId) => [...all, 'team', teamId] as const,   // the commitment as a team works to it
+  byGroup: (groupId) => [...all, 'group', groupId] as const, // the same row as the group owns it
+  history: (teamId) => [...all, 'history', teamId] as const,
+},
+```
+
+Every Definition of Done write invalidates `definitionOfDone.all`, so both views and the history
+refresh from one write. Two families for one row is what let a surface keep showing a superseded
+version while another showed the current one.
+
+`queryKeys.team.byId` is declared under `team.details()` for the same reason: as its own `['team', id]`
+root it was invisible to `invalidateQueries({ queryKey: team.all })`, so a write that changed a team's
+group membership left the team's own read stale.
 
 **Cache Invalidation Pattern**:
 
@@ -556,14 +640,15 @@ Scrumooth uses React Router v6 with lazy-loaded route components and protected r
 │  └── /reset-password/:token    → ResetPasswordPage          │
 │                                                             │
 │  Protected Routes (authentication required)                 │
-│  ├── /dashboard                → Dashboard                  │
+│  ├── /dashboard                → Dashboard (Overview|Facilitation)│
+│  ├── /scrum-master-dashboard   → Redirect to /dashboard?tab=facilitation│
 │  ├── /backlog                  → ProductBacklog             │
 │  ├── /product-goals            → ProductGoalsPage           │
 │  ├── /sprint-planning          → SprintPlanning             │
 │  ├── /sprint                   → SprintBoard                │
 │  ├── /daily-scrum              → DailyScrum                 │
 │  ├── /impediments              → Impediments                │
-│  ├── /team                     → Team (with PageErrorBoundary)│
+│  ├── /team                     → Team (Overview|Members|Definition|Health)│
 │  ├── /reports                  → Reports                    │
 │  ├── /increments               → IncrementList              │
 │  ├── /increment/:id            → IncrementDetail            │
@@ -573,14 +658,84 @@ Scrumooth uses React Router v6 with lazy-loaded route components and protected r
 │  ├── /retrospectives           → RetrospectiveList          │
 │  ├── /retrospectives/:id       → SprintRetrospective        │
 │  ├── /notifications            → Notifications              │
+│  ├── /privacy-data             → PrivacyData (user menu)    │
 │  └── /settings/*               → Settings sub-routes        │
 │      ├── /settings/team-management    → TeamManagement      │
-│      ├── /settings/team-definitions   → TeamDefinitions     │
+│      ├── /settings/team-groups        → TeamGroups          │
 │      ├── /settings/sprint-configuration → SprintConfiguration│
-│      ├── /settings/privacy-data       → PrivacyData         │
-│      └── /settings/definition-of-done → Redirect to team-definitions?tab=dod│
+│      ├── /settings/daily-scrum-schedule → DailyScrumSchedule│
+│      ├── /settings/privacy-data       → Redirect to /privacy-data│
+│      ├── /settings/team-definitions   → Redirect to /team?tab=definition│
+│      └── /settings/definition-of-done → Redirect to /team?tab=definition│
 └─────────────────────────────────────────────────────────────┘
 ```
+
+### Sidebar Structure
+
+The sidebar is a Guide-named index with three levels, and the levels exist so a reader can hold the menu
+in mind instead of re-reading it. `config/navigation.ts` is the only place the shape is declared; the
+shell renders it and the route table guards it.
+
+- **A section is a run of destinations under one heading** (`NavSection`). Omitting the heading renders
+  the run ungrouped, which is how the home row (Dashboard, first by convention) and the trailing app
+  concepts (Impediments, Reports, My Team) keep their asymmetry: a heading over a single row, or over
+  rows the Guide has no category for, would promise a classification the product does not hold.
+- **A heading opens a section; it never closes one.** A heading is a prefix cue, so a run that declares
+  no heading leaves the section above it unbounded — and the run of app concepts after the Guide's
+  sections declares none on purpose. The quiet rule therefore stands wherever a heading is not doing the
+  opening: before that run, and before every section while collapsed, where every heading is hidden. Its
+  vertical margin is three times the gap between two rows of one group, so proximity and the rule say the
+  same thing; the first section is exempt, since the rail's own padding already opens it. Unruled, the
+  last Guide section bled into the app concepts and the layout asserted a Guide category for a row the
+  Guide has no category for.
+- **Headings name Guide categories where the Guide names one.** "Product" and "Scrum events" are the
+  Guide's own groupings, and the destinations beneath them keep the Guide's own terms, singular where the
+  Guide is singular ("Product Goal", "Increment", "Sprint Retrospective"). A register reads as a register
+  where the Guide has no term for the count ("Impediments").
+- **The Settings band is the one element that outranks a heading.** It marks where the menu ends and
+  configuration begins, so it carries a full-bleed tint and a rule on both sides; the section headings
+  beneath it stay quiet and ruleless. Before this, the two levels were typographically identical and the
+  nesting was invisible.
+- **Role filtering is presentation; the route guard is the boundary.** Every role-restricted entry is
+  filtered by `hasAnyRole`, and its route passes the same list, so a bookmark cannot open a page the menu
+  says the reader cannot see. Both sides read the constants (`TEAM_LEADERSHIP_ROLES`,
+  `SCRUM_MASTER_ROLES`) rather than repeating a literal.
+- **Active state is a boundary-aware match** (`isNavItemActive`), not path equality: an entry may declare
+  `activePrefixes` for the detail routes whose address differs from the register's (`/increments` owns
+  `/increment/:id`). `/sprint` never captures `/sprint-review`, and the same computed boolean drives the
+  row's class and its `aria-current="page"`.
+- **Personal surfaces live in the user menu; organization-wide configuration lives in the sidebar.** That
+  rule is what places Privacy & Data (`/privacy-data`, with the retired `/settings/privacy-data`
+  redirecting to it) beside Edit Profile and Change Password rather than beside Team Groups.
+- **Collapsed, the rail owes the reader the label it just hid.** `.sidebar-nav` scrolls, so the tooltip
+  (`NavTooltip`) renders through a portal and is positioned from the row's own box; it opens on focus as
+  well as on hover, because a `title` attribute would serve the pointer and not the keyboard.
+
+### Module Tabs
+
+Three surfaces that once had destinations of their own are tabs of the module whose subject they
+share, reached where that subject is rather than from a sidebar row of their own: the barrier register
+is the second tab of Impediments, the working agreements are a section of the Team module's Definition
+tab, and the Scrum Master's facilitation overview is the second tab of the Dashboard.
+
+The pattern is the same in each case, and it is the shape `Impediments.tsx` and `Dashboard.tsx` both
+implement:
+
+- **One module, one header, one URL.** The module owns the `main` landmark, the `h1` and the language
+  switcher's anchor target; a panel never repeats a heading of its own. The tab that is the default is
+  the one the address stays silent about (`/dashboard` is the overview, `/dashboard?tab=facilitation`
+  is the lens), and `?tab=` is the single source of truth, so back/forward and shared links need no
+  second copy to keep in sync.
+- **Only the selected panel mounts.** Neither surface runs the other's queries, and one failing cannot
+  blank the other. The wrapper is the only element between rail and panel and carries `role="tabpanel"`
+  plus `tabIndex={-1}` for the focus hand-off.
+- **A rail is rendered only when there is a choice to make.** A one-tab `tablist` is an affordance
+  without a decision, so a member who has only the overview sees the page with no rail at all — as does
+  anyone who lacks the role a second tab is gated on. The rail is a single tab stop with a roving
+  tabindex; arrow keys move and select, Home/End jump to the ends, and only a module-initiated switch
+  moves focus into the revealed panel.
+- **Retired addresses keep working.** `/organizational-barriers` and `/scrum-master-dashboard` redirect
+  to the tab that replaced them, so a bookmark or a shared link is never a dead end.
 
 ### Lazy Loading Pattern
 

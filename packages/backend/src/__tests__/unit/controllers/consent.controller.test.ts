@@ -7,7 +7,7 @@ import {
   getAnonymousConsent,
 } from '../../../controllers/consent.controller';
 import { consentService } from '../../../services/consent.service';
-import { BadRequestError } from '../../../utils/errors';
+import { BadRequestError, UnauthorizedError } from '../../../utils/errors';
 import { createMockRequest, createMockResponse, createMockNext } from '../../setup/testSetup';
 
 vi.mock('../../../services/consent.service', () => ({
@@ -118,6 +118,27 @@ describe('Consent Controller', () => {
 
       expect(mockNext).toHaveBeenCalledWith(error);
     });
+
+    it('should fall back to the socket remote address when req.ip is missing', async () => {
+      mockReq.userId = 'user-123';
+      mockReq.body = { consentType: 'COOKIES', action: 'ACCEPT' };
+      mockReq.ip = undefined;
+      mockReq.socket = { remoteAddress: '10.0.0.9' };
+
+      (consentService.recordConsent as any).mockResolvedValue({
+        id: 'consent-123',
+        consentType: 'COOKIES',
+        action: 'ACCEPT',
+        createdAt: new Date(),
+      });
+
+      recordConsent(mockReq as any, mockRes as any, mockNext);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(consentService.recordConsent).toHaveBeenCalledWith(
+        expect.objectContaining({ ipAddress: '10.0.0.9' })
+      );
+    });
   });
 
   describe('getConsentHistory', () => {
@@ -186,6 +207,16 @@ describe('Consent Controller', () => {
 
       expect(mockNext).toHaveBeenCalledWith(error);
     });
+
+    it('should reject an unauthenticated history request', async () => {
+      mockReq.userId = undefined;
+
+      getConsentHistory(mockReq as any, mockRes as any, mockNext);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(mockNext).toHaveBeenCalledWith(expect.any(UnauthorizedError));
+      expect(consentService.getConsentHistory).not.toHaveBeenCalled();
+    });
   });
 
   describe('getLatestConsent', () => {
@@ -238,6 +269,16 @@ describe('Consent Controller', () => {
 
       expect(mockNext).toHaveBeenCalledWith(error);
     });
+
+    it('should reject an unauthenticated latest-consent request', async () => {
+      mockReq.userId = undefined;
+
+      getLatestConsent(mockReq as any, mockRes as any, mockNext);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(mockNext).toHaveBeenCalledWith(expect.any(UnauthorizedError));
+      expect(consentService.getLatestConsent).not.toHaveBeenCalled();
+    });
   });
 
   describe('withdrawConsent', () => {
@@ -277,6 +318,37 @@ describe('Consent Controller', () => {
       await new Promise((resolve) => setTimeout(resolve, 0));
 
       expect(mockNext).toHaveBeenCalledWith(error);
+    });
+
+    it('should reject an unauthenticated withdrawal', async () => {
+      mockReq.userId = undefined;
+
+      withdrawConsent(mockReq as any, mockRes as any, mockNext);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(mockNext).toHaveBeenCalledWith(expect.any(UnauthorizedError));
+      expect(consentService.withdrawConsent).not.toHaveBeenCalled();
+    });
+
+    it('should fall back to the socket remote address when req.ip is missing', async () => {
+      mockReq.userId = 'user-123';
+      mockReq.ip = undefined;
+      mockReq.socket = { remoteAddress: '10.0.0.9' };
+
+      (consentService.withdrawConsent as any).mockResolvedValue({
+        id: 'consent-123',
+        action: 'WITHDRAW',
+        createdAt: new Date(),
+      });
+
+      withdrawConsent(mockReq as any, mockRes as any, mockNext);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(consentService.withdrawConsent).toHaveBeenCalledWith(
+        'user-123',
+        '10.0.0.9',
+        undefined
+      );
     });
   });
 

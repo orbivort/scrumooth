@@ -15,7 +15,11 @@ import { useTranslation } from 'react-i18next';
 import { type ProductBacklogItem, MoSCoWPriority } from '../../../types';
 import { MOSCOW_CONFIG } from '../config/moscow.config';
 import { MoscowCard } from '../components/MoscowCard';
-import { useDragAndDrop } from '../hooks/useDragAndDrop';
+import {
+  useDragAndDrop,
+  type BacklogDropTarget,
+  type DropIndicator,
+} from '../hooks/useDragAndDrop';
 import { useVirtualScroll, shouldEnableVirtualization } from '../../../hooks/useVirtualScroll';
 
 import styles from './BoardView.module.css';
@@ -50,8 +54,16 @@ export interface BoardViewProps {
   itemsByMoscow: Record<MoSCoWPriority, ProductBacklogItem[]>;
   /** Callback when an item is clicked */
   onItemClick: (item: ProductBacklogItem) => void;
-  /** Callback when an item's priority is changed via drag-and-drop */
+  /**
+   * Callback when a card is dropped, carrying the band it landed in and — when it was dropped on
+   * a neighbour — the position relative to that neighbour. This is what makes a MoSCoW board
+   * able to express "this item is next" instead of only "this item is a Must Have".
+   */
+  onReorder: (itemId: string, target: BacklogDropTarget) => void;
+  /** Callback when an item's band is changed without a pointer (keyboard move) */
   onPriorityChange: (itemId: string, newPriority: MoSCoWPriority) => void;
+  /** Whether the viewer may order the backlog (Product Owner only) */
+  canOrder: boolean;
 }
 
 /**
@@ -81,12 +93,16 @@ interface VirtualizedColumnProps {
   isDraggingOver: boolean;
   itemsCountByPriority: Record<MoSCoWPriority, number>;
   draggedItem: ProductBacklogItem | null;
+  dropIndicator: DropIndicator | null;
   onDragStart: (e: React.DragEvent, item: ProductBacklogItem) => void;
   onDragEnd: () => void;
-  onDrop: (e: React.DragEvent, priority: MoSCoWPriority) => void;
+  onDropOnColumn: (e: React.DragEvent, priority: MoSCoWPriority) => void;
+  onDropOnCard: (e: React.DragEvent, item: ProductBacklogItem) => void;
+  onDragOverCard: (e: React.DragEvent, item: ProductBacklogItem) => void;
   onDragOver: (e: React.DragEvent) => void;
   onItemClick: (item: ProductBacklogItem) => void;
   onPriorityChange: (itemId: string, newPriority: MoSCoWPriority) => void;
+  canOrder: boolean;
   forceVirtualization?: boolean;
 }
 
@@ -97,12 +113,16 @@ const VirtualizedColumn: React.FC<VirtualizedColumnProps> = ({
   isDraggingOver,
   itemsCountByPriority,
   draggedItem,
+  dropIndicator,
   onDragStart,
   onDragEnd,
-  onDrop,
+  onDropOnColumn,
+  onDropOnCard,
+  onDragOverCard,
   onDragOver,
   onItemClick,
   onPriorityChange,
+  canOrder,
   forceVirtualization,
 }) => {
   const { t } = useTranslation('backlog');
@@ -118,8 +138,27 @@ const VirtualizedColumn: React.FC<VirtualizedColumnProps> = ({
   );
 
   const handleDrop = (e: React.DragEvent) => {
-    onDrop(e, priority);
+    onDropOnColumn(e, priority);
   };
+
+  /**
+   * Build the drop-zone props for one card.
+   *
+   * The whole card is the drop target, and hovering it resolves which half the pointer is over so
+   * the insertion line is visible before release. The wrapper is presentational: the card itself
+   * stays the list item, so the board's list semantics are unchanged.
+   */
+  const cardDropZoneProps = (item: ProductBacklogItem) => ({
+    role: 'presentation' as const,
+    'data-drop-zone': item.id,
+    className: `${styles['card-drop-zone']} ${
+      dropIndicator?.itemId === item.id
+        ? styles[dropIndicator.position === 'before' ? 'drop-before' : 'drop-after']
+        : ''
+    }`,
+    onDragOver: (e: React.DragEvent) => onDragOverCard(e, item),
+    onDrop: (e: React.DragEvent) => onDropOnCard(e, item),
+  });
 
   const translatedLabel = moscowLabels[priority].label;
   const translatedDescription = moscowLabels[priority].description;
@@ -213,6 +252,7 @@ const VirtualizedColumn: React.FC<VirtualizedColumnProps> = ({
                   transform: `translateY(${start}px)`,
                 }}
                 data-index={index}
+                {...cardDropZoneProps(item)}
               >
                 <MoscowCard
                   item={item}
@@ -222,22 +262,27 @@ const VirtualizedColumn: React.FC<VirtualizedColumnProps> = ({
                   isDragging={draggedItem?.id === item.id}
                   onMovePriority={onPriorityChange}
                   itemsCountByPriority={itemsCountByPriority}
+                  canOrder={canOrder}
+                  position={item.rank}
                 />
               </div>
             ))}
           </div>
         ) : (
           items.map((item) => (
-            <MoscowCard
-              key={item.id}
-              item={item}
-              onDragStart={(e) => onDragStart(e, item)}
-              onDragEnd={onDragEnd}
-              onClick={() => onItemClick(item)}
-              isDragging={draggedItem?.id === item.id}
-              onMovePriority={onPriorityChange}
-              itemsCountByPriority={itemsCountByPriority}
-            />
+            <div key={item.id} {...cardDropZoneProps(item)}>
+              <MoscowCard
+                item={item}
+                onDragStart={(e) => onDragStart(e, item)}
+                onDragEnd={onDragEnd}
+                onClick={() => onItemClick(item)}
+                isDragging={draggedItem?.id === item.id}
+                onMovePriority={onPriorityChange}
+                itemsCountByPriority={itemsCountByPriority}
+                canOrder={canOrder}
+                position={item.rank}
+              />
+            </div>
           ))
         )}
       </div>
@@ -277,13 +322,23 @@ const VirtualizedColumn: React.FC<VirtualizedColumnProps> = ({
 export const BoardView: React.FC<BoardViewProps> = ({
   itemsByMoscow,
   onItemClick,
+  onReorder,
   onPriorityChange,
+  canOrder,
 }) => {
   const { t } = useTranslation('backlog');
-  const { draggedItem, handleDragStart, handleDrop, handleDragOver, handleDragEnd } =
-    useDragAndDrop({
-      onDrop: onPriorityChange,
-    });
+  const {
+    draggedItem,
+    dropIndicator,
+    handleDragStart,
+    handleDropOnColumn,
+    handleDropOnCard,
+    handleDragOverCard,
+    handleDragOver,
+    handleDragEnd,
+  } = useDragAndDrop({
+    onDrop: onReorder,
+  });
 
   /**
    * Calculate item counts per priority for screen reader announcements
@@ -335,12 +390,16 @@ export const BoardView: React.FC<BoardViewProps> = ({
             isDraggingOver={isDraggingOver}
             itemsCountByPriority={itemsCountByPriority}
             draggedItem={draggedItem}
+            dropIndicator={dropIndicator}
             onDragStart={handleDragStart}
             onDragEnd={handleDragEnd}
-            onDrop={handleDrop}
+            onDropOnColumn={handleDropOnColumn}
+            onDropOnCard={handleDropOnCard}
+            onDragOverCard={handleDragOverCard}
             onDragOver={handleDragOver}
             onItemClick={onItemClick}
             onPriorityChange={onPriorityChange}
+            canOrder={canOrder}
             forceVirtualization={enableVirtualization}
           />
         );

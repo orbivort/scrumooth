@@ -12,6 +12,7 @@ import {
   addWorkflowTransition,
 } from '../../../controllers/workflow.controller';
 import { workflowService } from '../../../services/workflow.service';
+import { NotFoundError } from '../../../utils/errors';
 import { createMockRequest, createMockResponse } from '../../setup/testSetup';
 
 vi.mock('../../../services/workflow.service', () => ({
@@ -124,6 +125,28 @@ describe('Workflow Controller', () => {
 
       expect(mockRes._status).toBe(400);
     });
+
+    it('should return 404 when the service throws a NotFoundError', async () => {
+      mockReq.params = { entityType: 'Unknown' };
+
+      (workflowService.getWorkflowStates as any).mockRejectedValue(new NotFoundError('Workflow'));
+
+      await getWorkflowStates(mockReq as any, mockRes as any);
+
+      expect(mockRes._status).toBe(404);
+      expect(mockRes._json).toEqual({ success: false, error: 'Workflow not found' });
+    });
+
+    it('should return 500 when the service throws a generic error', async () => {
+      mockReq.params = { entityType: 'ProductBacklogItem' };
+
+      (workflowService.getWorkflowStates as any).mockRejectedValue(new Error('Database error'));
+
+      await getWorkflowStates(mockReq as any, mockRes as any);
+
+      expect(mockRes._status).toBe(500);
+      expect(mockRes._json).toEqual({ success: false, error: 'Failed to fetch workflow states' });
+    });
   });
 
   describe('getWorkflowTransitions', () => {
@@ -147,6 +170,22 @@ describe('Workflow Controller', () => {
       await getWorkflowTransitions(mockReq as any, mockRes as any);
 
       expect(mockRes._status).toBe(400);
+    });
+
+    it('should return 500 when the service throws', async () => {
+      mockReq.params = { entityType: 'ProductBacklogItem' };
+
+      (workflowService.getWorkflowTransitions as any).mockRejectedValue(
+        new Error('Database error')
+      );
+
+      await getWorkflowTransitions(mockReq as any, mockRes as any);
+
+      expect(mockRes._status).toBe(500);
+      expect(mockRes._json).toEqual({
+        success: false,
+        error: 'Failed to fetch workflow transitions',
+      });
     });
   });
 
@@ -211,6 +250,19 @@ describe('Workflow Controller', () => {
 
       expect(mockRes._status).toBe(400);
     });
+
+    it('should default to 500 when the error has no statusCode', async () => {
+      mockReq.body = { entityType: 'ProductBacklogItem', fromStatus: 'NEW', toStatus: 'INVALID' };
+      mockReq.user = { id: 'user-123' };
+
+      (workflowService.validateTransition as any).mockRejectedValue(
+        new Error('Unexpected failure')
+      );
+
+      await validateTransition(mockReq as any, mockRes as any);
+
+      expect(mockRes._status).toBe(500);
+    });
   });
 
   describe('executeStatusChange', () => {
@@ -274,6 +326,42 @@ describe('Workflow Controller', () => {
         })
       );
     });
+
+    it('should surface the error status code when the service throws one', async () => {
+      mockReq.body = {
+        entityType: 'ProductBacklogItem',
+        entityId: 'pbi-123',
+        fromStatus: 'NEW',
+        toStatus: 'INVALID',
+      };
+      mockReq.user = { id: 'user-123' };
+
+      const error = new Error('Illegal transition') as Error & { statusCode?: number };
+      error.statusCode = 422;
+      (workflowService.executeStatusChange as any).mockRejectedValue(error);
+
+      await executeStatusChange(mockReq as any, mockRes as any);
+
+      expect(mockRes._status).toBe(422);
+    });
+
+    it('should default to 500 when the thrown error has no statusCode', async () => {
+      mockReq.body = {
+        entityType: 'ProductBacklogItem',
+        entityId: 'pbi-123',
+        fromStatus: 'NEW',
+        toStatus: 'INVALID',
+      };
+      mockReq.user = { id: 'user-123' };
+
+      (workflowService.executeStatusChange as any).mockRejectedValue(
+        new Error('Unexpected failure')
+      );
+
+      await executeStatusChange(mockReq as any, mockRes as any);
+
+      expect(mockRes._status).toBe(500);
+    });
   });
 
   describe('getStatusChangeHistory', () => {
@@ -320,6 +408,22 @@ describe('Workflow Controller', () => {
 
       expect(mockRes._status).toBe(400);
     });
+
+    it('should return 500 when the service throws', async () => {
+      mockReq.params = { entityType: 'ProductBacklogItem', entityId: 'pbi-123' };
+
+      (workflowService.getStatusChangeHistory as any).mockRejectedValue(
+        new Error('Database error')
+      );
+
+      await getStatusChangeHistory(mockReq as any, mockRes as any);
+
+      expect(mockRes._status).toBe(500);
+      expect(mockRes._json).toEqual({
+        success: false,
+        error: 'Failed to fetch status change history',
+      });
+    });
   });
 
   describe('getAllowedTransitions', () => {
@@ -344,6 +448,74 @@ describe('Workflow Controller', () => {
       await getAllowedTransitions(mockReq as any, mockRes as any);
 
       expect(mockRes._status).toBe(400);
+    });
+
+    it('should resolve the caller roles from all team memberships', async () => {
+      mockReq.params = { entityType: 'ProductBacklogItem', fromStatus: 'NEW' };
+      mockReq.user = { id: 'user-123' };
+      mockReq.prisma = {
+        teamMember: {
+          findMany: vi
+            .fn()
+            .mockResolvedValue([
+              { role: 'DEVELOPERS' },
+              { role: 'DEVELOPERS' },
+              { role: 'PRODUCT_OWNER' },
+            ]),
+        },
+      };
+
+      (workflowService.getAllowedTransitions as any).mockResolvedValue([]);
+
+      await getAllowedTransitions(mockReq as any, mockRes as any);
+
+      expect(mockReq.prisma.teamMember.findMany).toHaveBeenCalledWith({
+        where: { userId: 'user-123' },
+        select: { role: true },
+      });
+      expect(workflowService.getAllowedTransitions).toHaveBeenCalledWith(
+        'ProductBacklogItem',
+        'NEW',
+        'user-123',
+        ['DEVELOPERS', 'PRODUCT_OWNER']
+      );
+    });
+
+    it('should continue with no roles when role resolution fails', async () => {
+      mockReq.params = { entityType: 'ProductBacklogItem', fromStatus: 'NEW' };
+      mockReq.user = { id: 'user-123' };
+      mockReq.prisma = {
+        teamMember: {
+          findMany: vi.fn().mockRejectedValue(new Error('Database offline')),
+        },
+      };
+
+      (workflowService.getAllowedTransitions as any).mockResolvedValue([]);
+
+      await getAllowedTransitions(mockReq as any, mockRes as any);
+
+      expect(workflowService.getAllowedTransitions).toHaveBeenCalledWith(
+        'ProductBacklogItem',
+        'NEW',
+        'user-123',
+        []
+      );
+      expect(mockRes._json).toEqual({ success: true, data: [] });
+    });
+
+    it('should return 500 when the service throws', async () => {
+      mockReq.params = { entityType: 'ProductBacklogItem', fromStatus: 'NEW' };
+      mockReq.user = { id: 'user-123' };
+
+      (workflowService.getAllowedTransitions as any).mockRejectedValue(new Error('Database error'));
+
+      await getAllowedTransitions(mockReq as any, mockRes as any);
+
+      expect(mockRes._status).toBe(500);
+      expect(mockRes._json).toEqual({
+        success: false,
+        error: 'Failed to fetch allowed transitions',
+      });
     });
   });
 
@@ -376,6 +548,56 @@ describe('Workflow Controller', () => {
       await createWorkflow(mockReq as any, mockRes as any);
 
       expect(mockRes._status).toBe(401);
+    });
+
+    it('should default a missing description to null', async () => {
+      mockReq.body = {
+        entityType: 'CustomEntity',
+        name: 'Custom Workflow',
+        defaultStatus: 'DRAFT',
+      };
+      mockReq.user = { id: 'user-123' };
+
+      (workflowService.createWorkflow as any).mockResolvedValue({ id: 'wf-123' });
+
+      await createWorkflow(mockReq as any, mockRes as any);
+
+      expect(workflowService.createWorkflow).toHaveBeenCalledWith(
+        'CustomEntity',
+        'Custom Workflow',
+        null,
+        'DRAFT',
+        'user-123'
+      );
+    });
+
+    it('should surface the error status code when the service throws one', async () => {
+      mockReq.body = { entityType: 'CustomEntity', name: 'Custom Workflow' };
+      mockReq.user = { id: 'user-123' };
+
+      const error = new Error('Conflict') as Error & { statusCode?: number };
+      error.statusCode = 409;
+      (workflowService.createWorkflow as any).mockRejectedValue(error);
+
+      await createWorkflow(mockReq as any, mockRes as any);
+
+      expect(mockRes._status).toBe(409);
+    });
+
+    it('should default to 500 when the thrown error has no statusCode', async () => {
+      mockReq.body = { entityType: 'CustomEntity', name: 'Custom Workflow' };
+      mockReq.user = { id: 'user-123' };
+
+      (workflowService.createWorkflow as any).mockRejectedValue(new Error('Unexpected failure'));
+
+      await createWorkflow(mockReq as any, mockRes as any);
+
+      expect(mockRes._status).toBe(500);
+      expect(mockRes._json).toEqual({
+        success: false,
+        error: 'Unexpected failure',
+        code: undefined,
+      });
     });
   });
 
@@ -426,6 +648,28 @@ describe('Workflow Controller', () => {
         undefined
       );
     });
+
+    it('should surface the error status code when the service throws one', async () => {
+      mockReq.body = { workflowId: 'wf-123', name: 'REVIEW' };
+
+      const error = new Error('Duplicate state') as Error & { statusCode?: number };
+      error.statusCode = 409;
+      (workflowService.addWorkflowState as any).mockRejectedValue(error);
+
+      await addWorkflowState(mockReq as any, mockRes as any);
+
+      expect(mockRes._status).toBe(409);
+    });
+
+    it('should default to 500 when the thrown error has no statusCode', async () => {
+      mockReq.body = { workflowId: 'wf-123', name: 'REVIEW' };
+
+      (workflowService.addWorkflowState as any).mockRejectedValue(new Error('Unexpected failure'));
+
+      await addWorkflowState(mockReq as any, mockRes as any);
+
+      expect(mockRes._status).toBe(500);
+    });
   });
 
   describe('addWorkflowTransition', () => {
@@ -470,6 +714,30 @@ describe('Workflow Controller', () => {
         [],
         []
       );
+    });
+
+    it('should surface the error status code when the service throws one', async () => {
+      mockReq.body = { workflowId: 'wf-123', fromStateName: 'NEW', toStateName: 'IN_PROGRESS' };
+
+      const error = new Error('Duplicate transition') as Error & { statusCode?: number };
+      error.statusCode = 409;
+      (workflowService.addWorkflowTransition as any).mockRejectedValue(error);
+
+      await addWorkflowTransition(mockReq as any, mockRes as any);
+
+      expect(mockRes._status).toBe(409);
+    });
+
+    it('should default to 500 when the thrown error has no statusCode', async () => {
+      mockReq.body = { workflowId: 'wf-123', fromStateName: 'NEW', toStateName: 'IN_PROGRESS' };
+
+      (workflowService.addWorkflowTransition as any).mockRejectedValue(
+        new Error('Unexpected failure')
+      );
+
+      await addWorkflowTransition(mockReq as any, mockRes as any);
+
+      expect(mockRes._status).toBe(500);
     });
   });
 });

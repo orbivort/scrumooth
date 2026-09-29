@@ -62,6 +62,8 @@ vi.mock('./domain/productBacklog.service', () => ({
     bulkCreateProductBacklogItems: vi.fn().mockResolvedValue({ data: {} }),
     updateProductBacklogItem: vi.fn().mockResolvedValue({}),
     updateBacklogItemPriority: vi.fn().mockResolvedValue({}),
+    reorderProductBacklogItems: vi.fn().mockResolvedValue({ data: { items: [] } }),
+    getBacklogItemCountByGoal: vi.fn().mockResolvedValue(0),
     deleteProductBacklogItem: vi.fn().mockResolvedValue({}),
   },
 }));
@@ -76,6 +78,10 @@ vi.mock('./domain/sprint.service', () => ({
     saveSprintBacklog: vi.fn().mockResolvedValue({ data: {} }),
     saveSprintPlanningDraft: vi.fn().mockResolvedValue({ data: {} }),
     getSprintPlanningDraft: vi.fn().mockResolvedValue({ data: {} }),
+    getPlanningParticipation: vi.fn().mockResolvedValue({ data: {} }),
+    addPlanningAttendee: vi.fn().mockResolvedValue({ data: {} }),
+    updatePlanningAttendee: vi.fn().mockResolvedValue({ data: {} }),
+    deletePlanningAttendee: vi.fn().mockResolvedValue({ data: {} }),
     rollbackSprintStart: vi.fn().mockResolvedValue({}),
     updateSprint: vi.fn().mockResolvedValue({}),
     completeSprint: vi.fn().mockResolvedValue({}),
@@ -96,6 +102,7 @@ vi.mock('./domain/sprintBacklog.service', () => ({
     getTasksByPbiId: vi.fn().mockResolvedValue({ data: [] }),
     addPBIToSprint: vi.fn().mockResolvedValue({}),
     removePBIFromSprint: vi.fn().mockResolvedValue({}),
+    acknowledgeSprintBacklogChange: vi.fn().mockResolvedValue({}),
     getSprintBacklogChanges: vi.fn().mockResolvedValue({ data: [] }),
   },
 }));
@@ -173,6 +180,8 @@ vi.mock('./domain/increment.service', () => ({
     updateIncrement: vi.fn().mockResolvedValue({}),
     deliverIncrement: vi.fn().mockResolvedValue({}),
     verifyIntegration: vi.fn().mockResolvedValue({ data: {} }),
+    verifyUsability: vi.fn().mockResolvedValue({ data: {} }),
+    reconcileIncrement: vi.fn().mockResolvedValue({ data: {} }),
     getIncrementMetrics: vi.fn().mockResolvedValue({ data: {} }),
   },
 }));
@@ -186,6 +195,8 @@ vi.mock('./domain/sprintReview.service', () => ({
     addStakeholderFeedback: vi.fn().mockResolvedValue({}),
     getPendingAdjustments: vi.fn().mockResolvedValue({ data: [] }),
     markAdjustmentImplemented: vi.fn().mockResolvedValue({}),
+    materializeAdjustment: vi.fn().mockResolvedValue({ data: {} }),
+    linkAdjustmentToPbi: vi.fn().mockResolvedValue({ data: {} }),
     getPendingFeedback: vi.fn().mockResolvedValue({ data: [] }),
     markFeedbackAddressed: vi.fn().mockResolvedValue({}),
     addAttendee: vi.fn().mockResolvedValue({}),
@@ -217,6 +228,11 @@ vi.mock('./domain/retrospective.service', () => ({
     addRetroAttendee: vi.fn().mockResolvedValue({}),
     updateRetroAttendee: vi.fn().mockResolvedValue({}),
     deleteRetroAttendee: vi.fn().mockResolvedValue({}),
+    // The DoD inspection and the action-item follow-through the API facade also binds. A partial
+    // mock leaves those undefined and the facade fails to construct.
+    applyDodChanges: vi.fn().mockResolvedValue({ data: {} }),
+    materializeActionItem: vi.fn().mockResolvedValue({ data: {} }),
+    linkActionItemToPbi: vi.fn().mockResolvedValue({ data: {} }),
   },
 }));
 

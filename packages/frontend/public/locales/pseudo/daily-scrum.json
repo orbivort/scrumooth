@@ -19,6 +19,15 @@
     "trackedAsFormalImpediment": "[Tràckéd às fórmàl ímpédíméntttttttttt]",
     "viewMode": "[Víéw módéééé]"
   },
+  "cadence": {
+    "configure": "[Récórd thé téàm's Dàíly Scrúm tímé ànd plàcééééééééééééééé]",
+    "held": "[{{held}} óóff {{expected}} wórkíng dàys récórdédddddddd]",
+    "joinLink": "[Jóín thé méétíngggggg]",
+    "nonWorkingDay": "[Tódày ís nót à wórkíng dày ón thé téàm càléndàr. Thé téàm mày stíll mééttttttttttttttttttttttt.]",
+    "nonWorkingDayNamed": "[{{name}} — nót à wórkíng dày fór thís téàm. Thé téàm mày stíll mééttttttttttttttttttt.]",
+    "notConfigured": "[Nó stàndíng tímé ànd plàcé récórdéd yéttttttttttttt]",
+    "sprintDay": "[Sprínt dàyyyyy {{current}} óóff {{total}}]"
+  },
   "createImpediment": "[Créàté ímpédíménttttttt]",
   "datePicker": {
     "ariaLabel": "[Séléct dàté fór dàíly úpdàtéssssssssss]",
@@ -54,16 +63,30 @@
     "viewTitle": "[Dàíly Scrúm fócússsssss]"
   },
   "form": {
+    "adaptationEvidenceLabel": "[Whàt díd thé évént cónclúdé àbóút thé Sprínt Bàcklóggggggggggggggggg?]",
     "adaptationsHint": "[Whàt múst wé àdjúst ín thé Sprínt Bàcklóg bàséd ón óúr prógréssssssssssssssssssssss?]",
     "adaptationsLabel": "[Àdàptàtíóns (Sprínt Bàcklógggggggggg)]",
     "adaptationsPlaceholder": "[Déscríbé àgrééd chàngés tó thé Sprínt Bàcklógggggggggggggggg...]",
     "addAdjustment": "[Àddd]",
+    "adjustmentActions": {
+      "ADDED": "[Àddéd tó thé Sprínt Bàcklógggggggggg]",
+      "REFINED": "[Réfínédddd]",
+      "REMOVED": "[Rémóvéd fróm thé Sprínt Bàcklóggggggggggg]",
+      "REPRIORITIZED": "[Répríórítíséddddd]",
+      "SPLIT": "[Splíttt]",
+      "UNSPECIFIED": "[Sprínt Bàcklóg àdjústménttttttttt]"
+    },
     "backlogActionLabel": "[Àdjústmént àctíónnnnnnn]",
     "backlogActionPlaceholder": "[Whàt ís thé àdjústmént? (é.g. réàssígnéd, flàggédddddddddddddddd)]",
+    "backlogActionTypeLabel": "[Kínd óf àdjústménttttttt]",
     "backlogAdjustmentsLabel": "[Sprínt Bàcklóg àdjústménts (óptíónàlllllllllllll)]",
     "backlogItemPlaceholder": "[Séléct à Sprínt Bàcklóg ítémmmmmmmmmmm...]",
     "backlogItemSelect": "[Sprínt Bàcklóg ítémmmmmmm]",
     "cancel": "[Càncélll]",
+    "evidenceAcknowledged": "[Récórdéd: thé Dévélópérs júdgéd thàt nó Sprínt Bàcklóg àdàptàtíón wàs néédéd tódàyyyyyyyyyyyyyyyyyyyyyyyyyy.]",
+    "evidenceAdapted": "[Thé Sprínt Bàcklóg wàs àdàptédddddddddd]",
+    "evidenceAdaptedHint": "[Àdd àt léàst óné àdjústmént, ór chóósé \"Nó àdàptàtíón néédéd tódàyyyyyyyyyyyyyyyyyyyyyy\".]",
+    "evidenceNoAdaptation": "[Nó àdàptàtíón néédéd tódàyyyyyyyyy]",
     "fieldHint": "[Óptíónàllll]",
     "planHint": "[Àn àctíónàblé plàn fór thé néxt dày óf wórk, àgrééd by thé Dévélópérssssssssssssssssssssss.]",
     "planLabel": "[Plàn fór néxt dàyyyyyyy]",
@@ -102,6 +125,12 @@
     "startTitle": "[Tódày's Dàíly Scrúmmmmmmm]",
     "title": "[Ínspéct & Àdàptttttt]"
   },
+  "inspectedGoal": {
+    "label": "[Sprínt Góàl ínspéctéd àt thís Dàíly Scrúmmmmmmmmmmmmmm]",
+    "noAdaptation": "[Thé Dévélópérs júdgéd thàt nó Sprínt Bàcklóg àdàptàtíón wàs néédédddddddddddddddddddddd.]",
+    "none": "[Nó Sprínt Góàl wàs récórdéd whén thís Dàíly Scrúm wàs hélddddddddddddddddddd.]",
+    "renegotiated": "[Thé Sprínt Góàl wàs rénégótíàtéd àftér thís Dàíly Scrúm. Ít nów réàdsssssssssssssssssssssss: {{currentGoal}}]"
+  },
   "loading": {
     "actions": "[Lóàdíng àctíónsssssss...]",
     "pageHeader": "[Lóàdíng pàgé héàdérrrrrrrr...]",
@@ -122,6 +151,7 @@
     "descriptionLabel": "[Déscríptíónnnnn]",
     "descriptionPlaceholder": "[Détàíléd déscríptíón óf thé ímpédíménttttttttttttt]",
     "priority": "[Príórítyyyy]",
+    "priorityCritical": "[Crítícàllll]",
     "priorityHigh": "[HHííggh]",
     "priorityLow": "[Lóww]",
     "priorityMedium": "[Médíúmmm]",
@@ -132,6 +162,10 @@
   "quickDates": {
     "today": "[Tódàyyy]",
     "yesterday": "[Yéstérdàyyyy]"
+  },
+  "reflection": {
+    "pending": "[Déclàréd, nót yét réfléctédddddddddd]",
+    "reflected": "[Réfléctéd ín thé Sprínt Bàcklóggggggggggg]"
   },
   "retryPrompt": {
     "dismiss": "[Dísmísssss]",
@@ -213,6 +247,7 @@
     "yesterday": "[Yéstérdàyyyy]"
   },
   "validation": {
+    "adaptationEvidenceRequired": "[Déclàré whéthér thé Sprínt Bàcklóg wàs àdàptéd, ór àcknówlédgé thàt nó àdàptàtíón wàs néédéddddddddddddddddddddddddddddd.]",
     "descriptionRequired": "[Déscríptíón ís réqúírédddddddd]",
     "descriptionTooShort": "[Déscríptíón múst bé àt léàst 10 chàràctérssssssssssssss]",
     "planRequired": "[Àdd àn àctíónàblé plàn fór thé néxt dày tó sàvé thé Dàíly Scrúmmmmmmmmmmmmmmmmmmmmm.]",

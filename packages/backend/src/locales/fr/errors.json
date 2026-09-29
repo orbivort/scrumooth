@@ -1,32 +1,153 @@
 {
+  "backlogItem": {
+    "notReady": "Seuls les éléments du Product Backlog affinés au statut READY peuvent entrer dans un Sprint. {{count}} élément(s) sélectionné(s) ne sont pas encore READY : {{items}}."
+  },
+  "backlogOrder": {
+    "duplicateItems": "Une réorganisation ne peut pas désigner deux fois le même élément du Product Backlog.",
+    "empty": "Une réorganisation doit désigner au moins un élément du Product Backlog.",
+    "incompleteList": "Une réorganisation complète doit contenir tous les éléments du Product Backlog de l'équipe : attendus {{expected}}, reçus {{received}}. Pour réorganiser une vue filtrée, envoyez plutôt un déplacement positionnel (pbiId, targetPbiId, position).",
+    "multipleTeams": "Tous les éléments réorganisés doivent appartenir au Product Backlog de la même équipe.",
+    "productOwnerOnly": "Seul le Product Owner ordonne le Product Backlog : modifier la priorité MoSCoW ou la position d'un élément relève de la décision du Product Owner.",
+    "selfMove": "Un élément ne peut pas être déplacé avant ou après lui-même.",
+    "tooMany": "Une réorganisation ne peut pas contenir plus de {{max}} éléments du Product Backlog."
+  },
+  "coaching": {
+    "invalidDate": "Date invalide : une date ISO (AAAA-MM-JJ) est attendue.",
+    "smOnly": "Le journal de coaching est le carnet de travail du Scrum Master sur l'accompagnement de l'équipe vers l'auto-organisation et la pluridisciplinarité : seul le Scrum Master de l'équipe peut le lire ou l'écrire.",
+    "sprintNotOfTeam": "Une entrée de coaching ne peut concerner qu'un Sprint de l'équipe à laquelle elle appartient : une note de coaching n'est donc jamais rattachée à l'événement d'une autre équipe."
+  },
+  "crossFunctionality": {
+    "smOnly": "L'évaluation de pluridisciplinarité est enregistrée par le Scrum Master de l'équipe, comme l'enquête sur les valeurs : l'équipe la lit pour vérifier si elle réunit collectivement les compétences nécessaires."
+  },
   "databaseError": "Une erreur de base de données s'est produite",
   "developerOnlySizing": "Seuls les développeurs peuvent définir des points d'histoire, car les développeurs qui effectuent le travail sont responsables de l'estimation.",
+  "dodGroupGoverned": "Cette équipe travaille avec d'autres équipes Scrum sur un même produit et respecte donc leur Definition of Done commune. Modifiez la Definition of Done commune au niveau du groupe, où chaque équipe qui la partage peut voir le changement.",
+  "dodNotVerified": "Cet élément ne peut pas être marqué Terminé tant que chaque critère actif de la Definition of Done n'est pas vérifié. {{count}} critère(s) actif(s) restent à vérifier.",
+  "dodRequired": "Rien n'est Terminé tant que l'équipe n'a pas défini ce que signifie Terminé : une Definition of Done doit conserver au moins un critère actif, et sans elle un Sprint ne peut être engagé ni démarré. Une liste vide laisserait tout élément être marqué Terminé sans vérification.",
+  "dodTeamMembersOnly": "La Definition of Done est l'accord du Scrum Team lui-même sur ce que signifie « Terminé » : seul un membre de cette équipe peut la lire ou la modifier.",
+  "dorNotVerified": "Ce Sprint ne peut être engagé ni démarré tant que chaque élément sélectionné ne satisfait pas la Definition of Ready de l'équipe. {{count}} élément(s) ont encore des critères de préparation non vérifiés : {{items}}.",
+  "dorRequired": "Une Definition of Ready doit conserver au moins un critère actif, et sans elle un Sprint ne peut être engagé ni démarré : une liste vide laisserait la règle de préparation passer sans vérification.",
+  "dorScrumMasterOnly": "La Definition of Ready est une pratique complémentaire et non un artefact du Guide Scrum, et elle appartient au Scrum Master de l'équipe : seul le Scrum Master de cette équipe peut la modifier.",
+  "dorTeamMembersOnly": "La Definition of Ready est l'accord du Scrum Team lui-même sur le moment où un élément est prêt à être planifié : seul un membre de cette équipe peut la lire ou enregistrer une vérification de préparation.",
   "emailAlreadyExists": "Un compte avec l'e-mail {{email}} existe déjà",
   "entityNotFound": "{{entity}} introuvable",
+  "facilitation": {
+    "teamMembersOnly": "Les accords de travail et le registre de pluridisciplinarité décrivent le fonctionnement d'une équipe Scrum précise : seuls les membres de cette équipe peuvent les lire."
+  },
   "fieldAlreadyExists": "{{field}} existe déjà",
   "fieldAlreadyTaken": "{{field}} est déjà pris",
   "forbidden": "Vous n'avez pas l'autorisation d'effectuer cette action",
+  "healthCheck": {
+    "resultsSmOfTeamOnly": "Les résultats de l'enquête agrègent les notes de l'équipe elle-même : seul le Scrum Master de l'équipe concernée peut les lire. Un Scrum Master d'une autre équipe ne le peut pas.",
+    "teamMembersOnly": "Une enquête sur les valeurs Scrum enregistre la façon dont une équipe juge sa propre pratique des cinq valeurs : seul un membre de l'équipe interrogée peut y répondre ou consulter son état."
+  },
+  "impediment": {
+    "deleteForbidden": "Seule la personne qui a signalé un impediment, son propriétaire ou le Scrum Master peuvent le supprimer. Le registre de ce qui a bloqué l'équipe est une preuve.",
+    "invalidTargetDate": "La date cible doit être une date ISO valide, par exemple 2026-05-15.",
+    "ownerNotTeamMember": "Un impediment ne peut être porté que par un membre de l'équipe pour laquelle il a été signalé.",
+    "sprintNotOfTeam": "Un impediment ne peut être lié qu'à un Sprint de l'équipe pour laquelle il a été signalé.",
+    "teamMembersOnly": "L'impediment appartient à son Scrum Team : seul un membre de cette équipe peut le lire ou le modifier.",
+    "terminalResolutionRequired": "Atteindre l'état résolu ou fermé exige une résolution écrite. Indiquez comment l'impediment a été levé, afin que sa fermeture ne lève pas la barrière de clôture du Sprint sans preuve."
+  },
+  "increment": {
+    "alreadyDelivered": "Cet incrément a déjà été livré et ne peut pas être livré à nouveau.",
+    "deliveredLocked": "Cet incrément a été livré ou archivé et ne peut plus être modifié.",
+    "deliveryRequiresMethod": "Un incrément est enregistré comme livré via l'action de livraison, qui consigne comment il a atteint les utilisateurs. Renseignez le mode de livraison au lieu d'écrire le statut directement.",
+    "integrationRequired": "Cet incrément ne peut pas être vérifié ni livré avant que son intégration avec tous les incréments précédents n'ait réussi. Enregistrez d'abord les tests d'intégration requis.",
+    "pbisNotOfTeam": "Chaque élément contenu dans un incrément doit appartenir au Product Backlog de cette équipe.",
+    "sprintNotOfTeam": "Un incrément ne peut être composé qu'à partir d'un Sprint de l'équipe à laquelle il appartient.",
+    "teamMembersOnly": "L'incrément appartient à son Scrum Team : seul un membre de cette équipe peut le lire, le vérifier ou le livrer.",
+    "usabilityRequired": "Cet incrément ne peut pas être vérifié ni livré avant que son état utilisable ne soit attesté par écrit. Enregistrez d'abord la preuve d'utilisabilité."
+  },
   "invalidCredentials": "E-mail ou mot de passe invalides",
   "invalidReference": "Référence invalide",
   "invalidRelation": "Relation invalide",
   "invalidToken": "Jeton invalide",
   "notTeamMember": "Vous n'êtes pas membre de cette équipe",
+  "organizationalBarrier": {
+    "alreadyEscalated": "Cet obstacle a déjà été escaladé vers la barrière « {{title}} ». L'obstacle et sa barrière sont un seul problème : il se poursuit là-bas plutôt que d'être enregistré deux fois.",
+    "invalidDate": "Date invalide : une date ISO (AAAA-MM-JJ) est attendue.",
+    "ownerNotFound": "Le propriétaire d'une barrière doit être un utilisateur de cette installation, car le registre doit pouvoir nommer qui est responsable de sa levée.",
+    "resolutionRequired": "Clôturer une barrière exige une résolution écrite : sans elle, le registre présenterait la barrière comme levée sans rien dire de ce qui a réellement changé.",
+    "smOnly": "Supprimer les barrières entre les parties prenantes et les équipes Scrum relève du service du Scrum Master à l'organisation : créer, modifier, résoudre ou clôturer une barrière, et consigner les actions menées, incombent au Scrum Master de l'équipe.",
+    "sourceNotOfTeam": "Une barrière ne peut être escaladée qu'à partir d'un obstacle de la même équipe. Une barrière est la suite du travail bloqué de cette équipe, pas un registre général.",
+    "teamMembersOnly": "Une barrière organisationnelle enregistre ce qui bloque l'équipe Scrum de l'extérieur : seul un membre de cette équipe peut consulter le registre."
+  },
   "pleaseLoginAgain": "Veuillez vous reconnecter pour continuer",
+  "productGoal": {
+    "abandonmentReasonRequired": "Abandonner un objectif de produit nécessite une raison afin que l'équipe puisse examiner pourquoi l'objectif a été délaissé.",
+    "alreadyActive": "Un objectif de produit actif existe déjà pour cette équipe. Accomplissez-le ou abandonnez-le avant d'en activer un autre.",
+    "evidenceRequired": "Un objectif de produit ne peut être terminé sans preuve. Enregistrez d'abord une évaluation de la Sprint Review ou des valeurs mesurées des indicateurs de réussite.",
+    "notActive": "Un élément du backlog ne peut être lié qu'à l'objectif de produit actif de l'équipe. Activez cet objectif ou liez l'élément à l'objectif actif.",
+    "productOwnerOnly": "Seul le Product Owner peut créer, modifier ou supprimer un objectif de produit.",
+    "requiredForBacklog": "Le Product Backlog est l'expression émergente de l'objectif de produit. Définissez un objectif de produit actif avant d'ajouter des éléments au backlog.",
+    "snapshotEvidenceRequired": "Un instantané de l'objectif de produit doit consigner ce que l'équipe a inspecté : fournissez une évaluation ou les valeurs mesurées des indicateurs de réussite.",
+    "successMetricsRequired": "Un objectif de produit doit déclarer au moins un indicateur de réussite : précisez comment l'équipe saura que l'état futur est atteint."
+  },
   "recordNotFound": "Enregistrement introuvable",
+  "reports": {
+    "teamMembersOnly": "Un rapport lit l'historique observé d'une équipe : ce à quoi elle s'est engagée, ce qu'elle a livré et ce qu'elle a inspecté. En Scrum, la transparence est la visibilité pour ceux qui font et reçoivent le travail, et non pour toute l'installation ; seul un membre de cette équipe peut donc lire ses rapports."
+  },
+  "retrospective": {
+    "actionItemLinked": "Cette amélioration est déjà portée par l'élément de Product Backlog « {{title}} » et compte donc comme traitée. Supprimez le lien avant de la marquer comme non traitée.",
+    "dodChangesMissing": "La rétrospective n'a enregistré aucune réflexion sur la Definition of Done : il n'y a donc rien à appliquer. Inspectez d'abord au moins un critère.",
+    "smNotesSmOnly": "Les notes du Scrum Master sont des observations de coaching sur la rétrospective du Sprint ; seul le Scrum Master de l'équipe peut les lire ou les écrire.",
+    "teamMembersOnly": "La rétrospective du Sprint est l'événement propre de son Scrum Team et contient une réflexion franche sur les personnes et les interactions : seul un membre de cette équipe peut la lire ou la modifier."
+  },
   "roleAlreadyTaken": "Un {{role}} existe déjà pour cette équipe. Chaque équipe ne peut avoir qu'un seul {{role}}.",
   "routeNotFound": "{{method}} {{path}} introuvable",
   "sprint": {
     "anotherActive": "Un autre sprint est déjà actif",
     "cancelRequiresProductOwner": "Seul le Product Owner peut annuler un sprint",
+    "capacityExceeded": "Le sprint ne peut pas démarrer : le travail planifié ({{planned}} h) dépasse la capacité enregistrée ({{capacity}} h) de plus que la tolérance autorisée de {{tolerance}} %. Réduisez le plan ou enregistrez davantage de capacité.",
+    "changeNeedsPo": "Seul le Product Owner peut approuver une modification du Sprint Backlog qui met en danger l'objectif de sprint.",
+    "changeNotPending": "Cette modification du Sprint Backlog n'est pas en attente d'approbation (statut : {{status}}).",
+    "datesOverlap": "Les dates du sprint chevauchent un sprint existant ({{sprintName}}). Une équipe ne peut pas mener deux sprints en même temps.",
+    "durationLimit": "Le sprint ne peut pas être créé : sa durée de {{days}} jours dépasse le maximum d'un mois ({{max}} jours). Raccourcissez le sprint à un mois ou moins.",
+    "eventSprintRetrospective": "Sprint Retrospective",
+    "eventSprintReview": "Sprint Review",
+    "goalLocked": "L'objectif de sprint est un engagement dès qu'un sprint est en cours et ne peut plus être modifié ensuite. Révisez-le via l'approbation par le Product Owner d'une modification du Sprint Backlog qui le met en danger.",
+    "impedimentsUnresolved": "Le Sprint ne peut pas être clôturé tant qu'il reste des obstacles non résolus : {{impediments}}. Résolvez-les ou clôturez-les avant de clôturer le Sprint.",
+    "invalidDateRange": "La date de fin du sprint doit être postérieure à sa date de début.",
     "missingGoal": "Le sprint ne peut pas démarrer sans un objectif de sprint",
+    "notContiguous": "Un nouveau sprint doit commencer immédiatement après la fin du précédent : l'écart avec « {{sprintName}} » dépasse les {{max}} jours autorisés pour le week-end intermédiaire. Ajustez les dates pour ne laisser aucun temps sans sprint entre eux.",
     "notPlanned": "Seuls les sprints planifiés peuvent démarrer",
     "notReadyToStart": "Le backlog du sprint doit être enregistré avant de pouvoir démarrer le sprint",
+    "notReplannable": "Seul un sprint encore en planification (DRAFT ou PLANNED) peut être modifié. Ce sprint est au statut {{status}}.",
+    "participationRequired": "Le sprint ne peut pas démarrer sans participation enregistrée à la planification. Enregistrez la présence, y compris celle du Product Owner et d'au moins un développeur.",
     "pbiAlreadyCommitted": "L'élément du backlog « {{pbiTitle}} » est déjà engagé dans un autre sprint ({{sprintName}}). Un élément du Product Backlog ne peut être travaillé que dans un seul sprint à la fois.",
-    "pbiConflictAtStart": "Le sprint ne peut pas démarrer : les éléments du backlog suivants sont déjà engagés dans un autre sprint : {{items}}."
+    "pbiConflictAtStart": "Le sprint ne peut pas démarrer : les éléments du backlog suivants sont déjà engagés dans un autre sprint : {{items}}.",
+    "prerequisiteEventsMissing": "Le Sprint ne peut pas être clôturé car les événements suivants ne sont pas terminés : {{events}}. Enregistrez-les avant de clôturer le Sprint.",
+    "productGoalRequired": "Le sprint ne peut pas démarrer sans un objectif de produit lié. Liez d'abord le sprint à l'objectif de produit de l'équipe.",
+    "scopeChangeAlreadyPending": "Une modification de cet élément qui met en danger l'objectif de sprint attend déjà l'approbation du Product Owner. Traitez-la avant d'en demander une autre.",
+    "scopeGoalRenegotiationRequired": "Approuver une modification qui met en danger l'objectif de sprint exige l'objectif de sprint renégocié, afin que l'équipe sache vers quoi elle travaille désormais.",
+    "scopeReasonRequired": "Toute modification du Sprint Backlog doit indiquer pourquoi elle est effectuée.",
+    "smNotesSmOnly": "Les notes du Scrum Master sont des observations de coaching sur le Sprint, et non un champ partagé : seul le Scrum Master de l'équipe peut les lire ou les écrire.",
+    "teamMembersOnly": "Le sprint appartient à sa Scrum Team : seul un membre de cette équipe peut le créer, le démarrer ou le replanifier."
+  },
+  "sprintBacklog": {
+    "capacityNotOfTeam": "Chaque entrée de capacité doit appartenir à un développeur de cette équipe.",
+    "developersOnly": "Seuls les développeurs peuvent enregistrer le Sprint Backlog, car les développeurs qui effectuent le travail en sont responsables.",
+    "pbiNotOfTeam": "Chaque élément sélectionné pour un Sprint doit appartenir au Product Backlog de cette équipe."
+  },
+  "sprintReview": {
+    "eventBeforeEndDate": "La Sprint Review examine le résultat du sprint et la rétrospective de sprint le conclut : ni l'une ni l'autre ne peut être terminée avant la date de fin du sprint ({{endDate}}).",
+    "goalOutcomeNotApplicable": "Ce sprint n'a pas d'objectif de sprint : il n'y a donc rien à évaluer. L'atteinte de l'objectif est un jugement portant sur un objectif auquel l'équipe s'est engagée.",
+    "goalOutcomeRequired": "La Sprint Review est le moment où l'équipe examine les progrès vers l'objectif de sprint ; terminer cette revue exige donc le jugement de l'équipe elle-même : atteint, partiellement atteint ou non atteint. L'achèvement des éléments ne le remplace pas : un sprint peut atteindre son objectif sans terminer chaque élément, et terminer chaque élément sans atteindre son objectif.",
+    "retrospectiveRequiresReview": "La Sprint Review est l'avant-dernier événement du sprint et la rétrospective de sprint conclut le sprint. Terminez la Sprint Review avant de terminer la rétrospective.",
+    "smNotesSmOnly": "Les notes du Scrum Master sont des observations de coaching sur la Sprint Review : seul le Scrum Master de l'équipe peut les écrire.",
+    "teamMembersOnly": "La Sprint Review est l'événement propre à sa Scrum Team : seul un membre de cette équipe peut enregistrer les présences, laisser des retours, ajuster le Product Backlog ou la terminer."
   },
   "task": {
     "assigneeMustBeDeveloper": "Seuls les développeurs de l'équipe peuvent être assignés. Les Product Owners et Scrum Masters ne peuvent pas assigner de tâches.",
     "creationRequiresDeveloper": "Seuls les développeurs peuvent créer et décomposer des tâches, car les développeurs qui effectuent le travail sont responsables de la décomposition des tâches."
+  },
+  "teamGroup": {
+    "alreadyMember": "Cette équipe travaille déjà avec un groupe sur un même produit, et une équipe respecte une seule Definition of Done. Quittez d'abord le groupe actuel.",
+    "dodAcknowledgementRequired": "Rejoindre un groupe signifie adopter sa Definition of Done commune. Indiquez la version que vous adoptez — la version actuelle du groupe est {{version}} — afin que la conformité de l'équipe soit enregistrée plutôt que supposée.",
+    "leadershipOnly": "Rejoindre ou quitter un groupe détermine la Definition of Done à laquelle l'équipe sera tenue : seul le Product Owner ou le Scrum Master de l'équipe peut le faire.",
+    "membersOnly": "Un groupe est la collaboration de ses équipes Scrum : seul un membre de l'une d'elles peut le consulter.",
+    "notEmpty": "Ce groupe compte encore des équipes qui respectent sa Definition of Done. Déplacez-les vers un autre groupe ou faites-les partir avant de le supprimer."
   },
   "teamSizeLimitReached": "Cette équipe a atteint la taille maximale de {{max}} membres. Aucun membre supplémentaire ne peut être ajouté.",
   "tokenExpired": "Le jeton a expiré",

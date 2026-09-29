@@ -110,7 +110,6 @@
     },
     "memberSince": "[Mémbér síncééééé]",
     "roleNames": {
-      "administrator": "[Àdmínístràtórrrrr]",
       "developers": "[Dévélópérssss]",
       "productOwner": "[Pródúct Ównérrrrr]",
       "scrumMaster": "[Scrúm Màstérrrrr]"
@@ -156,6 +155,9 @@
     }
   },
   "noTeam": "[NNóó TTééààm]",
+  "overview": {
+    "metricsTitle": "[Àt à glàncééééé]"
+  },
   "selectTeam": "[Séléct à Téàmmmmm]",
   "sendMessageModal": {
     "cancel": "[Càncélll]",
@@ -180,7 +182,14 @@
       "maxLength": "[Méssàgé múst bé léss thànnnnnnnnn {{limit}} chàràctérsssss.]"
     }
   },
-  "subtitle": "[Mànàgé téàm mémbérs ànd téàm stàndàrdsssssssssssss]",
+  "subtitle": "[Yóúr téàm's mémbérs, àgrééménts ànd Scrúm héàlthhhhhhhhhhhhhhhh]",
+  "tabs": {
+    "ariaLabel": "[Téàm séctíónsssss]",
+    "definition": "[Défínítíónnnn]",
+    "health": "[Scrúm Héàlthhhhh]",
+    "members": "[Mémbérssss]",
+    "overview": "[Óvérvíéwwww]"
+  },
   "teamInfo": {
     "created": "[Créàtédddd: {{date}}]",
     "lastUpdated": "[Làst úpdàtédddddd: {{date}}]",
@@ -195,14 +204,15 @@
   "teamStats": {
     "avgVelocity": "[Àvg Vélócítyyyyy]",
     "completedSprints": "[Cómplétéd Spríntsssssss]",
-    "sprintCompletionRate": "[Sprínt Bácklógg Cómmplééééééé]",
+    "sprintCompletionRate": "[Sprínt Bàcklóg Cómplétíón Ràtéééééééééé]",
     "storyPointsCompleted": "[Stóry Póínts Cómplétédddddddd]"
   },
-  "title": "[TTééààm]",
+  "title": "[MMyy TTééààm]",
   "welcome": {
     "selectRole": "[Séléct Yóúr Rólé tó Cóntínúéééééééééé]",
     "subtitle": "[Yóúr àgílé jóúrnéy stàrts hérééééééééééé...]",
-    "title": "[Wélcómé tó Scrúmóóthhhhhhhh, {{name}}!]"
+    "title": "[Wélcómé tó Scrúmóóthhhhhhhh, {{name}}!]",
+    "titleAnonymous": "[Wélcómé tó Scrúmóóthhhhhhhh!]"
   },
   "yourTeams": "[Yóúr Téàmssss]"
 }

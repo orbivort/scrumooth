@@ -4,18 +4,25 @@ import type {
   TeamMetrics,
   Insight,
   StatusChangeHistoryItem,
+  VelocityData,
   ApiResponse,
 } from '../../types';
 import { coreApiService } from '../core/api.core';
+
+/**
+ * Velocity report payload.
+ *
+ * Each Sprint carries its own evidence, so a consumer can tell a genuinely closed Sprint from the
+ * in-flight one, and a point whose evidence does not survive from a Sprint that delivered nothing.
+ */
+export type VelocityApiData = VelocityData;
 
 class ReportsService {
   private get api() {
     return coreApiService.axiosInstance;
   }
 
-  async getVelocityData(
-    teamId: string
-  ): Promise<ApiResponse<{ sprints: string[]; planned: number[]; completed: number[] }>> {
+  async getVelocityData(teamId: string): Promise<ApiResponse<VelocityApiData>> {
     const { data } = await this.api.get('/reports/velocity', {
       params: { teamId },
     });

@@ -41,6 +41,7 @@
     "all": "Alle",
     "directMessages": "Direktnachrichten",
     "impediments": "Impediments",
+    "sprintBacklogChanges": "Sprint-Backlog-Änderungen",
     "taskAssignments": "Aufgaben-Zuweisungen",
     "teamCreated": "Team erstellt",
     "teamDeleted": "Team gelöscht",
@@ -50,6 +51,8 @@
   },
   "impedimentAssigned": "Neues Impediment zugewiesen: \"{{impedimentTitle}}\"",
   "impedimentAssignedMessage": "Gemeldet von {{reporterName}}",
+  "impedimentEscalation": "Impediment erfordert Ihre Aktion: \"{{impedimentTitle}}\"",
+  "impedimentEscalationMessage": "Dieses Impediment ist seit {{ageDays}} Tagen ungelöst. Als Scrum Master sind Sie dafür verantwortlich, seine Beseitigung zu bewirken.",
   "loading": {
     "ariaLabel": "Benachrichtigungen laden",
     "title": "Benachrichtigungen werden geladen..."
@@ -58,6 +61,8 @@
   "marking": "Markieren...",
   "newTaskAssignedMessage": "Im Sprint \"{{sprintName}}\"",
   "newTaskAssignedTitle": "Neue Aufgabe zugewiesen: \"{{taskTitle}}\"",
+  "organizationalBarrierRaised": "Organisatorische Barriere zugewiesen: \"{{barrierTitle}}\"",
+  "organizationalBarrierRaisedMessage": "Diese Barriere liegt außerhalb des Scrum Teams. Sie sind dafür verantwortlich, sie zu beseitigen, damit das Team weiterarbeiten kann.",
   "pagination": {
     "next": "Nächste",
     "pageInfo": "Seite {{current}} von {{total}}",
@@ -67,6 +72,8 @@
   "remindersSent": "Erinnerungen an {{count}} Teammitglied gesendet",
   "remindersSent_plural": "Erinnerungen an {{count}} Teammitglieder gesendet",
   "skipToMainContent": "Zum Hauptinhalt springen",
+  "sprintBacklogChangePendingMessage": "{{changedByName}} hat erklärt, dass die Änderung von \"{{pbiTitle}}\" das Sprint-Ziel von \"{{sprintName}}\" gefährdet. Stimme dem neu verhandelten Sprint-Ziel zu oder lehne die Änderung ab.",
+  "sprintBacklogChangePendingTitle": "Änderung am Sprint Backlog wartet auf deine Entscheidung",
   "subtitle": "Bleiben Sie über Team-Aktivitäten und wichtige Updates informiert",
   "taskReassignedMessage": "Im Sprint \"{{sprintName}}\"",
   "taskReassignedTitle": "Aufgabe wurde Ihnen neu zugewiesen: \"{{taskTitle}}\"",

@@ -13,7 +13,7 @@ export const getSprints = asyncHandler(async (req: Request, res: Response) => {
   if (!teamId || typeof teamId !== 'string') {
     throw new BadRequestError('teamId is required');
   }
-  const sprints = await sprintService.getSprints(teamId);
+  const sprints = await sprintService.getSprints(teamId, req.user?.id);
   res.json(createSuccessResponse(sprints));
 });
 
@@ -25,7 +25,7 @@ export const getActiveSprint = asyncHandler(async (req: Request, res: Response) 
   if (!teamId || typeof teamId !== 'string') {
     throw new BadRequestError('teamId is required');
   }
-  const sprint = await sprintService.getActiveSprint(teamId);
+  const sprint = await sprintService.getActiveSprint(teamId, req.user?.id);
 
   if (!sprint) {
     res.json(createSuccessResponse(null));
@@ -43,7 +43,7 @@ export const getSprintById = asyncHandler(async (req: Request, res: Response) =>
   if (!id) {
     throw new BadRequestError('Sprint ID is required');
   }
-  const sprint = await sprintService.getSprintById(id);
+  const sprint = await sprintService.getSprintById(id, req.user?.id);
   res.json(createSuccessResponse(sprint));
 });
 
@@ -57,6 +57,22 @@ export const createSprint = asyncHandler(async (req: Request, res: Response) => 
   }
   const sprint = await sprintService.createSprint(userId, req.body);
   res.status(201).json(createSuccessResponse(sprint));
+});
+
+/**
+ * Update sprint
+ */
+export const updateSprint = asyncHandler(async (req: Request, res: Response) => {
+  const id = getParamValue(req.params.id);
+  if (!id) {
+    throw new BadRequestError('Sprint ID is required');
+  }
+  const userId = req.user?.id;
+  if (!userId) {
+    throw new BadRequestError('User not authenticated');
+  }
+  const sprint = await sprintService.updateSprint(id, userId, req.body);
+  res.json(createSuccessResponse(sprint));
 });
 
 /**
@@ -119,6 +135,72 @@ export const getSprintPlanningDraft = asyncHandler(async (req: Request, res: Res
   }
   const draft = await sprintService.getSprintPlanningDraft(id);
   res.json(createSuccessResponse(draft));
+});
+
+/**
+ * Record one Sprint Planning attendee (Developers-only)
+ * @route POST /api/v1/sprints/:id/planning-attendees
+ */
+export const addPlanningAttendee = asyncHandler(async (req: Request, res: Response) => {
+  const id = getParamValue(req.params.id);
+  if (!id) {
+    throw new BadRequestError('Sprint ID is required');
+  }
+  const userId = req.user?.id;
+  if (!userId) {
+    throw new BadRequestError('User not authenticated');
+  }
+  const attendee = await sprintService.addPlanningAttendee(id, userId, req.body);
+  res.status(201).json(createSuccessResponse(attendee));
+});
+
+/**
+ * Update one Sprint Planning attendee (Developers-only)
+ * @route PUT /api/v1/sprints/:id/planning-attendees/:attendeeId
+ */
+export const updatePlanningAttendee = asyncHandler(async (req: Request, res: Response) => {
+  const id = getParamValue(req.params.id);
+  const attendeeId = getParamValue(req.params.attendeeId);
+  if (!id || !attendeeId) {
+    throw new BadRequestError('Sprint ID and attendee ID are required');
+  }
+  const userId = req.user?.id;
+  if (!userId) {
+    throw new BadRequestError('User not authenticated');
+  }
+  const attendee = await sprintService.updatePlanningAttendee(id, attendeeId, userId, req.body);
+  res.json(createSuccessResponse(attendee));
+});
+
+/**
+ * Remove one Sprint Planning attendee (Developers-only)
+ * @route DELETE /api/v1/sprints/:id/planning-attendees/:attendeeId
+ */
+export const deletePlanningAttendee = asyncHandler(async (req: Request, res: Response) => {
+  const id = getParamValue(req.params.id);
+  const attendeeId = getParamValue(req.params.attendeeId);
+  if (!id || !attendeeId) {
+    throw new BadRequestError('Sprint ID and attendee ID are required');
+  }
+  const userId = req.user?.id;
+  if (!userId) {
+    throw new BadRequestError('User not authenticated');
+  }
+  await sprintService.deletePlanningAttendee(id, attendeeId, userId);
+  res.json(createSuccessResponse({ message: 'Planning attendee deleted successfully' }));
+});
+
+/**
+ * Read the recorded Sprint Planning participation (read-only, authenticated team members)
+ * @route GET /api/v1/sprints/:id/planning-attendees
+ */
+export const getPlanningParticipation = asyncHandler(async (req: Request, res: Response) => {
+  const id = getParamValue(req.params.id);
+  if (!id) {
+    throw new BadRequestError('Sprint ID is required');
+  }
+  const participation = await sprintService.getPlanningParticipation(id);
+  res.json(createSuccessResponse(participation));
 });
 
 /**
@@ -303,6 +385,32 @@ export const removePBIFromSprint = asyncHandler(async (req: Request, res: Respon
   res.json(createSuccessResponse(result));
 });
 
+/**
+ * Acknowledge (approve) or reject a pending, goal-endangering Sprint Backlog change.
+ * Product-Owner-only; the refusal is raised by the service layer.
+ */
+export const acknowledgeSprintBacklogChange = asyncHandler(async (req: Request, res: Response) => {
+  const sprintId = getParamValue(req.params.sprintId);
+  const changeId = getParamValue(req.params.changeId);
+  if (!sprintId) {
+    throw new BadRequestError('Sprint ID is required');
+  }
+  if (!changeId) {
+    throw new BadRequestError('Change ID is required');
+  }
+  const userId = req.user?.id;
+  if (!userId) {
+    throw new BadRequestError('User not authenticated');
+  }
+  const result = await sprintBacklogManagerService.acknowledgeSprintBacklogChange(
+    sprintId,
+    changeId,
+    userId,
+    req.body
+  );
+  res.json(createSuccessResponse(result));
+});
+
 export const getSprintBacklogChanges = asyncHandler(async (req: Request, res: Response) => {
   const sprintId = getParamValue(req.params.sprintId);
   if (!sprintId) {
@@ -330,6 +438,12 @@ export const getDoDComplianceReport = asyncHandler(async (req: Request, res: Res
   if (!sprintId) {
     throw new BadRequestError('Sprint ID is required');
   }
-  const report = await definitionOfDoneService.getDoDComplianceReport(sprintId);
+  const userId = req.userId ?? req.user?.id;
+  if (!userId) {
+    throw new BadRequestError('User not authenticated');
+  }
+  // The Definition of Done belongs to the Scrum Team that owns the Sprint, so the report is
+  // readable only by its members.
+  const report = await definitionOfDoneService.getDoDComplianceReport(sprintId, userId);
   res.json(createSuccessResponse(report));
 });

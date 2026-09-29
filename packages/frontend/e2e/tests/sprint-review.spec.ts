@@ -1,7 +1,7 @@
 import { test, expect } from '../fixtures';
 
 test.describe('Sprint Review Page', () => {
-  test.beforeEach(async ({ loginPage, page, mockApi }) => {
+  test.beforeEach(async ({ loginPage, page }) => {
     const timestamp = Date.now();
     const testUser = {
       email: `review_${timestamp}@example.com`,
@@ -68,7 +68,7 @@ test.describe('Sprint Review Page', () => {
 });
 
 test.describe('Sprint Review - Responsive Design', () => {
-  test.beforeEach(async ({ loginPage, page, mockApi }) => {
+  test.beforeEach(async ({ loginPage, page }) => {
     const timestamp = Date.now();
     const testUser = {
       email: `review_mobile_${timestamp}@example.com`,

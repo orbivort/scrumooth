@@ -186,3 +186,78 @@
   color: var(--color-text-secondary);
   font-style: italic;
 }
+
+/* Notes revision history: the trail behind the current text */
+.history {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.history-icon {
+  width: 1rem;
+  height: 1rem;
+  margin-inline-end: var(--space-1);
+  flex-shrink: 0;
+}
+
+.history-panel {
+  padding: var(--space-3);
+  border: var(--input-border-width) solid var(--input-border-color);
+  border-radius: var(--input-border-radius);
+  background: var(--color-background-page);
+}
+
+.history-status {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.history-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.history-item {
+  padding-inline-start: var(--space-3);
+  border-inline-start: 2px solid var(--color-primary-200);
+}
+
+.history-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2);
+  margin-block-end: var(--space-1);
+}
+
+.history-revision {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: var(--letter-spacing-wide);
+  text-transform: uppercase;
+  color: var(--color-primary-700);
+}
+
+.history-author {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-primary);
+}
+
+.history-time {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+}
+
+.history-content {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-primary);
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+}

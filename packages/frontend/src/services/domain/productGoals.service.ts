@@ -7,6 +7,13 @@ import type {
 } from '../../types';
 import { coreApiService } from '../core/api.core';
 
+/**
+ * Product Goal update payload: the goal fields plus the optional status-change rationale.
+ * `reason` is required by the backend when the target status is `ABANDONED` and is persisted
+ * in the goal's status history rather than on the goal itself.
+ */
+export type ProductGoalUpdate = Partial<ProductGoal> & { reason?: string };
+
 class ProductGoalsService {
   private get api() {
     return coreApiService.axiosInstance;
@@ -26,7 +33,7 @@ class ProductGoalsService {
 
   async updateProductGoal(
     id: string,
-    updates: Partial<ProductGoal>
+    updates: ProductGoalUpdate
   ): Promise<ApiResponse<ProductGoal>> {
     const { data } = await this.api.put(`/product-goals/${id}`, updates);
     return data;

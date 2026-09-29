@@ -112,7 +112,8 @@ describe('Increments Integration Tests', () => {
     sprintId: string,
     teamId: string,
     name: string = 'Test Increment',
-    status: 'DRAFT' | 'VERIFIED' | 'DELIVERED' | 'ARCHIVED' = 'DRAFT'
+    status: 'DRAFT' | 'VERIFIED' | 'DELIVERED' | 'ARCHIVED' = 'DRAFT',
+    verification: { integrationVerified?: boolean; usabilityVerified?: boolean } = {}
   ) => {
     const incrementId = generateUUIDv7();
     const increment = await prisma.increment.create({
@@ -123,6 +124,14 @@ describe('Increments Integration Tests', () => {
         name,
         status,
         totalStoryPoints: 20,
+        integrationVerified: verification.integrationVerified ?? false,
+        usabilityVerified: verification.usabilityVerified ?? false,
+        ...(verification.usabilityVerified
+          ? {
+              usabilityEvidence: 'Deployed and exercised by the team',
+              usabilityVerifiedAt: new Date(),
+            }
+          : {}),
       },
     });
     return increment;
@@ -414,6 +423,16 @@ describe('Increments Integration Tests', () => {
 
       const { csrfToken } = extractCsrfFromCookies(cookies);
 
+      // "the Increment must be in usable condition" is now evidenced before VERIFIED is reachable.
+      const attestation = await request(app)
+        .post(`/api/v1/increments/${increment.id}/verify-usability`)
+        .set('Cookie', cookies)
+        .set(CSRF_CONSTANTS.HEADER_NAME, csrfToken)
+        .send({ evidence: 'Deployed to staging and exercised by the Product Owner' })
+        .expect(200);
+
+      expect(attestation.body.data.usabilityVerified).toBe(true);
+
       const response = await request(app)
         .put(`/api/v1/increments/${increment.id}`)
         .set('Cookie', cookies)
@@ -427,6 +446,151 @@ describe('Increments Integration Tests', () => {
       expect(response.body.success).toBe(true);
       expect(response.body.data.name).toBe('Updated Increment Name');
       expect(response.body.data.status).toBe('VERIFIED');
+    });
+
+    it('should refuse VERIFIED before the usable condition is attested', async () => {
+      const email = `increment-verify-unusable-${uniqueId()}@example.com`;
+      testEmails.push(email);
+
+      const user = await createTestUserInDb(email);
+      const teamName = `Verify Unusable Team ${uniqueId()}`;
+      testTeams.push(teamName);
+
+      const team = await createTestTeam(teamName);
+      await addTeamMember(team.id, user.id, 'DEVELOPERS');
+      const sprint = await createTestSprint(team.id, 'Sprint');
+      const increment = await createTestIncrement(sprint.id, team.id, 'Not Yet Usable', 'DRAFT', {
+        integrationVerified: true,
+      });
+
+      const cookies = await loginAndGetCookies(email);
+      const { csrfToken } = extractCsrfFromCookies(cookies);
+
+      const response = await request(app)
+        .put(`/api/v1/increments/${increment.id}`)
+        .set('Cookie', cookies)
+        .set(CSRF_CONSTANTS.HEADER_NAME, csrfToken)
+        .send({ status: 'VERIFIED' })
+        .expect(400);
+
+      expect(response.body.error.code).toBe('GATE_INCREMENT_USABILITY_ATTESTATION_REQUIRED');
+    });
+
+    it('should refuse writing DELIVERED through the update path', async () => {
+      const email = `increment-put-delivered-${uniqueId()}@example.com`;
+      testEmails.push(email);
+
+      const user = await createTestUserInDb(email);
+      const teamName = `Put Delivered Team ${uniqueId()}`;
+      testTeams.push(teamName);
+
+      const team = await createTestTeam(teamName);
+      await addTeamMember(team.id, user.id, 'DEVELOPERS');
+      const sprint = await createTestSprint(team.id, 'Sprint');
+      const increment = await createTestIncrement(sprint.id, team.id, 'Draft Only');
+
+      const cookies = await loginAndGetCookies(email);
+      const { csrfToken } = extractCsrfFromCookies(cookies);
+
+      // Delivery records how and who: it is a transition, not a status string.
+      const response = await request(app)
+        .put(`/api/v1/increments/${increment.id}`)
+        .set('Cookie', cookies)
+        .set(CSRF_CONSTANTS.HEADER_NAME, csrfToken)
+        .send({ status: 'DELIVERED' })
+        .expect(400);
+
+      expect(response.body.error.code).toBe('GATE_INCREMENT_DELIVERY_METHOD_REQUIRED');
+    });
+
+    it('should refuse to revive an archived Increment', async () => {
+      const email = `increment-archived-${uniqueId()}@example.com`;
+      testEmails.push(email);
+
+      const user = await createTestUserInDb(email);
+      const teamName = `Archived Team ${uniqueId()}`;
+      testTeams.push(teamName);
+
+      const team = await createTestTeam(teamName);
+      await addTeamMember(team.id, user.id, 'DEVELOPERS');
+      const sprint = await createTestSprint(team.id, 'Sprint');
+      const increment = await createTestIncrement(sprint.id, team.id, 'Archived', 'ARCHIVED');
+
+      const cookies = await loginAndGetCookies(email);
+      const { csrfToken } = extractCsrfFromCookies(cookies);
+
+      const response = await request(app)
+        .put(`/api/v1/increments/${increment.id}`)
+        .set('Cookie', cookies)
+        .set(CSRF_CONSTANTS.HEADER_NAME, csrfToken)
+        .send({ status: 'DRAFT' })
+        .expect(400);
+
+      expect(response.body.error.code).toBe('GATE_INCREMENT_LOCKED');
+    });
+
+    it('should refuse an outsider who does not belong to the Increment’s team', async () => {
+      const ownerEmail = `increment-owner-${uniqueId()}@example.com`;
+      const outsiderEmail = `increment-outsider-${uniqueId()}@example.com`;
+      testEmails.push(ownerEmail, outsiderEmail);
+
+      const owner = await createTestUserInDb(ownerEmail);
+      await createTestUserInDb(outsiderEmail);
+      const teamName = `Ownership Team ${uniqueId()}`;
+      testTeams.push(teamName);
+
+      const team = await createTestTeam(teamName);
+      await addTeamMember(team.id, owner.id, 'DEVELOPERS');
+      const sprint = await createTestSprint(team.id, 'Sprint');
+      const increment = await createTestIncrement(sprint.id, team.id, 'Team Only');
+
+      const cookies = await loginAndGetCookies(outsiderEmail);
+      const { csrfToken } = extractCsrfFromCookies(cookies);
+
+      const readResponse = await request(app)
+        .get(`/api/v1/increments/${increment.id}`)
+        .set('Cookie', cookies)
+        .expect(403);
+
+      expect(readResponse.body.error.code).toBe('GATE_INCREMENT_TEAM_MEMBERS_ONLY');
+
+      const writeResponse = await request(app)
+        .put(`/api/v1/increments/${increment.id}`)
+        .set('Cookie', cookies)
+        .set(CSRF_CONSTANTS.HEADER_NAME, csrfToken)
+        .send({ name: 'Tampered' })
+        .expect(403);
+
+      expect(writeResponse.body.error.code).toBe('GATE_INCREMENT_TEAM_MEMBERS_ONLY');
+    });
+
+    it('should refuse creating an Increment with a status other than DRAFT', async () => {
+      const email = `increment-create-status-${uniqueId()}@example.com`;
+      testEmails.push(email);
+
+      const user = await createTestUserInDb(email);
+      const teamName = `Create Status Team ${uniqueId()}`;
+      testTeams.push(teamName);
+
+      const team = await createTestTeam(teamName);
+      await addTeamMember(team.id, user.id, 'DEVELOPERS');
+      const sprint = await createTestSprint(team.id, 'Sprint');
+
+      const cookies = await loginAndGetCookies(email);
+      const { csrfToken } = extractCsrfFromCookies(cookies);
+
+      // A create cannot skip the gates by declaring a later status up front.
+      await request(app)
+        .post('/api/v1/increments')
+        .set('Cookie', cookies)
+        .set(CSRF_CONSTANTS.HEADER_NAME, csrfToken)
+        .send({
+          name: 'Verified On Arrival',
+          sprintId: sprint.id,
+          teamId: team.id,
+          status: 'VERIFIED',
+        })
+        .expect(422);
     });
   });
 
@@ -452,11 +616,21 @@ describe('Increments Integration Tests', () => {
       const team = await createTestTeam(teamName);
       await addTeamMember(team.id, user.id, 'PRODUCT_OWNER');
       const sprint = await createTestSprint(team.id, 'Sprint');
-      const increment = await createTestIncrement(sprint.id, team.id, 'Deliverable', 'VERIFIED');
+      const increment = await createTestIncrement(sprint.id, team.id, 'Deliverable', 'DRAFT', {
+        integrationVerified: true,
+      });
 
       const cookies = await loginAndGetCookies(email);
 
       const { csrfToken } = extractCsrfFromCookies(cookies);
+
+      // Usability is attested before delivery, so "delivered" rests on evidence.
+      await request(app)
+        .post(`/api/v1/increments/${increment.id}/verify-usability`)
+        .set('Cookie', cookies)
+        .set(CSRF_CONSTANTS.HEADER_NAME, csrfToken)
+        .send({ evidence: 'Exercised end to end in the staging environment' })
+        .expect(200);
 
       const response = await request(app)
         .post(`/api/v1/increments/${increment.id}/deliver`)
@@ -472,6 +646,87 @@ describe('Increments Integration Tests', () => {
       expect(response.body.data.status).toBe('DELIVERED');
     });
 
+    it('should refuse delivering an Increment whose usable condition is not attested', async () => {
+      const email = `deliver-unattested-${uniqueId()}@example.com`;
+      testEmails.push(email);
+
+      const user = await createTestUserInDb(email);
+      const teamName = `Unattested Delivery Team ${uniqueId()}`;
+      testTeams.push(teamName);
+
+      const team = await createTestTeam(teamName);
+      await addTeamMember(team.id, user.id, 'PRODUCT_OWNER');
+      const sprint = await createTestSprint(team.id, 'Sprint');
+      const increment = await createTestIncrement(sprint.id, team.id, 'Unattested', 'DRAFT', {
+        integrationVerified: true,
+      });
+
+      const cookies = await loginAndGetCookies(email);
+      const { csrfToken } = extractCsrfFromCookies(cookies);
+
+      const response = await request(app)
+        .post(`/api/v1/increments/${increment.id}/deliver`)
+        .set('Cookie', cookies)
+        .set(CSRF_CONSTANTS.HEADER_NAME, csrfToken)
+        .send({ deliveryMethod: 'sprint_review' })
+        .expect(400);
+
+      expect(response.body.error.code).toBe('GATE_INCREMENT_USABILITY_ATTESTATION_REQUIRED');
+    });
+
+    it('should refuse delivering an Increment whose integration is not verified', async () => {
+      const email = `deliver-unverified-${uniqueId()}@example.com`;
+      testEmails.push(email);
+
+      const user = await createTestUserInDb(email);
+      const teamName = `Unverified Delivery Team ${uniqueId()}`;
+      testTeams.push(teamName);
+
+      const team = await createTestTeam(teamName);
+      await addTeamMember(team.id, user.id, 'PRODUCT_OWNER');
+      const sprint = await createTestSprint(team.id, 'Sprint');
+      const increment = await createTestIncrement(sprint.id, team.id, 'Unverified', 'DRAFT', {
+        usabilityVerified: true,
+      });
+
+      const cookies = await loginAndGetCookies(email);
+      const { csrfToken } = extractCsrfFromCookies(cookies);
+
+      const response = await request(app)
+        .post(`/api/v1/increments/${increment.id}/deliver`)
+        .set('Cookie', cookies)
+        .set(CSRF_CONSTANTS.HEADER_NAME, csrfToken)
+        .send({ deliveryMethod: 'sprint_review' })
+        .expect(400);
+
+      expect(response.body.error.code).toBe('GATE_INCREMENT_INTEGRATION_VERIFICATION_REQUIRED');
+    });
+
+    it('should refuse an empty usability attestation', async () => {
+      const email = `attest-empty-${uniqueId()}@example.com`;
+      testEmails.push(email);
+
+      const user = await createTestUserInDb(email);
+      const teamName = `Empty Attestation Team ${uniqueId()}`;
+      testTeams.push(teamName);
+
+      const team = await createTestTeam(teamName);
+      await addTeamMember(team.id, user.id, 'DEVELOPERS');
+      const sprint = await createTestSprint(team.id, 'Sprint');
+      const increment = await createTestIncrement(sprint.id, team.id, 'Empty Evidence');
+
+      const cookies = await loginAndGetCookies(email);
+      const { csrfToken } = extractCsrfFromCookies(cookies);
+
+      // A blank attestation would satisfy the gate without carrying a fact.
+      await request(app)
+        .post(`/api/v1/increments/${increment.id}/verify-usability`)
+        .set('Cookie', cookies)
+        .set(CSRF_CONSTANTS.HEADER_NAME, csrfToken)
+        .send({ evidence: '   ' })
+        .expect(422);
+    });
+
     it('should deliver an increment via early_release', async () => {
       const email = `early-release-${uniqueId()}@example.com`;
       testEmails.push(email);
@@ -483,7 +738,10 @@ describe('Increments Integration Tests', () => {
       const team = await createTestTeam(teamName);
       await addTeamMember(team.id, user.id, 'PRODUCT_OWNER');
       const sprint = await createTestSprint(team.id, 'Sprint');
-      const increment = await createTestIncrement(sprint.id, team.id, 'Early Release', 'VERIFIED');
+      const increment = await createTestIncrement(sprint.id, team.id, 'Early Release', 'VERIFIED', {
+        integrationVerified: true,
+        usabilityVerified: true,
+      });
 
       const cookies = await loginAndGetCookies(email);
 

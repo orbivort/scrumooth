@@ -20,6 +20,73 @@
       "nameRequired": "Team name is required"
     }
   },
+  "dailyScrumSchedule": {
+    "backToDailyScrum": "Back to Daily Scrum",
+    "cadence": {
+      "location": "Room or place",
+      "locationPlaceholder": "e.g. Meeting room 4",
+      "locationUrl": "Meeting link",
+      "nextMeeting": "Next Daily Scrum: {{date}} at {{time}} ({{timezone}})",
+      "noWorkingDays": "Select at least one working day to see when the team next meets.",
+      "placeHint": "Record a room, a link, or both. One of the two is required.",
+      "preview": "The event opens at {{time}} local time.",
+      "startTime": "Start time",
+      "timezone": "Time zone",
+      "timezoneHint": "The start time is wall-clock time in this zone.",
+      "title": "Time and place"
+    },
+    "exceptions": {
+      "add": "Add day",
+      "date": "Date",
+      "empty": "No exceptions recorded for this year. Add one only when a day differs from the weekly pattern above — a public holiday, a company day off, or a team offsite.",
+      "name": "Name",
+      "namePlaceholder": "e.g. Public holiday",
+      "removeLabel": "Remove the exception on {{date}}",
+      "title": "Non-working days in {{year}}",
+      "unnamed": "Non-working day"
+    },
+    "footnote": "The Daily Scrum is a 15-minute event, so only its start is configured. The team can still hold the event on any day; the calendar informs, it does not restrict.",
+    "loading": "Loading the team's Daily Scrum schedule...",
+    "readOnlyNote": "Only the Scrum Master can change this schedule. You are seeing the commitment the team is working to.",
+    "saveBar": {
+      "reset": "Reset",
+      "save": "Save schedule",
+      "saved": "No unsaved changes",
+      "unsaved": "Unsaved changes"
+    },
+    "subtitle": "The Daily Scrum is held at the same time and place every working day. Record that standing commitment here so the team — and its reports — work from the same calendar.",
+    "title": "Daily Scrum Schedule",
+    "toast": {
+      "exceptionAddFailed": "Could not record that day.",
+      "exceptionAdded": "Non-working day recorded.",
+      "exceptionRemoveFailed": "Could not remove that day.",
+      "exceptionRemoved": "Non-working day removed.",
+      "saveFailed": "Could not save the schedule.",
+      "saved": "Daily Scrum schedule saved."
+    },
+    "validation": {
+      "placeRequired": "Record a room, a meeting link, or both.",
+      "timeInvalid": "Enter a valid start time.",
+      "timezoneInvalid": "Choose a time zone the system recognises.",
+      "workingDayRequired": "Select at least one working day."
+    },
+    "weekdays": {
+      "friday": "Fri",
+      "monday": "Mon",
+      "saturday": "Sat",
+      "sunday": "Sun",
+      "thursday": "Thu",
+      "tuesday": "Tue",
+      "wednesday": "Wed"
+    },
+    "workingWeek": {
+      "legend": "Working days of the week",
+      "noneSelected": "No working days selected. The calendar has nothing to count.",
+      "summary_one": "The team works {{count}} day a week.",
+      "summary_other": "The team works {{count}} days a week.",
+      "title": "Working week"
+    }
+  },
   "definitionEditor": {
     "activeItems": "{{count}} active items",
     "activeItems_one": "{{count}} active item",
@@ -62,16 +129,68 @@
       "technical": "Technical",
       "value": "Value"
     },
-    "dorInfo": "The Definition of Ready is a checklist of criteria that a user story must meet before it can be taken into a sprint. It ensures that the team has enough information to complete the work successfully.",
+    "dorInfo": "The Definition of Ready is this team's own declared practice, not a Scrum Guide artifact: the Guide names three artifacts and none of them is a readiness checklist. The team's Scrum Master maintains it, and Scrumooth enforces it at the Sprint boundary.",
     "editTitle": "Edit {{label}}",
     "empty": "No {{shortLabel}} items yet. Add your first criterion above.",
     "inactive": "{{count}} inactive",
     "inactive_one": "{{count}} inactive",
     "inactive_other": "{{count}} inactive",
     "newItemPlaceholder": "Enter new {{shortLabel}} criterion...",
+    "noActiveWarning": "A definition must keep at least one active criterion. Reactivate one, or add a new one, before saving.",
     "saveChanges": "Save Changes",
     "saving": "Saving...",
     "unsavedWarning": "You have unsaved changes"
+  },
+  "definitionHistory": {
+    "authorUnknown": "Author not recorded",
+    "changedBy": "Changed by {{name}}",
+    "close": "Close",
+    "current": "Current",
+    "empty": "No version of this agreement has been recorded yet.",
+    "error": "The version history could not be loaded.",
+    "loading": "Loading version history…",
+    "noActiveCriteria": "This version held no active criterion.",
+    "retry": "Retry",
+    "title": "Version history",
+    "versionLabel": "v{{version}}"
+  },
+  "definitionNav": {
+    "label": "In this agreement",
+    "sectionWithCount": "{{name}} — {{count}} active items",
+    "sectionWithCount_one": "{{name}} — {{count}} active item",
+    "sectionWithCount_other": "{{name}} — {{count}} active items"
+  },
+  "definitionScope": {
+    "adoptAction": "Adopt v{{version}}",
+    "adoptDisclosure": "Adopt a shared DoD",
+    "adoptHint": "When several Scrum Teams work on one product, they must define and comply with the same Definition of Done.",
+    "adoptTitle": "Adopt a shared Definition of Done",
+    "adoptedAt": "Adopted v{{version}} on {{date}}.",
+    "chooseLabel": "Team group",
+    "drift": "This team adopted v{{adopted}} and v{{current}} is in force.",
+    "groupHint": "This team works on one product with the other teams in {{name}}, so it complies with the Definition of Done they share.",
+    "groupTitle": "Shared with {{name}} · {{count}} teams.",
+    "hideReviewLink": "Hide the shared agreement",
+    "joinFailed": "The group could not be adopted.",
+    "leave": "Leave the group",
+    "leaveFailed": "The group could not be left.",
+    "leaveMessage": "This team keeps the Definition of Done it has been complying with and can then change it on its own.",
+    "leaveTitle": "Leave {{name}}?",
+    "manageDisclosure": "Review or leave",
+    "manageLink": "Manage this group in settings",
+    "mutualBody": "The teams mutually define this commitment by adopting a named version when they join. A change made afterwards is shown here until this team adopts the new version.",
+    "mutualTitle": "Mutually defined",
+    "readOnlyNote": "Maintained by the Product Owner or Scrum Master of a team in {{name}}.",
+    "reviewAction": "Review",
+    "reviewCurrentAction": "Review the current version",
+    "reviewLabel": "The Definition of Done every team in {{name}} complies with",
+    "reviewLink": "Review the shared agreement",
+    "teamHint": "Any team member can change it.",
+    "teamTitle": "Your team owns this agreement."
+  },
+  "definitionStates": {
+    "inactiveMessage": "Every criterion is currently deactivated. Reactivate one, or add a new one, before saving.",
+    "inactiveTitle": "No active criteria"
   },
   "deleteTeamModal": {
     "awaitingConfirmation": "Awaiting confirmation",
@@ -142,14 +261,15 @@
     "editButton": "Edit DoD",
     "empty": {
       "configureButton": "Configure DoD",
-      "message": "Configure your team's Definition of Done criteria.",
-      "title": "No Active DoD Items"
+      "message": "A Sprint cannot be committed or started without at least one criterion, and no item can be marked Done until every active criterion is verified.",
+      "title": "No Definition of Done yet"
     },
     "error": {
-      "message": "Unable to load Definition of Done. Using default items instead.",
+      "message": "Unable to load the Definition of Done.",
       "retry": "Retry",
       "title": "Failed to Load"
     },
+    "groupEditBanner": "Every team in {{name}} complies with this Definition of Done. Saving applies the change to all {{count}} teams at once and increments the shared version.",
     "inactive": "{{count}} inactive",
     "inactive_one": "{{count}} inactive",
     "inactive_other": "{{count}} inactive",
@@ -162,10 +282,6 @@
     },
     "lastUpdated": "Last updated:",
     "loading": "Loading Definition of Done...",
-    "noTeam": {
-      "message": "Please select a team to view and manage the Definition of Done.",
-      "title": "No Team Selected"
-    },
     "shortLabel": "DoD",
     "title": "Definition of Done",
     "toast": {
@@ -191,19 +307,19 @@
     "inactive_other": "{{count}} inactive",
     "item": {
       "acceptanceCriteria": "Acceptance criteria defined and agreed",
-      "acceptanceCriteriaDefined": "Acceptance criteria defined",
       "businessValue": "Business value assigned",
       "clearTitle": "Clear title and description provided",
       "dependencies": "Dependencies identified and documented",
-      "dependenciesIdentified": "Dependencies identified",
       "noBlockers": "No blockers or impediments",
-      "storyPointsEstimated": "Story points estimated by the team",
-      "storyPointsEstimatedOld": "Story points estimated",
-      "userStoryWritten": "User story clearly written"
+      "storyPointsEstimated": "Story points estimated by the team"
     },
     "lastUpdated": "Last updated:",
     "loading": "Loading Definition of Ready...",
-    "noTeam": "Please select a team to view Definition of Ready.",
+    "practice": {
+      "message": "It is not one of the three artifacts of the 2020 Scrum Guide — the Product Backlog, the Sprint Backlog and the Increment — so Scrumooth labels it a complementary practice. It is still enforced: a Sprint Backlog cannot be committed, and a Sprint cannot start, while a selected item has an unverified criterion. Team members record the verifications; the team's Scrum Master maintains this agreement.",
+      "scrumMasterOnly": "The team's Scrum Master maintains this agreement.",
+      "title": "Complementary practice, not a Guide artifact."
+    },
     "retry": "Retry",
     "shortLabel": "DoR",
     "title": "Definition of Ready",
@@ -391,16 +507,85 @@
     "COMPLETED": "Completed",
     "PLANNED": "Planned"
   },
-  "teamDefinitions": {
-    "ariaLabels": {
-      "definitionTabs": "Definition tabs"
+  "teamGroups": {
+    "delete": {
+      "message": "The group, its roster and its shared Definition of Done are removed. This cannot be undone.",
+      "title": "Delete {{name}}?"
     },
-    "subtitle": "Configure your team's Definition of Ready and Definition of Done criteria",
-    "tabs": {
-      "definitionOfDone": "Definition of Done",
-      "definitionOfReady": "Definition of Ready"
+    "detail": {
+      "delete": "Delete Group",
+      "deleteBlocked": "A group cannot be removed while teams still comply with its Definition of Done — that would take their commitment away rather than move them to another one. Every team has to leave first.",
+      "readOnlyNotice": "You can read this commitment, but you do not lead a team in this group. Its teams maintain it from their Definition tab.",
+      "rename": "Rename"
     },
-    "title": "Team Definitions"
+    "directoryAriaLabel": "Team groups",
+    "directoryHeading": "Groups",
+    "empty": {
+      "action": "Create the first group",
+      "description": "If several Scrum Teams work on one product, they must comply with the same Definition of Done. A group is how they hold that one commitment — create it, and each team adopts it.",
+      "title": "No team groups yet"
+    },
+    "form": {
+      "beforeUnload": "You have unsaved changes to this team group.",
+      "cancel": "Cancel",
+      "close": "Close",
+      "create": "Create Group",
+      "createTitle": "Create a team group",
+      "description": "Description",
+      "descriptionMaxLength": "The description must be 500 characters or less.",
+      "descriptionPlaceholder": "Two teams, one product, one Definition of Done.",
+      "editTitle": "Edit {{name}}",
+      "name": "Name",
+      "nameMaxLength": "The name must be 100 characters or less.",
+      "namePlaceholder": "e.g., Payments Product",
+      "nameRequired": "A name is required.",
+      "optional": "Optional",
+      "save": "Save Changes",
+      "subtitle": "A group is the Scrum Teams that work together on one product, bound to the one Definition of Done it owns."
+    },
+    "groupCount": "{{count}} groups",
+    "groupCount_one": "{{count}} group",
+    "groupCount_other": "{{count}} groups",
+    "groupLoadError": "This group could not be loaded. Its roster may have changed while you were reading it.",
+    "listAriaLabel": "Team groups",
+    "loadError": "The team groups could not be loaded.",
+    "loading": "Loading team groups...",
+    "meta": {
+      "sharedVersion": "Shared version",
+      "teams": "Teams"
+    },
+    "newGroup": "New Group",
+    "roster": {
+      "adopted": "Adopted",
+      "caption": "Teams complying with the shared Definition of Done of {{name}}",
+      "drift": "Adopted v{{adopted}} — v{{current}} is in force",
+      "empty": "No team has joined this group yet.",
+      "inStep": "In step",
+      "joined": "Joined",
+      "notRecorded": "Not recorded",
+      "status": "Status",
+      "team": "Team",
+      "title": "Teams",
+      "unknown": "—"
+    },
+    "selectPrompt": "Choose a group to see the teams that comply with its Definition of Done.",
+    "sharedDoD": {
+      "delegated": "Every team in this group reads and changes this Definition of Done on its own Definition tab, where all of its criteria are shown.",
+      "openAction": "Read and change it on My Team",
+      "title": "Definition of Done",
+      "updated": "Updated {{date}}"
+    },
+    "subtitle": "The Scrum Teams that work on one product, and the one Definition of Done they all comply with.",
+    "teamCount": "{{count}} teams",
+    "teamCount_one": "{{count}} team",
+    "teamCount_other": "{{count}} teams",
+    "title": "Team Groups",
+    "toast": {
+      "created": "The team group was created.",
+      "deleted": "The team group was removed.",
+      "updated": "The team group was updated."
+    },
+    "versionShort": "v{{version}}"
   },
   "teamList": {
     "ariaLabel": "Teams",
@@ -456,11 +641,11 @@
       "deleteTeam": "You do not have permission to delete this team.",
       "editTeam": "You do not have permission to edit this team."
     },
-    "subtitle": "Create and manage teams across the organization",
+    "subtitle": "Every team in the organization. Anyone can look and create one; only its Product Owner or Scrum Master can change or remove it.",
     "teamCount": "{{count}} team",
     "teamCount_one": "{{count}} team",
     "teamCount_other": "{{count}} teams",
-    "title": "Team Management",
+    "title": "All Teams",
     "toast": {
       "cannotDeleteWithGoals": "Cannot delete team with existing product goals",
       "teamCreateFailed": "Failed to create team",

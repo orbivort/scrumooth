@@ -194,11 +194,18 @@ describe('StartSprintModal', () => {
       expect(capacityValue).toHaveClass('capacity-warning');
     });
 
-    it('should show danger status for capacity over 100%', () => {
-      renderWithProviders(<StartSprintModal {...defaultProps} capacityPercentage={110} />);
+    it('should show danger status for capacity beyond the tolerance', () => {
+      renderWithProviders(<StartSprintModal {...defaultProps} capacityPercentage={115} />);
 
-      const capacityValue = screen.getByText('110%');
+      const capacityValue = screen.getByText('115%');
       expect(capacityValue).toHaveClass('capacity-danger');
+    });
+
+    it('should stay in the warning state when slightly over capacity but within tolerance', () => {
+      renderWithProviders(<StartSprintModal {...defaultProps} capacityPercentage={105} />);
+
+      const capacityValue = screen.getByText('105%');
+      expect(capacityValue).toHaveClass('capacity-warning');
     });
 
     it('should show warning message when capacity is in warning range', () => {
@@ -211,12 +218,24 @@ describe('StartSprintModal', () => {
       ).toBeInTheDocument();
     });
 
-    it('should show danger message when capacity is over 100%', () => {
-      renderWithProviders(<StartSprintModal {...defaultProps} capacityPercentage={110} />);
+    it('should show danger message when capacity is beyond the tolerance', () => {
+      renderWithProviders(<StartSprintModal {...defaultProps} capacityPercentage={115} />);
 
       expect(
         screen.getByText(
           new RegExp(i18nT('sprint:sprintPlanning.startSprintModal.overCapacityWarning'))
+        )
+      ).toBeInTheDocument();
+    });
+
+    it('should explain the tolerance band when the plan is slightly over capacity', () => {
+      renderWithProviders(<StartSprintModal {...defaultProps} capacityPercentage={105} />);
+
+      expect(
+        screen.getByText(
+          i18nT('sprint:sprintPlanning.startSprintModal.withinToleranceWarning', {
+            tolerance: 10,
+          })
         )
       ).toBeInTheDocument();
     });
@@ -374,14 +393,46 @@ describe('StartSprintModal', () => {
       ).toBeDisabled();
     });
 
-    it('should disable start button when capacity is over 100%', () => {
-      renderWithProviders(<StartSprintModal {...defaultProps} capacityPercentage={110} />);
+    it('should disable start button when capacity is beyond the tolerance', () => {
+      renderWithProviders(<StartSprintModal {...defaultProps} capacityPercentage={115} />);
 
       expect(
         screen.getByRole('button', {
           name: new RegExp(`^${i18nT('sprint:sprintPlanning.startSprintModal.start')}$`),
         })
       ).toBeDisabled();
+    });
+
+    it('should keep start button enabled when over capacity but within tolerance', () => {
+      renderWithProviders(<StartSprintModal {...defaultProps} capacityPercentage={105} />);
+
+      expect(
+        screen.getByRole('button', {
+          name: new RegExp(`^${i18nT('sprint:sprintPlanning.startSprintModal.start')}$`),
+        })
+      ).not.toBeDisabled();
+    });
+
+    it('should disable start button and explain when planning participation is incomplete', () => {
+      renderWithProviders(
+        <StartSprintModal
+          {...defaultProps}
+          participationReady={false}
+          participationHasProductOwner={false}
+          participationDeveloperCount={0}
+        />
+      );
+
+      expect(
+        screen.getByRole('button', {
+          name: new RegExp(`^${i18nT('sprint:sprintPlanning.startSprintModal.start')}$`),
+        })
+      ).toBeDisabled();
+      expect(
+        screen.getByText(
+          new RegExp(i18nT('sprint:sprintPlanning.startSprintModal.participationMissingBoth'))
+        )
+      ).toBeInTheDocument();
     });
 
     it('should enable start button when capacity is under 100%', () => {
@@ -588,6 +639,97 @@ describe('StartSprintModal', () => {
           name: new RegExp(`^${i18nT('sprint:sprintPlanning.startSprintModal.start')}$`),
         })
       ).not.toBeDisabled();
+    });
+  });
+
+  describe('Commitment Warnings', () => {
+    it('should explain a missing Definition of Done and block the start', () => {
+      renderWithProviders(<StartSprintModal {...defaultProps} hasDefinitionOfDone={false} />);
+
+      expect(
+        screen.getByText(
+          new RegExp(
+            i18nT('sprint:sprintPlanning.startSprintModal.commitment.definitionOfDoneMissing')
+          )
+        )
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', {
+          name: new RegExp(`^${i18nT('sprint:sprintPlanning.startSprintModal.start')}$`),
+        })
+      ).toBeDisabled();
+    });
+
+    it('should offer a way to the definitions when the Definition of Done is missing', () => {
+      const onOpenDefinitions = vi.fn();
+      renderWithProviders(
+        <StartSprintModal
+          {...defaultProps}
+          hasDefinitionOfDone={false}
+          onOpenDefinitions={onOpenDefinitions}
+        />
+      );
+
+      fireEvent.click(
+        screen.getByRole('button', {
+          name: new RegExp(
+            i18nT('sprint:sprintPlanning.startSprintModal.commitment.openDefinitions')
+          ),
+        })
+      );
+
+      expect(onOpenDefinitions).toHaveBeenCalled();
+    });
+
+    it('should name how many items have not met the Definition of Ready and block the start', () => {
+      renderWithProviders(<StartSprintModal {...defaultProps} unreadyReadinessItemCount={3} />);
+
+      expect(
+        screen.getByText(
+          new RegExp(i18nT('sprint:sprintPlanning.startSprintModal.commitment.readinessIncomplete'))
+        )
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', {
+          name: new RegExp(`^${i18nT('sprint:sprintPlanning.startSprintModal.start')}$`),
+        })
+      ).toBeDisabled();
+    });
+
+    it('should not warn about the readiness agreement when every item has met it', () => {
+      renderWithProviders(<StartSprintModal {...defaultProps} unreadyReadinessItemCount={0} />);
+
+      expect(
+        screen.queryByText(
+          new RegExp(i18nT('sprint:sprintPlanning.startSprintModal.commitment.readinessIncomplete'))
+        )
+      ).not.toBeInTheDocument();
+    });
+
+    it('should explain a Definition of Done refusal from its gate code', () => {
+      renderWithProviders(
+        <StartSprintModal {...defaultProps} error="Refused" errorCode="GATE_DOD_REQUIRED" />
+      );
+
+      expect(
+        screen.getByText(
+          new RegExp(i18nT('sprint:sprintPlanning.startSprintModal.error.definitionOfDoneRequired'))
+        )
+      ).toBeInTheDocument();
+    });
+
+    it('should explain a readiness refusal from its gate code', () => {
+      renderWithProviders(
+        <StartSprintModal {...defaultProps} error="Refused" errorCode="GATE_DOR_NOT_VERIFIED" />
+      );
+
+      expect(
+        screen.getByText(
+          new RegExp(
+            i18nT('sprint:sprintPlanning.startSprintModal.error.definitionOfReadyNotVerified')
+          )
+        )
+      ).toBeInTheDocument();
     });
   });
 
@@ -855,6 +997,95 @@ describe('StartSprintModal', () => {
       renderWithProviders(<StartSprintModal {...defaultProps} teamCapacity={160} />);
 
       expect(screen.getByText('160h')).toBeInTheDocument();
+    });
+  });
+
+  describe('Gate codes and keyboard handling', () => {
+    it('should explain a team-members-only refusal from its gate code', () => {
+      renderWithProviders(
+        <StartSprintModal
+          {...defaultProps}
+          error="Refused"
+          errorCode="GATE_SPRINT_TEAM_MEMBERS_ONLY"
+        />
+      );
+
+      expect(
+        screen.getByText(
+          new RegExp(i18nT('sprint:sprintPlanning.startSprintModal.error.teamMembersOnly'))
+        )
+      ).toBeInTheDocument();
+    });
+
+    it('should explain a Definition of Ready refusal from its gate code', () => {
+      renderWithProviders(
+        <StartSprintModal {...defaultProps} error="Refused" errorCode="GATE_DOR_REQUIRED" />
+      );
+
+      expect(
+        screen.getByText(
+          new RegExp(
+            i18nT('sprint:sprintPlanning.startSprintModal.error.definitionOfReadyRequired')
+          )
+        )
+      ).toBeInTheDocument();
+    });
+
+    it('should fall back to the message matcher for an unrecognised gate code', () => {
+      renderWithProviders(
+        <StartSprintModal {...defaultProps} error="400 Bad Request" errorCode="GATE_UNKNOWN_CODE" />
+      );
+
+      expect(
+        screen.getByText(
+          new RegExp(i18nT('sprint:sprintPlanning.startSprintModal.error.invalidRequest'))
+        )
+      ).toBeInTheDocument();
+    });
+
+    it('should show a friendly message when the Sprint Backlog has no items', () => {
+      renderWithProviders(<StartSprintModal {...defaultProps} error="No items in the backlog" />);
+
+      expect(
+        screen.getByText(
+          new RegExp(i18nT('sprint:sprintPlanning.startSprintModal.error.invalidSprintBacklog'))
+        )
+      ).toBeInTheDocument();
+    });
+
+    it('should close on the Escape key', () => {
+      renderWithProviders(<StartSprintModal {...defaultProps} />);
+
+      fireEvent.keyDown(document, { key: 'Escape' });
+
+      expect(defaultProps.onClose).toHaveBeenCalled();
+    });
+
+    it('should not close on Escape while loading', () => {
+      renderWithProviders(<StartSprintModal {...defaultProps} isLoading />);
+
+      fireEvent.keyDown(document, { key: 'Escape' });
+
+      expect(defaultProps.onClose).not.toHaveBeenCalled();
+    });
+
+    it('should trap Tab focus within the dialog', () => {
+      renderWithProviders(<StartSprintModal {...defaultProps} />);
+
+      const dialog = screen.getByRole('dialog');
+      const focusables = dialog.querySelectorAll<HTMLElement>(
+        'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+      );
+      const first = focusables[0];
+      const last = focusables[focusables.length - 1];
+
+      last.focus();
+      fireEvent.keyDown(document, { key: 'Tab' });
+      expect(document.activeElement).toBe(first);
+
+      first.focus();
+      fireEvent.keyDown(document, { key: 'Tab', shiftKey: true });
+      expect(document.activeElement).toBe(last);
     });
   });
 });

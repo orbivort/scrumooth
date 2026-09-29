@@ -1,0 +1,120 @@
+{
+  "action": {
+    "add": "Consigner une action",
+    "addTitle": "Action avec une partie prenante",
+    "cancelled": "Annulée",
+    "complete": "Marquer comme faite",
+    "delete": "Supprimer l'action",
+    "description": "Action",
+    "done": "Faite",
+    "dueDate": "Échéance",
+    "noDueDate": "Sans échéance",
+    "open": "Ouverte",
+    "overdue": "En retard",
+    "owner": "Qui agit",
+    "required": "Décrivez l'action (au moins trois caractères).",
+    "status": "Statut"
+  },
+  "actionStatus": {
+    "cancelled": "Annulée",
+    "done": "Faite",
+    "open": "Ouverte"
+  },
+  "actions": {
+    "cancel": "Annuler",
+    "created": "Barrière créée",
+    "delete": "Supprimer",
+    "deleted": "Barrière supprimée",
+    "edit": "Modifier",
+    "new": "Nouvelle barrière",
+    "reopen": "Réouvrir",
+    "resolve": "Lever",
+    "save": "Enregistrer",
+    "saved": "Barrière mise à jour"
+  },
+  "detail": {
+    "description": "Description",
+    "escalatedFrom": "Escaladée depuis l'Impediment",
+    "noActions": "Aucune action enregistrée. Une barrière se lève en s'accordant avec quelqu'un hors de l'équipe.",
+    "provenance": "Comment cette barrière a été soulevée",
+    "raisedBy": "Soulevée par",
+    "resolution": "Levée",
+    "resolvedAt": "Levée le",
+    "stakeholderActions": "Actions avec les parties prenantes",
+    "title": "Barrière"
+  },
+  "errors": {
+    "delete": "La barrière n'a pas pu être supprimée.",
+    "load": "Le registre des barrières n'a pas pu être chargé.",
+    "resolve": "La barrière n'a pas pu être levée.",
+    "save": "La barrière n'a pas pu être enregistrée."
+  },
+  "escalate": {
+    "action": "Escalader vers une barrière",
+    "alreadyEscalated": "Déjà escaladé vers « {{title}} ».",
+    "cancel": "Annuler",
+    "confirm": "Escalader",
+    "descriptionLabel": "Ce que l'organisation doit faire",
+    "error": "L'Impediment n'a pas pu être escaladé.",
+    "impediment": "Impediment",
+    "intro": "Une barrière est un problème que l'équipe ne peut pas lever seule. L'escalade consigne qui, hors de l'équipe, doit agir.",
+    "onlyScrumMaster": "Seul le Scrum Master de l'équipe peut escalader un Impediment.",
+    "owner": "Propriétaire",
+    "priority": "Impact",
+    "targetDate": "Date cible",
+    "title": "Escalader vers une barrière organisationnelle",
+    "titleLabel": "Titre de la barrière"
+  },
+  "filters": {
+    "all": "Toutes",
+    "empty": "Aucune barrière ne correspond à ces filtres.",
+    "priority": "Impact",
+    "search": "Rechercher",
+    "searchPlaceholder": "Rechercher par titre ou propriétaire",
+    "status": "Statut"
+  },
+  "form": {
+    "createTitle": "Nouvelle barrière organisationnelle",
+    "description": "Ce que l'organisation doit faire",
+    "descriptionRequired": "Décrivez ce que l'organisation doit faire (au moins dix caractères).",
+    "editTitle": "Modifier la barrière organisationnelle",
+    "owner": "Propriétaire",
+    "priority": "Impact",
+    "resolution": "Levée",
+    "resolutionPlaceholder": "Qu'est-ce qui a changé, et qui l'a accepté ?",
+    "resolutionRequired": "Une barrière ne peut être levée ou fermée sans résolution écrite : indiquez ce qui a changé et qui l'a accepté.",
+    "status": "Statut",
+    "targetDate": "Date cible",
+    "title": "Barrière",
+    "titleRequired": "Donnez à la barrière un titre d’au moins trois caractères."
+  },
+  "list": {
+    "actions": "Actions",
+    "age": "Ancienneté",
+    "empty": "Aucune barrière n'a été escaladée au-delà de l'équipe.",
+    "emptyHint": "Escaladez un Impediment que l'équipe ne peut pas lever seule.",
+    "noTargetDate": "Sans date cible",
+    "overdue": "En retard",
+    "owner": "Propriétaire",
+    "source": "Escaladée depuis",
+    "targetDate": "Date cible",
+    "unassigned": "Non attribuée"
+  },
+  "page": {
+    "subtitle": "Ce qui bloque l'équipe Scrum de l'extérieur, et qui agit.",
+    "title": "Barrières organisationnelles"
+  },
+  "priority": {
+    "critical": "Critique",
+    "high": "Élevé",
+    "low": "Faible",
+    "medium": "Moyen"
+  },
+  "stats": {
+    "closed": "Fermées",
+    "inProgress": "En cours",
+    "open": "Ouvertes",
+    "overdue": "En retard",
+    "resolved": "Levées"
+  }
+}

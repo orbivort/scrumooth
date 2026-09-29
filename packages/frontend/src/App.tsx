@@ -3,9 +3,9 @@
 import React, { useState, useEffect, useCallback, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { isAxiosError } from 'axios';
 import { useTranslation } from 'react-i18next';
 
-import { Layout } from './components/Layout/Sidebar';
 import { ErrorBoundary, PageErrorBoundary } from './components/ErrorBoundary';
 import { SessionWarningModal } from './components/SessionWarning/SessionWarningModal';
 import { PageLoader } from './components/common/Page/PageLoader';
@@ -20,6 +20,8 @@ import { TeamProvider, TeamInitializer } from './contexts/TeamContext';
 import { apiService } from './services';
 import { logger } from './utils/logger';
 import { getRouterBasename } from './utils/navigation';
+import { SCRUM_MASTER_ROLES, TEAM_LEADERSHIP_ROLES } from './config/navigation';
+import { ProtectedRoute } from './routes/ProtectedRoute';
 import { I18nProvider } from './i18n/I18nProvider';
 import { initI18n } from './i18n/config';
 import loadingStyles from './components/common/Loading/LoadingState.module.css';
@@ -28,7 +30,8 @@ import {
   LazyDailyScrum as DailyScrum,
   LazyImpediments as Impediments,
   LazySprintConfiguration as SprintConfiguration,
-  LazyTeamDefinitionsPage as TeamDefinitionsPage,
+  LazyDailyScrumSchedule as DailyScrumSchedulePage,
+  LazyTeamGroupsPage as TeamGroupsPage,
   LazyProductBacklog as ProductBacklog,
   LazyProductGoalsPage as ProductGoalsPage,
   LazySprintPlanning as SprintPlanning,
@@ -36,7 +39,6 @@ import {
   LazyTeamManagement as TeamManagement,
   LazyTeamManagementPage as TeamManagementPage,
   LazyReports as Reports,
-  LazySmDashboard as SmDashboard,
   LazyIncrementList as IncrementList,
   LazyIncrementDetail as IncrementDetail,
   LazyIncrementCreate as IncrementCreate,
@@ -48,6 +50,7 @@ import {
   LazyPrivacyData as PrivacyData,
   LazyIconGallery as IconGallery,
 } from './routes/lazyComponents';
+import { LegacyDefinitionRedirect } from './routes/LegacyDefinitionRedirect';
 
 const ROUTER_BASENAME = getRouterBasename();
 
@@ -86,39 +89,19 @@ const queryClient = new QueryClient({
   },
 });
 
-// Protected Route Component
-const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { t } = useTranslation('common');
-  const { isAuthenticated, isLoading } = useAuthStore();
-  const [loadingTimeout, setLoadingTimeout] = useState(false);
-
-  // Prevent infinite loading - timeout after 5 seconds
-  useEffect(() => {
-    if (isLoading) {
-      const timer = setTimeout(() => {
-        setLoadingTimeout(true);
-      }, 5000);
-      return () => clearTimeout(timer);
-    }
-    return undefined;
-  }, [isLoading]);
-
-  // Show loading state while checking authentication (with timeout protection)
-  if (isLoading && !loadingTimeout) {
-    return (
-      <div className={loadingStyles['loading-screen']}>
-        <div className={loadingStyles['loading-spinner']} />
-        <p>{t('loading')}</p>
-      </div>
-    );
-  }
-
-  if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
-  }
-
-  return <Layout>{children}</Layout>;
-};
+/**
+ * Whether the server refused the session, rather than never answering.
+ *
+ * Reading the session is what decides whether the persisted one is still real, and only an answer can
+ * decide that. A request that was dropped, timed out or aborted because the page was on its way out
+ * has no answer at all, and a server that failed (5xx) says nothing about the session either. Signing
+ * out on any of those would end a session nobody ended — and it would clear the very record the page
+ * that renders next reads, which is how a reload lands a signed-in visitor on the sign-in screen.
+ */
+function wasRefused(error: unknown): boolean {
+  const status = isAxiosError(error) ? error.response?.status : undefined;
+  return typeof status === 'number' && status >= 400 && status < 500;
+}
 
 // Auth Callback Initializer Component
 const AuthInitializer: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -165,8 +148,14 @@ const AuthInitializer: React.FC<{ children: React.ReactNode }> = ({ children }) 
               }
             }
           }
-        } catch {
-          void logout();
+        } catch (error) {
+          if (wasRefused(error)) {
+            void logout();
+          } else {
+            // The read failed without an answer, so the session stands: the interface reports what
+            // it cannot load, and the next read settles whether the session is still real.
+            logger.debug('Session not confirmed, leaving it as it stands', undefined, { error });
+          }
         }
       }
 
@@ -332,19 +321,33 @@ function App() {
                             </ProtectedRoute>
                           }
                         />
+                        {/* Group administration is offered to team leadership in the sidebar, so it
+                            is guarded by the same roles here: a hidden entry that a bookmark could
+                            still open would refuse the reader only after the page's own reads came
+                            back 403. The guard spares that trip; the API remains the boundary. */}
                         <Route
-                          path="/settings/team-definitions"
+                          path="/settings/team-groups"
                           element={
-                            <ProtectedRoute>
-                              <LazyRoute fallbackMessage="Loading team definitions...">
-                                <TeamDefinitionsPage />
-                              </LazyRoute>
+                            <ProtectedRoute roles={TEAM_LEADERSHIP_ROLES}>
+                              <PageErrorBoundary pageName="Team Groups">
+                                <LazyRoute fallbackMessage="Loading team groups...">
+                                  <TeamGroupsPage />
+                                </LazyRoute>
+                              </PageErrorBoundary>
                             </ProtectedRoute>
                           }
                         />
+                        {/* The Definition of Done and the Definition of Ready are the team's own
+                            agreements, so they are authored on the Definition tab of the Team
+                            module. The addresses they used to live at are kept, so links and
+                            bookmarks still land on the agreement they meant. */}
+                        <Route
+                          path="/settings/team-definitions"
+                          element={<LegacyDefinitionRedirect />}
+                        />
                         <Route
                           path="/settings/definition-of-done"
-                          element={<Navigate to="/settings/team-definitions?tab=dod" replace />}
+                          element={<LegacyDefinitionRedirect id="definition-of-done" />}
                         />
                         <Route
                           path="/reports"
@@ -356,20 +359,36 @@ function App() {
                             </ProtectedRoute>
                           }
                         />
+                        {/* The facilitation lens is the second tab of the Dashboard module; the
+                            address it used to live at is kept, so bookmarks and shared links still
+                            land on it. */}
                         <Route
                           path="/scrum-master-dashboard"
-                          element={
-                            <ProtectedRoute>
-                              <LazyRoute fallbackMessage="Loading Scrum Master dashboard...">
-                                <SmDashboard />
-                              </LazyRoute>
-                            </ProtectedRoute>
-                          }
+                          element={<Navigate to="/dashboard?tab=facilitation" replace />}
                         />
+                        {/* The barrier register is the second tab of the Impediments module; the
+                            address it used to live at is kept, so links and bookmarks still land
+                            on it. */}
+                        <Route
+                          path="/organizational-barriers"
+                          element={<Navigate to="/impediments?tab=barriers" replace />}
+                        />
+                        {/* The working agreements are the third section of the Team module's
+                            Definition tab; the address they used to live at is kept, so links and
+                            bookmarks still land on them. */}
+                        <Route
+                          path="/working-agreements"
+                          element={<LegacyDefinitionRedirect id="working-agreements" />}
+                        />
+                        {/* Both parameters are offered to the roles that can change them, so both
+                            addresses admit the same roles: a hidden entry a bookmark could still
+                            open would refuse the reader only after the page's own reads came back
+                            403, which reads as a broken page rather than a boundary. The API
+                            remains the authority; the guard spares the trip. */}
                         <Route
                           path="/settings/sprint-configuration"
                           element={
-                            <ProtectedRoute>
+                            <ProtectedRoute roles={TEAM_LEADERSHIP_ROLES}>
                               <LazyRoute fallbackMessage="Loading sprint configuration...">
                                 <SprintConfiguration />
                               </LazyRoute>
@@ -377,14 +396,33 @@ function App() {
                           }
                         />
                         <Route
-                          path="/settings/privacy-data"
+                          path="/settings/daily-scrum-schedule"
+                          element={
+                            <ProtectedRoute roles={SCRUM_MASTER_ROLES}>
+                              <LazyRoute fallbackMessage="Loading Daily Scrum schedule...">
+                                <DailyScrumSchedulePage />
+                              </LazyRoute>
+                            </ProtectedRoute>
+                          }
+                        />
+                        {/* Personal, not organizational: this surface holds the reader's own active
+                            sessions and their data export, so it is reached from the user menu
+                            rather than the sidebar's Settings band. It lives at its own address
+                            because it is no longer a settings page, and the address it used to have
+                            is kept, so links and bookmarks still land where they meant. */}
+                        <Route
+                          path="/privacy-data"
                           element={
                             <ProtectedRoute>
-                              <LazyRoute fallbackMessage="Loading privacy & data settings...">
+                              <LazyRoute fallbackMessage="Loading privacy & data...">
                                 <PrivacyData />
                               </LazyRoute>
                             </ProtectedRoute>
                           }
+                        />
+                        <Route
+                          path="/settings/privacy-data"
+                          element={<Navigate to="/privacy-data" replace />}
                         />
                         <Route
                           path="/increments"

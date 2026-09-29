@@ -1,0 +1,122 @@
+/* The Definition page's button language.
+ *
+ * The page is one document read top to bottom -- the Definition of Done, the Definition of Ready, the
+ * team's working agreements, and the Definition of Done's own scope decisions inside it -- so its controls
+ * are read as one set. The Definition of Done section already states that set in its own stylesheet: one
+ * radius, one weight, one accent, and one rule that keeps the page's single primary action in the section
+ * the reader is in.
+ *
+ * The controls built on the shared `Button` primitive -- the working agreements and the scope decisions --
+ * would otherwise wear that primitive's app-wide recipe (a medium radius, a medium weight, a filled grey
+ * secondary) and read as a different page's buttons on the same card. This module republishes the
+ * Definition of Done's recipe for them, so the page has one button appearance rather than two.
+ *
+ * Every rule is scoped under `.scope`, which each of those sections carries on its root. That is what lets
+ * a local stylesheet override the primitive at all: the primitive's own rules are single-class ones, so a
+ * two-part selector wins on specificity rather than on whichever stylesheet the bundler emits last.
+ */
+
+/* --- The shared shape ---
+   Whatever the control does, it is this page's control: the radius of the cards beside it, the weight of
+   the section's own action, and the keyboard ring alone -- a control that lights up on a mouse click is
+   not this section's language. */
+.scope .button {
+  border-radius: var(--radius-lg);
+  font-family: var(--font-family-sans);
+  font-weight: var(--font-weight-semibold);
+  transition:
+    background-color var(--transition-normal) var(--ease-out),
+    border-color var(--transition-normal) var(--ease-out),
+    color var(--transition-normal) var(--ease-out);
+}
+
+.scope .button:focus {
+  box-shadow: none;
+}
+
+.scope .button:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.scope .button:disabled {
+  opacity: var(--opacity-50);
+  cursor: not-allowed;
+}
+
+/* An icon beside a label, which is what every other button on this page is: the Definition of Done's own
+   controls put the two in a flex row and let the button's `gap` space them. The primitive wraps everything
+   it is given in one span instead, so an icon and its label would be laid out inline -- on the text
+   baseline, and touching. This is the row those buttons already have. */
+.scope .button-content {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* --- Variants ---
+   The primary already reaches this accent through a semantic alias; the secondary is the one that differs,
+   because this page's secondary is a card-white control behind a hairline border rather than a filled grey
+   one. */
+.scope .button-primary {
+  background-color: var(--color-primary-600);
+  color: var(--color-text-inverse);
+}
+
+.scope .button-primary:hover:not(:disabled),
+.scope .button-primary:active:not(:disabled) {
+  background-color: var(--color-primary-700);
+}
+
+.scope .button-secondary {
+  background-color: var(--color-background-card);
+  color: var(--color-gray-700);
+  border-color: var(--color-gray-300);
+}
+
+.scope .button-secondary:hover:not(:disabled),
+.scope .button-secondary:active:not(:disabled) {
+  background-color: var(--color-gray-50);
+  border-color: var(--color-gray-400);
+}
+
+/* The page's text link, whether it is a control or an anchor: the same accent, the same underline, the
+   same weight -- the card actions and the "Manage the group" link beside them have to read as one family. */
+.scope .button-link {
+  color: var(--color-primary-600);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.scope .button-link:hover:not(:disabled) {
+  color: var(--color-primary-700);
+}
+
+.scope .button-link:active:not(:disabled) {
+  color: var(--color-primary-800);
+}
+
+.scope .button-warning {
+  background-color: var(--color-warning-500);
+  color: var(--color-text-inverse);
+}
+
+.scope .button-warning:hover:not(:disabled),
+.scope .button-warning:active:not(:disabled) {
+  background-color: var(--color-warning-600);
+}
+
+/* The page carries one primary action: the one belonging to the section the reader is in. Adding an
+   agreement is a different verb from editing a definition, but it is still an action this page would have
+   the reader take, so it steps back with the others rather than competing with them. A demoted action
+   keeps its place, its label and its reachability -- only its emphasis changes. */
+.scope[data-active='false'] .primary-action {
+  background-color: var(--color-background-card);
+  color: var(--color-gray-700);
+  border-color: var(--color-gray-300);
+}
+
+.scope[data-active='false'] .primary-action:hover:not(:disabled) {
+  background-color: var(--color-gray-50);
+  border-color: var(--color-gray-400);
+}

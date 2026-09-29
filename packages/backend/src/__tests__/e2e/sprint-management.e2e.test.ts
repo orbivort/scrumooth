@@ -2,6 +2,7 @@ import { describe, it, expect, afterEach } from 'vitest';
 import request from 'supertest';
 import app from '../../app';
 import prisma from '../../utils/prisma';
+import { GATE_CODES } from '@scrumooth/shared';
 import {
   uniqueTestId,
   HTTP_STATUS,
@@ -12,6 +13,7 @@ import {
   addTeamMember,
   createTestSprintInDb,
   createTestPBIInDb,
+  createTestProductGoalInDb,
   createTestTaskInDb,
   createTestIncrementInDb,
   createTestSprintReviewInDb,
@@ -25,6 +27,8 @@ import {
   generateTestUUID,
   getCsrfToken,
   extractCsrfFromCookies,
+  seedPlanningParticipation,
+  seedTeamDefinitions,
   CSRF_CONSTANTS,
 } from '@e2e-helpers';
 
@@ -242,7 +246,8 @@ describe('E2E: Sprint Management', () => {
       const startDate = new Date();
       const endDate = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
-      // Database constraint violation returns 500 Internal Server Error
+      // A Sprint must span at least one day, so backward dates are refused by the container rule
+      // with a typed, localized gate rather than surfacing a database error.
       const response = await request(app)
         .post('/api/v1/sprints')
         .set('Cookie', cookies)
@@ -253,9 +258,10 @@ describe('E2E: Sprint Management', () => {
           startDate: startDate.toISOString(),
           endDate: endDate.toISOString(),
         })
-        .expect(HTTP_STATUS.INTERNAL_SERVER_ERROR);
+        .expect(HTTP_STATUS.BAD_REQUEST);
 
       expect(response.body.success).toBe(false);
+      expect(response.body.error.code).toBe(GATE_CODES.SPRINT_DURATION_LIMIT);
     });
 
     it('should return 422 VALIDATION_ERROR with empty name', async () => {
@@ -347,6 +353,9 @@ describe('E2E: Sprint Management', () => {
 
       const { team, user } = await setupTeamWithUser(email, ROLES.SCRUM_MASTER);
 
+      // A Sprint cannot start until it is linked to a Product Goal.
+      await createTestProductGoalInDb(team.id, `Goal ${uniqueTestId()}`, 'ACTIVE');
+
       const sprint = await createTestSprintInDb(
         team.id,
         `Start Sprint ${uniqueTestId()}`,
@@ -367,6 +376,11 @@ describe('E2E: Sprint Management', () => {
           createdBy: user.id,
         },
       });
+      // Planning participation is a start gate: the PO and a Developer must be recorded present.
+      await seedPlanningParticipation(sprint.id, user.id);
+      // So are the team's two agreements: a Definition of Done, and a Definition of Ready the item
+      // satisfies.
+      await seedTeamDefinitions(team.id, [pbi.id], user.id);
 
       const cookies = await loginAndGetCookies(email);
       const { csrfToken } = extractCsrfFromCookies(cookies);
@@ -969,6 +983,7 @@ describe('E2E: Sprint Management', () => {
           .send({
             pbiId: pbi.id,
             reason: 'New priority requirement',
+            goalImpact: 'SUPPORTS_GOAL',
           })
           .expect(HTTP_STATUS.CREATED);
 
@@ -1012,6 +1027,7 @@ describe('E2E: Sprint Management', () => {
           .send({
             taskAction: 'return_to_backlog',
             reason: 'Scope reduction',
+            goalImpact: 'SUPPORTS_GOAL',
           })
           .expect(HTTP_STATUS.OK);
 

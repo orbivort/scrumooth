@@ -60,6 +60,88 @@ export {
   type ScrumEvent,
 } from './timebox.js';
 
+export {
+  SPRINT_MAX_DURATION_DAYS,
+  SPRINT_CONTIGUITY_MAX_GAP_DAYS,
+  SPRINT_GOAL_IMPACTS,
+  SPRINT_GOAL_IMPACT_LIST,
+  SPRINT_CHANGE_APPROVAL_STATUSES,
+  SPRINT_CHANGE_DECISIONS,
+  toUtcDay,
+  toLocalCalendarDay,
+  hasSprintEnded,
+  SPRINT_CONCLUDED_STATUSES,
+  mayCompleteSprintEvents,
+  sprintDurationDays,
+  rangesOverlap,
+  contiguityGapDays,
+  isSprintGoalImpact,
+  isSprintChangeApprovalStatus,
+  type SprintGoalImpact,
+  type SprintChangeApprovalStatus,
+  type SprintChangeDecision,
+  type DayRange,
+} from './sprintCalendar.js';
+
+export {
+  MAX_CALENDAR_SPAN_DAYS,
+  DEFAULT_WORKING_DAYS,
+  ISO_WEEKDAYS,
+  START_MINUTE_MIN,
+  START_MINUTE_MAX,
+  toIsoDate,
+  isoDateToDayIndex,
+  dayIndexToIsoDate,
+  toIsoWeekday,
+  addDays,
+  normalizeWorkingDays,
+  normalizeNonWorkingDays,
+  normalizeCalendar,
+  isWorkingDay,
+  countWorkingDays,
+  listWorkingDays,
+  sprintWorkingDayProgress,
+  isKnownTimeZone,
+  formatStartMinute,
+  parseStartMinute,
+  type WorkingDayCalendar,
+  type SprintWorkingDayProgress,
+} from './workingDays.js';
+
+export {
+  DAILY_SCRUM_ADJUSTMENT_ACTIONS,
+  isDailyScrumAdjustmentAction,
+  ADAPTATION_REFLECTIONS,
+  ADAPTATION_REFLECTION_BASES,
+  evaluateAdaptationReflection,
+  hasAdaptationEvidence,
+  hasContradictoryAdaptationEvidence,
+  type DailyScrumAdjustmentAction,
+  type AdaptationReflection,
+  type AdaptationReflectionBasis,
+  type AdaptationReflectionVerdict,
+  type AdaptationAdjustmentSnapshot,
+  type AdaptationCurrentState,
+  type AdaptationEvidenceDeclaration,
+} from './dailyScrumAdaptation.js';
+
+export {
+  wholeDaysBetween,
+  daysUntil,
+  isBarrierOverdue,
+  summarizeBarriers,
+  summarizeSkillCoverage,
+  isStakeholderActionOpen,
+} from './smFacilitation.js';
+
+export {
+  STORY_POINTS_TO_TASKS,
+  DEFAULT_ADHOC_TASK_CONFIG,
+  generateAdHocTaskDrafts,
+  type AdHocTaskConfig,
+  type AdHocTaskDraft,
+} from './adhocTasks.js';
+
 export function isValidEmail(email: string): boolean {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   return emailRegex.test(email);

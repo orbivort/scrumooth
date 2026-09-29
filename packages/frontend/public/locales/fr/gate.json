@@ -1,0 +1,45 @@
+{
+  "dodGroupGoverned": {
+    "guideClause": "Si plusieurs équipes Scrum travaillent ensemble sur un produit, elles doivent définir et respecter mutuellement la même Définition de Fini.",
+    "recovery": "Modifiez la Définition de Fini partagée depuis l'onglet de définition de n'importe quelle équipe du groupe.",
+    "rule": "Cette équipe travaille avec d'autres équipes Scrum sur un même produit : elle respecte donc la Définition de Fini qu'elles partagent et ne peut pas modifier la sienne."
+  },
+  "dodRequired": {
+    "guideClause": "La Définition de Fini est une description formelle de l'état de l'Incrément lorsqu'il satisfait aux critères de qualité exigés pour le produit.",
+    "recovery": "Réactivez ou ajoutez un critère, puis enregistrez à nouveau la Définition de Fini.",
+    "rule": "Une Définition de Fini doit contenir au moins un critère actif."
+  },
+  "dodTeamMembersOnly": {
+    "recovery": "Demandez à un membre de cette équipe d'ouvrir sa Définition de Fini.",
+    "rule": "La Définition de Fini appartient à l'équipe Scrum qui travaille selon elle ; seuls ses membres peuvent donc la lire ou la modifier."
+  },
+  "dorRequired": {
+    "recovery": "Réactivez ou ajoutez un critère, puis enregistrez à nouveau la Définition de Prêt.",
+    "rule": "La Définition de Prêt doit contenir au moins un critère actif."
+  },
+  "dorScrumMasterOnly": {
+    "recovery": "Demandez à votre Scrum Master de la modifier.",
+    "rule": "La Définition de Prêt est une pratique complémentaire tenue à jour par le Scrum Master de l'équipe. Ce n'est pas un artefact du Guide Scrum."
+  },
+  "dorTeamMembersOnly": {
+    "recovery": "Demandez à un membre de cette équipe d'ouvrir sa Définition de Prêt.",
+    "rule": "La Définition de Prêt est un accord propre à cette équipe ; seuls ses membres peuvent donc la lire."
+  },
+  "teamGroupAlreadyMember": {
+    "recovery": "Quittez d'abord le groupe auquel elle appartient.",
+    "rule": "Une équipe respecte une seule Définition de Fini partagée : elle ne peut donc pas rejoindre un second groupe."
+  },
+  "teamGroupDodAcknowledgementRequired": {
+    "guideClause": "Si plusieurs équipes Scrum travaillent ensemble sur un produit, elles doivent définir et respecter mutuellement la même Définition de Fini.",
+    "recovery": "Consultez la version en vigueur et adoptez-la.",
+    "rule": "La Définition de Fini partagée a changé après votre revue : la version que vous avez confirmée n'est plus celle en vigueur."
+  },
+  "teamGroupLeadershipOnly": {
+    "recovery": "Demandez au Product Owner ou au Scrum Master de votre équipe d'effectuer ce changement.",
+    "rule": "Le Product Owner ou le Scrum Master d'une équipe décide de la Définition de Fini partagée selon laquelle elle travaille."
+  },
+  "teamGroupNotEmpty": {
+    "recovery": "Faites d'abord quitter le groupe à toutes les équipes.",
+    "rule": "Un groupe dont la Définition de Fini régit encore des équipes ne peut pas être supprimé : le supprimer leur retirerait leur engagement au lieu de le déplacer."
+  }
+}

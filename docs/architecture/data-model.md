@@ -402,28 +402,155 @@ The database schema is organized into logical groups:
 
 ### 8. DefinitionOfDone / DefinitionOfReady
 
-**Purpose**: Define team-specific checklists.
+**Purpose**: Hold the two agreements a team works to. The Definition of Done is the Increment's
+commitment and is owned by a team or by the team group that shares a product; the Definition of Ready
+is the team's own readiness practice, maintained by its Scrum Master alone, and is never group-scoped.
+Neither agreement has an organization scope: an organization-wide minimum Definition of Done is not
+modelled.
 
 **Fields (DoD/DoR)**:
 
-| Field     | Type      | Constraints       | Description        |
-| --------- | --------- | ----------------- | ------------------ |
-| id        | UUID      | PK                | Unique identifier  |
-| teamId    | UUID      | FK (Team), Unique | Team reference     |
-| version   | Int       | Default: 1        | Version number     |
-| createdAt | Timestamp | Auto              | Creation timestamp |
-| updatedAt | Timestamp | Auto              | Update timestamp   |
+| Field     | Type      | Constraints                      | Description                                 |
+| --------- | --------- | -------------------------------- | ------------------------------------------- |
+| id        | UUID      | PK                               | Unique identifier                           |
+| teamId    | UUID      | FK (Team), Unique, nullable      | Team reference — the only owner for the DoR |
+| groupId   | UUID      | FK (TeamGroup), Unique, nullable | Group reference — DoD only                  |
+| version   | Int       | Default: 1                       | Version in force                            |
+| createdAt | Timestamp | Auto                             | Creation timestamp                          |
+| updatedAt | Timestamp | Auto                             | Update timestamp                            |
+
+A Definition of Done is owned by exactly one scope — a team **or** a group, never both and never
+neither. The invariant is a database `CHECK` (`CHECK ((team_id IS NULL) <> (group_id IS NULL))`), not
+an application rule: Prisma cannot express it, so it lives in SQL. While a team belongs to a group its
+own row is retained but inert, and a re-scoping write on leave materializes the group's criteria back
+into it.
 
 **Fields (DoDItem/DoRItem)**:
 
-| Field       | Type    | Constraints   | Description       |
-| ----------- | ------- | ------------- | ----------------- |
-| id          | UUID    | PK            | Unique identifier |
-| dodId/dorId | UUID    | FK            | DoD/DoR reference |
-| description | String  | Required      | Item description  |
-| category    | String  | Optional      | Item category     |
-| isActive    | Boolean | Default: true | Active status     |
-| order       | Int     | Required      | Display order     |
+| Field       | Type    | Constraints   | Description                                              |
+| ----------- | ------- | ------------- | -------------------------------------------------------- |
+| id          | UUID    | PK            | Unique identifier                                        |
+| dodId/dorId | UUID    | FK            | DoD/DoR reference                                        |
+| description | String  | Required      | Item wording, seeded in English and editable by the team |
+| category    | String  | Optional      | Item category, free-form                                 |
+| defaultKey  | String  | Optional      | The built-in criterion it descends from, or `null`       |
+| isActive    | Boolean | Default: true | Active status                                            |
+| order       | Int     | Required      | Display order, unique within the agreement               |
+
+`defaultKey` is what keeps a built-in criterion translatable. The canonical seeds and their keys are
+declared once in `packages/shared/src/constants/definitionDefaults.ts`, which the seeding service, the
+migration that backfilled existing rows, and the interface all read. The column is owned by the
+service: a write payload never carries it, an edit preserves whatever the row holds, and only the
+internal "carry the group's criteria onto a leaving team" path sets it on an insert.
+
+The key decides the wording only while the stored `description` still equals the seed's canonical
+sentence. Once a team rewords a criterion, that sentence is the agreement: the interface shows it as
+written, in every locale, and the key survives only as the record of which seed the row descends from.
+Reading the key first regardless — which is what `criterionLabel` used to do — made a saved reword
+render as the seeded wording, so a successful edit looked like one that never landed.
+
+**Version snapshots**:
+
+| Table                   | What it preserves                                            |
+| ----------------------- | ------------------------------------------------------------ |
+| `dod_version_snapshots` | One row per superseded Definition of Done version, as JSONB  |
+| `dor_version_snapshots` | One row per superseded Definition of Ready version, as JSONB |
+
+Both carry `@@unique([dodId|dorId, version])`, which is at once the append-only guard (a replayed
+update cannot create a second row claiming the same version) and the read path (history is always "for
+this agreement, in version order"). `items` is JSONB rather than a child table on purpose: a snapshot
+must be immutable, and rows that never change cannot drift with the live items they were copied from.
+The snapshot JSON carries `defaultKey` for the same reason the live row does, so a superseded version
+stays readable in the reader's language.
+
+## Daily Scrum Module
+
+The Daily Scrum module persists three things the 2020 Scrum Guide attaches to the event: the **standing commitment**, the **inspected baseline**, and the **adaptation evidence**.
+
+### 9. DailyScrum
+
+The team-level record of one Daily Scrum: one row per Sprint per date, jointly owned by the Developers.
+
+| Field              | Type    | Constraints           | Description                                                       |
+| ------------------ | ------- | --------------------- | ----------------------------------------------------------------- |
+| id                 | UUID    | PK                    | Unique identifier                                                 |
+| sprintId           | UUID    | FK → Sprint, required | Sprint the record belongs to                                      |
+| scrumDate          | Date    | Required              | The day the event was held                                        |
+| progressNotes      | String  | Optional              | Progress toward the Sprint Goal                                   |
+| adaptationsNotes   | String  | Optional              | Free-text adaptations note                                        |
+| planForNextDay     | String  | Optional              | The actionable plan for the next day                              |
+| focusMode          | String  | Optional              | The structure the Developers chose; validated at the API boundary |
+| sprintGoal         | String  | Optional              | **Snapshot** of the Sprint Goal at creation; never rewritten      |
+| noAdaptationNeeded | Boolean | Default: false        | Explicit acknowledgement that no adaptation was needed            |
+
+`sprintGoal` is the inspected baseline: it is written from the Sprint row when the record is created and is never touched by an update, so a later goal renegotiation cannot make a past Daily Scrum appear to have inspected a goal it never saw.
+
+`noAdaptationNeeded` and `backlogAdjustments` are two halves of one requirement — a record must carry at least one of them. See §9.1.
+
+- Unique constraint: `(sprintId, scrumDate)`
+- Indexes: `(sprintId, scrumDate)`, `(scrumDate)`
+
+### 9.1 DailyScrumBacklogItem
+
+A Sprint Backlog adaptation declared at a Daily Scrum.
+
+| Field                     | Type   | Constraints      | Description                                                           |
+| ------------------------- | ------ | ---------------- | --------------------------------------------------------------------- |
+| id                        | UUID   | PK               | Unique identifier                                                     |
+| dailyScrumId              | UUID   | FK → DailyScrum  | Owning record                                                         |
+| sprintBacklogItemId       | UUID   | FK, **nullable** | The declared target; `NULL` once the item has left the Sprint Backlog |
+| pbiId                     | UUID   | FK, nullable     | Denormalised target, so the declaration survives the item             |
+| pbiTitleAtAdjustment      | String | Optional         | The target's title at declaration time                                |
+| actionType                | Enum   | Optional         | `ADDED` / `REMOVED` / `REPRIORITIZED` / `REFINED` / `SPLIT`           |
+| action                    | String | Required         | The Developers' note explaining the adaptation                        |
+| pbiStatusAtAdjustment     | Enum   | Optional         | The target PBI's status at declaration time                           |
+| itemUpdatedAtAtAdjustment | Ts     | Optional         | The target item's `updatedAt` at declaration time                     |
+| pbiUpdatedAtAtAdjustment  | Ts     | Optional         | The target PBI's `updatedAt` at declaration time                      |
+
+Two properties carry the design:
+
+- **The FK is nullable with `ON DELETE SET NULL`.** Removing the item from the Sprint Backlog is exactly how a `REMOVED` declaration is fulfilled, so a cascading delete would destroy the evidence at the moment it came true. `pbiId` and `pbiTitleAtAdjustment` keep the declaration readable once the item is gone.
+- **The four snapshot columns are written by the server**, read from the affected item at declaration time. A client never supplies them, so a declaration cannot describe its own baseline.
+
+The **reflection verdict** ("reflected" / "declared, not yet reflected") is _computed on read_ by comparing the snapshot with the item's current state — it is deliberately not a column, because a stored verdict would be a snapshot of a moving thing and would go stale the first time someone acted on the adaptation.
+
+- Unique constraint: `(dailyScrumId, sprintBacklogItemId)`
+- Indexes: `(dailyScrumId)`, `(sprintBacklogItemId)`, `(pbiId)`
+
+### 9.2 DailyScrumSchedule
+
+The team's standing commitment: the Daily Scrum is held "at the same time and place every working day".
+
+| Field       | Type   | Constraints            | Description                                        |
+| ----------- | ------ | ---------------------- | -------------------------------------------------- |
+| id          | UUID   | PK                     | Unique identifier                                  |
+| teamId      | UUID   | FK → Team, **unique**  | One commitment per team                            |
+| timezone    | String | Default: `UTC`         | IANA zone `startMinute` is expressed in            |
+| startMinute | Int    | Required, 0-1439       | Start of the event as minutes after local midnight |
+| location    | String | Optional, max 200      | A room or other plain-text place                   |
+| locationUrl | String | Optional               | A meeting link (`http`/`https` allowlist)          |
+| workingDays | Int[]  | Default: `[1,2,3,4,5]` | ISO weekday numbers (1 = Monday) the team works    |
+
+**No duration is stored.** The Daily Scrum is a fixed 15-minute timebox that does not scale with Sprint length; only the start is configurable. At least one of `location` / `locationUrl` is required.
+
+### 9.3 TeamNonWorkingDay
+
+A dated exception to the weekly working pattern.
+
+| Field  | Type   | Constraints         | Description           |
+| ------ | ------ | ------------------- | --------------------- |
+| id     | UUID   | PK                  | Unique identifier     |
+| teamId | UUID   | FK → Team, required | Owning team           |
+| date   | Date   | Required            | The exception date    |
+| name   | String | Optional, max 120   | e.g. a public holiday |
+
+Only exceptions are stored; the weekly pattern on `DailyScrumSchedule` remains the default.
+
+- Unique constraint: `(teamId, date)` — the arbiter for two Scrum Masters recording the same holiday concurrently
+
+### Why the calendar lives in the shared package
+
+The working-day rules (`countWorkingDays`, `listWorkingDays`, `sprintWorkingDayProgress`, `isWorkingDay`) are pure functions in `@scrumooth/shared` rather than SQL or service code. Both the Daily Scrum page's "Sprint day X of Y" and the Scrum Master dashboard's expected-count are computed with the _same_ functions, so the number the Developers see cannot drift apart from the number their Scrum Master is shown. The calendar is also non-coercive by construction: it is read to explain, count and evidence, and it never gates a write.
 
 ## Relationships
 
@@ -435,9 +562,12 @@ User (1) ──► (N) Notification
 Team (1) ──► (N) TeamMember
 Team (1) ──► (N) ProductGoal
 Team (1) ──► (N) Sprint
+Team (1) ──► (N) TeamNonWorkingDay
 ProductGoal (1) ──► (N) ProductBacklogItem
 Sprint (1) ──► (N) Task
 Sprint (1) ──► (N) DailyScrum
+DailyScrum (1) ──► (N) DailyScrumParticipant
+DailyScrum (1) ──► (N) DailyScrumBacklogItem
 ```
 
 ### Many-to-Many Relationships
@@ -455,6 +585,7 @@ Sprint (N) ◄──► (N) ProductBacklogItem
 ```
 Team (1) ──► (1) DefinitionOfDone
 Team (1) ──► (1) DefinitionOfReady
+Team (1) ──► (1) DailyScrumSchedule
 Sprint (1) ──► (1) SprintRetrospective
 Sprint (1) ──► (1) SprintReview
 ```
@@ -609,12 +740,26 @@ pnpm run db:migrate:prod
 ```
 prisma/
 ├── migrations/
-│   ├── 20260415000000_initial/
+│   ├── 00000000000000_init/
 │   │   └── migration.sql
-│   ├── 20260416000000_add_notifications/
+│   ├── 20260926000000_consolidate_incremental_migrations/
 │   │   └── migration.sql
 │   └── migration_lock.toml
 └── schema.prisma
+```
+
+The history is kept deliberately short. `00000000000000_init` is the frozen baseline, and
+`20260926000000_consolidate_incremental_migrations` is the collapsed history of every migration that
+followed it. The consolidated file names the migration each block of statements came from, section by
+section, so the reasoning is preserved even though the file boundaries are not. New work is added as a
+new migration on top of it as usual.
+
+A database that predates the consolidation already applied those migrations individually, so it must
+not execute the consolidated file. Record it as applied instead:
+
+```bash
+pnpm --filter=@scrumooth/backend exec prisma migrate resolve \
+  --applied 20260926000000_consolidate_incremental_migrations
 ```
 
 ### Migration Best Practices
@@ -624,6 +769,12 @@ prisma/
 3. **Index Creation**: Create indexes concurrently in production
 4. **Testing**: Test migrations on staging before production
 5. **Backup**: Always backup before production migrations
+6. **Enum before column**: `CREATE TYPE "X" AS ENUM (...)` must precede any `ALTER TABLE ... ADD COLUMN` that uses it, and the value _set_ must match the Prisma enum. Write the values in the enum's declared order, because PostgreSQL compares enums by declaration order and a later `ORDER BY` on such a column depends on it. Order can still diverge afterwards, and that is not a defect: `ALTER TYPE ... ADD VALUE` always appends, so a value added to the middle of the Prisma enum lands at the end in the database and cannot be moved without recreating the type. Prisma's differ compares value sets rather than order, so the divergence produces no drift and no migration — `NotificationType` is the one place it currently differs (`IMPEDIMENT_ESCALATION` is fifth in the schema, twelfth in the database), and nothing orders by that column. Verify with `prisma migrate diff --from-migrations prisma/migrations --to-schema prisma/schema.prisma`.
+7. **Widening an existing constraint is a drop-and-recreate**: changing a foreign key to `ON DELETE SET NULL` — or making a `NOT NULL` column nullable — requires `ALTER TABLE ... DROP CONSTRAINT` followed by `ALTER TABLE ... ADD CONSTRAINT`, plus `ALTER COLUMN ... DROP NOT NULL`. Do both in one migration so the schema and the database never disagree mid-deploy.
+8. **Say why a constraint is what it is**: a constraint that looks like an oversight (a nullable FK where a NOT NULL one "should" be, a `SET NULL` where the rest of the table cascades) is a decision. Comment it in the migration, or the next reader will "fix" it back.
+9. **Squash history by baselining, never by editing applied migrations**: when a run of incremental migrations is collapsed into one file, carry the original reasoning over as comments, drop statements that only correct an earlier one, and record the new file as applied on every database that already ran the originals (`prisma migrate resolve --applied <name>`) _before_ deploying. An environment that already ran the originals must never execute the squashed file — every `CREATE` would collide. Prove the squash with two scratch databases: one built from the originals, one from the squashed file, then compare with `pg_dump --schema-only` and `prisma migrate diff`.
+10. **Some objects are owned by SQL, not by the schema**: the Prisma schema language cannot express `CHECK` constraints or partial indexes (`... WHERE <predicate>`), so those objects exist only in the migrations — the 21 `chk_*` constraints and five partial indexes: `sprints_active_idx`, `impediments_open_idx`, `notifications_unread_idx`, and the unique pair `team_members_single_product_owner_idx` / `team_members_single_scrum_master_idx`. The last two are load-bearing: they, not the service layer, are what make _"one Product Owner and one Scrum Master per team"_ true in the database. Because `prisma migrate diff` cannot model these objects it never reports them as missing — and it cannot round-trip them either, which is why the datamodel-to-database direction proposes nonsense for their plain mirrors (it suggests `ALTER INDEX "sprints_teamId_idx" RENAME TO "sprints_active_idx"`, a name collision that cannot execute). Treat differ output as a proposal to review, never as a patch to apply, and never drop one of these by hand.
+11. **A schema-only change may correctly need no migration**: when a migration already created an object and the schema simply never declared it, adding the declaration is a catch-up, not a change. `sprint_backlog_changes` carried an index on `acknowledgedBy` — created by `20260921140000` — with no matching `@@index` in the model, which made `prisma migrate dev` want to _drop_ it; declaring `@@index([acknowledgedBy])` fixed the model without any DDL. `prisma migrate diff` returning an empty diff afterwards is the proof that the declaration caught up rather than changed something.
 
 ### Example Migration
 
@@ -657,7 +808,7 @@ CREATE INDEX "idx_notification_preferences_user" ON "notification_preferences"("
 
 ---
 
-**Last Updated**: 2026-05-10
+**Last Updated**: 2026-09-21
 
 **Related Documentation**:
 

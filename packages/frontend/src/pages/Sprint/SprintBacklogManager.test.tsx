@@ -1,5 +1,12 @@
 import React from 'react';
-import { screen, renderWithProviders, waitFor, initTestI18n, i18nT } from '../../test-utils';
+import {
+  screen,
+  fireEvent,
+  renderWithProviders,
+  waitFor,
+  initTestI18n,
+  i18nT,
+} from '../../test-utils';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach, beforeAll } from 'vitest';
 
@@ -67,7 +74,15 @@ describe('SprintBacklogManager', () => {
     (apiService.getSprintBacklogChanges as ReturnType<typeof vi.fn>).mockResolvedValue({
       data: mockChanges,
     });
-    (apiService.addPBIToSprint as ReturnType<typeof vi.fn>).mockResolvedValue({ data: {} });
+    // A successful addition always returns the recorded change, which carries the number of ad-hoc
+    // tasks the server seeded alongside it.
+    (apiService.addPBIToSprint as ReturnType<typeof vi.fn>).mockResolvedValue({
+      data: {
+        pending: false,
+        sprintBacklogItem: { id: 'sbi-1', sprintId: 'sprint-1', pbiId: 'pbi-3' },
+        change: { id: 'change-1', taskCount: 1 },
+      },
+    });
     (apiService.removePBIFromSprint as ReturnType<typeof vi.fn>).mockResolvedValue({ data: {} });
     (apiService.createTask as ReturnType<typeof vi.fn>).mockResolvedValue({ data: {} });
   });
@@ -133,6 +148,45 @@ describe('SprintBacklogManager', () => {
       await waitFor(() => {
         expect(screen.getByText('Recent Changes')).toBeInTheDocument();
       });
+    });
+  });
+
+  describe('Deep link highlight', () => {
+    it('should emphasise the change the manager was opened on', async () => {
+      renderWithProviders(<SprintBacklogManager {...defaultProps} highlightChangeId="change-1" />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Feature A')).toBeInTheDocument();
+      });
+
+      // The Product Owner reaches the manager from a notification, so the change that was
+      // announced is marked rather than left to be found in the list.
+      expect(screen.getByText('Feature A').closest('[data-highlighted]')).toHaveAttribute(
+        'data-highlighted',
+        'true'
+      );
+    });
+
+    it('should leave every change unmarked when opened without a notification', async () => {
+      const { container } = renderWithProviders(<SprintBacklogManager {...defaultProps} />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Feature A')).toBeInTheDocument();
+      });
+
+      expect(container.querySelector('[data-highlighted]')).toBeNull();
+    });
+
+    it('should leave every change unmarked when the named change is not in the list', async () => {
+      const { container } = renderWithProviders(
+        <SprintBacklogManager {...defaultProps} highlightChangeId="change-not-listed" />
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText('Feature A')).toBeInTheDocument();
+      });
+
+      expect(container.querySelector('[data-highlighted]')).toBeNull();
     });
   });
 
@@ -999,18 +1053,642 @@ describe('SprintBacklogManager', () => {
         expect(screen.getByText('Feature C')).toBeInTheDocument();
       });
 
+      // A mid-Sprint change must state why it is made and whether it endangers the Sprint Goal
+      // before it can be confirmed.
+      await user.type(
+        screen.getByPlaceholderText('Why are you adding this item?'),
+        'New priority requirement'
+      );
+      await user.click(
+        screen.getByLabelText(i18nT('sprint:sprintBacklogManager.goalImpactSupports'))
+      );
+
       // Click the first "Add" button in the available items list
       const addItemButtons = screen.getAllByRole('button', { name: 'Add' });
       await user.click(addItemButtons[0]);
 
       await waitFor(() => {
-        expect(apiService.addPBIToSprint).toHaveBeenCalledWith('sprint-1', 'pbi-3', undefined);
+        expect(apiService.addPBIToSprint).toHaveBeenCalledWith(
+          'sprint-1',
+          'pbi-3',
+          'New priority requirement',
+          'SUPPORTS_GOAL'
+        );
       });
 
       // Modal should close after successful addition
       await waitFor(() => {
         expect(screen.queryByText('Add Item to Sprint')).not.toBeInTheDocument();
       });
+    });
+  });
+
+  describe('Sprint Goal protection', () => {
+    it('should keep the confirm action disabled until the reason and the goal impact are given', async () => {
+      const user = userEvent.setup();
+
+      renderWithProviders(<SprintBacklogManager {...defaultProps} />);
+
+      await waitFor(() => {
+        expect(screen.getByText('+ Add Item')).toBeInTheDocument();
+      });
+
+      await user.click(screen.getByText('+ Add Item'));
+
+      await waitFor(() => {
+        expect(screen.getByText('Feature C')).toBeInTheDocument();
+      });
+
+      const addButton = screen.getAllByRole('button', { name: 'Add' })[0];
+      expect(addButton).toBeDisabled();
+
+      await user.type(
+        screen.getByPlaceholderText('Why are you adding this item?'),
+        'New priority requirement'
+      );
+      expect(addButton).toBeDisabled();
+
+      await user.click(
+        screen.getByLabelText(i18nT('sprint:sprintBacklogManager.goalImpactSupports'))
+      );
+      expect(addButton).toBeEnabled();
+    });
+
+    it('should record a goal-endangering addition as pending without creating draft tasks', async () => {
+      const user = userEvent.setup();
+      (apiService.addPBIToSprint as ReturnType<typeof vi.fn>).mockResolvedValue({
+        data: { pending: true, sprintBacklogItem: null, change: { id: 'change-x' } },
+      });
+
+      renderWithProviders(<SprintBacklogManager {...defaultProps} />);
+
+      await waitFor(() => {
+        expect(screen.getByText('+ Add Item')).toBeInTheDocument();
+      });
+
+      await user.click(screen.getByText('+ Add Item'));
+
+      await waitFor(() => {
+        expect(screen.getByText('Feature C')).toBeInTheDocument();
+      });
+
+      await user.type(
+        screen.getByPlaceholderText('Why are you adding this item?'),
+        'Scope grew mid-Sprint'
+      );
+      await user.click(
+        screen.getByLabelText(i18nT('sprint:sprintBacklogManager.goalImpactEndangers'))
+      );
+      await user.click(screen.getAllByRole('button', { name: 'Add' })[0]);
+
+      await waitFor(() => {
+        expect(apiService.addPBIToSprint).toHaveBeenCalledWith(
+          'sprint-1',
+          'pbi-3',
+          'Scope grew mid-Sprint',
+          'ENDANGERS_GOAL'
+        );
+      });
+
+      // Nothing was applied, and the client never creates tasks itself.
+      expect(apiService.createTask).not.toHaveBeenCalled();
+    });
+
+    it('should report the tasks the server seeded when an addition is applied directly', async () => {
+      const user = userEvent.setup();
+      (apiService.addPBIToSprint as ReturnType<typeof vi.fn>).mockResolvedValue({
+        data: {
+          pending: false,
+          sprintBacklogItem: { id: 'sbi-1' },
+          change: { id: 'change-1', taskCount: 2 },
+        },
+      });
+
+      renderWithProviders(<SprintBacklogManager {...defaultProps} />);
+
+      await waitFor(() => {
+        expect(screen.getByText('+ Add Item')).toBeInTheDocument();
+      });
+
+      await user.click(screen.getByText('+ Add Item'));
+
+      await waitFor(() => {
+        expect(screen.getByText('Feature C')).toBeInTheDocument();
+      });
+
+      await user.type(
+        screen.getByPlaceholderText('Why are you adding this item?'),
+        'Supports the goal'
+      );
+      await user.click(
+        screen.getByLabelText(i18nT('sprint:sprintBacklogManager.goalImpactSupports'))
+      );
+      await user.click(screen.getAllByRole('button', { name: 'Add' })[0]);
+
+      await waitFor(() => {
+        expect(
+          screen.getByText(
+            i18nT('sprint:sprintBacklogManager.pbiAddedToSprint', {
+              taskInfo: i18nT('sprint:sprintBacklogManager.withDraftTasks', { count: 2 }),
+            })
+          )
+        ).toBeInTheDocument();
+      });
+
+      // The tasks are seeded by the server as part of applying the change, not by the client.
+      expect(apiService.createTask).not.toHaveBeenCalled();
+    });
+
+    it('should mark a pending change as awaiting the Product Owner', async () => {
+      (apiService.getSprintBacklogChanges as ReturnType<typeof vi.fn>).mockResolvedValue({
+        data: [
+          {
+            id: 'change-pending',
+            pbiTitle: 'Feature A',
+            changeType: 'ADDED',
+            changedByName: 'John Doe',
+            createdAt: new Date().toISOString(),
+            reason: 'Scope grew',
+            goalImpact: 'ENDANGERS_GOAL',
+            approvalStatus: 'PENDING',
+            sprintGoalAtChange: 'Complete authentication',
+          },
+        ],
+      });
+
+      renderWithProviders(<SprintBacklogManager {...defaultProps} />);
+
+      await waitFor(() => {
+        expect(
+          screen.getByText(i18nT('sprint:sprintBacklogManager.awaitingProductOwner'))
+        ).toBeInTheDocument();
+      });
+    });
+
+    it('should hide the Product Owner approval actions from other roles', async () => {
+      (apiService.getSprintBacklogChanges as ReturnType<typeof vi.fn>).mockResolvedValue({
+        data: [
+          {
+            id: 'change-pending',
+            pbiTitle: 'Feature A',
+            changeType: 'ADDED',
+            changedByName: 'John Doe',
+            createdAt: new Date().toISOString(),
+            goalImpact: 'ENDANGERS_GOAL',
+            approvalStatus: 'PENDING',
+          },
+        ],
+      });
+
+      renderWithProviders(<SprintBacklogManager {...defaultProps} />);
+
+      await waitFor(() => {
+        expect(
+          screen.getByText(i18nT('sprint:sprintBacklogManager.awaitingProductOwner'))
+        ).toBeInTheDocument();
+      });
+
+      expect(
+        screen.queryByRole('button', {
+          name: i18nT('sprint:sprintBacklogManager.approveChange'),
+        })
+      ).not.toBeInTheDocument();
+    });
+
+    it('should show who approved a decided change, when, and the recorded note', async () => {
+      (apiService.getSprintBacklogChanges as ReturnType<typeof vi.fn>).mockResolvedValue({
+        data: [
+          {
+            id: 'change-approved',
+            pbiTitle: 'Feature A',
+            changeType: 'ADDED',
+            changedByName: 'John Doe',
+            createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+            reason: 'Scope grew',
+            goalImpact: 'ENDANGERS_GOAL',
+            approvalStatus: 'APPLIED',
+            acknowledgedByName: 'Jane Smith',
+            acknowledgedAt: new Date(Date.now() - 60 * 60 * 1000).toISOString(),
+            acknowledgementNote: 'Renegotiated the goal with the team',
+          },
+        ],
+      });
+
+      renderWithProviders(<SprintBacklogManager {...defaultProps} />);
+
+      // A decided change keeps its audit trail visible: the outcome, its author and the moment.
+      expect(
+        await screen.findByText(
+          i18nT('sprint:sprintBacklogManager.approvedByName', { name: 'Jane Smith' })
+        )
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText(new RegExp(i18nT('sprint:sprintBacklogManager.hoursAgo', { count: 1 })))
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          i18nT('sprint:sprintBacklogManager.decisionNote', {
+            note: 'Renegotiated the goal with the team',
+          })
+        )
+      ).toBeInTheDocument();
+      // The decision replaces the pending state.
+      expect(
+        screen.queryByText(i18nT('sprint:sprintBacklogManager.awaitingProductOwner'))
+      ).not.toBeInTheDocument();
+    });
+
+    it('should show who rejected a decided change', async () => {
+      (apiService.getSprintBacklogChanges as ReturnType<typeof vi.fn>).mockResolvedValue({
+        data: [
+          {
+            id: 'change-rejected',
+            pbiTitle: 'Feature A',
+            changeType: 'REMOVED',
+            changedByName: 'John Doe',
+            createdAt: new Date().toISOString(),
+            goalImpact: 'ENDANGERS_GOAL',
+            approvalStatus: 'REJECTED',
+            acknowledgedByName: 'Jane Smith',
+            acknowledgedAt: new Date().toISOString(),
+          },
+        ],
+      });
+
+      renderWithProviders(<SprintBacklogManager {...defaultProps} />);
+
+      expect(
+        await screen.findByText(
+          i18nT('sprint:sprintBacklogManager.rejectedByName', { name: 'Jane Smith' })
+        )
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByText(
+          i18nT('sprint:sprintBacklogManager.approvedByName', { name: 'Jane Smith' })
+        )
+      ).not.toBeInTheDocument();
+    });
+
+    it('should mark an applied change that required no approval as applied', async () => {
+      (apiService.getSprintBacklogChanges as ReturnType<typeof vi.fn>).mockResolvedValue({
+        data: [
+          {
+            id: 'change-applied',
+            pbiTitle: 'Feature A',
+            changeType: 'ADDED',
+            changedByName: 'John Doe',
+            createdAt: new Date().toISOString(),
+            goalImpact: 'SUPPORTS_GOAL',
+            approvalStatus: 'APPLIED',
+          },
+        ],
+      });
+
+      renderWithProviders(<SprintBacklogManager {...defaultProps} />);
+
+      // No decision was required, so no approver is invented for it.
+      expect(
+        await screen.findByText(i18nT('sprint:sprintBacklogManager.appliedToBacklog'))
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByText(
+          i18nT('sprint:sprintBacklogManager.approvedByName', { name: 'Jane Smith' })
+        )
+      ).not.toBeInTheDocument();
+    });
+
+    it('should let the Product Owner approve a pending change with the renegotiated goal', async () => {
+      const user = userEvent.setup();
+      (useTeamStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
+        currentTeam: { id: 'team-1' },
+        userRoleInCurrentTeam: 'PRODUCT_OWNER',
+      });
+      (apiService.getSprintBacklogChanges as ReturnType<typeof vi.fn>).mockResolvedValue({
+        data: [
+          {
+            id: 'change-pending',
+            pbiTitle: 'Feature A',
+            changeType: 'ADDED',
+            changedByName: 'John Doe',
+            createdAt: new Date().toISOString(),
+            reason: 'Scope grew',
+            goalImpact: 'ENDANGERS_GOAL',
+            approvalStatus: 'PENDING',
+            sprintGoalAtChange: 'Complete authentication',
+          },
+        ],
+      });
+      (apiService.acknowledgeSprintBacklogChange as ReturnType<typeof vi.fn>).mockResolvedValue({
+        data: { applied: true, change: { id: 'change-pending' } },
+      });
+
+      renderWithProviders(<SprintBacklogManager {...defaultProps} />);
+
+      const approveButton = await screen.findByRole('button', {
+        name: i18nT('sprint:sprintBacklogManager.approveChange'),
+      });
+      await user.click(approveButton);
+
+      // The goal restatement is pre-filled with the goal that was in force.
+      const goalInput = await screen.findByLabelText(
+        i18nT('sprint:sprintBacklogManager.renegotiatedGoalLabel')
+      );
+      expect(goalInput).toHaveValue('Complete authentication');
+
+      await user.clear(goalInput);
+      await user.type(goalInput, 'Ship the checkout flow');
+
+      const confirmButtons = screen.getAllByRole('button', {
+        name: i18nT('sprint:sprintBacklogManager.approveChange'),
+      });
+      await user.click(confirmButtons[confirmButtons.length - 1]);
+
+      await waitFor(() => {
+        expect(apiService.acknowledgeSprintBacklogChange).toHaveBeenCalledWith(
+          'sprint-1',
+          'change-pending',
+          expect.objectContaining({
+            decision: 'APPROVE',
+            sprintGoal: 'Ship the checkout flow',
+          })
+        );
+      });
+    });
+  });
+
+  describe('Sprint Backlog mutation flows', () => {
+    const fillRemoveForm = async (user: ReturnType<typeof userEvent.setup>) => {
+      await user.type(
+        screen.getByPlaceholderText('Why are you removing this item?'),
+        'No longer needed'
+      );
+      await user.click(
+        screen.getByLabelText(i18nT('sprint:sprintBacklogManager.goalImpactSupports'))
+      );
+    };
+
+    const fillAddForm = async (user: ReturnType<typeof userEvent.setup>) => {
+      await user.type(
+        screen.getByPlaceholderText('Why are you adding this item?'),
+        'New requirement'
+      );
+      await user.click(
+        screen.getByLabelText(i18nT('sprint:sprintBacklogManager.goalImpactSupports'))
+      );
+    };
+
+    it('returns a PBI to the backlog once a reason and impact are stated', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<SprintBacklogManager {...defaultProps} />);
+
+      await waitFor(() => expect(screen.getByText('Implement login')).toBeInTheDocument());
+      await user.click(screen.getAllByTitle('Remove from sprint')[0]!);
+      await screen.findByText(i18nT('sprint:sprintBacklogManager.returnItemToBacklog'));
+
+      await fillRemoveForm(user);
+      await user.click(
+        screen.getByRole('button', {
+          name: i18nT('sprint:sprintBacklogManager.returnToBacklogAction'),
+        })
+      );
+
+      await waitFor(() => {
+        expect(apiService.removePBIFromSprint).toHaveBeenCalledWith(
+          'sprint-1',
+          'pbi-1',
+          'return_to_backlog',
+          'No longer needed',
+          'SUPPORTS_GOAL'
+        );
+      });
+    });
+
+    it('records a goal-endangering removal as pending without applying it', async () => {
+      const user = userEvent.setup();
+      (apiService.removePBIFromSprint as ReturnType<typeof vi.fn>).mockResolvedValue({
+        data: { pending: true },
+      });
+      renderWithProviders(<SprintBacklogManager {...defaultProps} />);
+
+      await waitFor(() => expect(screen.getByText('Implement login')).toBeInTheDocument());
+      await user.click(screen.getAllByTitle('Remove from sprint')[0]!);
+      await screen.findByText(i18nT('sprint:sprintBacklogManager.returnItemToBacklog'));
+
+      await fillRemoveForm(user);
+      await user.click(
+        screen.getByRole('button', {
+          name: i18nT('sprint:sprintBacklogManager.returnToBacklogAction'),
+        })
+      );
+
+      await waitFor(() => expect(apiService.removePBIFromSprint).toHaveBeenCalled());
+    });
+
+    it('surfaces the backend message when a removal is refused', async () => {
+      const user = userEvent.setup();
+      (apiService.removePBIFromSprint as ReturnType<typeof vi.fn>).mockRejectedValue({
+        response: { data: { error: { message: 'Removal refused.' } } },
+      });
+      renderWithProviders(<SprintBacklogManager {...defaultProps} />);
+
+      await waitFor(() => expect(screen.getByText('Implement login')).toBeInTheDocument());
+      await user.click(screen.getAllByTitle('Remove from sprint')[0]!);
+      await screen.findByText(i18nT('sprint:sprintBacklogManager.returnItemToBacklog'));
+
+      await fillRemoveForm(user);
+      await user.click(
+        screen.getByRole('button', {
+          name: i18nT('sprint:sprintBacklogManager.returnToBacklogAction'),
+        })
+      );
+
+      await waitFor(() => expect(apiService.removePBIFromSprint).toHaveBeenCalled());
+    });
+
+    it('reports an addition failure with the backend message', async () => {
+      const user = userEvent.setup();
+      (apiService.addPBIToSprint as ReturnType<typeof vi.fn>).mockRejectedValue({
+        response: { data: { error: { message: 'Addition refused.' } } },
+      });
+      renderWithProviders(<SprintBacklogManager {...defaultProps} />);
+
+      await waitFor(() => expect(screen.getByText('+ Add Item')).toBeInTheDocument());
+      await user.click(screen.getByText('+ Add Item'));
+      await screen.findByText('Feature C');
+
+      await fillAddForm(user);
+      await user.click(screen.getAllByRole('button', { name: 'Add' })[0]!);
+
+      await waitFor(() => expect(apiService.addPBIToSprint).toHaveBeenCalled());
+    });
+
+    it('opens the add modal from the empty backlog state and closes it again', async () => {
+      const user = userEvent.setup();
+      (apiService.getActiveSprint as ReturnType<typeof vi.fn>).mockResolvedValue({
+        data: { items: [] },
+      });
+      renderWithProviders(<SprintBacklogManager {...defaultProps} />);
+
+      await user.click(await screen.findByText(i18nT('sprint:sprintBacklogManager.addFirstItem')));
+      await screen.findByText('Add Item to Sprint');
+
+      const closeButtons = screen.getAllByRole('button').filter((btn) => btn.textContent === '×');
+      await user.click(closeButtons[closeButtons.length - 1]!);
+
+      await waitFor(() => {
+        expect(screen.queryByText('Add Item to Sprint')).not.toBeInTheDocument();
+      });
+    });
+
+    it('closes the remove modal from its overlay and from its close control', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<SprintBacklogManager {...defaultProps} />);
+
+      await waitFor(() => expect(screen.getByText('Implement login')).toBeInTheDocument());
+
+      // Overlay.
+      await user.click(screen.getAllByTitle('Remove from sprint')[0]!);
+      await screen.findByText(i18nT('sprint:sprintBacklogManager.returnItemToBacklog'));
+      const overlay = document.querySelector('[class*="sbm-modal-overlay"]') as HTMLElement;
+      fireEvent.click(overlay);
+      await waitFor(() =>
+        expect(
+          screen.queryByText(i18nT('sprint:sprintBacklogManager.returnItemToBacklog'))
+        ).not.toBeInTheDocument()
+      );
+
+      // Close control.
+      await user.click(screen.getAllByTitle('Remove from sprint')[0]!);
+      await screen.findByText(i18nT('sprint:sprintBacklogManager.returnItemToBacklog'));
+      const closeButtons = screen.getAllByRole('button').filter((btn) => btn.textContent === '×');
+      await user.click(closeButtons[closeButtons.length - 1]!);
+      await waitFor(() =>
+        expect(
+          screen.queryByText(i18nT('sprint:sprintBacklogManager.returnItemToBacklog'))
+        ).not.toBeInTheDocument()
+      );
+    });
+  });
+
+  describe('Product Owner review modal', () => {
+    const pendingChange = {
+      id: 'change-pending',
+      pbiTitle: 'Feature A',
+      changeType: 'ADDED',
+      changedByName: 'John Doe',
+      createdAt: new Date().toISOString(),
+      goalImpact: 'ENDANGERS_GOAL',
+      approvalStatus: 'PENDING',
+      sprintGoalAtChange: 'Complete authentication',
+    };
+
+    const openReject = async (user: ReturnType<typeof userEvent.setup>) => {
+      const rejectButtons = await screen.findAllByRole('button', {
+        name: i18nT('sprint:sprintBacklogManager.rejectChange'),
+      });
+      await user.click(rejectButtons[rejectButtons.length - 1]!);
+    };
+
+    beforeEach(() => {
+      (useTeamStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
+        currentTeam: { id: 'team-1' },
+        userRoleInCurrentTeam: 'PRODUCT_OWNER',
+      });
+      (apiService.getSprintBacklogChanges as ReturnType<typeof vi.fn>).mockResolvedValue({
+        data: [pendingChange],
+      });
+    });
+
+    it('cancels a review it opened', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<SprintBacklogManager {...defaultProps} />);
+
+      await openReject(user);
+      const cancelButtons = screen.getAllByRole('button', {
+        name: i18nT('sprint:sprintBacklogManager.cancel'),
+      });
+      await user.click(cancelButtons[cancelButtons.length - 1]!);
+
+      await waitFor(() =>
+        expect(
+          screen.queryByText(i18nT('sprint:sprintBacklogManager.reviewAddsItem'))
+        ).not.toBeInTheDocument()
+      );
+    });
+
+    it('dismisses a review from its overlay and from its close control', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<SprintBacklogManager {...defaultProps} />);
+
+      // Overlay.
+      await openReject(user);
+      await screen.findByText(i18nT('sprint:sprintBacklogManager.reviewAddsItem'));
+      const overlay = document.querySelector('[class*="sbm-modal-overlay"]') as HTMLElement;
+      fireEvent.click(overlay);
+      await waitFor(() =>
+        expect(
+          screen.queryByText(i18nT('sprint:sprintBacklogManager.reviewAddsItem'))
+        ).not.toBeInTheDocument()
+      );
+
+      // Close control.
+      await openReject(user);
+      await screen.findByText(i18nT('sprint:sprintBacklogManager.reviewAddsItem'));
+      const closeButtons = screen.getAllByRole('button').filter((btn) => btn.textContent === '×');
+      await user.click(closeButtons[closeButtons.length - 1]!);
+      await waitFor(() =>
+        expect(
+          screen.queryByText(i18nT('sprint:sprintBacklogManager.reviewAddsItem'))
+        ).not.toBeInTheDocument()
+      );
+    });
+
+    it('records a review note and reports a failed acknowledgement', async () => {
+      const user = userEvent.setup();
+      (apiService.acknowledgeSprintBacklogChange as ReturnType<typeof vi.fn>).mockRejectedValue(
+        new Error('Refused.')
+      );
+      renderWithProviders(<SprintBacklogManager {...defaultProps} />);
+
+      await openReject(user);
+
+      await user.type(
+        screen.getByLabelText(i18nT('sprint:sprintBacklogManager.reviewNoteLabel')),
+        'Rejected: scope too large'
+      );
+
+      const confirmButtons = screen.getAllByRole('button', {
+        name: i18nT('sprint:sprintBacklogManager.rejectChange'),
+      });
+      await user.click(confirmButtons[confirmButtons.length - 1]!);
+
+      await waitFor(() => {
+        expect(apiService.acknowledgeSprintBacklogChange).toHaveBeenCalledWith(
+          'sprint-1',
+          'change-pending',
+          expect.objectContaining({ decision: 'REJECT' })
+        );
+      });
+    });
+  });
+
+  describe('Deep link scrolling', () => {
+    it('scrolls the announced change into view when the platform supports it', async () => {
+      const scrollIntoView = vi.fn();
+      const original = Element.prototype.scrollIntoView;
+      Element.prototype.scrollIntoView =
+        scrollIntoView as unknown as typeof Element.prototype.scrollIntoView;
+
+      try {
+        renderWithProviders(
+          <SprintBacklogManager {...defaultProps} highlightChangeId="change-1" />
+        );
+
+        await waitFor(() => expect(screen.getByText('Feature A')).toBeInTheDocument());
+        expect(scrollIntoView).toHaveBeenCalledWith({ block: 'nearest' });
+      } finally {
+        Element.prototype.scrollIntoView = original;
+      }
     });
   });
 });

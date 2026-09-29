@@ -26,11 +26,15 @@ model User {
   consentRecords         ConsentRecord[]
   dailyScrumParticipants DailyScrumParticipant[]
   dodVerifications       DoDChecklistVerification[]
+  dodVersionSnapshots    DoDVersionSnapshot[]       @relation("DoDVersionSnapshotCreator")
   dorVerifications       DoRChecklistVerification[]
+  dorVersionSnapshots    DoRVersionSnapshot[]       @relation("DoRVersionSnapshotCreator")
   emailLogs              EmailLog[]
   ownedImpediments       Impediment[]               @relation("ImpedimentOwner")
   reportedImpediments    Impediment[]               @relation("ImpedimentReporter")
   increments             Increment[]                @relation("IncrementCreator")
+  deliveredIncrements    Increment[]                @relation("IncrementDeliverer")
+  usabilityVerifiedIncrements Increment[]           @relation("IncrementUsabilityVerifier")
   notifications          Notification[]
   createdPBIs            ProductBacklogItem[]       @relation("PBICreator")
   createdGoals           ProductGoal[]              @relation("GoalCreator")
@@ -43,14 +47,24 @@ model User {
   retrospectiveItems     RetrospectiveItem[]        @relation("RetroItemAuthor")
   scheduledDeletions     ScheduledDeletion[]
   sprintBacklogChanges   SprintBacklogChange[]      @relation("SprintBacklogChangeCreator")
+  acknowledgedChanges    SprintBacklogChange[]      @relation("SprintBacklogChangeAcknowledger")
+  sprintCapacity         SprintCapacity[]           @relation("SprintCapacityMember")
   retrospectives         SprintRetrospective[]      @relation("RetroFacilitator")
   sprintReviews          SprintReview[]             @relation("ReviewCreator")
+  reviewAttendances      ReviewAttendee[]
   stakeholderFeedbacks   StakeholderFeedback[]
   statusChanges          StatusChangeHistory[]      @relation("StatusChanger")
   assignedTasks          Task[]                     @relation("TaskAssignee")
   teamMemberships        TeamMember[]
   createdTeams           Team[]                     @relation("TeamCreator")
   createdWorkflows       Workflow[]                 @relation("WorkflowCreator")
+  sprintCompletionSnapshots SprintCompletionSnapshot[] @relation("SprintCompletionCapturer")
+  smNotesRevisions       SmNotesRevision[]          @relation("SmNotesRevisionAuthor")
+  ownedBarriers          OrganizationalBarrier[]    @relation("BarrierOwner")
+  raisedBarriers         OrganizationalBarrier[]    @relation("BarrierRaisedBy")
+  barrierActions         BarrierStakeholderAction[] @relation("BarrierActionOwner")
+  coachingEntries        CoachingEntry[]            @relation("CoachingEntryAuthor")
+  createdTeamGroups      TeamGroup[]                @relation("TeamGroupCreator")
 
   @@map("users")
 }
@@ -65,6 +79,7 @@ model Team {
   updatedBy           String?               @db.Uuid
   definitionOfDone    DefinitionOfDone?
   definitionOfReady   DefinitionOfReady?
+  dailyScrumSchedule  DailyScrumSchedule?
   generatedSprints    GeneratedSprint[]
   healthChecks        TeamHealthCheck[]
   impediments         Impediment[]
@@ -72,15 +87,74 @@ model Team {
   productBacklog      ProductBacklogItem[]
   productGoals        ProductGoal[]
   sprintConfiguration SprintConfiguration?
+  nonWorkingDays      TeamNonWorkingDay[]
   retrospectives      SprintRetrospective[]
   sprintReviews       SprintReview[]
   sprints             Sprint[]
   members             TeamMember[]
   timeboxes           Timebox[]
+  dodVersionSnapshots DoDVersionSnapshot[]
+  dorVersionSnapshots DoRVersionSnapshot[]
+  sprintCompletionSnapshots SprintCompletionSnapshot[]
+  smNotesRevisions    SmNotesRevision[]
+  organizationalBarriers OrganizationalBarrier[]
+  coachingEntries     CoachingEntry[]
+  workingAgreements   WorkingAgreement[]
+  crossFunctionalityAssessments CrossFunctionalityAssessment[]
   creator             User?                 @relation("TeamCreator", fields: [createdBy], references: [id], onDelete: SetNull)
+  /// The group this team belongs to, if any: a set of Scrum Teams working together on one
+  /// product, bound to the single Definition of Done the group owns. A team is in at most one
+  /// group, and joining is the team's explicit adoption of the group's DoD version below.
+  ///
+  /// The three columns travel together or not at all, and the database holds that:
+  /// `chk_teams_group_membership_complete` asserts `(groupId IS NULL) = (groupJoinedAt IS NULL)`
+  /// and the same for the adopted version, so a membership can never be half-recorded.
+  ///
+  /// Deletion is restricted rather than detaching, precisely so that invariant can hold: a group
+  /// cannot be removed while a team still complies with its Definition of Done
+  /// (`GATE_TEAM_GROUP_NOT_EMPTY` in the API, `ON DELETE RESTRICT` here), because a detached team
+  /// would be left complying with a Definition of Done nobody owns.
+  groupId             String?               @db.Uuid
+  groupJoinedAt       DateTime?             @db.Timestamptz(3)
+  /// The version of the group's Definition of Done the team adopted when it joined. A later
+  /// change to the shared DoD leaves this behind, which is what makes the drift visible.
+  groupDodVersionAtJoin Int?
+  group               TeamGroup?            @relation(fields: [groupId], references: [id], onDelete: Restrict)
 
   @@index([createdBy])
+  @@index([groupId])
   @@map("teams")
+}
+
+/// A set of Scrum Teams working together on one product.
+///
+/// The 2020 Scrum Guide: *"If there are multiple Scrum Teams working together on a product, they
+/// must mutually define and comply with the same Definition of Done."* Scrumooth modelled a team
+/// and its own DoD, so two teams on one product could hold two different DoDs and nothing could
+/// express the rule. A group is that rule made structural rather than conventional:
+///
+///  * The group owns the **only** Definition of Done row (`definition_of_done.groupId`). A member
+///    team's own row is inert while it is grouped, so the group's teams cannot diverge by
+///    construction rather than by agreement.
+///  * Joining records *which version* the team adopted (`Team.groupDodVersionAtJoin`), so "mutually
+///    define and comply" is an act the database remembers, not a checkbox in a meeting.
+///  * A group is a product-collaboration device, not a team decomposition: nothing inside a Scrum
+///    Team changes, so *"no sub-teams or hierarchies"* is not infringed.
+model TeamGroup {
+  id               String                @id @db.Uuid
+  name             String                @unique
+  description      String?
+  createdAt        DateTime              @default(now()) @db.Timestamptz(3)
+  createdBy        String?               @db.Uuid
+  updatedAt        DateTime              @updatedAt @db.Timestamptz(3)
+  updatedBy        String?               @db.Uuid
+  definitionOfDone DefinitionOfDone?
+  dodVersionSnapshots DoDVersionSnapshot[]
+  teams            Team[]
+  creator          User?                 @relation("TeamGroupCreator", fields: [createdBy], references: [id], onDelete: SetNull)
+
+  @@index([createdBy])
+  @@map("team_groups")
 }
 
 model TeamMember {
@@ -128,29 +202,37 @@ model ProductGoal {
 }
 
 model ProductBacklogItem {
-  id                 String                @id @db.Uuid
-  teamId             String                @db.Uuid
-  goalId             String?               @db.Uuid
-  title              String
-  description        String?
-  priority           MoSCoWPriority        @default(COULD_HAVE)
-  businessValue      Int?
-  storyPoints        Int?
-  status             ItemStatus            @default(NEW)
-  labels             String[]              @default([])
-  acceptanceCriteria String?
-  createdAt          DateTime              @default(now()) @db.Timestamptz(3)
-  createdBy          String?               @db.Uuid
-  updatedAt          DateTime              @updatedAt @db.Timestamptz(3)
-  updatedBy          String?               @db.Uuid
-  sprintId           String?               @db.Uuid
-  incrementPBIs      IncrementPBI[]
-  creator            User?                 @relation("PBICreator", fields: [createdBy], references: [id], onDelete: SetNull)
-  goal               ProductGoal?          @relation(fields: [goalId], references: [id], onDelete: SetNull)
-  team               Team                  @relation(fields: [teamId], references: [id], onDelete: Cascade)
-  backlogChanges     SprintBacklogChange[]
-  sprintBacklogItems SprintBacklogItem[]
-  tasks              Task[]
+  id                    String                  @id @db.Uuid
+  teamId                String                  @db.Uuid
+  goalId                String?                 @db.Uuid
+  title                 String
+  description           String?
+  priority              MoSCoWPriority          @default(COULD_HAVE)
+  /// Dense, 1-based position of the item in its team's Product Backlog order.
+  /// The 2020 Scrum Guide defines the Product Backlog as an *ordered* list, so this is
+  /// the order of record: appended on create, rewritten 1..N by a reorder, never shown
+  /// as a priority. MoSCoW remains a categorisation rendered on top of this order.
+  rank                  Int                     @default(0)
+  businessValue         Int?
+  storyPoints           Int?
+  status                ItemStatus              @default(NEW)
+  labels                String[]                @default([])
+  acceptanceCriteria    String?
+  createdAt             DateTime                @default(now()) @db.Timestamptz(3)
+  createdBy             String?                 @db.Uuid
+  updatedAt             DateTime                @updatedAt @db.Timestamptz(3)
+  updatedBy             String?                 @db.Uuid
+  sprintId              String?                 @db.Uuid
+  incrementPBIs         IncrementPBI[]
+  createdFromAdjustments BacklogAdjustment[]     @relation("AdjustmentCreatedPbi")
+  createdFromRetroActionItems RetroActionItem[]  @relation("RetroActionItemCreatedPbi")
+  creator               User?                   @relation("PBICreator", fields: [createdBy], references: [id], onDelete: SetNull)
+  goal                  ProductGoal?            @relation(fields: [goalId], references: [id], onDelete: SetNull)
+  team                  Team                    @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  backlogChanges        SprintBacklogChange[]
+  dailyScrumAdjustments DailyScrumBacklogItem[]
+  sprintBacklogItems    SprintBacklogItem[]
+  tasks                 Task[]
 
   @@index([teamId])
   @@index([status])
@@ -159,25 +241,26 @@ model ProductBacklogItem {
   @@index([priority])
   @@index([teamId, status])
   @@index([teamId, status, priority])
+  @@index([teamId, rank])
   @@index([labels], type: Gin)
   @@map("product_backlog_items")
 }
 
 model Sprint {
-  id                 String                @id @db.Uuid
-  teamId             String                @db.Uuid
-  goalId             String?               @db.Uuid
+  id                 String                   @id @db.Uuid
+  teamId             String                   @db.Uuid
+  goalId             String?                  @db.Uuid
   name               String
-  startDate          DateTime              @db.Timestamptz(3)
-  endDate            DateTime              @db.Timestamptz(3)
+  startDate          DateTime                 @db.Timestamptz(3)
+  endDate            DateTime                 @db.Timestamptz(3)
   sprintGoal         String?
-  status             SprintStatus          @default(PLANNED)
+  status             SprintStatus             @default(PLANNED)
   cancellationReason String?
   smNotes            String?
-  createdAt          DateTime              @default(now()) @db.Timestamptz(3)
-  createdBy          String?               @db.Uuid
-  updatedAt          DateTime              @updatedAt @db.Timestamptz(3)
-  updatedBy          String?               @db.Uuid
+  createdAt          DateTime                 @default(now()) @db.Timestamptz(3)
+  createdBy          String?                  @db.Uuid
+  updatedAt          DateTime                 @updatedAt @db.Timestamptz(3)
+  updatedBy          String?                  @db.Uuid
   burndownData       BurndownData[]
   dailyScrums        DailyScrum[]
   generatedSprint    GeneratedSprint?
@@ -185,12 +268,16 @@ model Sprint {
   increments         Increment[]
   backlogChanges     SprintBacklogChange[]
   sprintBacklogItems SprintBacklogItem[]
+  planningAttendees  SprintPlanningAttendee[]
+  capacity           SprintCapacity[]
   retrospective      SprintRetrospective?
   sprintReview       SprintReview?
+  completionSnapshot SprintCompletionSnapshot?
   healthChecks       TeamHealthCheck[]
+  coachingEntries    CoachingEntry[]
   timeboxes          Timebox[]
-  goal               ProductGoal?          @relation(fields: [goalId], references: [id], onDelete: SetNull)
-  team               Team                  @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  goal               ProductGoal?             @relation(fields: [goalId], references: [id], onDelete: SetNull)
+  team               Team                     @relation(fields: [teamId], references: [id], onDelete: Cascade)
   tasks              Task[]
 
   @@index([teamId])
@@ -221,6 +308,14 @@ model SprintBacklogItem {
   @@map("sprint_backlog_items")
 }
 
+/// A recorded change to an ACTIVE Sprint's Sprint Backlog.
+///
+/// "No changes are made that would endanger the Sprint Goal." A change therefore carries the
+/// goal it affected (`sprintGoalAtChange`), the caller's declaration of its impact
+/// (`goalImpact`), and an approval lifecycle (`approvalStatus`): a change declared as
+/// endangering the goal is recorded as `PENDING` and is deliberately NOT applied until the
+/// Product Owner acknowledges it (`acknowledgedBy` / `acknowledgedAt` /
+/// `acknowledgementNote`). Plain string columns mirror `changeType` / `taskAction`.
 model SprintBacklogChange {
   id                  String             @id @db.Uuid
   sprintId            String             @db.Uuid
@@ -232,9 +327,20 @@ model SprintBacklogChange {
   newStatus           String?
   taskAction          String?
   taskCount           Int                @default(0)
+  /// Sprint Goal text in force when the change was requested (immutable historical record).
+  sprintGoalAtChange  String?
+  /// `SUPPORTS_GOAL` | `ENDANGERS_GOAL` — the caller's declaration.
+  goalImpact          String?
+  /// `APPLIED` | `PENDING` | `REJECTED`.
+  approvalStatus      String             @default("APPLIED")
+  /// The Product Owner who acknowledged a PENDING change.
+  acknowledgedBy      String?            @db.Uuid
+  acknowledgedAt      DateTime?          @db.Timestamptz(3)
+  acknowledgementNote String?
   createdBy           String?            @db.Uuid
   createdAt           DateTime           @default(now()) @db.Timestamptz(3)
   creator             User?              @relation("SprintBacklogChangeCreator", fields: [createdBy], references: [id])
+  acknowledger        User?              @relation("SprintBacklogChangeAcknowledger", fields: [acknowledgedBy], references: [id])
   pbi                 ProductBacklogItem @relation(fields: [pbiId], references: [id], onDelete: Cascade)
   sprintBacklogItem   SprintBacklogItem? @relation(fields: [sprintBacklogItemId], references: [id])
   sprint              Sprint             @relation(fields: [sprintId], references: [id], onDelete: Cascade)
@@ -242,8 +348,54 @@ model SprintBacklogChange {
   @@index([sprintId])
   @@index([pbiId])
   @@index([createdBy])
+  @@index([acknowledgedBy])
   @@index([createdAt])
+  @@index([sprintId, approvalStatus])
   @@map("sprint_backlog_changes")
+}
+
+/// Attendance record for a Sprint Planning session. The 2020 Scrum Guide states the Sprint
+/// Backlog is "created by the collaborative work of the entire Scrum Team", so planning
+/// participation is recorded as inspectable evidence rather than inferred. Mirrors the
+/// `ReviewAttendee` / `RetroAttendee` shape so all three events are recorded identically.
+model SprintPlanningAttendee {
+  id        String   @id @db.Uuid
+  sprintId  String   @db.Uuid
+  name      String
+  email     String?
+  role      String
+  attended  Boolean  @default(true)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  createdBy String?  @db.Uuid
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+  updatedBy String?  @db.Uuid
+  sprint    Sprint   @relation(fields: [sprintId], references: [id], onDelete: Cascade)
+
+  @@index([sprintId])
+  @@map("sprint_planning_attendees")
+}
+
+/// Per-member capacity the team agreed on during Sprint Planning. The capacity is an input to
+/// the Sprint Backlog, so it is persisted (and reloaded on resume) instead of being collected
+/// in the interface and discarded. `@@unique([sprintId, userId])` makes the draft save a safe
+/// upsert rather than a blind replace.
+model SprintCapacity {
+  id             String   @id @db.Uuid
+  sprintId       String   @db.Uuid
+  userId         String   @db.Uuid
+  memberId       String?  @db.Uuid
+  availableHours Float
+  createdAt      DateTime @default(now()) @db.Timestamptz(3)
+  createdBy      String?  @db.Uuid
+  updatedAt      DateTime @updatedAt @db.Timestamptz(3)
+  updatedBy      String?  @db.Uuid
+  sprint         Sprint   @relation(fields: [sprintId], references: [id], onDelete: Cascade)
+  user           User     @relation("SprintCapacityMember", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([sprintId, userId])
+  @@index([sprintId])
+  @@index([userId])
+  @@map("sprint_capacity")
 }
 
 model Task {
@@ -284,6 +436,15 @@ model DailyScrum {
   // how the event is being run. Stored as a plain string to keep it forward
   // compatible; validated against DAILY_SCRUM_FOCUS_MODES at the API boundary.
   focusMode          String?
+  /// The Sprint Goal as it stood when this record was created. Immutable: the
+  /// inspected baseline must not be rewritten by a later goal renegotiation, or
+  /// the historical record would appear to have inspected a goal it never saw.
+  sprintGoal         String?
+  /// Explicit acknowledgement that the event concluded no Sprint Backlog
+  /// adaptation was needed. A record must carry either this or at least one
+  /// `backlogAdjustments` row, so the Guide's stated purpose for the event is
+  /// evidenced rather than implied.
+  noAdaptationNeeded Boolean                 @default(false)
   createdAt          DateTime                @default(now()) @db.Timestamptz(3)
   createdBy          String?                 @db.Uuid
   updatedAt          DateTime                @updatedAt @db.Timestamptz(3)
@@ -298,21 +459,45 @@ model DailyScrum {
   @@map("daily_scrums")
 }
 
+/// A Sprint Backlog adaptation declared at a Daily Scrum.
+///
+/// The 2020 Scrum Guide states the purpose of the event is to "adapt the Sprint Backlog", so
+/// a declaration is structured (a typed `actionType`) and carries the state of the affected
+/// item as it was when the declaration was recorded. The declaration is therefore verifiable:
+/// the store can say whether the Sprint Backlog actually moved, instead of taking the note's
+/// word for it.
+///
+/// `sprintBacklogItemId` is nullable with `ON DELETE SET NULL` on purpose. Removing the item
+/// from the Sprint Backlog is exactly how a `REMOVED` declaration is fulfilled, so a cascading
+/// delete would destroy the evidence at the moment it became true. `pbiId` and
+/// `pbiTitleAtAdjustment` keep the declaration readable after the item is gone.
 model DailyScrumBacklogItem {
-  id                  String            @id @db.Uuid
-  dailyScrumId        String            @db.Uuid
-  sprintBacklogItemId String            @db.Uuid
-  action              String
-  createdAt           DateTime          @default(now()) @db.Timestamptz(3)
-  createdBy           String?           @db.Uuid
-  updatedAt           DateTime          @updatedAt @db.Timestamptz(3)
-  updatedBy           String?           @db.Uuid
-  dailyScrum          DailyScrum        @relation(fields: [dailyScrumId], references: [id], onDelete: Cascade)
-  sprintBacklogItem   SprintBacklogItem @relation(fields: [sprintBacklogItemId], references: [id], onDelete: Cascade)
+  id                        String                      @id @db.Uuid
+  dailyScrumId              String                      @db.Uuid
+  sprintBacklogItemId       String?                     @db.Uuid
+  pbiId                     String?                     @db.Uuid
+  pbiTitleAtAdjustment      String?
+  /// `ADDED` | `REMOVED` | `REPRIORITIZED` | `REFINED` | `SPLIT`. NULL only on rows recorded
+  /// before the typed action existed.
+  actionType                DailyScrumAdjustmentAction?
+  /// The Developers' note explaining the adaptation.
+  action                    String
+  /// State snapshot of the affected item and its PBI at declaration time.
+  pbiStatusAtAdjustment     ItemStatus?
+  itemUpdatedAtAtAdjustment DateTime?                   @db.Timestamptz(3)
+  pbiUpdatedAtAtAdjustment  DateTime?                   @db.Timestamptz(3)
+  createdAt                 DateTime                    @default(now()) @db.Timestamptz(3)
+  createdBy                 String?                     @db.Uuid
+  updatedAt                 DateTime                    @updatedAt @db.Timestamptz(3)
+  updatedBy                 String?                     @db.Uuid
+  dailyScrum                DailyScrum                  @relation(fields: [dailyScrumId], references: [id], onDelete: Cascade)
+  sprintBacklogItem         SprintBacklogItem?          @relation(fields: [sprintBacklogItemId], references: [id], onDelete: SetNull)
+  pbi                       ProductBacklogItem?         @relation(fields: [pbiId], references: [id], onDelete: SetNull)
 
   @@unique([dailyScrumId, sprintBacklogItemId])
   @@index([dailyScrumId])
   @@index([sprintBacklogItemId])
+  @@index([pbiId])
   @@map("daily_scrum_backlog_items")
 }
 
@@ -348,24 +533,29 @@ model BurndownData {
 }
 
 model Impediment {
-  id            String           @id @db.Uuid
-  teamId        String           @db.Uuid
-  sprintId      String?          @db.Uuid
-  title         String
-  description   String
-  reportedById  String           @db.Uuid
-  ownerId       String?          @db.Uuid
-  status        ImpedimentStatus @default(OPEN)
-  resolution    String?
-  resolvedAt    DateTime?        @db.Timestamptz(3)
-  createdAt     DateTime         @default(now()) @db.Timestamptz(3)
-  createdBy     String?          @db.Uuid
-  updatedAt     DateTime         @updatedAt @db.Timestamptz(3)
-  updatedBy     String?          @db.Uuid
-  owner         User?            @relation("ImpedimentOwner", fields: [ownerId], references: [id], onDelete: SetNull)
-  reportedBy    User             @relation("ImpedimentReporter", fields: [reportedById], references: [id], onDelete: Restrict)
-  sprint        Sprint?          @relation(fields: [sprintId], references: [id], onDelete: SetNull)
-  team          Team             @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  id              String             @id @db.Uuid
+  teamId          String             @db.Uuid
+  sprintId        String?            @db.Uuid
+  title           String
+  description     String
+  reportedById    String             @db.Uuid
+  ownerId         String?            @db.Uuid
+  status          ImpedimentStatus   @default(OPEN)
+  priority        ImpedimentPriority @default(MEDIUM)
+  targetDate      DateTime?          @db.Date
+  resolution      String?
+  resolvedAt      DateTime?          @db.Timestamptz(3)
+  escalatedAt     DateTime?          @db.Timestamptz(3)
+  escalationCount Int                @default(0)
+  createdAt       DateTime           @default(now()) @db.Timestamptz(3)
+  createdBy       String?            @db.Uuid
+  updatedAt       DateTime           @updatedAt @db.Timestamptz(3)
+  updatedBy       String?            @db.Uuid
+  owner           User?              @relation("ImpedimentOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  reportedBy      User               @relation("ImpedimentReporter", fields: [reportedById], references: [id], onDelete: Restrict)
+  sprint          Sprint?            @relation(fields: [sprintId], references: [id], onDelete: SetNull)
+  team            Team               @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  escalatedBarrier OrganizationalBarrier? @relation("BarrierSourceImpediment")
 
   @@index([teamId])
   @@index([status])
@@ -374,19 +564,37 @@ model Impediment {
   @@index([ownerId])
   @@index([teamId, status])
   @@index([teamId, status, createdAt])
+  // Impact-first reads for a team (the SM dashboard and the Impediments page) and the
+  // escalation job's scan of unresolved work both walk this index instead of sorting.
+  @@index([teamId, priority, createdAt])
   @@map("impediments")
 }
 
+/// The Definition of Done, owned by exactly one scope.
+///
+/// A Definition of Done belongs either to a single team (`teamId`) or to the group of Scrum Teams
+/// that work together on one product (`groupId`) -- never both, never neither. The database holds
+/// that with `CHECK ((team_id IS NULL) <> (group_id IS NULL))` (see the migration that introduced
+/// it; Prisma cannot express a CHECK, so the invariant lives in SQL and the columns stay nullable
+/// here). One group therefore has one Definition of Done, which is the Guide's *"they must mutually
+/// define and comply with the same Definition of Done"* encoded structurally.
+///
+/// While a team belongs to a group, its own team-scoped row is inert: it is retained (deleting it
+/// would cascade away its version history) but it governs nothing, and the team cannot edit it.
+/// Re-scoping on leave materializes the group's items back into it.
 model DefinitionOfDone {
   id        String    @id @db.Uuid
-  teamId    String    @unique @db.Uuid
+  teamId    String?   @unique @db.Uuid
+  groupId   String?   @unique @db.Uuid
   version   Int       @default(1)
   createdAt DateTime  @default(now()) @db.Timestamptz(3)
   createdBy String?   @db.Uuid
   updatedAt DateTime  @updatedAt @db.Timestamptz(3)
   updatedBy String?   @db.Uuid
-  team      Team      @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  team      Team?     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  group     TeamGroup? @relation(fields: [groupId], references: [id], onDelete: Cascade)
   items     DoDItem[]
+  snapshots DoDVersionSnapshot[]
 
   @@map("definition_of_done")
 }
@@ -396,6 +604,13 @@ model DoDItem {
   dodId            String                     @db.Uuid
   description      String
   category         String?
+  /// Which built-in criterion this one descends from, or null for one the team wrote itself.
+  ///
+  /// A seeded criterion is translated by its key rather than by its English wording, so a team may
+  /// reword "Code is properly documented" without the interface losing the translation in all five
+  /// languages. The key travels into the version snapshots too, so a superseded version stays
+  /// readable in the reader's language.
+  defaultKey       String?
   isActive         Boolean                    @default(true)
   order            Int                        @default(0)
   createdAt        DateTime                   @default(now()) @db.Timestamptz(3)
@@ -432,6 +647,40 @@ model DoDChecklistVerification {
   @@map("dod_checklist_verifications")
 }
 
+/// An immutable, append-only copy of one Definition of Done version.
+///
+/// The Definition of Done is the Increment's commitment: it only becomes auditable if the
+/// versions it superseded survive. `updateDefinitionOfDone` therefore writes a snapshot of the
+/// version it is about to replace before replacing it, instead of erasing the change history.
+/// Items are stored as JSON because a snapshot must never change when the live item rows do.
+model DoDVersionSnapshot {
+  id        String   @id @db.Uuid
+  dodId     String   @db.Uuid
+  /// Mirrors the scope of the Definition of Done this snapshot belongs to: `teamId` for a
+  /// team-scoped DoD, `groupId` for the shared one a group owns. Exactly one is set, held by the
+  /// same CHECK as the live rows, so a version's history cannot become attached to the wrong owner
+  /// when a team joins or leaves a group.
+  teamId    String?  @db.Uuid
+  groupId   String?  @db.Uuid
+  /// The superseded version this snapshot preserves; unique per Definition of Done.
+  version   Int
+  items     Json
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  createdBy String?  @db.Uuid
+  creator           User?              @relation("DoDVersionSnapshotCreator", fields: [createdBy], references: [id], onDelete: SetNull)
+  definitionOfDone  DefinitionOfDone   @relation(fields: [dodId], references: [id], onDelete: Cascade)
+  team              Team?              @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  group             TeamGroup?         @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  // The unique index is the read path too: history is always "for this Definition of Done, in
+  // version order", so a separate index on ("dodId", "version") would duplicate it.
+  @@unique([dodId, version])
+  @@index([teamId])
+  @@index([groupId])
+  @@index([createdBy])
+  @@map("dod_version_snapshots")
+}
+
 model DefinitionOfReady {
   id        String    @id @db.Uuid
   teamId    String    @unique @db.Uuid
@@ -442,8 +691,39 @@ model DefinitionOfReady {
   updatedBy String?   @db.Uuid
   team      Team      @relation(fields: [teamId], references: [id], onDelete: Cascade)
   items     DoRItem[]
+  snapshots DoRVersionSnapshot[]
 
   @@map("definition_of_ready")
+}
+
+/// An immutable, append-only copy of one Definition of Ready version.
+///
+/// The readiness agreement is not a Guide artifact, but it is enforced at the Sprint boundary, and
+/// an enforced agreement whose earlier versions vanish is one a team cannot inspect. The Definition
+/// of Done has kept its superseded versions for exactly that reason; this is the same treatment, so
+/// that a version badge on either agreement opens a real history rather than only the current row.
+///
+/// Team-scoped only, unlike the Definition of Done: the readiness agreement is never shared with
+/// another Scrum Team, so there is no group owner to mirror.
+model DoRVersionSnapshot {
+  id        String   @id @db.Uuid
+  dorId     String   @db.Uuid
+  teamId    String   @db.Uuid
+  /// The superseded version this snapshot preserves; unique per Definition of Ready.
+  version   Int
+  items     Json
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  createdBy String?  @db.Uuid
+  creator           User?              @relation("DoRVersionSnapshotCreator", fields: [createdBy], references: [id], onDelete: SetNull)
+  definitionOfReady DefinitionOfReady   @relation(fields: [dorId], references: [id], onDelete: Cascade)
+  team              Team               @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  // The unique index is the read path too: history is always "for this Definition of Ready, in
+  // version order", so a separate index on ("dorId", "version") would duplicate it.
+  @@unique([dorId, version])
+  @@index([teamId])
+  @@index([createdBy])
+  @@map("dor_version_snapshots")
 }
 
 model DoRItem {
@@ -451,6 +731,8 @@ model DoRItem {
   dorId             String                     @db.Uuid
   description       String
   category          String?
+  /// Which built-in criterion this one descends from, or null for one the team wrote itself.
+  defaultKey        String?
   isActive          Boolean                    @default(true)
   order             Int                        @default(0)
   createdAt         DateTime                   @default(now()) @db.Timestamptz(3)
@@ -496,8 +778,20 @@ model Increment {
   totalStoryPoints          Int                        @default(0)
   status                    IncrementStatus            @default(DRAFT)
   integrationVerified       Boolean                    @default(false)
+  /// What `integrationVerified` rests on: the first-Increment exemption, or a real pass against
+  /// prior Increments. NULL while the Increment is not verified.
+  integrationVerificationBasis IntegrationVerificationBasis?
+  /// How many prior Increments the verification actually covered (0 for the exemption).
+  integrationVerifiedPriorCount Int                   @default(0)
+  /// "the Increment must be in usable condition": attested explicitly, with written evidence.
+  usabilityVerified         Boolean                    @default(false)
+  usabilityEvidence         String?
+  usabilityVerifiedAt       DateTime?                  @db.Timestamptz(3)
+  usabilityVerifiedBy       String?                    @db.Uuid
   deliveredAt               DateTime?                  @db.Timestamptz(3)
   deliveryMethod            DeliveryMethod?
+  /// Who delivered the Increment, alongside when and how.
+  deliveredBy               String?                    @db.Uuid
   notes                     String?
   createdAt                 DateTime                   @default(now()) @db.Timestamptz(3)
   createdBy                 String?                    @db.Uuid
@@ -505,6 +799,8 @@ model Increment {
   updatedBy                 String?                    @db.Uuid
   pbis                      IncrementPBI[]
   creator                   User?                      @relation("IncrementCreator", fields: [createdBy], references: [id], onDelete: SetNull)
+  deliverer                 User?                      @relation("IncrementDeliverer", fields: [deliveredBy], references: [id], onDelete: SetNull)
+  usabilityVerifier         User?                      @relation("IncrementUsabilityVerifier", fields: [usabilityVerifiedBy], references: [id], onDelete: SetNull)
   sprint                    Sprint                     @relation(fields: [sprintId], references: [id], onDelete: Cascade)
   team                      Team                       @relation(fields: [teamId], references: [id], onDelete: Cascade)
   sprintReview              SprintReview?
@@ -517,6 +813,8 @@ model Increment {
   @@index([deliveredAt])
   @@index([sprintId, status])
   @@index([teamId, status, createdAt])
+  @@index([deliveredBy])
+  @@index([usabilityVerifiedBy])
   @@map("increments")
 }
 
@@ -630,6 +928,18 @@ model SprintReview {
   incrementId          String                @unique @db.Uuid
   reviewDate           DateTime              @db.Timestamptz(3)
   summary              String?
+  /// The Sprint Goal text the Review assessed, frozen so a later renegotiation cannot make the
+  /// record appear to have judged a goal it never saw.
+  sprintGoal           String?
+  /// The Scrum Team's own recorded verdict: `ACHIEVED` | `PARTIALLY_ACHIEVED` | `NOT_ACHIEVED`.
+  ///
+  /// Attainment is a human judgement and is never inferred from item completion -- a Sprint can
+  /// meet its Goal without completing every item, and complete every item without meeting its
+  /// Goal. NULL means the Goal was never assessed, and is reported as unassessed rather than as
+  /// unmet.
+  sprintGoalOutcome    SprintGoalOutcome?
+  /// The team's own words for why it reached that verdict.
+  sprintGoalNote       String?
   status               String                @default("in_progress")
   smNotes              String?
   createdAt            DateTime              @default(now()) @db.Timestamptz(3)
@@ -650,9 +960,56 @@ model SprintReview {
   @@map("sprint_reviews")
 }
 
+/// The Scrum Team's own recorded verdict on its Sprint Goal.
+///
+/// The Guide makes the Sprint Goal the single objective of the Sprint and gives the Sprint Review
+/// the job of discussing progress toward it. Attainment is therefore a judgement the team records,
+/// not a figure the tool derives: item completion and goal attainment are genuinely different
+/// things, and a metric that conflates them claims to know something it cannot know.
+enum SprintGoalOutcome {
+  ACHIEVED
+  PARTIALLY_ACHIEVED
+  NOT_ACHIEVED
+}
+
+/// The observed completion of one Sprint, frozen at the moment the Sprint closed.
+///
+/// Velocity is an observation, so it may only be read from a record that cannot change. Deriving
+/// "completed points" from the live Product Backlog items instead lets a status change made months
+/// later rewrite what a closed Sprint delivered -- which is the difference between an observation
+/// and a fabrication. The per-item set is stored as JSON because, as with `DoDVersionSnapshot`, a
+/// snapshot must never change when the live rows do; it is kept whole so the aggregate can be
+/// re-audited if it is ever doubted.
+model SprintCompletionSnapshot {
+  id                 String   @id @db.Uuid
+  sprintId           String   @unique @db.Uuid
+  teamId             String   @db.Uuid
+  /// Sum of the story points the Sprint Backlog carried at close.
+  plannedPoints      Int      @default(0)
+  /// Sum of the story points whose item was DONE at close, and only those.
+  completedPoints    Int      @default(0)
+  itemCount          Int      @default(0)
+  completedItemCount Int      @default(0)
+  /// `{ pbiId, storyPoints, completed }[]` as it stood at close.
+  items              Json
+  capturedAt         DateTime @default(now()) @db.Timestamptz(3)
+  capturedBy         String?  @db.Uuid
+  capturer           User?    @relation("SprintCompletionCapturer", fields: [capturedBy], references: [id], onDelete: SetNull)
+  sprint             Sprint   @relation(fields: [sprintId], references: [id], onDelete: Cascade)
+  team               Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@index([teamId])
+  @@index([capturedBy])
+  @@index([teamId, capturedAt])
+  @@map("sprint_completion_snapshots")
+}
+
 model ReviewAttendee {
   id        String       @id @db.Uuid
   reviewId  String       @db.Uuid
+  /// Optional link to a registered user. Attendance is attributable to a person when set;
+  /// external stakeholders keep the free-text `name`/`email` fallback with no link.
+  userId    String?      @db.Uuid
   name      String
   email     String?
   role      String
@@ -662,8 +1019,10 @@ model ReviewAttendee {
   updatedAt DateTime     @updatedAt @db.Timestamptz(3)
   updatedBy String?      @db.Uuid
   review    SprintReview @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  user      User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@index([reviewId])
+  @@index([userId])
   @@map("review_attendees")
 }
 
@@ -693,7 +1052,11 @@ model StakeholderFeedback {
 model BacklogAdjustment {
   id          String       @id @db.Uuid
   reviewId    String       @db.Uuid
+  /// The item the adjustment refers to (the subject of a modify/remove/reorder/split).
   pbiId       String?      @db.Uuid
+  /// The item the adjustment actually produced. This is the traceable proof that the Review's
+  /// "the Product Backlog may also be adjusted" was carried out, not merely asserted.
+  createdPbiId String?     @db.Uuid
   action      String
   description String
   reason      String
@@ -705,9 +1068,11 @@ model BacklogAdjustment {
   updatedBy   String?      @db.Uuid
   owner       User?        @relation(fields: [ownerId], references: [id], onDelete: SetNull)
   review      SprintReview @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  createdPbi  ProductBacklogItem? @relation("AdjustmentCreatedPbi", fields: [createdPbiId], references: [id], onDelete: SetNull)
 
   @@index([reviewId])
   @@index([pbiId])
+  @@index([createdPbiId])
   @@index([ownerId])
   @@map("backlog_adjustments")
 }
@@ -721,8 +1086,19 @@ model SprintRetrospective {
   isAnonymous       Boolean             @default(false)
   status            RetrospectiveStatus @default(DRAFT)
   summary           String?
+  /// "The Scrum Team inspects... their Definition of Done": the narrative of what the team
+  /// concluded about its Definition of Done during the event.
   dodEvolutionNotes String?
+  /// The Scrum Master's coaching observations. Readable only by the team's Scrum Master.
   smNotes           String?
+  /// The structured per-criterion reflection (keep / change / retire + note) the narrative
+  /// summarises. Stored as JSON because it is a snapshot of intent that is never queried by
+  /// field: a child table would add a join to every read for no read benefit.
+  dodReflections    Json?
+  /// The Definition of Done version this Retrospective produced when its accepted changes were
+  /// applied. This is the evidence that the adaptation loop closed -- without it, "we changed
+  /// our Definition of Done" remains an assertion.
+  dodVersionAtPush  Int?
   createdAt         DateTime            @default(now()) @db.Timestamptz(3)
   createdBy         String?             @db.Uuid
   updatedAt         DateTime            @updatedAt @db.Timestamptz(3)
@@ -797,6 +1173,12 @@ model RetroItemVote {
   @@map("retro_item_votes")
 }
 
+/// An improvement the Scrum Team committed to during a Sprint Retrospective.
+///
+/// "The most impactful improvements are addressed as soon as possible. They may even be added to
+/// the Sprint Backlog for the next Sprint." `addedToSprintBacklog` alone is an assertion; the
+/// `productBacklogItem` link is the evidence that the improvement actually produced work, so the
+/// manual flag is never allowed to contradict it.
 model RetroActionItem {
   id                   String              @id @db.Uuid
   retrospectiveId      String              @db.Uuid
@@ -806,18 +1188,24 @@ model RetroActionItem {
   dueDate              DateTime?           @db.Timestamptz(3)
   status               ActionItemStatus    @default(PENDING)
   addedToSprintBacklog Boolean             @default(false)
+  /// The Sprint the improvement was taken into (the team's ACTIVE Sprint at the time it was
+  /// added to the backlog). Null until the action item produced or was linked to a backlog item.
   relatedSprintId      String?             @db.Uuid
+  /// The Product Backlog item this improvement produced, or the existing one it was linked to.
+  productBacklogItemId String?             @db.Uuid
   createdAt            DateTime            @default(now()) @db.Timestamptz(3)
   createdBy            String?             @db.Uuid
   updatedAt            DateTime            @updatedAt @db.Timestamptz(3)
   updatedBy            String?             @db.Uuid
   completedAt          DateTime?           @db.Timestamptz(3)
   owner                User                @relation("ActionItemOwner", fields: [ownerId], references: [id], onDelete: Restrict)
+  productBacklogItem   ProductBacklogItem? @relation("RetroActionItemCreatedPbi", fields: [productBacklogItemId], references: [id], onDelete: SetNull)
   retrospective        SprintRetrospective @relation(fields: [retrospectiveId], references: [id], onDelete: Cascade)
 
   @@index([retrospectiveId])
   @@index([ownerId])
   @@index([relatedSprintId])
+  @@index([productBacklogItemId])
   @@index([status])
   @@index([dueDate])
   @@index([completedAt])
@@ -1130,6 +1518,247 @@ model Timebox {
   @@map("timeboxes")
 }
 
+/// The team's standing Daily Scrum commitment.
+///
+/// The 2020 Scrum Guide says the Daily Scrum is held "at the same time and place every working
+/// day". A record of the event is not the same as a commitment to hold it, so the commitment
+/// itself is persisted here -- one row per team -- and the number of Daily Scrums a Sprint
+/// should have is derived from this rather than assumed to be five per week.
+///
+/// No duration is stored: the Daily Scrum is a fixed 15-minute timebox, so only its start is
+/// configurable. See `@scrumooth/shared` `timeboxFor`.
+model DailyScrumSchedule {
+  id          String   @id @db.Uuid
+  teamId      String   @unique @db.Uuid
+  /// IANA time zone the wall-clock `startMinute` is expressed in, e.g. "Europe/Berlin".
+  timezone    String   @default("UTC")
+  /// Start of the event as minutes after local midnight (0-1439).
+  startMinute Int
+  /// The "same place": a room, or a link. Either may be omitted, but not both.
+  location    String?
+  locationUrl String?
+  /// ISO-8601 weekday numbers (1 = Monday .. 7 = Sunday) the team works. Defaults to Mon-Fri.
+  workingDays Int[]    @default([1, 2, 3, 4, 5])
+  createdAt   DateTime @default(now()) @db.Timestamptz(3)
+  createdBy   String?  @db.Uuid
+  updatedAt   DateTime @updatedAt @db.Timestamptz(3)
+  updatedBy   String?  @db.Uuid
+  team        Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@map("daily_scrum_schedules")
+}
+
+/// A single dated exception to a team's weekly working pattern: a public holiday, a company day
+/// off, or a team offsite. Only exceptions are stored; the weekly pattern remains the default.
+model TeamNonWorkingDay {
+  id        String   @id @db.Uuid
+  teamId    String   @db.Uuid
+  date      DateTime @db.Date
+  name      String?
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  createdBy String?  @db.Uuid
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+  updatedBy String?  @db.Uuid
+  team      Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@unique([teamId, date])
+  @@map("team_non_working_days")
+}
+
+/// One append-only version of a Scrum Master's notes on a Scrum event.
+///
+/// The notes fields on `sprints`, `sprint_reviews` and `sprint_retrospectives` hold only the
+/// current text. The Guide's Scrum Master accountability is to coach the team's effectiveness,
+/// and a coaching observation that any later writer can silently overwrite is not a trail. Each
+/// write therefore appends the full text here in the same transaction as the update, so the note
+/// and its history can never diverge. `revision` is dense and per-entity (1..N) and a write whose
+/// text is unchanged appends nothing.
+model SmNotesRevision {
+  id         String            @id @db.Uuid
+  entityType SmNotesEntityType
+  entityId   String            @db.Uuid
+  teamId     String            @db.Uuid
+  revision   Int
+  content    String
+  createdBy  String            @db.Uuid
+  createdAt  DateTime          @default(now()) @db.Timestamptz(3)
+  author     User              @relation("SmNotesRevisionAuthor", fields: [createdBy], references: [id], onDelete: Restrict)
+  team       Team              @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  // The history of one event is read in revision order, and the pair is what makes a revision
+  // number unique inside its entity.
+  @@unique([entityType, entityId, revision])
+  @@index([createdBy])
+  @@index([teamId])
+  @@map("sm_notes_revisions")
+}
+
+/// A barrier the Scrum Team cannot remove by itself.
+///
+/// The Guide gives the Scrum Master a third service beyond the team: *"serving the organization
+/// ... removing barriers between stakeholders and Scrum Teams."* The team's own impediments record
+/// what blocks the team; a barrier records what blocks the team from outside it and therefore needs
+/// someone with organizational authority. It is deliberately a separate aggregate rather than an
+/// `Impediment` subtype: a barrier's owner is not required to be a team member, and its resolution
+/// is an agreement with the organization, not a team decision.
+///
+/// `sourceImpedimentId` is unique, so escalating the same impediment twice is refused by the
+/// database rather than by convention.
+model OrganizationalBarrier {
+  id                 String                   @id @db.Uuid
+  teamId             String                   @db.Uuid
+  sourceImpedimentId String?                  @unique @db.Uuid
+  title              String
+  description        String
+  /// Impact ordering shares the impediment scale so the register sorts impact-first the same way.
+  priority           ImpedimentPriority       @default(MEDIUM)
+  status             BarrierStatus            @default(OPEN)
+  ownerId            String?                  @db.Uuid
+  raisedById         String                   @db.Uuid
+  targetDate         DateTime?                @db.Date
+  resolution         String?
+  resolvedAt         DateTime?                @db.Timestamptz(3)
+  createdAt          DateTime                 @default(now()) @db.Timestamptz(3)
+  createdBy          String?                  @db.Uuid
+  updatedAt          DateTime                 @updatedAt @db.Timestamptz(3)
+  updatedBy          String?                  @db.Uuid
+  owner              User?                    @relation("BarrierOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  raisedBy           User                     @relation("BarrierRaisedBy", fields: [raisedById], references: [id], onDelete: Restrict)
+  sourceImpediment   Impediment?              @relation("BarrierSourceImpediment", fields: [sourceImpedimentId], references: [id], onDelete: SetNull)
+  team               Team                     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  actions            BarrierStakeholderAction[]
+
+  @@index([teamId])
+  @@index([status])
+  @@index([ownerId])
+  @@index([raisedById])
+  @@index([priority])
+  @@index([teamId, status, createdAt])
+  @@index([teamId, priority, createdAt])
+  @@map("organizational_barriers")
+}
+
+/// One action taken with a stakeholder to remove a barrier.
+///
+/// Barrier removal is not a status change but a sequence of conversations and decisions with
+/// people outside the team. Recording each as its own row (with an owner and a due date) is what
+/// makes *"removing barriers between stakeholders and Scrum Teams"* inspectable instead of a
+/// claim: the register shows who agreed to do what, and when it was done.
+model BarrierStakeholderAction {
+  id          String                 @id @db.Uuid
+  barrierId   String                 @db.Uuid
+  description String
+  ownerId     String?                @db.Uuid
+  dueDate     DateTime?              @db.Date
+  status      StakeholderActionStatus @default(OPEN)
+  completedAt DateTime?              @db.Timestamptz(3)
+  createdAt   DateTime               @default(now()) @db.Timestamptz(3)
+  createdBy   String?                @db.Uuid
+  updatedAt   DateTime               @updatedAt @db.Timestamptz(3)
+  updatedBy   String?                @db.Uuid
+  owner       User?                  @relation("BarrierActionOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  barrier     OrganizationalBarrier  @relation(fields: [barrierId], references: [id], onDelete: Cascade)
+
+  @@index([barrierId])
+  @@index([ownerId])
+  @@index([barrierId, status])
+  @@map("barrier_stakeholder_actions")
+}
+
+/// The Scrum Master's private record of coaching a team toward self-management and
+/// cross-functionality.
+///
+/// The Guide's first two Scrum Master services are coaching the team in self-management and
+/// cross-functionality. That work leaves no trace in any other artifact, so it is recorded here --
+/// readable only by the team's Scrum Master, because a coaching note about a team's struggles with
+/// self-management is the Scrum Master's working material, not a published assessment.
+model CoachingEntry {
+  id           String        @id @db.Uuid
+  teamId       String        @db.Uuid
+  topic        CoachingTopic
+  note         String
+  sprintId     String?       @db.Uuid
+  followUpDate DateTime?     @db.Date
+  authorId     String        @db.Uuid
+  createdAt    DateTime      @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime      @updatedAt @db.Timestamptz(3)
+  author       User          @relation("CoachingEntryAuthor", fields: [authorId], references: [id], onDelete: Restrict)
+  sprint       Sprint?       @relation(fields: [sprintId], references: [id], onDelete: SetNull)
+  team         Team          @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@index([teamId])
+  @@index([sprintId])
+  @@index([authorId])
+  @@index([teamId, createdAt])
+  @@map("coaching_entries")
+}
+
+/// An agreement the Scrum Team made with itself about how it works.
+///
+/// Self-management means the team decides internally how it works, so the agreements belong to the
+/// team: every member can read and change them, and authorship is recorded. Retirement is an
+/// explicit state change with a timestamp rather than deletion, because a working agreement that
+/// silently disappears hides the fact that the team changed its mind.
+model WorkingAgreement {
+  id          String                 @id @db.Uuid
+  teamId      String                 @db.Uuid
+  title       String
+  description String
+  status      WorkingAgreementStatus @default(ACTIVE)
+  agreedAt    DateTime               @default(now()) @db.Timestamptz(3)
+  retiredAt   DateTime?              @db.Timestamptz(3)
+  createdAt   DateTime               @default(now()) @db.Timestamptz(3)
+  createdBy   String?                @db.Uuid
+  updatedAt   DateTime               @updatedAt @db.Timestamptz(3)
+  updatedBy   String?                @db.Uuid
+  team        Team                   @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@index([teamId])
+  @@index([status])
+  @@index([teamId, status])
+  @@map("working_agreements")
+}
+
+/// The team's own judgement of whether it collectively holds the skills it needs.
+///
+/// The Guide defines the Scrum Team as cross-functional -- *"collectively they have all the skills
+/// necessary to create value each Sprint"* -- and makes the Scrum Master responsible for coaching
+/// cross-functionality. Each assessment is a timestamped snapshot with one row per needed skill, so
+/// the signal can be inspected over time instead of being asserted once. It is a team-level
+/// assessment by design: no per-person skill inventory, which would turn a composition signal into
+/// an appraisal of individuals.
+model CrossFunctionalityAssessment {
+  id         String                    @id @db.Uuid
+  teamId     String                    @db.Uuid
+  assessedAt DateTime                  @default(now()) @db.Timestamptz(3)
+  summary    String?
+  createdAt  DateTime                  @default(now()) @db.Timestamptz(3)
+  createdBy  String?                   @db.Uuid
+  updatedAt  DateTime                  @updatedAt @db.Timestamptz(3)
+  updatedBy  String?                   @db.Uuid
+  team       Team                      @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  skills     CrossFunctionalitySkill[]
+
+  @@index([teamId])
+  @@index([teamId, assessedAt])
+  @@map("cross_functionality_assessments")
+}
+
+/// One skill a team needs, and how far the team collectively covers it today.
+model CrossFunctionalitySkill {
+  id           String                      @id @db.Uuid
+  assessmentId String                      @db.Uuid
+  name         String
+  coverage     SkillCoverage
+  note         String?
+  createdAt    DateTime                    @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime                    @updatedAt @db.Timestamptz(3)
+  assessment   CrossFunctionalityAssessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+
+  @@index([assessmentId])
+  @@map("cross_functionality_skills")
+}
+
 enum UserRole {
   PRODUCT_OWNER
   SCRUM_MASTER
@@ -1164,6 +1793,32 @@ enum ImpedimentStatus {
   IN_PROGRESS
   RESOLVED
   CLOSED
+}
+
+/**
+ * Impact ordering for impediments, declared most-critical-first.
+ * PostgreSQL compares enum values by declaration order, so `orderBy: { priority: 'asc' }`
+ * resolves to CRITICAL → LOW. Reordering these values is a migration, not a code change.
+ */
+enum ImpedimentPriority {
+  CRITICAL
+  HIGH
+  MEDIUM
+  LOW
+}
+
+/**
+ * The typology of a Sprint Backlog adaptation declared at a Daily Scrum.
+ * Typed rather than free text so the adaptation is structured evidence: the declaration can be
+ * checked against what the Sprint Backlog actually did (`@scrumooth/shared`
+ * `evaluateAdaptationReflection`) instead of only asserting that something happened.
+ */
+enum DailyScrumAdjustmentAction {
+  ADDED
+  REMOVED
+  REPRIORITIZED
+  REFINED
+  SPLIT
 }
 
 enum ProductGoalStatus {
@@ -1202,6 +1857,14 @@ enum IntegrationTestResult {
   PENDING
   PASSED
   FAILED
+}
+
+/// What an Increment's `integrationVerified` flag rests on. The team's first Increment has no
+/// prior Increment to test against, so it is exempt rather than verified; recording which of the
+/// two applies keeps "verified" from meaning two different things under one badge.
+enum IntegrationVerificationBasis {
+  FIRST_INCREMENT_EXEMPT
+  PRIOR_INCREMENTS
 }
 
 enum ScrumValue {
@@ -1262,6 +1925,7 @@ enum NotificationType {
   TEAM_REMOVAL
   TASK_ASSIGNMENT
   IMPEDIMENT_ASSIGNMENT
+  IMPEDIMENT_ESCALATION
   DAILY_SCRUM_SIGNAL
   TEAM_CREATED
   TEAM_UPDATED
@@ -1269,6 +1933,8 @@ enum NotificationType {
   DIRECT_MESSAGE
   ACCOUNT_DELETION_SCHEDULED
   ACCOUNT_DELETION_CANCELLED
+  ORGANIZATIONAL_BARRIER
+  SPRINT_BACKLOG_CHANGE_PENDING
 }
 
 enum EmailType {
@@ -1289,4 +1955,51 @@ enum EmailStatus {
   BOUNCED
   OPENED
   CLICKED
+}
+
+/**
+ * Which Scrum event a set of Scrum Master notes belongs to.
+ *
+ * The three events keep their own notes column, so the revision table is polymorphic in order to
+ * hold one history shape rather than three near-identical tables.
+ */
+enum SmNotesEntityType {
+  SPRINT
+  SPRINT_REVIEW
+  SPRINT_RETROSPECTIVE
+}
+
+/** Lifecycle of an organizational barrier, mirroring the impediment states it escalates from. */
+enum BarrierStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+/** Lifecycle of one action taken with a stakeholder to remove a barrier. */
+enum StakeholderActionStatus {
+  OPEN
+  DONE
+  CANCELLED
+}
+
+/** What a Scrum Master coaching entry is about. */
+enum CoachingTopic {
+  SELF_MANAGEMENT
+  CROSS_FUNCTIONALITY
+  OTHER
+}
+
+/** An agreement is retired explicitly so a change of mind stays visible. */
+enum WorkingAgreementStatus {
+  ACTIVE
+  RETIRED
+}
+
+/** How far the team collectively covers a skill it needs. */
+enum SkillCoverage {
+  NONE
+  PARTIAL
+  COVERED
 }

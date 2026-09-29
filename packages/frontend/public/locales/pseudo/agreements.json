@@ -1,0 +1,70 @@
+{
+  "agreements": {
+    "active": "[Àctívééé]",
+    "add": "[Àdd àgrééménttttt]",
+    "agreedAt": "[Àgrééddd]",
+    "cancel": "[Càncélll]",
+    "created": "[Àgréémént àddédddddd]",
+    "createdBy": "[Àddéd byyyy]",
+    "edit": "[ÉÉddíít]",
+    "empty": "[Nó wórkíng àgréémént récórdéd yétttttttttttt.]",
+    "hint": "[Àny téàm mémbér càn àdd ór rétíré àn àgrééméntttttttttttttttt.]",
+    "reactivate": "[Réàctívàtéééé]",
+    "retire": "[Rétírééé]",
+    "retired": "[Rétírédddd]",
+    "retiredAt": "[Rétírédddd]",
+    "retiredDisclosure": "[Shów rétíréd àgrééméntsssssssss ({{count}})]",
+    "retiredGroup": "[Rétíréd àgrééméntsssssss]",
+    "save": "[SSààvvé]",
+    "saved": "[Àgréémént úpdàtéddddddd]",
+    "title": "[Àgrééméntssss]",
+    "updatedBy": "[Làst chàngéd byyyyyy]"
+  },
+  "assessmentForm": {
+    "addSkill": "[Àdd skílllll]",
+    "atLeastOneSkill": "[Récórd àt léàst óné skíllllllllll.]",
+    "cancel": "[Càncélll]",
+    "removeSkill": "[Rémóvé skíllllll]",
+    "save": "[Sàvé àsséssméntttttt]",
+    "saved": "[Àsséssmént récórdéddddddd]",
+    "skillCoverage": "[Cóvéràgéééé]",
+    "skillName": "[Skíllll]",
+    "skillNote": "[NNóótté]",
+    "skillRequired": "[Évéry rów nééds à skíll nàméééééééééé.]",
+    "summary": "[Whàt thé téàm cónclúdédddddddd]",
+    "title": "[Cróss-fúnctíónàlíty àsséssméntttttttttt]"
+  },
+  "crossFunctionality": {
+    "assessedAt": "[Àsséssédddd]",
+    "assessedBy": "[Récórdéd byyyyy]",
+    "coverage": "[Cóvéràgéééé]",
+    "covered": "[Cóvérédddd]",
+    "empty": "[Nó cróss-fúnctíónàlíty àsséssmént récórdéd yétttttttttttttttt.]",
+    "gaps": "[GGààpps]",
+    "hint": "[Skílls thé téàm nééds, ànd hów fàr thé téàm cóvérs thémmmmmmmmmmmmmmmmmm.]",
+    "history": "[Éàrlíér àsséssméntsssssss]",
+    "need": "[Skíll néédéddddd]",
+    "none": "[Nót cóvéréddddd]",
+    "note": "[NNóótté]",
+    "onlyScrumMaster": "[Ónly thé téàm’s Scrúm Màstér récórds thé àsséssménttttttttttttttttt.]",
+    "openFacilitation": "[Récórd ór révíéw thé àsséssménttttttttttt]",
+    "partial": "[Pàrtíàlly cóvéréddddddd]",
+    "record": "[Récórd àn àsséssménttttttt]",
+    "summary": "[{{covered}} ccóóvvéérrééd · {{partial}} ppààrrttííààl · {{gaps}} nót cóvéréddddd]",
+    "title": "[Cróss-fúnctíónàlítyyyyyyy]"
+  },
+  "errors": {
+    "delete": "[Thé chàngé cóúld nót bé díscàrdédddddddddddd.]",
+    "load": "[Thé wórkíng àgrééménts cóúld nót bé lóàdédddddddddddddd.]",
+    "record": "[Thé àsséssmént cóúld nót bé récórdéddddddddddddd.]",
+    "save": "[Thé chàngé cóúld nót bé sàvédddddddddd.]"
+  },
+  "form": {
+    "createTitle": "[Néw wórkíng àgrééméntttttttt]",
+    "description": "[Whàt thé téàm àgrééddddddd]",
+    "descriptionRequired": "[Déscríbé whàt thé téàm àgrééd (àt léàst tén chàràctérssssssssssssssssss).]",
+    "editTitle": "[Édít wórkíng àgrééméntttttttt]",
+    "title": "[Àgrééméntttt]",
+    "titleRequired": "[Gívé thé àgréémént à títlé óf àt léàst thréé chàràctérssssssssssssssssss.]"
+  }
+}

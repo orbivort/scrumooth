@@ -1,12 +1,32 @@
 // Daily Scrum Service (team-level, goal-focused)
+import type { ImpedimentPriority } from '@scrumooth/shared';
+
 import type {
   DailyScrum,
+  DailyScrumCadence,
   DailyScrumParticipation,
   DailyScrumBacklogAdjustmentInput,
   Impediment,
   ApiResponse,
 } from '../../types';
 import { coreApiService } from '../core/api.core';
+
+/**
+ * The Inspect & Adapt outcome a Developer submits.
+ *
+ * `noAdaptationNeeded` and `backlogAdjustments` are sent together rather than independently: the
+ * API refuses a record that claims no adaptation while listing adjustments, so switching between
+ * the two options has to clear the other in the same write.
+ */
+export interface DailyScrumWritePayload {
+  scrumDate?: string;
+  progressNotes?: string;
+  adaptationsNotes?: string;
+  planForNextDay?: string;
+  focusMode?: DailyScrum['focusMode'];
+  noAdaptationNeeded?: boolean;
+  backlogAdjustments?: DailyScrumBacklogAdjustmentInput[];
+}
 
 class DailyScrumService {
   private get api() {
@@ -27,16 +47,20 @@ class DailyScrumService {
     return data;
   }
 
+  /**
+   * The team's standing cadence for a date: the commitment, the calendar, and how the record
+   * compares with what the calendar expected. Composed server-side so the page needs one call.
+   */
+  async getCadence(sprintId: string, date?: string): Promise<ApiResponse<DailyScrumCadence>> {
+    const { data } = await this.api.get(`/daily-scrums/${sprintId}/cadence`, {
+      params: { date },
+    });
+    return data;
+  }
+
   async createDailyScrum(
     sprintId: string,
-    scrum: {
-      scrumDate?: string;
-      progressNotes?: string;
-      adaptationsNotes?: string;
-      planForNextDay?: string;
-      focusMode?: DailyScrum['focusMode'];
-      backlogAdjustments?: DailyScrumBacklogAdjustmentInput[];
-    }
+    scrum: DailyScrumWritePayload
   ): Promise<ApiResponse<DailyScrum>> {
     const { data } = await this.api.post(`/daily-scrums/${sprintId}`, scrum);
     return data;
@@ -44,13 +68,7 @@ class DailyScrumService {
 
   async updateDailyScrum(
     id: string,
-    scrum: {
-      progressNotes?: string;
-      adaptationsNotes?: string;
-      planForNextDay?: string;
-      focusMode?: DailyScrum['focusMode'];
-      backlogAdjustments?: DailyScrumBacklogAdjustmentInput[];
-    }
+    scrum: DailyScrumWritePayload
   ): Promise<ApiResponse<DailyScrum>> {
     const { data } = await this.api.put(`/daily-scrums/record/${id}`, scrum);
     return data;
@@ -87,7 +105,8 @@ class DailyScrumService {
       title: string;
       description?: string;
       ownerId?: string;
-      priority?: string;
+      /** The API's enum member, not a display label. */
+      priority?: ImpedimentPriority;
       sprintId?: string;
     }
   ): Promise<ApiResponse<{ dailyScrum: DailyScrum; impediment: Impediment }>> {

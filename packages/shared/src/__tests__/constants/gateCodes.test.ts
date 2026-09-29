@@ -1,0 +1,301 @@
+import { describe, it, expect } from 'vitest';
+import {
+  GATE_CODE_LIST,
+  GATE_CODE_PREFIX,
+  GATE_CODES,
+  GATE_DEFINITIONS,
+  GATE_I18N_NAMESPACE,
+  getGateDefinition,
+  isGateCode,
+} from '../../constants/gateCodes.js';
+
+describe('gateCodes', () => {
+  /**
+   * No numeral is asserted here on purpose: this test once named the count of the day and went
+   * stale the moment a gate was added, failing while the contract itself was perfectly consistent.
+   * The invariants below cannot rot, and the totals the README prints are verified against the
+   * contract by `scripts/maintenance/verify-gate-catalogue.mjs`.
+   */
+  it('should define every gate code exactly once', () => {
+    expect(new Set(GATE_CODE_LIST).size).toBe(GATE_CODE_LIST.length);
+  });
+
+  it('should define a contract entry for every gate code, and no others', () => {
+    expect(Object.keys(GATE_DEFINITIONS).sort()).toEqual([...GATE_CODE_LIST].sort());
+  });
+
+  it('should prefix every gate code with GATE_', () => {
+    expect(GATE_CODE_LIST.every((code) => code.startsWith(GATE_CODE_PREFIX))).toBe(true);
+  });
+
+  it('should keep code values and definition keys aligned', () => {
+    for (const code of GATE_CODE_LIST) {
+      expect(GATE_DEFINITIONS[code].code).toBe(code);
+    }
+  });
+
+  it('should give every gate an HTTP status and a locale key', () => {
+    for (const code of GATE_CODE_LIST) {
+      const definition = GATE_DEFINITIONS[code];
+      expect([400, 403, 409]).toContain(definition.httpStatus);
+      expect(definition.i18nKey.length).toBeGreaterThan(0);
+    }
+  });
+
+  it('should expose a gate i18n namespace', () => {
+    expect(GATE_I18N_NAMESPACE).toBe('gate');
+  });
+
+  it('should identify known gate codes', () => {
+    expect(isGateCode(GATE_CODES.SPRINT_EVENTS_MISSING)).toBe(true);
+    expect(isGateCode(GATE_CODES.IMPEDIMENTS_UNRESOLVED)).toBe(true);
+    expect(isGateCode(GATE_CODES.PLANNING_PARTICIPATION_REQUIRED)).toBe(true);
+    expect(isGateCode(GATE_CODES.CAPACITY_EXCEEDED)).toBe(true);
+  });
+
+  it('should refuse participation and capacity gates with HTTP 400', () => {
+    expect(GATE_DEFINITIONS[GATE_CODES.PLANNING_PARTICIPATION_REQUIRED].httpStatus).toBe(400);
+    expect(GATE_DEFINITIONS[GATE_CODES.PLANNING_PARTICIPATION_REQUIRED].i18nKey).toBe(
+      'planningParticipationRequired'
+    );
+    expect(GATE_DEFINITIONS[GATE_CODES.CAPACITY_EXCEEDED].httpStatus).toBe(400);
+    expect(GATE_DEFINITIONS[GATE_CODES.CAPACITY_EXCEEDED].i18nKey).toBe('capacityExceeded');
+  });
+
+  it('should refuse an unevidenced Daily Scrum adaptation with HTTP 400', () => {
+    expect(isGateCode(GATE_CODES.DAILY_SCRUM_ADAPTATION_REQUIRED)).toBe(true);
+    expect(GATE_DEFINITIONS[GATE_CODES.DAILY_SCRUM_ADAPTATION_REQUIRED].httpStatus).toBe(400);
+    expect(GATE_DEFINITIONS[GATE_CODES.DAILY_SCRUM_ADAPTATION_REQUIRED].i18nKey).toBe(
+      'dailyScrumAdaptationRequired'
+    );
+  });
+
+  it('should identify the Sprint container, membership and goal gates', () => {
+    expect(isGateCode(GATE_CODES.SPRINT_DURATION_LIMIT)).toBe(true);
+    expect(isGateCode(GATE_CODES.SPRINT_DATES_OVERLAP)).toBe(true);
+    expect(isGateCode(GATE_CODES.SPRINT_NOT_CONTIGUOUS)).toBe(true);
+    expect(isGateCode(GATE_CODES.SPRINT_TEAM_MEMBERS_ONLY)).toBe(true);
+    expect(isGateCode(GATE_CODES.SPRINT_GOAL_LOCKED)).toBe(true);
+    expect(isGateCode(GATE_CODES.SPRINT_SCOPE_CHANGE_NEEDS_PO)).toBe(true);
+    expect(isGateCode(GATE_CODES.SPRINT_SCOPE_CHANGE_ALREADY_PENDING)).toBe(true);
+  });
+
+  it('should refuse container and membership gates with the documented status', () => {
+    expect(GATE_DEFINITIONS[GATE_CODES.SPRINT_DURATION_LIMIT].httpStatus).toBe(400);
+    expect(GATE_DEFINITIONS[GATE_CODES.SPRINT_DURATION_LIMIT].i18nKey).toBe('sprintDurationLimit');
+    expect(GATE_DEFINITIONS[GATE_CODES.SPRINT_DATES_OVERLAP].httpStatus).toBe(409);
+    expect(GATE_DEFINITIONS[GATE_CODES.SPRINT_DATES_OVERLAP].i18nKey).toBe('sprintDatesOverlap');
+    expect(GATE_DEFINITIONS[GATE_CODES.SPRINT_NOT_CONTIGUOUS].httpStatus).toBe(400);
+    expect(GATE_DEFINITIONS[GATE_CODES.SPRINT_NOT_CONTIGUOUS].i18nKey).toBe('sprintNotContiguous');
+    expect(GATE_DEFINITIONS[GATE_CODES.SPRINT_TEAM_MEMBERS_ONLY].httpStatus).toBe(403);
+    expect(GATE_DEFINITIONS[GATE_CODES.SPRINT_TEAM_MEMBERS_ONLY].i18nKey).toBe(
+      'sprintTeamMembersOnly'
+    );
+    expect(GATE_DEFINITIONS[GATE_CODES.SPRINT_GOAL_LOCKED].httpStatus).toBe(400);
+    expect(GATE_DEFINITIONS[GATE_CODES.SPRINT_GOAL_LOCKED].i18nKey).toBe('sprintGoalLocked');
+    expect(GATE_DEFINITIONS[GATE_CODES.SPRINT_SCOPE_CHANGE_NEEDS_PO].httpStatus).toBe(403);
+    expect(GATE_DEFINITIONS[GATE_CODES.SPRINT_SCOPE_CHANGE_NEEDS_PO].i18nKey).toBe(
+      'sprintScopeChangeNeedsPo'
+    );
+    expect(GATE_DEFINITIONS[GATE_CODES.SPRINT_SCOPE_CHANGE_ALREADY_PENDING].httpStatus).toBe(409);
+    expect(GATE_DEFINITIONS[GATE_CODES.SPRINT_SCOPE_CHANGE_ALREADY_PENDING].i18nKey).toBe(
+      'sprintScopeChangeAlreadyPending'
+    );
+  });
+
+  it('should identify the Definition of Done commitment gates', () => {
+    expect(isGateCode(GATE_CODES.DOD_REQUIRED)).toBe(true);
+    expect(isGateCode(GATE_CODES.DOD_TEAM_MEMBERS_ONLY)).toBe(true);
+    expect(GATE_DEFINITIONS[GATE_CODES.DOD_REQUIRED].httpStatus).toBe(400);
+    expect(GATE_DEFINITIONS[GATE_CODES.DOD_REQUIRED].i18nKey).toBe('dodRequired');
+    expect(GATE_DEFINITIONS[GATE_CODES.DOD_TEAM_MEMBERS_ONLY].httpStatus).toBe(403);
+    expect(GATE_DEFINITIONS[GATE_CODES.DOD_TEAM_MEMBERS_ONLY].i18nKey).toBe('dodTeamMembersOnly');
+  });
+
+  it('should identify the Definition of Ready agreement gates', () => {
+    expect(isGateCode(GATE_CODES.DOR_REQUIRED)).toBe(true);
+    expect(isGateCode(GATE_CODES.DOR_NOT_VERIFIED)).toBe(true);
+    expect(isGateCode(GATE_CODES.DOR_TEAM_MEMBERS_ONLY)).toBe(true);
+    expect(isGateCode(GATE_CODES.DOR_SCRUM_MASTER_ONLY)).toBe(true);
+  });
+
+  it('should refuse the readiness agreement gates with the documented status', () => {
+    expect(GATE_DEFINITIONS[GATE_CODES.DOR_REQUIRED].httpStatus).toBe(400);
+    expect(GATE_DEFINITIONS[GATE_CODES.DOR_REQUIRED].i18nKey).toBe('dorRequired');
+    expect(GATE_DEFINITIONS[GATE_CODES.DOR_NOT_VERIFIED].httpStatus).toBe(400);
+    expect(GATE_DEFINITIONS[GATE_CODES.DOR_NOT_VERIFIED].i18nKey).toBe('dorNotVerified');
+    expect(GATE_DEFINITIONS[GATE_CODES.DOR_TEAM_MEMBERS_ONLY].httpStatus).toBe(403);
+    expect(GATE_DEFINITIONS[GATE_CODES.DOR_TEAM_MEMBERS_ONLY].i18nKey).toBe('dorTeamMembersOnly');
+    expect(GATE_DEFINITIONS[GATE_CODES.DOR_SCRUM_MASTER_ONLY].httpStatus).toBe(403);
+    expect(GATE_DEFINITIONS[GATE_CODES.DOR_SCRUM_MASTER_ONLY].i18nKey).toBe('dorScrumMasterOnly');
+  });
+
+  it('should identify the Increment ownership, usability and lifecycle gates', () => {
+    expect(isGateCode(GATE_CODES.INCREMENT_TEAM_MEMBERS_ONLY)).toBe(true);
+    expect(isGateCode(GATE_CODES.INCREMENT_INTEGRATION_VERIFICATION_REQUIRED)).toBe(true);
+    expect(isGateCode(GATE_CODES.INCREMENT_USABILITY_ATTESTATION_REQUIRED)).toBe(true);
+    expect(isGateCode(GATE_CODES.INCREMENT_DELIVERY_METHOD_REQUIRED)).toBe(true);
+  });
+
+  it('should refuse Increment membership with 403 and the evidence gates with 400', () => {
+    expect(GATE_DEFINITIONS[GATE_CODES.INCREMENT_TEAM_MEMBERS_ONLY].httpStatus).toBe(403);
+    expect(GATE_DEFINITIONS[GATE_CODES.INCREMENT_TEAM_MEMBERS_ONLY].i18nKey).toBe(
+      'incrementTeamMembersOnly'
+    );
+    expect(
+      GATE_DEFINITIONS[GATE_CODES.INCREMENT_INTEGRATION_VERIFICATION_REQUIRED].httpStatus
+    ).toBe(400);
+    expect(GATE_DEFINITIONS[GATE_CODES.INCREMENT_INTEGRATION_VERIFICATION_REQUIRED].i18nKey).toBe(
+      'incrementIntegrationVerificationRequired'
+    );
+    expect(GATE_DEFINITIONS[GATE_CODES.INCREMENT_USABILITY_ATTESTATION_REQUIRED].httpStatus).toBe(
+      400
+    );
+    expect(GATE_DEFINITIONS[GATE_CODES.INCREMENT_USABILITY_ATTESTATION_REQUIRED].i18nKey).toBe(
+      'incrementUsabilityAttestationRequired'
+    );
+    expect(GATE_DEFINITIONS[GATE_CODES.INCREMENT_DELIVERY_METHOD_REQUIRED].httpStatus).toBe(400);
+    expect(GATE_DEFINITIONS[GATE_CODES.INCREMENT_DELIVERY_METHOD_REQUIRED].i18nKey).toBe(
+      'incrementDeliveryMethodRequired'
+    );
+  });
+
+  it('should identify the Sprint Review ownership, notes and ordering gates', () => {
+    expect(isGateCode(GATE_CODES.SPRINT_REVIEW_TEAM_MEMBERS_ONLY)).toBe(true);
+    expect(isGateCode(GATE_CODES.SPRINT_REVIEW_SM_NOTES_SM_ONLY)).toBe(true);
+    expect(isGateCode(GATE_CODES.SPRINT_RETROSPECTIVE_REQUIRES_REVIEW)).toBe(true);
+    expect(isGateCode(GATE_CODES.SPRINT_EVENT_BEFORE_END_DATE)).toBe(true);
+  });
+
+  it('should refuse the Review ownership and notes gates with 403 and the ordering gates with 400', () => {
+    expect(GATE_DEFINITIONS[GATE_CODES.SPRINT_REVIEW_TEAM_MEMBERS_ONLY].httpStatus).toBe(403);
+    expect(GATE_DEFINITIONS[GATE_CODES.SPRINT_REVIEW_TEAM_MEMBERS_ONLY].i18nKey).toBe(
+      'sprintReviewTeamMembersOnly'
+    );
+    expect(GATE_DEFINITIONS[GATE_CODES.SPRINT_REVIEW_SM_NOTES_SM_ONLY].httpStatus).toBe(403);
+    expect(GATE_DEFINITIONS[GATE_CODES.SPRINT_REVIEW_SM_NOTES_SM_ONLY].i18nKey).toBe(
+      'sprintReviewSmNotesSmOnly'
+    );
+    expect(GATE_DEFINITIONS[GATE_CODES.SPRINT_RETROSPECTIVE_REQUIRES_REVIEW].httpStatus).toBe(400);
+    expect(GATE_DEFINITIONS[GATE_CODES.SPRINT_RETROSPECTIVE_REQUIRES_REVIEW].i18nKey).toBe(
+      'sprintRetrospectiveRequiresReview'
+    );
+    expect(GATE_DEFINITIONS[GATE_CODES.SPRINT_EVENT_BEFORE_END_DATE].httpStatus).toBe(400);
+    expect(GATE_DEFINITIONS[GATE_CODES.SPRINT_EVENT_BEFORE_END_DATE].i18nKey).toBe(
+      'sprintEventBeforeEndDate'
+    );
+  });
+
+  it('should identify the Retrospective ownership, notes, linkage and reflection gates', () => {
+    expect(isGateCode(GATE_CODES.RETROSPECTIVE_TEAM_MEMBERS_ONLY)).toBe(true);
+    expect(isGateCode(GATE_CODES.RETROSPECTIVE_SM_NOTES_SM_ONLY)).toBe(true);
+    expect(isGateCode(GATE_CODES.RETROSPECTIVE_ACTION_ITEM_LINKED)).toBe(true);
+    expect(isGateCode(GATE_CODES.RETROSPECTIVE_DOD_CHANGES_MISSING)).toBe(true);
+  });
+
+  it('should refuse the Retrospective ownership and notes gates with 403', () => {
+    expect(GATE_DEFINITIONS[GATE_CODES.RETROSPECTIVE_TEAM_MEMBERS_ONLY].httpStatus).toBe(403);
+    expect(GATE_DEFINITIONS[GATE_CODES.RETROSPECTIVE_TEAM_MEMBERS_ONLY].i18nKey).toBe(
+      'retrospectiveTeamMembersOnly'
+    );
+    expect(GATE_DEFINITIONS[GATE_CODES.RETROSPECTIVE_SM_NOTES_SM_ONLY].httpStatus).toBe(403);
+    expect(GATE_DEFINITIONS[GATE_CODES.RETROSPECTIVE_SM_NOTES_SM_ONLY].i18nKey).toBe(
+      'retrospectiveSmNotesSmOnly'
+    );
+  });
+
+  it('should refuse a relinked Retrospective action item with 409 and an empty reflection with 400', () => {
+    expect(GATE_DEFINITIONS[GATE_CODES.RETROSPECTIVE_ACTION_ITEM_LINKED].httpStatus).toBe(409);
+    expect(GATE_DEFINITIONS[GATE_CODES.RETROSPECTIVE_ACTION_ITEM_LINKED].i18nKey).toBe(
+      'retrospectiveActionItemLinked'
+    );
+    expect(GATE_DEFINITIONS[GATE_CODES.RETROSPECTIVE_DOD_CHANGES_MISSING].httpStatus).toBe(400);
+    expect(GATE_DEFINITIONS[GATE_CODES.RETROSPECTIVE_DOD_CHANGES_MISSING].i18nKey).toBe(
+      'retrospectiveDodChangesMissing'
+    );
+  });
+
+  it('should identify the Scrum Master facilitation gates', () => {
+    expect(isGateCode(GATE_CODES.SPRINT_SM_NOTES_SM_ONLY)).toBe(true);
+    expect(isGateCode(GATE_CODES.HEALTH_CHECK_TEAM_MEMBERS_ONLY)).toBe(true);
+    expect(isGateCode(GATE_CODES.HEALTH_CHECK_RESULTS_SM_OF_TEAM_ONLY)).toBe(true);
+    expect(isGateCode(GATE_CODES.ORGANIZATIONAL_BARRIER_TEAM_MEMBERS_ONLY)).toBe(true);
+    expect(isGateCode(GATE_CODES.ORGANIZATIONAL_BARRIER_SM_ONLY)).toBe(true);
+    expect(isGateCode(GATE_CODES.ORGANIZATIONAL_BARRIER_RESOLUTION_REQUIRED)).toBe(true);
+    expect(isGateCode(GATE_CODES.ORGANIZATIONAL_BARRIER_ALREADY_ESCALATED)).toBe(true);
+    expect(isGateCode(GATE_CODES.ORGANIZATIONAL_BARRIER_SOURCE_NOT_OF_TEAM)).toBe(true);
+    expect(isGateCode(GATE_CODES.COACHING_SM_ONLY)).toBe(true);
+    expect(isGateCode(GATE_CODES.CROSS_FUNCTIONALITY_SM_ONLY)).toBe(true);
+    expect(isGateCode(GATE_CODES.FACILITATION_TEAM_MEMBERS_ONLY)).toBe(true);
+  });
+
+  it('should refuse Scrum Master only surfaces with 403 and unevidenced closures with 400', () => {
+    expect(GATE_DEFINITIONS[GATE_CODES.SPRINT_SM_NOTES_SM_ONLY].httpStatus).toBe(403);
+    expect(GATE_DEFINITIONS[GATE_CODES.SPRINT_SM_NOTES_SM_ONLY].i18nKey).toBe(
+      'sprintSmNotesSmOnly'
+    );
+    expect(GATE_DEFINITIONS[GATE_CODES.HEALTH_CHECK_TEAM_MEMBERS_ONLY].httpStatus).toBe(403);
+    expect(GATE_DEFINITIONS[GATE_CODES.HEALTH_CHECK_TEAM_MEMBERS_ONLY].i18nKey).toBe(
+      'healthCheckTeamMembersOnly'
+    );
+    expect(GATE_DEFINITIONS[GATE_CODES.HEALTH_CHECK_RESULTS_SM_OF_TEAM_ONLY].httpStatus).toBe(403);
+    expect(GATE_DEFINITIONS[GATE_CODES.HEALTH_CHECK_RESULTS_SM_OF_TEAM_ONLY].i18nKey).toBe(
+      'healthCheckResultsSmOfTeamOnly'
+    );
+    expect(GATE_DEFINITIONS[GATE_CODES.ORGANIZATIONAL_BARRIER_TEAM_MEMBERS_ONLY].httpStatus).toBe(
+      403
+    );
+    expect(GATE_DEFINITIONS[GATE_CODES.ORGANIZATIONAL_BARRIER_TEAM_MEMBERS_ONLY].i18nKey).toBe(
+      'organizationalBarrierTeamMembersOnly'
+    );
+    expect(GATE_DEFINITIONS[GATE_CODES.ORGANIZATIONAL_BARRIER_SM_ONLY].httpStatus).toBe(403);
+    expect(GATE_DEFINITIONS[GATE_CODES.ORGANIZATIONAL_BARRIER_SM_ONLY].i18nKey).toBe(
+      'organizationalBarrierSmOnly'
+    );
+    expect(GATE_DEFINITIONS[GATE_CODES.ORGANIZATIONAL_BARRIER_RESOLUTION_REQUIRED].httpStatus).toBe(
+      400
+    );
+    expect(GATE_DEFINITIONS[GATE_CODES.ORGANIZATIONAL_BARRIER_RESOLUTION_REQUIRED].i18nKey).toBe(
+      'organizationalBarrierResolutionRequired'
+    );
+    expect(GATE_DEFINITIONS[GATE_CODES.ORGANIZATIONAL_BARRIER_ALREADY_ESCALATED].httpStatus).toBe(
+      409
+    );
+    expect(GATE_DEFINITIONS[GATE_CODES.ORGANIZATIONAL_BARRIER_ALREADY_ESCALATED].i18nKey).toBe(
+      'organizationalBarrierAlreadyEscalated'
+    );
+    expect(GATE_DEFINITIONS[GATE_CODES.ORGANIZATIONAL_BARRIER_SOURCE_NOT_OF_TEAM].httpStatus).toBe(
+      403
+    );
+    expect(GATE_DEFINITIONS[GATE_CODES.ORGANIZATIONAL_BARRIER_SOURCE_NOT_OF_TEAM].i18nKey).toBe(
+      'organizationalBarrierSourceNotOfTeam'
+    );
+    expect(GATE_DEFINITIONS[GATE_CODES.COACHING_SM_ONLY].httpStatus).toBe(403);
+    expect(GATE_DEFINITIONS[GATE_CODES.COACHING_SM_ONLY].i18nKey).toBe('coachingSmOnly');
+    expect(GATE_DEFINITIONS[GATE_CODES.CROSS_FUNCTIONALITY_SM_ONLY].httpStatus).toBe(403);
+    expect(GATE_DEFINITIONS[GATE_CODES.CROSS_FUNCTIONALITY_SM_ONLY].i18nKey).toBe(
+      'crossFunctionalitySmOnly'
+    );
+    expect(GATE_DEFINITIONS[GATE_CODES.FACILITATION_TEAM_MEMBERS_ONLY].httpStatus).toBe(403);
+    expect(GATE_DEFINITIONS[GATE_CODES.FACILITATION_TEAM_MEMBERS_ONLY].i18nKey).toBe(
+      'facilitationTeamMembersOnly'
+    );
+  });
+
+  it('should reject unknown or non-string values', () => {
+    expect(isGateCode('FORBIDDEN')).toBe(false);
+    expect(isGateCode('GATE_UNKNOWN')).toBe(false);
+    expect(isGateCode(undefined)).toBe(false);
+    expect(isGateCode(42)).toBe(false);
+  });
+
+  it('should resolve a definition for a known gate code', () => {
+    expect(getGateDefinition(GATE_CODES.INCREMENT_LOCKED)).toEqual(
+      GATE_DEFINITIONS[GATE_CODES.INCREMENT_LOCKED]
+    );
+  });
+
+  it('should return undefined for an unknown code', () => {
+    expect(getGateDefinition('NOT_A_GATE')).toBeUndefined();
+  });
+});

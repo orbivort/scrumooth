@@ -52,7 +52,9 @@
   },
   "sprintStatusLabels": {
     "ACTIVE": "Active",
+    "CANCELLED": "Cancelled",
     "COMPLETED": "Completed",
+    "DRAFT": "Draft",
     "PLANNED": "Planned"
   },
   "subtitle": "Track team performance and sprint metrics",

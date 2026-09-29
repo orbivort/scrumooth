@@ -1,4 +1,4 @@
-import { screen, renderWithProviders, initTestI18n } from '../../../test-utils';
+import { screen, fireEvent, renderWithProviders, initTestI18n } from '../../../test-utils';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, beforeEach, beforeAll, vi } from 'vitest';
 
@@ -365,6 +365,29 @@ describe('KanbanColumn', () => {
       // Should have aria-label indicating task count
       const column = screen.getByRole('listitem', { name: /To Do column, 60 tasks/i });
       expect(column).toBeInTheDocument();
+    });
+  });
+
+  describe('Drop and unknown status', () => {
+    it('forwards a drop and a drag-over to the column callbacks', () => {
+      renderWithProviders(<KanbanColumn {...defaultProps} />);
+
+      const column = screen.getByRole('listitem', { name: /To Do column/i });
+      fireEvent.drop(column);
+      fireEvent.dragOver(column);
+
+      expect(mockOnDrop).toHaveBeenCalledWith(expect.anything(), TaskStatus.TODO);
+      expect(mockOnDragOver).toHaveBeenCalledWith(expect.anything(), TaskStatus.TODO);
+    });
+
+    it('falls back to neutral presentation for a status it does not recognise', () => {
+      renderWithProviders(
+        <KanbanColumn {...defaultProps} status={'WEIRD' as TaskStatus} title="Odd" tasks={[]} />
+      );
+
+      // The unknown status resolves to the generic "no tasks" copy, a null icon and no header tint.
+      expect(screen.getByText('No tasks')).toBeInTheDocument();
+      expect(screen.getByRole('heading', { level: 3, name: /Odd/ })).toBeInTheDocument();
     });
   });
 });

@@ -28,6 +28,17 @@ vi.mock('./SMNotes.module.css', () => ({
     'char-counter-warning': 'char-counter-warning',
     actions: 'actions',
     'save-icon': 'save-icon',
+    history: 'history',
+    'history-icon': 'history-icon',
+    'history-panel': 'history-panel',
+    'history-status': 'history-status',
+    'history-list': 'history-list',
+    'history-item': 'history-item',
+    'history-meta': 'history-meta',
+    'history-revision': 'history-revision',
+    'history-author': 'history-author',
+    'history-time': 'history-time',
+    'history-content': 'history-content',
   },
 }));
 
@@ -391,6 +402,120 @@ describe('SMNotes Component', () => {
 
       await screen.findByText('Notes cannot be empty.');
       expect(screen.getByRole('textbox')).toHaveAttribute('aria-describedby', 'sm-notes-error');
+    });
+  });
+
+  describe('Revision history', () => {
+    const revisions = [
+      {
+        id: 'rev-2',
+        entityType: 'SPRINT' as const,
+        entityId: 'sprint-1',
+        revision: 2,
+        content: 'Second version of the notes',
+        createdBy: 'user-1',
+        authorName: 'Grace Hopper',
+        createdAt: '2026-09-22T16:00:00.000Z',
+      },
+      {
+        id: 'rev-1',
+        entityType: 'SPRINT' as const,
+        entityId: 'sprint-1',
+        revision: 1,
+        content: 'First version of the notes',
+        createdBy: 'user-1',
+        authorName: 'Grace Hopper',
+        createdAt: '2026-09-15T16:00:00.000Z',
+      },
+    ];
+
+    it('offers no history disclosure when no loader is provided', () => {
+      renderWithProviders(<SMNotes value="Notes" onSave={() => undefined} alwaysShow={false} />);
+
+      expect(screen.queryByRole('button', { name: /history/i })).not.toBeInTheDocument();
+    });
+
+    it('loads the trail only when the disclosure is opened', async () => {
+      const loadHistory = vi.fn().mockResolvedValue(revisions);
+      renderWithProviders(
+        <SMNotes
+          value="Notes"
+          onSave={() => undefined}
+          alwaysShow={false}
+          loadHistory={loadHistory}
+        />
+      );
+
+      // Nothing is fetched until the reader asks for the trail.
+      expect(loadHistory).not.toHaveBeenCalled();
+
+      fireEvent.click(screen.getByRole('button', { name: /^history$/i }));
+
+      expect(await screen.findByText('Second version of the notes')).toBeInTheDocument();
+      expect(loadHistory).toHaveBeenCalledTimes(1);
+      expect(screen.getByText('Revision 2')).toBeInTheDocument();
+      expect(screen.getAllByText('Grace Hopper')).toHaveLength(2);
+      expect(screen.getByText('First version of the notes')).toBeInTheDocument();
+    });
+
+    it('reports an empty trail as empty rather than as a failure', async () => {
+      const loadHistory = vi.fn().mockResolvedValue([]);
+      renderWithProviders(
+        <SMNotes
+          value="Notes"
+          onSave={() => undefined}
+          alwaysShow={false}
+          loadHistory={loadHistory}
+        />
+      );
+
+      fireEvent.click(screen.getByRole('button', { name: /^history$/i }));
+
+      expect(
+        await screen.findByText('No earlier version of these notes exists.')
+      ).toBeInTheDocument();
+    });
+
+    it('surfaces a failed history load without breaking the notes', async () => {
+      const loadHistory = vi.fn().mockRejectedValue(new Error('forbidden'));
+      renderWithProviders(
+        <SMNotes
+          value="Existing notes"
+          onSave={() => undefined}
+          alwaysShow={false}
+          loadHistory={loadHistory}
+        />
+      );
+
+      fireEvent.click(screen.getByRole('button', { name: /^history$/i }));
+
+      expect(
+        await screen.findByText('The revision history could not be loaded.')
+      ).toBeInTheDocument();
+      expect(screen.getByText('Existing notes')).toBeInTheDocument();
+    });
+
+    it('reloads the trail after a save so a new revision is visible', async () => {
+      const loadHistory = vi.fn().mockResolvedValue(revisions);
+      const onSave = vi.fn().mockResolvedValue(undefined);
+      renderWithProviders(
+        <SMNotes
+          value="Existing notes"
+          onSave={onSave}
+          alwaysShow={false}
+          loadHistory={loadHistory}
+        />
+      );
+
+      fireEvent.click(screen.getByRole('button', { name: /^history$/i }));
+      await screen.findByText('Second version of the notes');
+
+      fireEvent.click(screen.getByRole('button', { name: /edit/i }));
+      fireEvent.change(screen.getByRole('textbox'), { target: { value: 'Revised notes' } });
+      fireEvent.click(screen.getByRole('button', { name: /save/i }));
+
+      await waitFor(() => expect(onSave).toHaveBeenCalledWith('Revised notes'));
+      await waitFor(() => expect(loadHistory).toHaveBeenCalledTimes(2));
     });
   });
 });

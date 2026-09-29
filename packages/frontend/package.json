@@ -28,8 +28,10 @@
     "dev": "vite",
     "dev:test": "cross-env NODE_ENV=test vite --mode test",
     "build": "tsc -b && vite build",
+    "build:demo": "tsc -b && vite build --mode demo",
     "build:analyze": "tsc -b && vite build --mode analyze",
     "preview": "vite preview",
+    "preview:demo": "vite preview --mode demo",
     "serve": "vite preview --host",
     "clean": "rimraf dist coverage",
     "typecheck": "tsc --noEmit",
@@ -60,9 +62,9 @@
     "test:e2e:ci": "cross-env E2E_BROWSERS=desktop playwright test",
     "generate:icon-types": "tsx ../../scripts/utility/generate-icon-types.ts",
     "generate:icon-types:watch": "tsx ../../scripts/utility/generate-icon-types.ts --watch",
-    "build:github-pages": "tsc -b && vite build --mode production",
-    "preview:github-pages": "vite preview --mode production",
-    "serve:github-pages": "vite preview --mode production --host",
+    "build:github-pages": "tsc -b && vite build --mode demo",
+    "preview:github-pages": "vite preview --mode demo",
+    "serve:github-pages": "vite preview --mode demo --host",
     "i18n:extract:ast": "i18next-cli extract --config i18next.config.ts"
   },
   "dependencies": {
@@ -106,6 +108,7 @@
     "globals": "catalog:",
     "i18next-cli": "^1.67.0",
     "jsdom": "^29.1.1",
+    "msw": "^2.15.0",
     "prettier": "catalog:",
     "rimraf": "catalog:",
     "rollup-plugin-visualizer": "^7.0.1",
@@ -120,5 +123,10 @@
   },
   "engines": {
     "node": "^24.19.0"
+  },
+  "msw": {
+    "workerDirectory": [
+      "public"
+    ]
   }
 }

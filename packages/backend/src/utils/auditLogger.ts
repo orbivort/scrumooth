@@ -65,6 +65,8 @@ export const AuditEventTypes = {
   SPRINT: 'SPRINT',
   PROJECT: 'PROJECT',
   SESSION: 'SESSION',
+  RETROSPECTIVE: 'RETROSPECTIVE',
+  REPORTS: 'REPORTS',
 } as const;
 
 /**

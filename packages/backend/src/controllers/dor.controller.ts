@@ -53,8 +53,12 @@ export const getDoRHistory = asyncHandler(async (req: Request, res: Response) =>
     return res.status(400).json({ success: false, error: { message: 'Team ID is required' } });
   }
 
-  const dor = await definitionOfReadyService.getDefinitionOfReady(teamId);
-  return res.json(createSuccessResponse(dor ? [dor] : []));
+  // Append-only, like the Definition of Done's: every superseded version is preserved as a
+  // snapshot, and the live row is reported as the current version of the same list. The readiness
+  // agreement is enforced at the Sprint boundary, and an enforced agreement whose earlier versions
+  // vanished would be one a team could not inspect.
+  const versions = await definitionOfReadyService.getDoRVersionSnapshots(teamId);
+  return res.json(createSuccessResponse(versions));
 });
 
 export const verifyDoRForPBI = asyncHandler(async (req: Request, res: Response) => {
@@ -94,11 +98,18 @@ export const verifyDoRForPBI = asyncHandler(async (req: Request, res: Response) 
 
 export const getDoRVerificationsForPBI = asyncHandler(async (req: Request, res: Response) => {
   const id = getParamValue(req.params.id);
+  const userId = req.userId;
 
   if (!id) {
     return res.status(400).json({ success: false, error: { message: 'PBI ID is required' } });
   }
 
-  const verifications = await definitionOfReadyService.getDoRVerificationsForPBI(id);
+  if (!userId) {
+    return res.status(401).json({ success: false, error: { message: 'User not authenticated' } });
+  }
+
+  // The item's own team is not in the path, so membership is asserted in the service, where the
+  // team the item belongs to is known.
+  const verifications = await definitionOfReadyService.getDoRVerificationsForPBI(id, userId);
   return res.json(createSuccessResponse(verifications));
 });

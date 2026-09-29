@@ -15,10 +15,14 @@ import goalsRoutes from './routes/goals.routes';
 import workflowRoutes from './routes/workflow.routes';
 import sprintConfigurationRoutes from './routes/sprintConfiguration.routes';
 import dailyScrumRoutes from './routes/dailyScrum.routes';
+import dailyScrumScheduleRoutes from './routes/dailyScrumSchedule.routes';
 import incrementRoutes from './routes/increment.routes';
 import sprintReviewRoutes from './routes/sprintReview.routes';
 import retrospectiveRoutes from './routes/retrospective.routes';
 import impedimentRoutes from './routes/impediment.routes';
+import organizationalBarrierRoutes from './routes/organizationalBarrier.routes';
+import teamGroupRoutes from './routes/teamGroup.routes';
+import facilitationRoutes from './routes/facilitation.routes';
 import healthCheckRoutes from './routes/healthCheck.routes';
 import smDashboardRoutes from './routes/smDashboard.routes';
 import reportsRoutes from './routes/reports.routes';
@@ -186,6 +190,9 @@ v1Router.use('/sprint-configuration', sprintConfigurationRoutes);
 // Daily Scrum routes
 v1Router.use('/daily-scrums', dailyScrumRoutes);
 
+// Daily Scrum standing commitment (time, place, working-day calendar)
+v1Router.use('/daily-scrum-schedule', dailyScrumScheduleRoutes);
+
 // Increment routes
 v1Router.use('/increments', incrementRoutes);
 
@@ -199,6 +206,11 @@ v1Router.use('/health-checks', healthCheckRoutes);
 v1Router.use('/sprint-reviews', sprintReviewRoutes);
 v1Router.use('/retrospectives', retrospectiveRoutes);
 v1Router.use('/impediments', impedimentRoutes);
+v1Router.use('/organizational-barriers', organizationalBarrierRoutes);
+// The Scrum Teams working together on one product, and the Definition of Done they share.
+v1Router.use('/team-groups', teamGroupRoutes);
+// The Scrum Master's facilitation record: coaching log, working agreements, cross-functionality.
+v1Router.use('/facilitation', facilitationRoutes);
 v1Router.use('/reports', reportsRoutes);
 v1Router.use('/notifications', notificationRoutes);
 v1Router.use('/config', configRoutes);

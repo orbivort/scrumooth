@@ -5,6 +5,8 @@ import {
   createIncrement,
   updateIncrement,
   deliverIncrement,
+  attestUsability,
+  reconcileSprintIncrement,
   getIncrementMetrics,
 } from '../../../controllers/increment.controller';
 import { incrementService } from '../../../services/increment.service';
@@ -17,6 +19,8 @@ vi.mock('../../../services/increment.service', () => ({
     createIncrement: vi.fn(),
     updateIncrement: vi.fn(),
     deliverIncrement: vi.fn(),
+    attestUsability: vi.fn(),
+    reconcileSprintIncrement: vi.fn(),
     getIncrementMetrics: vi.fn(),
   },
 }));
@@ -29,6 +33,9 @@ describe('Increment Controller', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockReq = createMockRequest();
+    // The authenticated caller: every Increment operation is authorized against the team that
+    // owns the artifact, so the service always receives the actor.
+    (mockReq as { userId?: string }).userId = 'user-123';
     mockRes = createMockResponse();
     mockNext = createMockNext();
   });
@@ -44,7 +51,11 @@ describe('Increment Controller', () => {
       await new Promise((resolve) => setTimeout(resolve, 0));
 
       expect(mockNext).not.toHaveBeenCalled();
-      expect(incrementService.getIncrements).toHaveBeenCalledWith('team-123', undefined);
+      expect(incrementService.getIncrements).toHaveBeenCalledWith(
+        'team-123',
+        undefined,
+        'user-123'
+      );
       expect(mockRes._json).toEqual({
         success: true,
         data: mockIncrements,
@@ -60,7 +71,11 @@ describe('Increment Controller', () => {
       getIncrements(mockReq as any, mockRes as any, mockNext);
       await new Promise((resolve) => setTimeout(resolve, 0));
 
-      expect(incrementService.getIncrements).toHaveBeenCalledWith('team-123', 'sprint-456');
+      expect(incrementService.getIncrements).toHaveBeenCalledWith(
+        'team-123',
+        'sprint-456',
+        'user-123'
+      );
     });
 
     it('should handle service errors', async () => {
@@ -87,7 +102,7 @@ describe('Increment Controller', () => {
       await new Promise((resolve) => setTimeout(resolve, 0));
 
       expect(mockNext).not.toHaveBeenCalled();
-      expect(incrementService.getIncrementById).toHaveBeenCalledWith('inc-123');
+      expect(incrementService.getIncrementById).toHaveBeenCalledWith('inc-123', 'user-123');
       expect(mockRes._json).toEqual({
         success: true,
         data: mockIncrement,
@@ -102,6 +117,18 @@ describe('Increment Controller', () => {
 
       expect(mockNext).toHaveBeenCalledWith(expect.any(Error));
       expect((mockNext.mock.calls[0] as any)[0].message).toBe('Increment ID is required');
+    });
+
+    it('should reject an unauthenticated caller', async () => {
+      mockReq.params = { id: 'inc-123' };
+      (mockReq as { userId?: string }).userId = undefined;
+      mockReq.user = undefined;
+
+      getIncrementById(mockReq as any, mockRes as any, mockNext);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect((mockNext.mock.calls[0] as any)[0].statusCode).toBe(401);
+      expect(incrementService.getIncrementById).not.toHaveBeenCalled();
     });
 
     it('should handle service errors', async () => {
@@ -119,7 +146,6 @@ describe('Increment Controller', () => {
 
   describe('createIncrement', () => {
     it('should create a new increment', async () => {
-      mockReq.user = { id: 'user-123' };
       mockReq.body = { name: 'New Increment', teamId: 'team-123' };
       const mockIncrement = { id: 'inc-123', name: 'New Increment' };
 
@@ -138,6 +164,7 @@ describe('Increment Controller', () => {
     });
 
     it('should throw error when user is not authenticated', async () => {
+      (mockReq as { userId?: string }).userId = undefined;
       mockReq.user = undefined;
 
       createIncrement(mockReq as any, mockRes as any, mockNext);
@@ -148,7 +175,6 @@ describe('Increment Controller', () => {
     });
 
     it('should handle service errors', async () => {
-      mockReq.user = { id: 'user-123' };
       mockReq.body = { name: 'New Increment' };
       const error = new Error('Validation error');
 
@@ -173,7 +199,11 @@ describe('Increment Controller', () => {
       await new Promise((resolve) => setTimeout(resolve, 0));
 
       expect(mockNext).not.toHaveBeenCalled();
-      expect(incrementService.updateIncrement).toHaveBeenCalledWith('inc-123', mockReq.body);
+      expect(incrementService.updateIncrement).toHaveBeenCalledWith(
+        'inc-123',
+        'user-123',
+        mockReq.body
+      );
       expect(mockRes._json).toEqual({
         success: true,
         data: mockIncrement,
@@ -206,7 +236,6 @@ describe('Increment Controller', () => {
   describe('deliverIncrement', () => {
     it('should deliver an increment', async () => {
       mockReq.params = { id: 'inc-123' };
-      mockReq.user = { id: 'user-123' };
       mockReq.body = { deliveryMethod: 'DEMO', notes: 'Delivered via demo' };
       const mockIncrement = { id: 'inc-123', status: 'DELIVERED' };
 
@@ -218,9 +247,9 @@ describe('Increment Controller', () => {
       expect(mockNext).not.toHaveBeenCalled();
       expect(incrementService.deliverIncrement).toHaveBeenCalledWith(
         'inc-123',
+        'user-123',
         'DEMO',
-        'Delivered via demo',
-        'user-123'
+        'Delivered via demo'
       );
       expect(mockRes._json).toEqual({
         success: true,
@@ -230,7 +259,6 @@ describe('Increment Controller', () => {
 
     it('should throw error when ID is missing', async () => {
       mockReq.params = {};
-      mockReq.user = { id: 'user-123' };
 
       deliverIncrement(mockReq as any, mockRes as any, mockNext);
       await new Promise((resolve) => setTimeout(resolve, 0));
@@ -241,6 +269,7 @@ describe('Increment Controller', () => {
 
     it('should throw error when user is not authenticated', async () => {
       mockReq.params = { id: 'inc-123' };
+      (mockReq as { userId?: string }).userId = undefined;
       mockReq.user = undefined;
 
       deliverIncrement(mockReq as any, mockRes as any, mockNext);
@@ -252,7 +281,6 @@ describe('Increment Controller', () => {
 
     it('should handle service errors', async () => {
       mockReq.params = { id: 'inc-123' };
-      mockReq.user = { id: 'user-123' };
       const error = new Error('Cannot deliver increment');
 
       (incrementService.deliverIncrement as any).mockRejectedValue(error);
@@ -261,6 +289,65 @@ describe('Increment Controller', () => {
       await new Promise((resolve) => setTimeout(resolve, 0));
 
       expect(mockNext).toHaveBeenCalledWith(error);
+    });
+  });
+
+  describe('attestUsability', () => {
+    it('should record the usability attestation and return the Increment', async () => {
+      mockReq.params = { id: 'inc-123' };
+      mockReq.body = { evidence: 'Deployed to staging and exercised' };
+      const mockIncrement = {
+        id: 'inc-123',
+        usabilityVerified: true,
+        usabilityEvidence: 'Deployed to staging and exercised',
+      };
+
+      (incrementService.attestUsability as any).mockResolvedValue(mockIncrement);
+
+      attestUsability(mockReq as any, mockRes as any, mockNext);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(mockNext).not.toHaveBeenCalled();
+      expect(incrementService.attestUsability).toHaveBeenCalledWith(
+        'inc-123',
+        'user-123',
+        'Deployed to staging and exercised'
+      );
+      expect(mockRes._json).toEqual({ success: true, data: mockIncrement });
+    });
+
+    it('should throw error when ID is missing', async () => {
+      mockReq.params = {};
+
+      attestUsability(mockReq as any, mockRes as any, mockNext);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect((mockNext.mock.calls[0] as any)[0].message).toBe('Increment ID is required');
+    });
+  });
+
+  describe('reconcileSprintIncrement', () => {
+    it('should reconcile the Sprint Increment and return what changed', async () => {
+      mockReq.body = { teamId: 'team-123', sprintId: 'sprint-456' };
+      const mockResult = {
+        incrementId: 'inc-123',
+        addedPbiIds: ['pbi-1'],
+        skippedPbiIds: [],
+        totalStoryPoints: 5,
+      };
+
+      (incrementService.reconcileSprintIncrement as any).mockResolvedValue(mockResult);
+
+      reconcileSprintIncrement(mockReq as any, mockRes as any, mockNext);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(mockNext).not.toHaveBeenCalled();
+      expect(incrementService.reconcileSprintIncrement).toHaveBeenCalledWith(
+        'team-123',
+        'sprint-456',
+        'user-123'
+      );
+      expect(mockRes._json).toEqual({ success: true, data: mockResult });
     });
   });
 
@@ -279,7 +366,7 @@ describe('Increment Controller', () => {
       await new Promise((resolve) => setTimeout(resolve, 0));
 
       expect(mockNext).not.toHaveBeenCalled();
-      expect(incrementService.getIncrementMetrics).toHaveBeenCalledWith('team-123');
+      expect(incrementService.getIncrementMetrics).toHaveBeenCalledWith('team-123', 'user-123');
       expect(mockRes._json).toEqual({
         success: true,
         data: mockMetrics,

@@ -1,0 +1,70 @@
+{
+  "agreements": {
+    "active": "Attivo",
+    "add": "Aggiungi accordo",
+    "agreedAt": "Concordato",
+    "cancel": "Annulla",
+    "created": "Accordo aggiunto",
+    "createdBy": "Aggiunto da",
+    "edit": "Modifica",
+    "empty": "Nessun accordo di lavoro registrato.",
+    "hint": "Ogni membro del team può aggiungere o ritirare un accordo.",
+    "reactivate": "Riattiva",
+    "retire": "Ritira",
+    "retired": "Ritirato",
+    "retiredAt": "Ritirato il",
+    "retiredDisclosure": "Mostrare gli accordi ritirati ({{count}})",
+    "retiredGroup": "Accordi ritirati",
+    "save": "Salva",
+    "saved": "Accordo aggiornato",
+    "title": "Accordi",
+    "updatedBy": "Ultima modifica di"
+  },
+  "assessmentForm": {
+    "addSkill": "Aggiungi competenza",
+    "atLeastOneSkill": "Registra almeno una competenza.",
+    "cancel": "Annulla",
+    "removeSkill": "Rimuovi competenza",
+    "save": "Salva valutazione",
+    "saved": "Valutazione registrata",
+    "skillCoverage": "Copertura",
+    "skillName": "Competenza",
+    "skillNote": "Nota",
+    "skillRequired": "Ogni riga richiede un nome.",
+    "summary": "Ciò che il team ha concluso",
+    "title": "Valutazione della cross-funzionalità"
+  },
+  "crossFunctionality": {
+    "assessedAt": "Valutato il",
+    "assessedBy": "Registrato da",
+    "coverage": "Copertura",
+    "covered": "Coperta",
+    "empty": "Nessuna valutazione della cross-funzionalità registrata.",
+    "gaps": "Lacune",
+    "hint": "Le competenze che il team necesita e quanto le copre.",
+    "history": "Valutazioni precedenti",
+    "need": "Competenza necessaria",
+    "none": "Non coperta",
+    "note": "Nota",
+    "onlyScrumMaster": "Solo lo Scrum Master del team registra la valutazione.",
+    "openFacilitation": "Registrare o rivedere la valutazione",
+    "partial": "Parzialmente coperta",
+    "record": "Registra una valutazione",
+    "summary": "{{covered}} coperte · {{partial}} parziali · {{gaps}} non coperte",
+    "title": "Cross-funzionalità"
+  },
+  "errors": {
+    "delete": "Non è stato possibile annullare la modifica.",
+    "load": "Non è stato possibile caricare gli accordi di lavoro.",
+    "record": "Non è stato possibile registrare la valutazione.",
+    "save": "Non è stato possibile salvare la modifica."
+  },
+  "form": {
+    "createTitle": "Nuovo accordo di lavoro",
+    "description": "Ciò che il team ha concordato",
+    "descriptionRequired": "Descrivi ciò che il team ha concordato (almeno dieci caratteri).",
+    "editTitle": "Modifica accordo di lavoro",
+    "title": "Accordo",
+    "titleRequired": "Assegna all’accordo un titolo di almeno tre caratteri."
+  }
+}

@@ -17,6 +17,7 @@ import {
   ReorderIcon,
   ScissorsIcon,
   BellRingIcon,
+  PackageIcon,
 } from '../../components/common/Icons';
 
 import styles from './PendingAdjustments.module.css';
@@ -29,11 +30,7 @@ interface BacklogAdjustmentWithSprint extends BacklogAdjustment {
   };
 }
 
-interface PendingAdjustmentsProps {
-  onImplementAdd?: (adjustment: BacklogAdjustment) => void;
-}
-
-export const PendingAdjustments: React.FC<PendingAdjustmentsProps> = ({ onImplementAdd }) => {
+export const PendingAdjustments: React.FC = () => {
   const { currentTeam } = useTeamStore();
   const { t } = useTranslation('backlog');
   const { locale } = useI18nStore();
@@ -43,6 +40,9 @@ export const PendingAdjustments: React.FC<PendingAdjustmentsProps> = ({ onImplem
   const [filter, setFilter] = useState<'all' | 'add' | 'modify' | 'remove' | 'reorder' | 'split'>(
     'all'
   );
+  const [linkingAdjustmentId, setLinkingAdjustmentId] = useState<string | null>(null);
+  const [selectedPbiId, setSelectedPbiId] = useState('');
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const { data: adjustmentsData, isLoading } = useQuery({
     queryKey: ['pending-adjustments', teamId],
@@ -50,14 +50,53 @@ export const PendingAdjustments: React.FC<PendingAdjustmentsProps> = ({ onImplem
     enabled: !!teamId,
   });
 
+  // Only loaded when an adjustment is being linked, so the common case costs nothing.
+  const { data: backlogData } = useQuery({
+    queryKey: ['product-backlog', teamId, 'adjustment-link'],
+    queryFn: () => apiService.getProductBacklog(teamId ?? '', { limit: 200 }),
+    enabled: !!teamId && !!linkingAdjustmentId,
+  });
+
+  const invalidate = () => {
+    void queryClient.invalidateQueries({ queryKey: queryKeys.pendingAdjustments.all });
+    void queryClient.invalidateQueries({ queryKey: queryKeys.productBacklog.all });
+  };
+
+  const materializeMutation = useMutation({
+    mutationFn: (adjustmentId: string) => apiService.materializeAdjustment(adjustmentId),
+    onSuccess: () => {
+      setActionError(null);
+      invalidate();
+    },
+    onError: () => {
+      setActionError(t('pendingAdjustments.materializeFailed') as string);
+    },
+  });
+
+  const linkMutation = useMutation({
+    mutationFn: ({ adjustmentId, pbiId }: { adjustmentId: string; pbiId: string }) =>
+      apiService.linkAdjustmentToPbi(adjustmentId, pbiId),
+    onSuccess: () => {
+      setActionError(null);
+      setLinkingAdjustmentId(null);
+      setSelectedPbiId('');
+      invalidate();
+    },
+    onError: () => {
+      setActionError(t('pendingAdjustments.linkFailed') as string);
+    },
+  });
+
   const implementMutation = useMutation({
     mutationFn: (adjustmentId: string) => apiService.markAdjustmentImplemented(adjustmentId),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: queryKeys.pendingAdjustments.all });
+      setActionError(null);
+      invalidate();
     },
   });
 
   const adjustments = (adjustmentsData?.data ?? []) as BacklogAdjustmentWithSprint[];
+  const backlogItems = backlogData?.data ?? [];
 
   const filteredAdjustments =
     filter === 'all'
@@ -102,15 +141,29 @@ export const PendingAdjustments: React.FC<PendingAdjustmentsProps> = ({ onImplem
     );
   };
 
-  const handleImplement = (adjustment: BacklogAdjustment) => {
-    if (adjustment.action === 'add' && onImplementAdd) {
-      onImplementAdd(adjustment);
-    } else {
-      implementMutation.mutate(adjustment.id);
+  const isBusy =
+    materializeMutation.isPending || linkMutation.isPending || implementMutation.isPending;
+
+  const handleMaterialize = (adjustment: BacklogAdjustment) => {
+    setActionError(null);
+    materializeMutation.mutate(adjustment.id);
+  };
+
+  const handleStartLink = (adjustmentId: string) => {
+    setActionError(null);
+    setSelectedPbiId('');
+    setLinkingAdjustmentId(adjustmentId);
+  };
+
+  const handleConfirmLink = (adjustmentId: string) => {
+    if (!selectedPbiId) {
+      return;
     }
+    linkMutation.mutate({ adjustmentId, pbiId: selectedPbiId });
   };
 
   const handleMarkImplemented = (adjustmentId: string) => {
+    setActionError(null);
     implementMutation.mutate(adjustmentId);
   };
 
@@ -160,6 +213,12 @@ export const PendingAdjustments: React.FC<PendingAdjustmentsProps> = ({ onImplem
             })}
           </div>
 
+          {actionError && (
+            <div className={styles['action-error']} role="alert">
+              {actionError}
+            </div>
+          )}
+
           {isLoading ? (
             <LoadingState
               variant="skeleton-list"
@@ -170,6 +229,7 @@ export const PendingAdjustments: React.FC<PendingAdjustmentsProps> = ({ onImplem
             <div className={styles['adjustments-list']}>
               {filteredAdjustments.map((adjustment: BacklogAdjustmentWithSprint) => {
                 const config = getActionConfig(adjustment.action);
+                const isLinking = linkingAdjustmentId === adjustment.id;
                 return (
                   <div key={adjustment.id} className={styles['adjustment-card']}>
                     <div className={styles['card-header']}>
@@ -195,21 +255,74 @@ export const PendingAdjustments: React.FC<PendingAdjustmentsProps> = ({ onImplem
                       </div>
                     )}
 
+                    {isLinking && (
+                      <div className={styles['link-picker']}>
+                        <label htmlFor={`link-pbi-${adjustment.id}`}>
+                          {t('pendingAdjustments.linkSelectLabel') as string}
+                        </label>
+                        <select
+                          id={`link-pbi-${adjustment.id}`}
+                          value={selectedPbiId}
+                          onChange={(event) => setSelectedPbiId(event.target.value)}
+                        >
+                          <option value="">
+                            {t('pendingAdjustments.linkSelectPlaceholder') as string}
+                          </option>
+                          {backlogItems.map((item) => (
+                            <option key={item.id} value={item.id}>
+                              {item.title}
+                            </option>
+                          ))}
+                        </select>
+                        <div className={styles['link-picker-actions']}>
+                          <button
+                            className={styles['implement-button']}
+                            onClick={() => handleConfirmLink(adjustment.id)}
+                            disabled={!selectedPbiId || linkMutation.isPending}
+                          >
+                            {t('pendingAdjustments.linkConfirm') as string}
+                          </button>
+                          <button
+                            className={styles['mark-implemented-button']}
+                            onClick={() => {
+                              setLinkingAdjustmentId(null);
+                              setSelectedPbiId('');
+                            }}
+                            disabled={linkMutation.isPending}
+                          >
+                            {t('pendingAdjustments.linkCancel') as string}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
                     <div className={styles['card-actions']}>
-                      {adjustment.action === 'add' && onImplementAdd && (
+                      {adjustment.action === 'add' && (
                         <button
                           className={styles['implement-button']}
-                          onClick={() => handleImplement(adjustment)}
+                          onClick={() => handleMaterialize(adjustment)}
+                          disabled={isBusy}
                         >
-                          {t('pendingAdjustments.createItem') as string}
+                          {materializeMutation.isPending &&
+                          materializeMutation.variables === adjustment.id
+                            ? (t('pendingAdjustments.updating') as string)
+                            : (t('pendingAdjustments.createItem') as string)}
                         </button>
                       )}
                       <button
+                        className={styles['link-button']}
+                        onClick={() => handleStartLink(adjustment.id)}
+                        disabled={isBusy}
+                      >
+                        <PackageIcon size={14} /> {t('pendingAdjustments.linkExisting') as string}
+                      </button>
+                      <button
                         className={styles['mark-implemented-button']}
                         onClick={() => handleMarkImplemented(adjustment.id)}
-                        disabled={implementMutation.isPending}
+                        disabled={isBusy}
                       >
-                        {implementMutation.isPending
+                        {implementMutation.isPending &&
+                        implementMutation.variables === adjustment.id
                           ? (t('pendingAdjustments.updating') as string)
                           : (t('pendingAdjustments.markDone') as string)}
                       </button>

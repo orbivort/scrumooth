@@ -20,6 +20,73 @@
       "nameRequired": "[Téàm nàmé ís réqúírédddddddd]"
     }
   },
+  "dailyScrumSchedule": {
+    "backToDailyScrum": "[Bàck tó Dàíly Scrúmmmmmmm]",
+    "cadence": {
+      "location": "[Róóm ór plàcééééé]",
+      "locationPlaceholder": "[é.g. Méétíng róómmmmmmm 4]",
+      "locationUrl": "[Méétíng línkkkkk]",
+      "nextMeeting": "[Néxt Dàíly Scrúmmmmmmm: {{date}} ààtt {{time}} ({{timezone}})]",
+      "noWorkingDays": "[Séléct àt léàst óné wórkíng dày tó séé whén thé téàm néxt méétsssssssssssssssssssss.]",
+      "placeHint": "[Récórd à róóm, à línk, ór bóth. Óné óf thé twó ís réqúíréddddddddddddddddddd.]",
+      "preview": "[Thé évént ópéns àttttttt {{time}} lócàl tímééééé.]",
+      "startTime": "[Stàrt tíméééé]",
+      "timezone": "[Tímé zónéééé]",
+      "timezoneHint": "[Thé stàrt tímé ís wàll-clóck tímé ín thís zónéééééééééééééééé.]",
+      "title": "[Tímé ànd plàcéééééé]"
+    },
+    "exceptions": {
+      "add": "[ÀÀdddd ddàày]",
+      "date": "[DDààtté]",
+      "empty": "[Nó éxcéptíóns récórdéd fór thís yéàr. Àdd óné ónly whén à dày dífférs fróm thé wéékly pàttérn àbóvé — à públíc hólídày, à cómpàny dày óff, ór à téàm óffsítééééééééééééééééééééééééééééééééééééééééééééééééé.]",
+      "name": "[NNààmmé]",
+      "namePlaceholder": "[é.g. Públíc hólídàyyyyyyy]",
+      "removeLabel": "[Rémóvé thé éxcéptíón ónnnnnnnnn {{date}}]",
+      "title": "[Nón-wórkíng dàys ínnnnnnn {{year}}]",
+      "unnamed": "[Nón-wórkíng dàyyyyyy]"
+    },
+    "footnote": "[Thé Dàíly Scrúm ís à 15-mínúté évént, só ónly íts stàrt ís cónfígúréd. Thé téàm càn stíll hóld thé évént ón àny dày; thé càléndàr ínfórms, ít dóés nót réstrícttttttttttttttttttttttttttttttttttttttttttttttttt.]",
+    "loading": "[Lóàdíng thé téàm's Dàíly Scrúm schédúléééééééééééééé...]",
+    "readOnlyNote": "[Ónly thé Scrúm Màstér càn chàngé thís schédúlé. Yóú àré sééíng thé cómmítmént thé téàm ís wórkíng tóóóóóóóóóóóóóóóóóóóóóóóóóóóóóóóó.]",
+    "saveBar": {
+      "reset": "[Réséttt]",
+      "save": "[Sàvé schédúlééééé]",
+      "saved": "[Nó únsàvéd chàngésssssss]",
+      "unsaved": "[Únsàvéd chàngéssssss]"
+    },
+    "subtitle": "[Thé Dàíly Scrúm ís héld àt thé sàmé tímé ànd plàcé évéry wórkíng dày. Récórd thàt stàndíng cómmítmént héré só thé téàm — ànd íts répórts — wórk fróm thé sàmé càléndàrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr.]",
+    "title": "[Dàíly Scrúm Schédúlééééééé]",
+    "toast": {
+      "exceptionAddFailed": "[Cóúld nót récórd thàt dàyyyyyyyyy.]",
+      "exceptionAdded": "[Nón-wórkíng dày récórdéddddddddd.]",
+      "exceptionRemoveFailed": "[Cóúld nót rémóvé thàt dàyyyyyyyyy.]",
+      "exceptionRemoved": "[Nón-wórkíng dày rémóvéddddddddd.]",
+      "saveFailed": "[Cóúld nót sàvé thé schédúléééééééééé.]",
+      "saved": "[Dàíly Scrúm schédúlé sàvédddddddddd.]"
+    },
+    "validation": {
+      "placeRequired": "[Récórd à róóm, à méétíng línk, ór bóthhhhhhhhhhhhh.]",
+      "timeInvalid": "[Éntér à vàlíd stàrt tímééééééééé.]",
+      "timezoneInvalid": "[Chóósé à tímé zóné thé systém récógníséssssssssssssss.]",
+      "workingDayRequired": "[Séléct àt léàst óné wórkíng dàyyyyyyyyyyy.]"
+    },
+    "weekdays": {
+      "friday": "[Fríí]",
+      "monday": "[Mónn]",
+      "saturday": "[Sàtt]",
+      "sunday": "[Súnn]",
+      "thursday": "[Thúú]",
+      "tuesday": "[Túéé]",
+      "wednesday": "[Wédd]"
+    },
+    "workingWeek": {
+      "legend": "[Wórkíng dàys óf thé wéékkkkkkkkk]",
+      "noneSelected": "[Nó wórkíng dàys séléctéd. Thé càléndàr hàs nóthíng tó cóúnttttttttttttttttttt.]",
+      "summary_one": "[Thé téàm wórkssssss {{count}} ddààyy àà wwéééék.]",
+      "summary_other": "[Thé téàm wórkssssss {{count}} dàys à wéékkkkk.]",
+      "title": "[Wórkíng wéékkkkk]"
+    }
+  },
   "definitionEditor": {
     "activeItems": "[{{count}} àctívé ítémsssss]",
     "activeItems_one": "[{{count}} àctívé ítémmmmm]",
@@ -62,16 +129,68 @@
       "technical": "[Téchnícàllll]",
       "value": "[Vàlúééé]"
     },
-    "dorInfo": "[Thé Défínítíón óf Réàdy ís à chécklíst óf crítéríà thàt à úsér stóry múst méét béfóré ít càn bé tàkén íntó à sprínt. Ít énsúrés thàt thé téàm hàs énóúgh ínfórmàtíón tó cómplété thé wórk súccéssfúllyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy.]",
+    "dorInfo": "[Thé Défínítíón óf Réàdy ís thís téàm's ówn déclàréd pràctícé, nót à Scrúm Gúídé àrtífàct: thé Gúídé nàmés thréé àrtífàcts ànd nóné óf thém ís à réàdínéss chécklíst. Thé téàm's Scrúm Màstér màíntàíns ít, ànd Scrúmóóth énfórcés ít àt thé Sprínt bóúndàryyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy.]",
     "editTitle": "[ÉÉddíít {{label}}]",
     "empty": "[NNó {{shortLabel}} ítéms yét. Àdd yóúr fírst crítéríón àbóvéééééééééééééé.]",
     "inactive": "[{{count}} ínàctívéééé]",
     "inactive_one": "[{{count}} ínàctívéééé]",
     "inactive_other": "[{{count}} ínàctívéééé]",
     "newItemPlaceholder": "[Éntér néwwww {{shortLabel}} crítéríónnnnn...]",
+    "noActiveWarning": "[À défínítíón múst kéép àt léàst óné àctívé crítéríón. Réàctívàté óné, ór àdd à néw óné, béfóré sàvíngggggggggggggggggggggggggggggggg.]",
     "saveChanges": "[Sàvé Chàngésssss]",
     "saving": "[SSààvvíínng...]",
     "unsavedWarning": "[Yóú hàvé únsàvéd chàngésssssssss]"
+  },
+  "definitionHistory": {
+    "authorUnknown": "[Àúthór nót récórdéddddddd]",
+    "changedBy": "[Chàngéd byyyyy {{name}}]",
+    "close": "[Clósééé]",
+    "current": "[Cúrréntttt]",
+    "empty": "[Nó vérsíón óf thís àgréémént hàs béén récórdéd yéttttttttttttttttt.]",
+    "error": "[Thé vérsíón hístóry cóúld nót bé lóàdéddddddddddddd.]",
+    "loading": "[Lóàdíng vérsíón hístóryyyyyyyyy…]",
+    "noActiveCriteria": "[Thís vérsíón héld nó àctívé crítéríónnnnnnnnnnnnn.]",
+    "retry": "[Rétryyy]",
+    "title": "[Vérsíón hístóryyyyyy]",
+    "versionLabel": "[vv{{version}}]"
+  },
+  "definitionNav": {
+    "label": "[Ín thís àgrééménttttttt]",
+    "sectionWithCount": "[{{name}} — {{count}} àctívé ítémsssss]",
+    "sectionWithCount_one": "[{{name}} — {{count}} àctívé ítémmmmm]",
+    "sectionWithCount_other": "[{{name}} — {{count}} àctívé ítémsssss]"
+  },
+  "definitionScope": {
+    "adoptAction": "[ÀÀddóópptt v{{version}}]",
+    "adoptDisclosure": "[Àdópt à shàréd DóDDDDDDD]",
+    "adoptHint": "[Whén sévéràl Scrúm Téàms wórk ón óné pródúct, théy múst défíné ànd cómply wíth thé sàmé Défínítíón óf Dónéééééééééééééééééééééééééééééééééé.]",
+    "adoptTitle": "[Àdópt à shàréd Défínítíón óf Dónééééééééééé]",
+    "adoptedAt": "[Àdóptéd vvvv{{version}} óónn {{date}}.]",
+    "chooseLabel": "[Téàm gróúpppp]",
+    "drift": "[Thís téàm àdóptéd vvvvvvv{{adopted}} àànndd v{{current}} ís ín fórcééééé.]",
+    "groupHint": "[Thís téàm wórks ón óné pródúct wíth thé óthér téàms ínnnnnnnnnnnnnnnnnn {{name}}, só ít cómplíés wíth thé Défínítíón óf Dóné théy shàréééééééééééééééééé.]",
+    "groupTitle": "[Shàréd wíthhhhh {{name}} · {{count}} ttééààmms.]",
+    "hideReviewLink": "[Hídé thé shàréd àgrééménttttttttt]",
+    "joinFailed": "[Thé gróúp cóúld nót bé àdóptéddddddddddd.]",
+    "leave": "[Léàvé thé gróúpppppp]",
+    "leaveFailed": "[Thé gróúp cóúld nót bé léftttttttttt.]",
+    "leaveMessage": "[Thís téàm kééps thé Défínítíón óf Dóné ít hàs béén cómplyíng wíth ànd càn thén chàngé ít ón íts ównnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn.]",
+    "leaveTitle": "[Léàvééé {{name}}?]",
+    "manageDisclosure": "[Révíéw ór léàvéééééé]",
+    "manageLink": "[Mànàgé thís gróúp ín séttíngssssssssss]",
+    "mutualBody": "[Thé téàms mútúàlly défíné thís cómmítmént by àdóptíng à nàméd vérsíón whén théy jóín. À chàngé màdé àftérwàrds ís shówn héré úntíl thís téàm àdópts thé néw vérsíónnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn.]",
+    "mutualTitle": "[Mútúàlly défínédddddd]",
+    "readOnlyNote": "[Màíntàínéd by thé Pródúct Ównér ór Scrúm Màstér óf à téàm ínnnnnnnnnnnnnnnnnnnn {{name}}.]",
+    "reviewAction": "[Révíéwww]",
+    "reviewCurrentAction": "[Révíéw thé cúrrént vérsíónnnnnnnnn]",
+    "reviewLabel": "[Thé Défínítíón óf Dóné évéry téàm ínnnnnnnnnnnnn {{name}} cómplíés wíthhhhhh]",
+    "reviewLink": "[Révíéw thé shàréd àgrééméntttttttttt]",
+    "teamHint": "[Àny téàm mémbér càn chàngé ítttttttttt.]",
+    "teamTitle": "[Yóúr téàm ówns thís àgrééméntttttttttt.]"
+  },
+  "definitionStates": {
+    "inactiveMessage": "[Évéry crítéríón ís cúrréntly déàctívàtéd. Réàctívàté óné, ór àdd à néw óné, béfóré sàvíngggggggggggggggggggggggggggg.]",
+    "inactiveTitle": "[Nó àctívé crítéríààààààà]"
   },
   "deleteTeamModal": {
     "awaitingConfirmation": "[Àwàítíng cónfírmàtíónnnnnnnn]",
@@ -142,14 +261,15 @@
     "editButton": "[Édít DóDDDD]",
     "empty": {
       "configureButton": "[Cónfígúré DóDDDDD]",
-      "message": "[Cónfígúré yóúr téàm's Défínítíón óf Dóné crítéríàààààààààààààààà.]",
-      "title": "[Nó Àctívé DóD Ítémsssssss]"
+      "message": "[À Sprínt cànnót bé cómmíttéd ór stàrtéd wíthóút àt léàst óné crítéríón, ànd nó ítém càn bé màrkéd Dóné úntíl évéry àctívé crítéríón ís vérífíéddddddddddddddddddddddddddddddddddddddddddddd.]",
+      "title": "[Nó Défínítíón óf Dóné yéttttttttt]"
     },
     "error": {
-      "message": "[Únàblé tó lóàd Défínítíón óf Dóné. Úsíng défàúlt ítéms ínstéàdddddddddddddddddddd.]",
+      "message": "[Únàblé tó lóàd thé Défínítíón óf Dónééééééééééééé.]",
       "retry": "[Rétryyy]",
       "title": "[Fàíléd tó Lóàdddddd]"
     },
+    "groupEditBanner": "[Évéry téàm ínnnnnn {{name}} cómplíés wíth thís Défínítíón óf Dóné. Sàvíng àpplíés thé chàngé tó àllllllllllllllllllllllll {{count}} téàms àt óncé ànd íncréménts thé shàréd vérsíónnnnnnnnnnnnnnnn.]",
     "inactive": "[{{count}} ínàctívéééé]",
     "inactive_one": "[{{count}} ínàctívéééé]",
     "inactive_other": "[{{count}} ínàctívéééé]",
@@ -162,10 +282,6 @@
     },
     "lastUpdated": "[Làst úpdàtéddddd:]",
     "loading": "[Lóàdíng Défínítíón óf Dónéééééééééé...]",
-    "noTeam": {
-      "message": "[Pléàsé séléct à téàm tó víéw ànd mànàgé thé Défínítíón óf Dónéééééééééééééééééééé.]",
-      "title": "[Nó Téàm Séléctédddddd]"
-    },
     "shortLabel": "[DóDD]",
     "title": "[Défínítíón óf Dónééééééé]",
     "toast": {
@@ -191,19 +307,19 @@
     "inactive_other": "[{{count}} ínàctívéééé]",
     "item": {
       "acceptanceCriteria": "[Àccéptàncé crítéríà défínéd ànd àgrééddddddddddddd]",
-      "acceptanceCriteriaDefined": "[Àccéptàncé crítéríà défínédddddddddd]",
       "businessValue": "[Búsínéss vàlúé àssígnédddddddd]",
       "clearTitle": "[Cléàr títlé ànd déscríptíón próvídédddddddddddd]",
       "dependencies": "[Dépéndéncíés ídéntífíéd ànd dócúméntéddddddddddddd]",
-      "dependenciesIdentified": "[Dépéndéncíés ídéntífíédddddddd]",
       "noBlockers": "[Nó blóckérs ór ímpédíméntsssssssss]",
-      "storyPointsEstimated": "[Stóry póínts éstímàtéd by thé téàmmmmmmmmmmmm]",
-      "storyPointsEstimatedOld": "[Stóry póínts éstímàtédddddddd]",
-      "userStoryWritten": "[Úsér stóry cléàrly wrítténnnnnnnnn]"
+      "storyPointsEstimated": "[Stóry póínts éstímàtéd by thé téàmmmmmmmmmmmm]"
     },
     "lastUpdated": "[Làst úpdàtéddddd:]",
     "loading": "[Lóàdíng Défínítíón óf Réàdyyyyyyyyyy...]",
-    "noTeam": "[Pléàsé séléct à téàm tó víéw Défínítíón óf Réàdyyyyyyyyyyyyyyyy.]",
+    "practice": {
+      "message": "[Ít ís nót óné óf thé thréé àrtífàcts óf thé 2020 Scrúm Gúídé — thé Pródúct Bàcklóg, thé Sprínt Bàcklóg ànd thé Íncrémént — só Scrúmóóth làbéls ít à cómpléméntàry pràctícé. Ít ís stíll énfórcéd: à Sprínt Bàcklóg cànnót bé cómmíttéd, ànd à Sprínt cànnót stàrt, whílé à séléctéd ítém hàs àn únvérífíéd crítéríón. Téàm mémbérs récórd thé vérífícàtíóns; thé téàm's Scrúm Màstér màíntàíns thís àgrééménttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttt.]",
+      "scrumMasterOnly": "[Thé téàm's Scrúm Màstér màíntàíns thís àgrééméntttttttttttttttt.]",
+      "title": "[Cómpléméntàry pràctícé, nót à Gúídé àrtífàcttttttttttttttt.]"
+    },
     "retry": "[Rétryyy]",
     "shortLabel": "[DóRR]",
     "title": "[Défínítíón óf Réàdyyyyyyy]",
@@ -391,16 +507,85 @@
     "COMPLETED": "[Cómplétédddd]",
     "PLANNED": "[Plànnédddd]"
   },
-  "teamDefinitions": {
-    "ariaLabels": {
-      "definitionTabs": "[Défínítíón tàbssssss]"
+  "teamGroups": {
+    "delete": {
+      "message": "[Thé gróúp, íts róstér ànd íts shàréd Défínítíón óf Dóné àré rémóvéd. Thís cànnót bé úndónééééééééééééééééééééééééééééé.]",
+      "title": "[DDéélléétté {{name}}?]"
     },
-    "subtitle": "[Cónfígúré yóúr téàm's Défínítíón óf Réàdy ànd Défínítíón óf Dóné crítéríààààààààààààààààààààààà]",
-    "tabs": {
-      "definitionOfDone": "[Défínítíón óf Dónééééééé]",
-      "definitionOfReady": "[Défínítíón óf Réàdyyyyyyy]"
+    "detail": {
+      "delete": "[Délété Gróúppppp]",
+      "deleteBlocked": "[À gróúp cànnót bé rémóvéd whílé téàms stíll cómply wíth íts Défínítíón óf Dóné — thàt wóúld tàké théír cómmítmént àwày ràthér thàn móvé thém tó ànóthér óné. Évéry téàm hàs tó léàvé fírstttttttttttttttttttttttttttttttttttttttttttttttttttttttttt.]",
+      "readOnlyNotice": "[Yóú càn réàd thís cómmítmént, bút yóú dó nót léàd à téàm ín thís gróúp. Íts téàms màíntàín ít fróm théír Défínítíón tàbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb.]",
+      "rename": "[Rénàmééé]"
     },
-    "title": "[Téàm Défínítíónssssss]"
+    "directoryAriaLabel": "[Téàm gróúpsssss]",
+    "directoryHeading": "[Gróúpsss]",
+    "empty": {
+      "action": "[Créàté thé fírst gróúpppppppp]",
+      "description": "[Íf sévéràl Scrúm Téàms wórk ón óné pródúct, théy múst cómply wíth thé sàmé Défínítíón óf Dóné. À gróúp ís hów théy hóld thàt óné cómmítmént — créàté ít, ànd éàch téàm àdópts íttttttttttttttttttttttttttttttttttttttttttttttttttttttt.]",
+      "title": "[Nó téàm gróúps yéttttttt]"
+    },
+    "form": {
+      "beforeUnload": "[Yóú hàvé únsàvéd chàngés tó thís téàm gróúppppppppppppppp.]",
+      "cancel": "[Càncélll]",
+      "close": "[Clósééé]",
+      "create": "[Créàté Gróúppppp]",
+      "createTitle": "[Créàté à téàm gróúppppppp]",
+      "description": "[Déscríptíónnnnn]",
+      "descriptionMaxLength": "[Thé déscríptíón múst bé 500 chàràctérs ór lésssssssssssssssss.]",
+      "descriptionPlaceholder": "[Twó téàms, óné pródúct, óné Défínítíón óf Dónéééééééééééééééé.]",
+      "editTitle": "[ÉÉddíít {{name}}]",
+      "name": "[NNààmmé]",
+      "nameMaxLength": "[Thé nàmé múst bé 100 chàràctérs ór léssssssssssssss.]",
+      "namePlaceholder": "[é.g., Pàyménts Pródúctttttttt]",
+      "nameRequired": "[À nàmé ís réqúíréddddddd.]",
+      "optional": "[Óptíónàllll]",
+      "save": "[Sàvé Chàngésssss]",
+      "subtitle": "[À gróúp ís thé Scrúm Téàms thàt wórk tógéthér ón óné pródúct, bóúnd tó thé óné Défínítíón óf Dóné ít ównsssssssssssssssssssssssssssssssss.]"
+    },
+    "groupCount": "[{{count}} ggrróóúúpps]",
+    "groupCount_one": "[{{count}} gróúppp]",
+    "groupCount_other": "[{{count}} ggrróóúúpps]",
+    "groupLoadError": "[Thís gróúp cóúld nót bé lóàdéd. Íts róstér mày hàvé chàngéd whílé yóú wéré réàdíng íttttttttttttttttttttttttttt.]",
+    "listAriaLabel": "[Téàm gróúpsssss]",
+    "loadError": "[Thé téàm gróúps cóúld nót bé lóàdédddddddddddd.]",
+    "loading": "[Lóàdíng téàm gróúpssssssss...]",
+    "meta": {
+      "sharedVersion": "[Shàréd vérsíónnnnnn]",
+      "teams": "[Téàmsss]"
+    },
+    "newGroup": "[Néw Gróúpppp]",
+    "roster": {
+      "adopted": "[Àdóptédddd]",
+      "caption": "[Téàms cómplyíng wíth thé shàréd Défínítíón óf Dóné óffffffffffffffffff {{name}}]",
+      "drift": "[Àdóptéd vvvv{{adopted}} — vvv{{current}} ís ín fórcééééé]",
+      "empty": "[Nó téàm hàs jóínéd thís gróúp yétttttttttttt.]",
+      "inStep": "[ÍÍnn ssttéép]",
+      "joined": "[Jóínéddd]",
+      "notRecorded": "[Nót récórdéddddd]",
+      "status": "[Stàtússs]",
+      "team": "[TTééààm]",
+      "title": "[Téàmsss]",
+      "unknown": "[—]"
+    },
+    "selectPrompt": "[Chóósé à gróúp tó séé thé téàms thàt cómply wíth íts Défínítíón óf Dónééééééééééééééééééééééé.]",
+    "sharedDoD": {
+      "delegated": "[Évéry téàm ín thís gróúp réàds ànd chàngés thís Défínítíón óf Dóné ón íts ówn Défínítíón tàb, whéré àll óf íts crítéríà àré shównnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn.]",
+      "openAction": "[Réàd ànd chàngé ít ón My Téàmmmmmmmmmm]",
+      "title": "[Défínítíón óf Dónééééééé]",
+      "updated": "[Úpdàtédddd {{date}}]"
+    },
+    "subtitle": "[Thé Scrúm Téàms thàt wórk ón óné pródúct, ànd thé óné Défínítíón óf Dóné théy àll cómply wíthhhhhhhhhhhhhhhhhhhhhhhhhhhhhh.]",
+    "teamCount": "[{{count}} téàmsss]",
+    "teamCount_one": "[{{count}} ttééààm]",
+    "teamCount_other": "[{{count}} téàmsss]",
+    "title": "[Téàm Gróúpsssss]",
+    "toast": {
+      "created": "[Thé téàm gróúp wàs créàtédddddddddd.]",
+      "deleted": "[Thé téàm gróúp wàs rémóvédddddddddd.]",
+      "updated": "[Thé téàm gróúp wàs úpdàtédddddddddd.]"
+    },
+    "versionShort": "[vv{{version}}]"
   },
   "teamList": {
     "ariaLabel": "[Téàmsss]",
@@ -456,11 +641,11 @@
       "deleteTeam": "[Yóú dó nót hàvé pérmíssíón tó délété thís téàmmmmmmmmmmmmmmmm.]",
       "editTeam": "[Yóú dó nót hàvé pérmíssíón tó édít thís téàmmmmmmmmmmmmmmm.]"
     },
-    "subtitle": "[Créàté ànd mànàgé téàms àcróss thé órgànízàtíónnnnnnnnnnnnnnnn]",
+    "subtitle": "[Évéry téàm ín thé órgànízàtíón. Ànyóné càn lóók ànd créàté óné; ónly íts Pródúct Ównér ór Scrúm Màstér càn chàngé ór rémóvé ítttttttttttttttttttttttttttttttttttttttt.]",
     "teamCount": "[{{count}} ttééààm]",
     "teamCount_one": "[{{count}} ttééààm]",
     "teamCount_other": "[{{count}} téàmsss]",
-    "title": "[Téàm Mànàgéméntttttt]",
+    "title": "[Àll Téàmssss]",
     "toast": {
       "cannotDeleteWithGoals": "[Cànnót délété téàm wíth éxístíng pródúct góàlsssssssssssssss]",
       "teamCreateFailed": "[Fàíléd tó créàté téàmmmmmmmm]",

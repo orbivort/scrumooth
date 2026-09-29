@@ -5,6 +5,7 @@ import { describe, it, expect, afterEach } from 'vitest';
 import request from 'supertest';
 import app from '../../app';
 import prisma from '../../utils/prisma';
+import config from '../../config';
 import { generateUUIDv7 } from '../../utils/uuid';
 import bcrypt from 'bcrypt';
 import { CSRF_CONSTANTS } from '../../middleware/csrf.middleware';
@@ -531,6 +532,121 @@ describe('Team Management Integration Tests', () => {
         .expect(404);
 
       expect(response.body.success).toBe(false);
+    });
+
+    it('lets exactly one of two simultaneous Product Owner adds through', async () => {
+      // The report's own scenario: two requests that each read "no Product Owner yet" before either
+      // writes. Read-then-write outside a serializable transaction, both insert and the Guide's
+      // "the Product Owner is one person, not a committee" is violated with nothing to catch it.
+      const adminEmail = `admin-race-po-${uniqueId()}@example.com`;
+      const firstEmail = `race-po-first-${uniqueId()}@example.com`;
+      const secondEmail = `race-po-second-${uniqueId()}@example.com`;
+      testEmails.push(adminEmail, firstEmail, secondEmail);
+
+      const admin = await createTestUserInDb(adminEmail);
+      await createTestUserInDb(firstEmail);
+      await createTestUserInDb(secondEmail);
+
+      const teamName = `Race Product Owner Team ${uniqueId()}`;
+      testTeams.push(teamName);
+
+      const team = await createTestTeam(teamName);
+      await addTeamMember(team.id, admin.id, 'SCRUM_MASTER');
+
+      const cookies = await loginAndGetCookies(adminEmail);
+      const { csrfToken } = extractCsrfFromCookies(cookies);
+
+      const addProductOwner = (email: string) =>
+        request(app)
+          .post(`/api/v1/teams/${team.id}/members`)
+          .set('Cookie', cookies)
+          .set(CSRF_CONSTANTS.HEADER_NAME, csrfToken)
+          .send({ email, role: 'PRODUCT_OWNER' });
+
+      const [first, second] = await Promise.all([
+        addProductOwner(firstEmail),
+        addProductOwner(secondEmail),
+      ]);
+
+      expect([first.status, second.status].sort()).toEqual([201, 409]);
+
+      const refusal = first.status === 409 ? first : second;
+      expect(refusal.body.error.code).toBe('GATE_LEADERSHIP_ROLE_TAKEN');
+
+      const owners = await prisma.teamMember.count({
+        where: { teamId: team.id, role: 'PRODUCT_OWNER' },
+      });
+      expect(owners).toBe(1);
+    });
+
+    it('never lets the team grow past its maximum when two adds race', async () => {
+      const adminEmail = `admin-race-size-${uniqueId()}@example.com`;
+      const firstEmail = `race-size-first-${uniqueId()}@example.com`;
+      const secondEmail = `race-size-second-${uniqueId()}@example.com`;
+      testEmails.push(adminEmail, firstEmail, secondEmail);
+
+      const admin = await createTestUserInDb(adminEmail);
+      await createTestUserInDb(firstEmail);
+      await createTestUserInDb(secondEmail);
+
+      const teamName = `Race Team Size Team ${uniqueId()}`;
+      testTeams.push(teamName);
+
+      const team = await createTestTeam(teamName);
+      await addTeamMember(team.id, admin.id, 'SCRUM_MASTER');
+
+      // One below capacity, counting the Scrum Master already added. The fillers share one password
+      // hash: they never log in, and hashing eleven accounts would only slow the suite down.
+      const password = await bcrypt.hash('TestPassword123!', 12);
+
+      for (let index = 0; index < config.team.maxSize - 2; index += 1) {
+        const email = `size-filler-${uniqueId()}-${index}@example.com`;
+        testEmails.push(email);
+
+        await prisma.user.create({
+          data: {
+            id: generateUUIDv7(),
+            email: email.toLowerCase(),
+            password,
+            firstName: 'Filler',
+            lastName: `${index}`,
+          },
+        });
+      }
+
+      const fillers = await prisma.user.findMany({
+        where: { email: { in: testEmails.filter((email) => email.startsWith('size-filler-')) } },
+        select: { id: true },
+      });
+
+      await prisma.teamMember.createMany({
+        data: fillers.map((filler) => ({
+          id: generateUUIDv7(),
+          teamId: team.id,
+          userId: filler.id,
+          role: 'DEVELOPERS' as const,
+        })),
+      });
+
+      const cookies = await loginAndGetCookies(adminEmail);
+      const { csrfToken } = extractCsrfFromCookies(cookies);
+
+      const addMember = (email: string) =>
+        request(app)
+          .post(`/api/v1/teams/${team.id}/members`)
+          .set('Cookie', cookies)
+          .set(CSRF_CONSTANTS.HEADER_NAME, csrfToken)
+          .send({ email, role: 'DEVELOPERS' });
+
+      const [first, second] = await Promise.all([addMember(firstEmail), addMember(secondEmail)]);
+
+      expect([first.status, second.status].sort()).toEqual([201, 409]);
+
+      const refusal = first.status === 409 ? first : second;
+      expect(refusal.body.error.code).toBe('GATE_TEAM_SIZE_LIMIT');
+
+      const memberCount = await prisma.teamMember.count({ where: { teamId: team.id } });
+      expect(memberCount).toBe(config.team.maxSize);
     });
   });
 

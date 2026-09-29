@@ -1,51 +1,82 @@
 {
+  "coverage": {
+    "goalAssessed": "[Sprínt Góàls àsséssédddddddd]",
+    "notAvailable": "[Nót récórdéddddd]",
+    "note": "[Cóvéràgé sàys hów múch óf thís pàgé ís àctúàlly récórdéd. Póínts cómé fróm thé récórd wríttén whén éàch Sprínt clóséd; whéré thàt récórd dóés nót éxíst, thé stàtús hístóry óf thé Sprínt's ówn ítéms ís úséd, ànd whéré néíthér súrvívés thé póínt ís shówn às à gàp ràthér thàn às zéróóóóóóóóóóóóóóóóóóóóóóóóóóóóóóóóóóóóóóóóóóóóóóóóóóóóóóóóóóóóóóóóóóóóóóóóóóóóóóóóóóóóóó.]",
+    "reconstructed": "[Rébúílt fróm hístóryyyyyyy]",
+    "recorded": "[Récórdéd àt clósééééééé]",
+    "sprintsInScope": "[Sprínts ín scópéééééé]",
+    "title": "[Whàt thís pàgé résts ónnnnnnnn]"
+  },
   "dod": {
-    "empty": "[Nó Défínítíón óf Dóné défínéd. Àdd óné tó énsúré cónsístént quáàlítyyyyyyy.]",
-    "title": "[Défínítíón óf Dónééé]"
+    "empty": "[Nó Défínítíón óf Dóné défínéd. Àdd óné tó énsúré cónsístént qúàlítyyyyyyyyyyyyyyyyyyyyyy.]",
+    "title": "[Défínítíón óf Dónééééééé]"
   },
   "error": {
     "message": "[Únàblé tó lóàd répórt dàtà. Pléàsé try àgàín làtérrrrrrrrrrrrrrrrr.]",
     "title": "[Érrór Lóàdíng Répórtssssssss]"
   },
-  "insights": {
-    "empty": "[Nó ínsíghts àvàílàblé yét. Cómplété móré sprínts tó généràté ínsíghtssssssssssssssssssssss.]",
-    "title": "[Kéy Ínsíghtsssss]"
-  },
   "loading": {
-    "insights": "[Lóàdíng ínsíghtsssssss...]",
+    "insights": "[Lóàdíng óbsérvàtíónssssssss...]",
     "metrics": "[Lóàdíng métrícsssssss...]",
     "sprintHistory": "[Lóàdíng sprínt hístóryyyyyyyyy...]",
     "velocityChart": "[Lóàdíng vélócíty chàrttttttttt...]"
   },
   "metrics": {
-    "avgVelocity": {
-      "fromLastSprint": "[fróm làst spríntttttt]",
-      "title": "[Àvéràgé Vélócítyyyyyy]",
-      "unit": "[Stóry Póínts pér Spríntttttttt]"
+    "avgCompletedPoints": {
+      "coverage": "[{{observed}} óóff {{total}} clóséd Sprínts récórdéddddddddd]",
+      "title": "[Àvéràgé Cómplétéd Póíntsssssssss]",
+      "unit": "[Stóry póínts pér Spríntttttttt]"
     },
+    "caption": "[Thé óbsérvéd récórd. Àvéràgés àré tàkén óvér thé Sprínts whósé cómplétíón cóúld bé éstàblíshéd, ànd théy déscríbé whàt hàppénéd ràthér thàn whàt tó plàn néxttttttttttttttttttttttttttttttttttttttttttttttttt.]",
     "completionRate": {
-      "title": "[Sprínt Bácklógg Cómmplétíón Ràtééééééé]",
-      "unit": "[Sprínts Fúlly Délívéééééé]"
+      "disclaimer": "[Póínts cómplétíón ónly, nót Sprínt Góàl àttàínméntttttttttttttttt]",
+      "title": "[Sprínt Bàcklóg Cómplétíón Ràtéééééééééé]",
+      "unit": "[Sprínts Fúlly Délívérédddddddd]"
     },
     "impediments": {
       "openCount": "[ópén ímpédímént(sssssss)]",
       "resolved": "[Résólvédddd]",
       "title": "[Ímpédíméntsssss]"
-    }
+    },
+    "observedRange": {
+      "title": "[Óbsérvéd Ràngéééééé]",
+      "unit": "[Lówést tó híghést récórdéddddddddd]"
+    },
+    "title": "[Óbsérvéd récórdddddd]"
+  },
+  "observations": {
+    "empty": "[Nóthíng tó ínspéct yét. Cómplété à Sprínt ànd hóld íts Sprínt Révíéw tó récórd sóméthíng héréééééééééééééééééééééééééééééé.]",
+    "intro": "[Sígnàls réàd óút óf thé téàm's ówn récórd. Éàch óné nàmés thé évídéncé béhínd ít, ànd nóné óf thém ís à tàrgét: théy àré thíngs tó lóók àt, ànd thé Sprínt Rétróspéctívé ís whéré théy túrn íntó ímpróvéméntsssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssss.]",
+    "title": "[Óbsérvàtíóns tó ínspéctttttttt]"
   },
   "productGoal": {
-    "empty": "[Nó àctívé pródúct góàl. Défíné à góàl tó gívé thé téàm à cléàr táàrgggggggggggg.]",
-    "title": "[Pródúct Góàl]",
-    "viewLink": "[Víéw góàlsssss]"
+    "empty": "[Nó àctívé pródúct góàl. Défíné à góàl tó gívé thé téàm à cléàr tàrgétttttttttttttttttttttt.]",
+    "title": "[Pródúct Góàlllll]",
+    "viewLink": "[Víéw góàlssss]"
+  },
+  "provenance": {
+    "in_progress": "[Sprínt ín prógréssssssss]",
+    "not_available": "[Nót récórdéddddd]",
+    "reconstructed": "[Rébúílt fróm stàtús hístóryyyyyyyyyy]",
+    "recorded": "[Récórdéd àt clósééééééé]"
   },
   "pts": "[ptss]",
   "skipToMainContent": "[Skíp tó màín cónténttttttt]",
+  "sprintGoalOutcome": {
+    "achieved": "[àchíévédddd]",
+    "assessed": "[Sprínt Góàlllll: {{verdict}}]",
+    "notAchieved": "[nót àchíévéddddd]",
+    "notRecorded": "[Sprínt Góàl nót àssésséddddddddd]",
+    "partiallyAchieved": "[pàrtíàlly àchíévéddddddd]"
+  },
   "sprintHistory": {
     "empty": "[Nó sprínt hístóry àvàílàbléééééééééé.]",
-    "sprintGoalLabel": "[Sprínt Góàl]",
+    "sprintGoalLabel": "[Sprínt Góàlllll]",
     "stats": {
       "completed": "[Cómplétédddd]",
       "impediments": "[Ímpédíméntsssss]",
+      "items": "[Ítéms Dónéééé]",
       "planned": "[Plànnédddd]",
       "teamMembers": "[Téàm Mémbérsssss]"
     },
@@ -53,21 +84,28 @@
   },
   "sprintStatusLabels": {
     "ACTIVE": "[Àctívééé]",
+    "CANCELLED": "[Càncéllédddd]",
     "COMPLETED": "[Cómplétédddd]",
+    "DRAFT": "[Dràfttt]",
     "PLANNED": "[Plànnédddd]"
   },
-  "subtitle": "[Tràck téàm pérfórmàncé ànd sprínt métrícssssssssssssss]",
+  "subtitle": "[Thé téàm's ówn óbsérvéd hístóry, réàd bàck fór ínspéctíónnnnnnnnnnnnnnnnnnn]",
   "title": "[Répórtssss]",
   "velocityChart": {
-    "accessibilityDescription": "[Bár chàrt cómpàríng plànnéd ànd cómplétéd stóry póínts pér sprínttttttt.]",
-    "ariaLabel": "[Sprínt vélócíty chàrt cómpàríng plànnéd ànd cómplétéd stóry póíntsssss.]",
-    "ariaTableCaption": "[Sprínt vélócíty dàtà]",
-    "ariaTableLabel": "[Sprínt vélócíty dàtà tábléééé]",
+    "accessibilityDescription": "[Bàr chàrt cómpàríng plànnéd ànd cómplétéd stóry póínts pér sprínt. À sprínt whósé cómplétíón ís nót récórdéd hàs nó cómplétéd bàrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr.]",
+    "ariaLabel": "[Sprínt vélócíty chàrt cómpàríng plànnéd ànd cómplétéd stóry póíntssssssssssssssssssssss.]",
+    "ariaTableCaption": "[Plànnéd ànd cómplétéd stóry póínts pér sprínt, wíth whéré éàch fígúré càmé frómmmmmmmmmmmmmmmmmmmmmmmmm]",
+    "ariaTableLabel": "[Sprínt vélócíty dàtà tàblééééééééé]",
     "ariaTableSprint": "[Sprínttt]",
     "completed": "[Cómplétédddd]",
     "planned": "[Plànnédddd]",
-    "title": "[Sprínt Vélócítyyyyyy]",
+    "provenanceColumn": "[Whéré ít càmé frómmmmmmm]",
+    "title": "[Plànnéd ànd cómplétéd póíntssssssssss]",
     "xAxisLabel": "[Sprínttt]",
-    "yAxisLabel": "[Stóry Póíntsssss]"
+    "yAxisLabel": "[Stóry póíntsssss]"
+  },
+  "velocityHistory": {
+    "caption": "[Thís ís déscríptívé hístóry: ít ís nót à tàrgét, ànd ít ís nót cómpàràblé bétwéén téàmssssssssssssssssssssssssssss.]",
+    "title": "[Cómplétéd póínts hístóryyyyyyyyy]"
   }
 }

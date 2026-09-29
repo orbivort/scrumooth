@@ -3,7 +3,7 @@ import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { BrowserRouter } from 'react-router';
 import { I18nextProvider } from 'react-i18next';
-import { vi, describe, it, expect, beforeEach, beforeAll } from 'vitest';
+import { vi, describe, it, expect, beforeEach, afterEach, beforeAll } from 'vitest';
 
 import { useTeamStore, useAuthStore } from '../../store';
 import { apiService } from '../../services';
@@ -26,6 +26,10 @@ vi.mock('../../services', () => ({
     getDailyScrumParticipation: vi.fn(),
     getImpediments: vi.fn(),
     getProductGoals: vi.fn(),
+    getProductBacklog: vi.fn(),
+    getBacklogItemCountByGoal: vi.fn(),
+    getIncrements: vi.fn(),
+    getDoDComplianceReport: vi.fn(),
   },
 }));
 
@@ -43,6 +47,12 @@ vi.mock('./components/BurndownChart', () => ({
   BurndownChart: ({ data }: { data: unknown }) => (
     <div data-testid="burndown-chart">Chart with {data ? 'data' : 'no data'}</div>
   ),
+}));
+
+// The facilitation lens is a lazy chunk of its own and is covered by its own test file; here what
+// matters is that the module mounts the right panel and nothing else.
+vi.mock('../../routes/lazyComponents', () => ({
+  LazyFacilitationPanel: () => <div data-testid="facilitation-panel-stub" />,
 }));
 
 const createTestQueryClient = () =>
@@ -246,6 +256,33 @@ describe('Dashboard Component', () => {
       success: true,
       data: mockEmptyParticipation,
     });
+
+    // Artifacts band: exact counts come from limit:1 requests reading
+    // pagination.total, never from a page of items.
+    (apiService.getProductBacklog as ReturnType<typeof vi.fn>).mockImplementation(
+      async (_teamId: string, params?: { status?: string }) => ({
+        success: true,
+        data: [],
+        pagination: { page: 1, limit: 1, total: params?.status ? 2 : 12, totalPages: 1 },
+      })
+    );
+    (apiService.getBacklogItemCountByGoal as ReturnType<typeof vi.fn>).mockResolvedValue(5);
+    (apiService.getIncrements as ReturnType<typeof vi.fn>).mockResolvedValue({
+      success: true,
+      data: [],
+    });
+    (apiService.getDoDComplianceReport as ReturnType<typeof vi.fn>).mockResolvedValue({
+      success: true,
+      data: {
+        sprintId: 'sprint-1',
+        totalPBIs: 0,
+        dodCompliantPBIs: 0,
+        pendingVerification: 0,
+        failedCompliance: 0,
+        complianceRate: 0,
+        pbiDetails: [],
+      },
+    });
   });
 
   describe('No Team Selected State', () => {
@@ -272,6 +309,22 @@ describe('Dashboard Component', () => {
     });
   });
 
+  describe('Formal artifacts band', () => {
+    it('makes the Product Backlog, the Increment and the Definition of Done visible alongside the Sprint Backlog', async () => {
+      (apiService.getActiveSprint as ReturnType<typeof vi.fn>).mockResolvedValue({
+        success: true,
+        data: mockSprint,
+      });
+
+      renderWithProviders(<Dashboard />);
+
+      expect(await screen.findByTestId('artifact-product-backlog')).toBeInTheDocument();
+      expect(screen.getByTestId('artifact-product-goal')).toBeInTheDocument();
+      expect(screen.getByTestId('artifact-increment')).toBeInTheDocument();
+      expect(screen.getByTestId('artifact-dod')).toBeInTheDocument();
+    });
+  });
+
   describe('Loading State', () => {
     it('should render loading state while fetching sprint data', () => {
       (apiService.getActiveSprint as ReturnType<typeof vi.fn>).mockImplementation(
@@ -291,7 +344,11 @@ describe('Dashboard Component', () => {
 
       renderWithProviders(<Dashboard />);
 
-      const loadingState = screen.getByRole('status');
+      // The module shell now renders its own refresh announcement region alongside the panel, so the
+      // loading state is addressed by name rather than as the page's only live region.
+      const loadingState = screen.getByRole('status', {
+        name: i18nT('dashboard:loadingDashboard'),
+      });
       expect(loadingState).toHaveAttribute('aria-live', 'polite');
     });
   });
@@ -927,6 +984,34 @@ describe('Dashboard Component', () => {
       });
     });
 
+    it('reads the insight from the last day the Sprint has a reading for', async () => {
+      (apiService.getActiveSprint as ReturnType<typeof vi.fn>).mockResolvedValue({
+        success: true,
+        data: mockSprint,
+      });
+      (apiService.getImpediments as ReturnType<typeof vi.fn>).mockResolvedValue({
+        success: true,
+        data: mockImpediments,
+      });
+      // The tail of `actual` is the Sprint's future, so those days carry no reading.
+      (apiService.getBurndownData as ReturnType<typeof vi.fn>).mockResolvedValue({
+        success: true,
+        data: {
+          dates: ['2026-02-02', '2026-02-03', '2026-02-04', '2026-02-05'],
+          ideal: [40, 30, 20, 10],
+          actual: [40, 32, null, null],
+        },
+      });
+
+      renderWithProviders(<Dashboard />);
+
+      // 32 hours remain where the forecast expects 30, so the team is behind; the
+      // empty tail must not be read as an observation of its own.
+      await waitFor(() => {
+        expect(screen.getByText(i18nT('dashboard:burndownInsight.behind'))).toBeInTheDocument();
+      });
+    });
+
     it('should show error message when burndown data fails', async () => {
       (apiService.getActiveSprint as ReturnType<typeof vi.fn>).mockResolvedValue({
         success: true,
@@ -1169,6 +1254,184 @@ describe('Dashboard Component', () => {
 
       await waitFor(() => {
         expect(apiService.getActiveSprint).toHaveBeenCalledTimes(2);
+      });
+    });
+  });
+
+  describe('Module Tabs', () => {
+    const setRole = (role: string | null) => {
+      (useTeamStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
+        currentTeam: { id: 'team-1', name: 'Test Team' },
+        userRoleInCurrentTeam: role,
+      });
+    };
+
+    const mockOverviewData = () => {
+      (apiService.getActiveSprint as ReturnType<typeof vi.fn>).mockResolvedValue({
+        success: true,
+        data: mockSprint,
+      });
+      (apiService.getBurndownData as ReturnType<typeof vi.fn>).mockResolvedValue({
+        success: true,
+        data: mockBurndownData,
+      });
+      (apiService.getImpediments as ReturnType<typeof vi.fn>).mockResolvedValue({
+        success: true,
+        data: mockImpediments,
+      });
+    };
+
+    beforeEach(() => {
+      window.history.pushState({}, '', '/dashboard');
+    });
+
+    afterEach(() => {
+      window.history.pushState({}, '', '/');
+    });
+
+    it('should not render a rail for a member who has only one tab', async () => {
+      setRole('DEVELOPERS');
+      mockOverviewData();
+
+      renderWithProviders(<Dashboard />);
+
+      await waitFor(() => {
+        expect(screen.getByText(mockSprint.name)).toBeInTheDocument();
+      });
+
+      // A one-tab tablist would be an affordance without a decision, so there is no rail at all.
+      expect(screen.queryByRole('tablist')).not.toBeInTheDocument();
+      expect(screen.queryByRole('tab')).not.toBeInTheDocument();
+      expect(screen.queryByRole('tabpanel')).not.toBeInTheDocument();
+    });
+
+    it('should offer the rail to a Scrum Master and associate the panel with the selected tab', async () => {
+      setRole('SCRUM_MASTER');
+      mockOverviewData();
+
+      renderWithProviders(<Dashboard />);
+
+      const tablist = await screen.findByRole('tablist');
+      expect(tablist).toHaveAccessibleName(i18nT('dashboard:tabs.ariaLabel'));
+
+      const overviewTab = screen.getByRole('tab', { name: i18nT('dashboard:tabs.overview') });
+      const facilitationTab = screen.getByRole('tab', {
+        name: i18nT('dashboard:tabs.facilitation'),
+      });
+
+      expect(overviewTab).toHaveAttribute('aria-selected', 'true');
+      expect(facilitationTab).toHaveAttribute('aria-selected', 'false');
+      // The rail is a single tab stop, so only the selected tab is reachable by Tab.
+      expect(overviewTab).toHaveAttribute('tabindex', '0');
+      expect(facilitationTab).toHaveAttribute('tabindex', '-1');
+
+      const panel = screen.getByRole('tabpanel');
+      expect(panel).toHaveAttribute('aria-labelledby', overviewTab.id);
+      expect(overviewTab).toHaveAttribute('aria-controls', panel.id);
+    });
+
+    it('should mount only the selected lens, so neither surface fetches for the other', async () => {
+      setRole('SCRUM_MASTER');
+      mockOverviewData();
+      window.history.pushState({}, '', '/dashboard?tab=facilitation');
+
+      renderWithProviders(<Dashboard />);
+
+      expect(await screen.findByTestId('facilitation-panel-stub')).toBeInTheDocument();
+      expect(apiService.getActiveSprint).not.toHaveBeenCalled();
+    });
+
+    it('should move the selection with the arrow keys', async () => {
+      setRole('SCRUM_MASTER');
+      mockOverviewData();
+
+      renderWithProviders(<Dashboard />);
+
+      const overviewTab = await screen.findByRole('tab', {
+        name: i18nT('dashboard:tabs.overview'),
+      });
+      fireEvent.keyDown(overviewTab, { key: 'ArrowRight' });
+
+      expect(await screen.findByTestId('facilitation-panel-stub')).toBeInTheDocument();
+      expect(
+        screen.getByRole('tab', { name: i18nT('dashboard:tabs.facilitation') })
+      ).toHaveAttribute('aria-selected', 'true');
+    });
+
+    it('should fall back to the overview for a member who cannot open the facilitation lens', async () => {
+      setRole('DEVELOPERS');
+      mockOverviewData();
+      window.history.pushState({}, '', '/dashboard?tab=facilitation');
+
+      renderWithProviders(<Dashboard />);
+
+      await waitFor(() => {
+        expect(screen.getByText(mockSprint.name)).toBeInTheDocument();
+      });
+
+      expect(screen.queryByRole('tablist')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('facilitation-panel-stub')).not.toBeInTheDocument();
+
+      // The address is corrected rather than left describing a surface that is not on screen.
+      await waitFor(() => {
+        expect(window.location.search).toBe('');
+      });
+    });
+  });
+
+  describe('Overview panel branch coverage', () => {
+    const renderOverviewData = () => {
+      (apiService.getBurndownData as ReturnType<typeof vi.fn>).mockResolvedValue({
+        success: true,
+        data: mockBurndownData,
+      });
+      (apiService.getImpediments as ReturnType<typeof vi.fn>).mockResolvedValue({
+        success: true,
+        data: mockImpediments,
+      });
+    };
+
+    it('renders the "success" progress variant once every Sprint Backlog task is done', async () => {
+      (apiService.getActiveSprint as ReturnType<typeof vi.fn>).mockResolvedValue({
+        success: true,
+        data: {
+          ...mockSprint,
+          tasks: mockSprint.tasks.map((task) => ({ ...task, status: TaskStatus.DONE })),
+        },
+      });
+      renderOverviewData();
+
+      renderWithProviders(<Dashboard />);
+
+      // 100% completion selects the >=70 "success" branch of the progress variant.
+      await waitFor(() => {
+        expect(screen.getAllByText(/100%/).length).toBeGreaterThan(0);
+      });
+    });
+
+    it('sorts unknown task statuses last and falls back when no Sprint Goal is set', async () => {
+      (apiService.getActiveSprint as ReturnType<typeof vi.fn>).mockResolvedValue({
+        success: true,
+        data: {
+          ...mockSprint,
+          sprintGoal: undefined,
+          tasks: [
+            { ...mockSprint.tasks[0], id: 'task-a', status: 'BLOCKED' },
+            { ...mockSprint.tasks[1], id: 'task-b', status: TaskStatus.IN_PROGRESS },
+            { ...mockSprint.tasks[2], id: 'task-c', status: 'OTHER' },
+            { ...mockSprint.tasks[1], id: 'task-d', status: TaskStatus.DONE },
+            { ...mockSprint.tasks[1], id: 'task-e', status: TaskStatus.DONE },
+          ],
+        },
+      });
+      renderOverviewData();
+
+      renderWithProviders(<Dashboard />);
+
+      // 2/5 = 40% selects the "primary" branch, the two unknown statuses exercise the
+      // (a>b) fallback in the status-priority sort, and an absent goal renders its fallback.
+      await waitFor(() => {
+        expect(screen.getByText(i18nT('dashboard:noSprintGoal'))).toBeInTheDocument();
       });
     });
   });

@@ -71,14 +71,29 @@ export const queryKeys = {
     details: () => [...queryKeys.team.all, 'detail'] as const,
     detail: (id: string) => [...queryKeys.team.details(), id] as const,
     members: (teamId: string) => [...queryKeys.team.detail(teamId), 'members'] as const,
-    // Standalone keys matching actual query usage
-    byId: (id: string | undefined) => ['team', id] as const,
+    /**
+     * A single team as the Team module reads it.
+     *
+     * Declared under `details()` rather than as its own `['team', id]` root: the separate root was
+     * invisible to `invalidateQueries({ queryKey: team.all })`, so a write that changed a team's
+     * group membership refreshed the directory and left the team's own read stale.
+     */
+    byId: (id: string | undefined) => [...queryKeys.team.details(), id] as const,
   },
 
-  // Definition of Done queries
+  /**
+   * Definition of Done queries.
+   *
+   * A grouped team's read resolves to the group's row, so one commitment is reachable two ways: as
+   * the team that works to it (`byTeam`) and as the group that owns it (`byGroup`). Both live in this
+   * family so a single invalidation covers every surface showing that commitment.
+   */
   definitionOfDone: {
     all: ['definition-of-done'] as const,
-    byTeam: (teamId: string) => [...queryKeys.definitionOfDone.all, teamId] as const,
+    byTeam: (teamId: string) => [...queryKeys.definitionOfDone.all, 'team', teamId] as const,
+    byGroup: (groupId: string) => [...queryKeys.definitionOfDone.all, 'group', groupId] as const,
+    /** The append-only version history of a team's effective Definition of Done. */
+    history: (teamId: string) => [...queryKeys.definitionOfDone.all, 'history', teamId] as const,
   },
 
   // DoD Compliance queries
@@ -125,6 +140,17 @@ export const queryKeys = {
       [...queryKeys.dailyScrum.bySprint(sprintId), { date }] as const,
     participation: (sprintId: string, date: string) =>
       [...queryKeys.dailyScrum.all, 'participation', { sprintId, date }] as const,
+    /** The standing cadence, the team calendar and what the Sprint has recorded so far. */
+    cadence: (sprintId: string, date: string) =>
+      [...queryKeys.dailyScrum.all, 'cadence', { sprintId, date }] as const,
+  },
+
+  // Daily Scrum standing commitment (time, place, working-day calendar)
+  dailyScrumSchedule: {
+    all: ['daily-scrum-schedule'] as const,
+    byTeam: (teamId: string) => [...queryKeys.dailyScrumSchedule.all, { teamId }] as const,
+    nonWorkingDays: (teamId: string, from: string, to: string) =>
+      [...queryKeys.dailyScrumSchedule.all, 'non-working-days', { teamId, from, to }] as const,
   },
 
   // Product Goal queries
@@ -204,6 +230,9 @@ export const queryKeys = {
   // Increment queries
   increment: {
     all: ['increments'] as const,
+    lists: () => [...queryKeys.increment.all, 'list'] as const,
+    list: (filters: { teamId?: string; sprintId?: string } = {}) =>
+      [...queryKeys.increment.lists(), filters] as const,
     detail: (id: string) => ['increment', id] as const,
   },
 
@@ -216,6 +245,17 @@ export const queryKeys = {
   definitionOfReady: {
     all: ['definitionOfReady'] as const,
     byTeam: (teamId: string) => [...queryKeys.definitionOfReady.all, teamId] as const,
+    /** The append-only version history of a team's readiness agreement. */
+    history: (teamId: string) => [...queryKeys.definitionOfReady.all, 'history', teamId] as const,
+    /**
+     * One item's recorded readiness verifications.
+     *
+     * Keyed by the item rather than by the surface reading them: the Sprint boundary hint and the
+     * Backlog's readiness checklist ask the same question about the same item, and two keys would let
+     * one of them keep showing a criterion the team has since verified.
+     */
+    verifications: (pbiId: string) =>
+      [...queryKeys.definitionOfReady.all, 'verifications', pbiId] as const,
   },
 
   // Pending items queries
@@ -254,6 +294,52 @@ export const queryKeys = {
     all: ['timebox'] as const,
     get: (event: string, sprintId: string, date?: string) =>
       [...queryKeys.timebox.all, event, sprintId, date] as const,
+  },
+
+  // Organizational barrier register (escalation beyond the team)
+  barriers: {
+    all: ['organizational-barriers'] as const,
+    lists: () => [...queryKeys.barriers.all, 'list'] as const,
+    list: (filters: { teamId?: string; status?: string; priority?: string } = {}) =>
+      [...queryKeys.barriers.lists(), filters] as const,
+    stats: (teamId: string) => [...queryKeys.barriers.all, 'stats', teamId] as const,
+    escalatable: (teamId: string) => [...queryKeys.barriers.all, 'escalatable', teamId] as const,
+    detail: (id: string) => [...queryKeys.barriers.all, 'detail', id] as const,
+  },
+
+  // Scrum Master notes revision history
+  smNotesRevisions: {
+    all: ['sm-notes-revisions'] as const,
+    byEntity: (entityType: string, entityId: string) =>
+      [...queryKeys.smNotesRevisions.all, entityType, entityId] as const,
+  },
+
+  // The Scrum Master's private coaching log
+  coaching: {
+    all: ['coaching-entries'] as const,
+    byTeam: (teamId: string) => [...queryKeys.coaching.all, teamId] as const,
+  },
+
+  // The team's working agreements
+  workingAgreement: {
+    all: ['working-agreements'] as const,
+    byTeam: (teamId: string) => [...queryKeys.workingAgreement.all, teamId] as const,
+  },
+
+  // The team-level cross-functionality assessment
+  crossFunctionality: {
+    all: ['cross-functionality'] as const,
+    byTeam: (teamId: string) => [...queryKeys.crossFunctionality.all, teamId] as const,
+  },
+
+  // The groups the Scrum Teams share a product (and one Definition of Done) with
+  teamGroup: {
+    all: ['team-groups'] as const,
+    directory: () => [...queryKeys.teamGroup.all, 'directory'] as const,
+    detail: (groupId: string) => [...queryKeys.teamGroup.all, 'detail', groupId] as const,
+    // The group's shared Definition of Done is not keyed here. It is a Definition of Done, so it
+    // lives in `definitionOfDone` (`byGroup`) -- the same row a member team reads as its own. Keying
+    // it separately is what let the two surfaces cache the same fact twice and disagree.
   },
 } as const;
 

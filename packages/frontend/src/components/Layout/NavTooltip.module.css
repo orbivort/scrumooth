@@ -1,0 +1,58 @@
+/* Nav tooltip -----------------------------------------------------------------
+   The disclosure the collapsed rail owes the reader. It is positioned from the
+   row's own geometry, so it neither overlaps the rail nor is clipped by the
+   navigation's scroll container, and it is painted above the drawer and the
+   notification panel but below the modals that already own the top layer. */
+
+.tooltip {
+  position: fixed;
+  z-index: var(--z-dropdown);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+
+  /* A fixed left edge plus a margin, rather than a computed gap: the offset from
+     the rail is a design value and belongs with the other design values. */
+  margin-left: var(--space-2);
+
+  /* Sized to the label but capped, so a longer translation wraps inside the card
+     instead of running off the viewport. */
+  max-width: 16rem;
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-gray-800);
+  border: var(--border-width-1) solid var(--color-gray-700);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  transform: translateY(-50%);
+  pointer-events: none;
+  animation: nav-tooltip-in var(--duration-fast) var(--ease-out);
+}
+
+.label {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-inverse);
+  overflow-wrap: break-word;
+}
+
+.section {
+  font-size: var(--font-size-xs);
+  color: var(--color-gray-300);
+  overflow-wrap: break-word;
+}
+
+@keyframes nav-tooltip-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tooltip {
+    animation: none;
+  }
+}

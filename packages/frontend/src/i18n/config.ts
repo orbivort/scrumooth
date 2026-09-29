@@ -106,6 +106,12 @@ export function initI18n(): Promise<TFunction> {
       'validation',
       'scrum-master-dashboard',
       'timebox',
+      'barriers',
+      'agreements',
+      // The Scrum Guide rule behind a refusal, keyed by gate code (`GATE_I18N_NAMESPACE`). Loaded
+      // eagerly because a refusal can be rendered by any surface the moment it is provoked, and a
+      // namespace fetched on demand would show the fallback message first.
+      'gate',
     ],
     defaultNS: 'common',
 

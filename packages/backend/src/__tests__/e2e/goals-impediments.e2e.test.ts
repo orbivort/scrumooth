@@ -186,7 +186,7 @@ describe('E2E: Goals and Impediments', () => {
         expect(response.body.error.code).toBe(ERROR_CODES.VALIDATION_ERROR);
       });
 
-      it('should allow any team member to create a goal', async () => {
+      it('should refuse creation by a non-Product-Owner member', async () => {
         const email = `no-perm-goal-${uniqueTestId()}@example.com`;
         testEmails.push(email);
 
@@ -202,10 +202,14 @@ describe('E2E: Goals and Impediments', () => {
           .send({
             teamId: team.id,
             title: `Goal ${uniqueTestId()}`,
+            // Required by the Product Goal contract; the payload is otherwise valid so the
+            // response is the Product Owner gate rather than a validation failure.
+            successMetrics: 'Test success metrics',
           })
-          .expect(HTTP_STATUS.CREATED);
+          .expect(HTTP_STATUS.FORBIDDEN);
 
-        expect(response.body.success).toBe(true);
+        expect(response.body.success).toBe(false);
+        expect(response.body.error.code).toBe('GATE_PRODUCT_OWNER_ONLY_PRODUCT_GOAL');
       });
     });
 
@@ -291,9 +295,10 @@ describe('E2E: Goals and Impediments', () => {
           .send({
             title: 'Updated Title',
           })
-          .expect(HTTP_STATUS.OK);
+          .expect(HTTP_STATUS.FORBIDDEN);
 
-        expect(response.body.success).toBe(true);
+        expect(response.body.success).toBe(false);
+        expect(response.body.error.code).toBe('GATE_PRODUCT_OWNER_ONLY_PRODUCT_GOAL');
       });
     });
 
@@ -409,9 +414,10 @@ describe('E2E: Goals and Impediments', () => {
             teamId: team.id,
             title: '',
           })
-          .expect(HTTP_STATUS.BAD_REQUEST);
+          .expect(HTTP_STATUS.UNPROCESSABLE_ENTITY);
 
         expect(response.body.success).toBe(false);
+        expect(response.body.error.code).toBe(ERROR_CODES.VALIDATION_ERROR);
       });
     });
 

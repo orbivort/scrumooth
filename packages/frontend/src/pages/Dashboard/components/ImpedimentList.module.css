@@ -116,3 +116,40 @@
   color: var(--color-warning-700);
   border-color: var(--color-warning-200);
 }
+
+/* Impact badge - mirrors the backend enum order: CRITICAL -> LOW */
+.impediment-priority-badge {
+  padding: var(--space-1) var(--space-2-5);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  text-transform: uppercase;
+  white-space: nowrap;
+  margin-left: var(--space-2);
+  letter-spacing: var(--letter-spacing-tight);
+  border: var(--border-width-1) solid transparent;
+}
+
+.impediment-priority-badge.priority-critical {
+  background: var(--color-error-100);
+  color: var(--color-error-700);
+  border-color: var(--color-error-200);
+}
+
+.impediment-priority-badge.priority-high {
+  background: var(--color-warning-100);
+  color: var(--color-warning-700);
+  border-color: var(--color-warning-200);
+}
+
+.impediment-priority-badge.priority-medium {
+  background: var(--color-primary-100);
+  color: var(--color-primary-700);
+  border-color: var(--color-primary-200);
+}
+
+.impediment-priority-badge.priority-low {
+  background: var(--color-gray-100);
+  color: var(--color-gray-700);
+  border-color: var(--color-gray-200);
+}

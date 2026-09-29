@@ -1,8 +1,17 @@
 import { type Page, type Locator } from '@playwright/test';
 import { BasePage } from './BasePage';
 
+/**
+ * The facilitation lens, which is the second tab of the Dashboard module rather than a page of its
+ * own. The module owns the header, so `pageHeader` resolves the Dashboard's own h1, and the tab and
+ * panel ids are stable (not translated) so the rail can be addressed in any locale.
+ */
 export class SmDashboardPage extends BasePage {
   readonly pageHeader: Locator;
+  readonly tablist: Locator;
+  readonly overviewTab: Locator;
+  readonly facilitationTab: Locator;
+  readonly facilitationPanel: Locator;
   readonly eventComplianceSection: Locator;
   readonly impedimentMetricsSection: Locator;
   readonly dodTrendSection: Locator;
@@ -14,8 +23,12 @@ export class SmDashboardPage extends BasePage {
 
   constructor(page: Page) {
     super(page);
-    // Use data-testid and structural selectors to be locale-independent
-    this.pageHeader = page.locator('[data-testid="sm-dashboard-header"], h1').first();
+    // Use data-testid, stable ids and structural selectors to be locale-independent
+    this.pageHeader = page.locator('[data-testid="dashboard"] h1').first();
+    this.tablist = page.locator('[data-testid="dashboard"] [role="tablist"]');
+    this.overviewTab = page.locator('#dashboard-overview-tab');
+    this.facilitationTab = page.locator('#dashboard-facilitation-tab');
+    this.facilitationPanel = page.locator('#dashboard-facilitation-panel');
     this.eventComplianceSection = page.locator(
       '[data-testid="event-compliance"], [class*="event-compliance"]'
     );
@@ -31,8 +44,22 @@ export class SmDashboardPage extends BasePage {
   }
 
   async goto(): Promise<void> {
+    await this.navigate('/dashboard?tab=facilitation');
+    await this.waitForPageLoad();
+  }
+
+  /** The retired address, kept so bookmarks and shared links still land on the lens. */
+  async gotoTiredAddress(): Promise<void> {
     await this.navigate('/scrum-master-dashboard');
     await this.waitForPageLoad();
+  }
+
+  async isRailVisible(): Promise<boolean> {
+    return this.isElementVisible(this.tablist);
+  }
+
+  async isFacilitationSelected(): Promise<boolean> {
+    return (await this.facilitationTab.getAttribute('aria-selected')) === 'true';
   }
 
   /**

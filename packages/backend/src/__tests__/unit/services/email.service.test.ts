@@ -81,8 +81,15 @@ import { SMTPProvider, type SMTPConfig } from '../../../services/email/providers
 import { PasswordResetTemplate } from '../../../services/email/templates/PasswordResetTemplate.js';
 import { PasswordChangeTemplate } from '../../../services/email/templates/PasswordChangeTemplate.js';
 import { WelcomeEmailTemplate } from '../../../services/email/templates/WelcomeEmailTemplate.js';
-import type { SendEmailInput, EmailMessage } from '../../../services/email/types/email.types.js';
+import type {
+  SendEmailInput,
+  EmailMessage,
+  EmailResult,
+} from '../../../services/email/types/email.types.js';
 import { config } from '../../../config/index.js';
+import nodemailer from 'nodemailer';
+import prisma from '../../../utils/prisma.js';
+import { logger } from '../../../utils/logger.js';
 
 describe('EmailService', () => {
   describe('Provider Selection', () => {
@@ -1138,5 +1145,178 @@ describe('SMTPProvider', () => {
 
       expect(result.success).toBe(true);
     });
+  });
+});
+
+describe('EmailService branch coverage', () => {
+  afterEach(() => {
+    // Restore the default configuration mutated by these tests.
+    (config.email.testMode as { enabled: boolean }).enabled = false;
+    (config.email as { provider: string }).provider = 'smtp';
+    (config.email.defaults as { replyTo: string }).replyTo = '';
+  });
+
+  it('should configure a default reply-to when one is set', async () => {
+    // Arrange
+    (config.email.testMode as { enabled: boolean }).enabled = true;
+    (config.email.defaults as { replyTo: string }).replyTo = 'reply@scrumooth.local';
+    const service = new EmailService();
+
+    // Act
+    const result = await service.send({
+      to: ['recipient@example.com'],
+      subject: 'Reply To',
+      html: '<p>Content</p>',
+    });
+
+    // Assert
+    expect(result.success).toBe(true);
+    const provider = service.getProvider() as TestProvider;
+    expect(provider.getCapturedEmails()[0]?.replyTo).toBe('reply@scrumooth.local');
+  });
+
+  it('should send a batch of emails and report mixed results', async () => {
+    // Arrange
+    (config.email.testMode as { enabled: boolean }).enabled = true;
+    const service = new EmailService();
+    const inputs: SendEmailInput[] = [
+      { to: ['ok@example.com'], subject: 'OK', html: '<p>ok</p>' },
+      { to: [], subject: 'Invalid', html: '<p>bad</p>' },
+    ];
+
+    // Act
+    const results = await service.sendBatch(inputs);
+
+    // Assert
+    expect(results).toHaveLength(2);
+    expect(results[0]?.success).toBe(true);
+    expect(results[1]?.success).toBe(false);
+  });
+
+  it('should report healthy when the provider health check succeeds', async () => {
+    // Arrange
+    (config.email.testMode as { enabled: boolean }).enabled = true;
+    const service = new EmailService();
+
+    // Act & Assert
+    await expect(service.isHealthy()).resolves.toBe(true);
+  });
+
+  it('should report unhealthy when the provider health check throws', async () => {
+    // Arrange
+    (config.email.testMode as { enabled: boolean }).enabled = true;
+    const service = new EmailService();
+    vi.spyOn(service.getProvider(), 'isHealthy').mockRejectedValue(new Error('down'));
+
+    // Act & Assert
+    await expect(service.isHealthy()).resolves.toBe(false);
+    expect(logger.error).toHaveBeenCalledWith(
+      'Email provider health check failed',
+      expect.anything()
+    );
+  });
+
+  it('should return a failed result when the provider reports failure without throwing', async () => {
+    // Arrange
+    (config.email.testMode as { enabled: boolean }).enabled = false;
+    (config.email as { provider: string }).provider = 'smtp';
+    const transporter = {
+      sendMail: vi.fn().mockRejectedValue(new Error('smtp down')),
+      verify: vi.fn(),
+      close: vi.fn(),
+    };
+    vi.mocked(nodemailer.createTransport).mockReturnValueOnce(transporter as never);
+    const service = new EmailService();
+
+    // Act
+    const result = await service.send({
+      to: ['recipient@example.com'],
+      subject: 'Failure',
+      html: '<p>Content</p>',
+    });
+
+    // Assert
+    expect(result.success).toBe(false);
+    expect(logger.warn).toHaveBeenCalledWith('Email send failed', expect.anything());
+  });
+
+  it('should handle a non-Error thrown by the provider', async () => {
+    // Arrange
+    (config.email.testMode as { enabled: boolean }).enabled = true;
+    const service = new EmailService();
+    vi.spyOn(service.getProvider(), 'send').mockRejectedValue('boom');
+
+    // Act
+    const result = await service.send({
+      to: ['recipient@example.com'],
+      subject: 'Non Error',
+      html: '<p>Content</p>',
+    });
+
+    // Assert
+    expect(result.success).toBe(false);
+    expect(result.error?.message).toBe('Unknown error');
+  });
+
+  it('should log and swallow a database logging failure with an Error', async () => {
+    // Arrange
+    (config.email.testMode as { enabled: boolean }).enabled = true;
+    const service = new EmailService();
+    vi.mocked(prisma.emailLog.create).mockRejectedValueOnce(new Error('db down'));
+
+    // Act
+    const result = await service.send({
+      to: ['recipient@example.com'],
+      subject: 'DB Error',
+      html: '<p>Content</p>',
+    });
+
+    // Assert
+    expect(result.success).toBe(true);
+    expect(logger.error).toHaveBeenCalledWith('Failed to log email to database', expect.anything());
+  });
+
+  it('should log and swallow a database logging failure with a non-Error', async () => {
+    // Arrange
+    (config.email.testMode as { enabled: boolean }).enabled = true;
+    const service = new EmailService();
+    vi.mocked(prisma.emailLog.create).mockRejectedValueOnce('db down');
+
+    // Act
+    const result = await service.send({
+      to: ['recipient@example.com'],
+      subject: 'DB Error',
+      html: '<p>Content</p>',
+    });
+
+    // Assert
+    expect(result.success).toBe(true);
+  });
+
+  it('should not propagate an error raised while logging a failed send', async () => {
+    // Arrange
+    (config.email.testMode as { enabled: boolean }).enabled = true;
+    const service = new EmailService();
+    vi.spyOn(service.getProvider(), 'send').mockRejectedValue(new Error('provider down'));
+    const internals = service as unknown as {
+      logEmailToDatabase: (
+        input: SendEmailInput,
+        result: EmailResult,
+        providerName: string
+      ) => Promise<void>;
+    };
+    internals.logEmailToDatabase = vi.fn().mockRejectedValue(new Error('logging down'));
+
+    // Act
+    const result = await service.send({
+      to: ['recipient@example.com'],
+      subject: 'Double Failure',
+      html: '<p>Content</p>',
+    });
+
+    // Assert
+    expect(result.success).toBe(false);
+    expect(result.error?.message).toBe('provider down');
+    expect(logger.error).toHaveBeenCalledWith('Failed to log email to database', expect.anything());
   });
 });

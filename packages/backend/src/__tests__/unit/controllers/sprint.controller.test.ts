@@ -4,8 +4,15 @@ import {
   getActiveSprint,
   getSprintById,
   createSprint,
+  updateSprint,
   startSprint,
   saveSprintBacklog,
+  saveSprintPlanningDraft,
+  getSprintPlanningDraft,
+  addPlanningAttendee,
+  updatePlanningAttendee,
+  deletePlanningAttendee,
+  getPlanningParticipation,
   rollbackSprintStart,
   completeSprint,
   cancelSprint,
@@ -17,10 +24,13 @@ import {
   deleteTask,
   addPBIToSprint,
   removePBIFromSprint,
+  acknowledgeSprintBacklogChange,
   getSprintBacklogChanges,
   getAvailablePBIs,
+  getDoDComplianceReport,
 } from '../../../controllers/sprint.controller';
 import { sprintService, sprintBacklogManagerService } from '../../../services/sprint.service';
+import { definitionOfDoneService } from '../../../services/dod.service';
 import { BadRequestError } from '../../../utils/errors';
 import { createMockRequest, createMockResponse } from '../../setup/testSetup';
 
@@ -30,8 +40,15 @@ vi.mock('../../../services/sprint.service', () => ({
     getActiveSprint: vi.fn(),
     getSprintById: vi.fn(),
     createSprint: vi.fn(),
+    updateSprint: vi.fn(),
     startSprint: vi.fn(),
     saveSprintBacklog: vi.fn(),
+    saveSprintPlanningDraft: vi.fn(),
+    getSprintPlanningDraft: vi.fn(),
+    addPlanningAttendee: vi.fn(),
+    updatePlanningAttendee: vi.fn(),
+    deletePlanningAttendee: vi.fn(),
+    getPlanningParticipation: vi.fn(),
     rollbackSprintStart: vi.fn(),
     completeSprint: vi.fn(),
     cancelSprint: vi.fn(),
@@ -45,8 +62,15 @@ vi.mock('../../../services/sprint.service', () => ({
   sprintBacklogManagerService: {
     addPBIToActiveSprint: vi.fn(),
     removePBIFromActiveSprint: vi.fn(),
+    acknowledgeSprintBacklogChange: vi.fn(),
     getSprintBacklogChanges: vi.fn(),
     getAvailablePBIsForSprint: vi.fn(),
+  },
+}));
+
+vi.mock('../../../services/dod.service', () => ({
+  definitionOfDoneService: {
+    getDoDComplianceReport: vi.fn(),
   },
 }));
 
@@ -65,6 +89,7 @@ describe('Sprint Controller', () => {
   describe('getSprints', () => {
     it('should return sprints for a team', async () => {
       mockReq.query = { teamId: 'team-123' };
+      mockReq.user = { id: 'user-123' };
       const mockSprints = [{ id: 'sprint-1', name: 'Sprint 1' }];
 
       (sprintService.getSprints as any).mockResolvedValue(mockSprints);
@@ -73,7 +98,8 @@ describe('Sprint Controller', () => {
       await new Promise((resolve) => setTimeout(resolve, 0));
 
       expect(mockNext).not.toHaveBeenCalled();
-      expect(sprintService.getSprints).toHaveBeenCalledWith('team-123');
+      // The actor travels with the read so the service can redact the Scrum Master's notes.
+      expect(sprintService.getSprints).toHaveBeenCalledWith('team-123', 'user-123');
       expect(mockRes._json).toEqual({
         success: true,
         data: mockSprints,
@@ -102,6 +128,7 @@ describe('Sprint Controller', () => {
   describe('getActiveSprint', () => {
     it('should return active sprint for a team', async () => {
       mockReq.query = { teamId: 'team-123' };
+      mockReq.user = { id: 'user-123' };
       const mockSprint = { id: 'sprint-1', name: 'Active Sprint', status: 'ACTIVE' };
 
       (sprintService.getActiveSprint as any).mockResolvedValue(mockSprint);
@@ -110,7 +137,7 @@ describe('Sprint Controller', () => {
       await new Promise((resolve) => setTimeout(resolve, 0));
 
       expect(mockNext).not.toHaveBeenCalled();
-      expect(sprintService.getActiveSprint).toHaveBeenCalledWith('team-123');
+      expect(sprintService.getActiveSprint).toHaveBeenCalledWith('team-123', 'user-123');
       expect(mockRes._json).toEqual({
         success: true,
         data: mockSprint,
@@ -144,6 +171,7 @@ describe('Sprint Controller', () => {
   describe('getSprintById', () => {
     it('should return sprint by ID', async () => {
       mockReq.params = { id: 'sprint-123' };
+      mockReq.user = { id: 'user-123' };
       const mockSprint = { id: 'sprint-123', name: 'Test Sprint' };
 
       (sprintService.getSprintById as any).mockResolvedValue(mockSprint);
@@ -152,7 +180,7 @@ describe('Sprint Controller', () => {
       await new Promise((resolve) => setTimeout(resolve, 0));
 
       expect(mockNext).not.toHaveBeenCalled();
-      expect(sprintService.getSprintById).toHaveBeenCalledWith('sprint-123');
+      expect(sprintService.getSprintById).toHaveBeenCalledWith('sprint-123', 'user-123');
       expect(mockRes._json).toEqual({
         success: true,
         data: mockSprint,
@@ -610,6 +638,103 @@ describe('Sprint Controller', () => {
 
       expect(mockNext).toHaveBeenCalledWith(expect.any(BadRequestError));
     });
+
+    it('should surface a pending goal-endangering change to the client', async () => {
+      mockReq.params = { sprintId: 'sprint-123' };
+      mockReq.user = { id: 'user-123' };
+      mockReq.body = {
+        pbiId: 'pbi-456',
+        reason: 'Scope grew',
+        goalImpact: 'ENDANGERS_GOAL',
+      };
+      const mockResult = {
+        sprintBacklogItem: null,
+        pending: true,
+        change: { id: 'change-1', approvalStatus: 'PENDING' },
+      };
+
+      (sprintBacklogManagerService.addPBIToActiveSprint as any).mockResolvedValue(mockResult);
+
+      addPBIToSprint(mockReq as any, mockRes as any, mockNext);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(mockNext).not.toHaveBeenCalled();
+      expect(mockRes._status).toBe(201);
+      expect(mockRes._json).toEqual({ success: true, data: mockResult });
+    });
+  });
+
+  describe('updateSprint', () => {
+    it('should update a Sprint that is still being planned', async () => {
+      mockReq.params = { id: 'sprint-123' };
+      mockReq.user = { id: 'user-123' };
+      mockReq.body = { name: 'Renamed' };
+      const mockResult = { id: 'sprint-123', name: 'Renamed' };
+
+      (sprintService.updateSprint as any).mockResolvedValue(mockResult);
+
+      updateSprint(mockReq as any, mockRes as any, mockNext);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(mockNext).not.toHaveBeenCalled();
+      expect(sprintService.updateSprint).toHaveBeenCalledWith(
+        'sprint-123',
+        'user-123',
+        mockReq.body
+      );
+      expect(mockRes._json).toEqual({ success: true, data: mockResult });
+    });
+
+    it('should throw BadRequestError when the caller is not authenticated', async () => {
+      mockReq.params = { id: 'sprint-123' };
+      mockReq.user = undefined;
+
+      updateSprint(mockReq as any, mockRes as any, mockNext);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(mockNext).toHaveBeenCalledWith(expect.any(BadRequestError));
+      expect(sprintService.updateSprint).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('acknowledgeSprintBacklogChange', () => {
+    it('should pass the Product Owner decision to the service', async () => {
+      mockReq.params = { sprintId: 'sprint-123', changeId: 'change-456' };
+      mockReq.user = { id: 'po-123' };
+      mockReq.body = { decision: 'APPROVE', sprintGoal: 'Renegotiated goal' };
+      const mockResult = {
+        change: { id: 'change-456', approvalStatus: 'APPLIED' },
+        sprint: { id: 'sprint-123', sprintGoal: 'Renegotiated goal' },
+        applied: true,
+      };
+
+      (sprintBacklogManagerService.acknowledgeSprintBacklogChange as any).mockResolvedValue(
+        mockResult
+      );
+
+      acknowledgeSprintBacklogChange(mockReq as any, mockRes as any, mockNext);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(mockNext).not.toHaveBeenCalled();
+      expect(sprintBacklogManagerService.acknowledgeSprintBacklogChange).toHaveBeenCalledWith(
+        'sprint-123',
+        'change-456',
+        'po-123',
+        mockReq.body
+      );
+      expect(mockRes._json).toEqual({ success: true, data: mockResult });
+    });
+
+    it('should throw BadRequestError when the caller is not authenticated', async () => {
+      mockReq.params = { sprintId: 'sprint-123', changeId: 'change-456' };
+      mockReq.user = undefined;
+
+      acknowledgeSprintBacklogChange(mockReq as any, mockRes as any, mockNext);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(mockNext).toHaveBeenCalledWith(expect.any(BadRequestError));
+      expect(sprintBacklogManagerService.acknowledgeSprintBacklogChange).not.toHaveBeenCalled();
+    });
   });
 
   describe('removePBIFromSprint', () => {
@@ -708,6 +833,443 @@ describe('Sprint Controller', () => {
       mockReq.query = {};
 
       getAvailablePBIs(mockReq as any, mockRes as any, mockNext);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(mockNext).toHaveBeenCalledWith(expect.any(BadRequestError));
+    });
+  });
+
+  describe('updateSprint (guard clauses)', () => {
+    it('should throw BadRequestError when the sprint ID is missing', async () => {
+      mockReq.params = {};
+      mockReq.user = { id: 'user-123' };
+
+      updateSprint(mockReq as any, mockRes as any, mockNext);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(mockNext).toHaveBeenCalledWith(expect.any(BadRequestError));
+      expect(sprintService.updateSprint).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('saveSprintPlanningDraft', () => {
+    it('should save the planning draft', async () => {
+      mockReq.params = { id: 'sprint-123' };
+      mockReq.user = { id: 'dev-123' };
+      mockReq.body = { items: [{ pbiId: 'pbi-1' }] };
+      const mockResult = { sprintId: 'sprint-123', version: 1 };
+      (sprintService.saveSprintPlanningDraft as any).mockResolvedValue(mockResult);
+
+      saveSprintPlanningDraft(mockReq as any, mockRes as any, mockNext);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(mockNext).not.toHaveBeenCalled();
+      expect(sprintService.saveSprintPlanningDraft).toHaveBeenCalledWith(
+        'sprint-123',
+        'dev-123',
+        mockReq.body
+      );
+      expect(mockRes._json).toEqual({ success: true, data: mockResult });
+    });
+
+    it('should throw BadRequestError when the sprint ID is missing', async () => {
+      mockReq.params = {};
+      mockReq.user = { id: 'dev-123' };
+
+      saveSprintPlanningDraft(mockReq as any, mockRes as any, mockNext);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(mockNext).toHaveBeenCalledWith(expect.any(BadRequestError));
+    });
+
+    it('should throw BadRequestError when the caller is not authenticated', async () => {
+      mockReq.params = { id: 'sprint-123' };
+      mockReq.user = undefined;
+
+      saveSprintPlanningDraft(mockReq as any, mockRes as any, mockNext);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(mockNext).toHaveBeenCalledWith(expect.any(BadRequestError));
+    });
+  });
+
+  describe('getSprintPlanningDraft', () => {
+    it('should return the planning draft', async () => {
+      mockReq.params = { id: 'sprint-123' };
+      const mockDraft = { sprintId: 'sprint-123', items: [] };
+      (sprintService.getSprintPlanningDraft as any).mockResolvedValue(mockDraft);
+
+      getSprintPlanningDraft(mockReq as any, mockRes as any, mockNext);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(mockNext).not.toHaveBeenCalled();
+      expect(sprintService.getSprintPlanningDraft).toHaveBeenCalledWith('sprint-123');
+      expect(mockRes._json).toEqual({ success: true, data: mockDraft });
+    });
+
+    it('should throw BadRequestError when the sprint ID is missing', async () => {
+      mockReq.params = {};
+
+      getSprintPlanningDraft(mockReq as any, mockRes as any, mockNext);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(mockNext).toHaveBeenCalledWith(expect.any(BadRequestError));
+    });
+  });
+
+  describe('addPlanningAttendee', () => {
+    it('should add a planning attendee', async () => {
+      mockReq.params = { id: 'sprint-123' };
+      mockReq.user = { id: 'dev-123' };
+      mockReq.body = { role: 'DEVELOPER' };
+      const mockAttendee = { id: 'attendee-1', sprintId: 'sprint-123' };
+      (sprintService.addPlanningAttendee as any).mockResolvedValue(mockAttendee);
+
+      addPlanningAttendee(mockReq as any, mockRes as any, mockNext);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(mockNext).not.toHaveBeenCalled();
+      expect(sprintService.addPlanningAttendee).toHaveBeenCalledWith(
+        'sprint-123',
+        'dev-123',
+        mockReq.body
+      );
+      expect(mockRes._status).toBe(201);
+      expect(mockRes._json).toEqual({ success: true, data: mockAttendee });
+    });
+
+    it('should throw BadRequestError when the sprint ID is missing', async () => {
+      mockReq.params = {};
+      mockReq.user = { id: 'dev-123' };
+
+      addPlanningAttendee(mockReq as any, mockRes as any, mockNext);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(mockNext).toHaveBeenCalledWith(expect.any(BadRequestError));
+    });
+
+    it('should throw BadRequestError when the caller is not authenticated', async () => {
+      mockReq.params = { id: 'sprint-123' };
+      mockReq.user = undefined;
+
+      addPlanningAttendee(mockReq as any, mockRes as any, mockNext);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(mockNext).toHaveBeenCalledWith(expect.any(BadRequestError));
+    });
+  });
+
+  describe('updatePlanningAttendee', () => {
+    it('should update a planning attendee', async () => {
+      mockReq.params = { id: 'sprint-123', attendeeId: 'attendee-1' };
+      mockReq.user = { id: 'dev-123' };
+      mockReq.body = { attended: true };
+      const mockAttendee = { id: 'attendee-1', attended: true };
+      (sprintService.updatePlanningAttendee as any).mockResolvedValue(mockAttendee);
+
+      updatePlanningAttendee(mockReq as any, mockRes as any, mockNext);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(mockNext).not.toHaveBeenCalled();
+      expect(sprintService.updatePlanningAttendee).toHaveBeenCalledWith(
+        'sprint-123',
+        'attendee-1',
+        'dev-123',
+        mockReq.body
+      );
+      expect(mockRes._json).toEqual({ success: true, data: mockAttendee });
+    });
+
+    it('should throw BadRequestError when the sprint ID is missing', async () => {
+      mockReq.params = { attendeeId: 'attendee-1' };
+      mockReq.user = { id: 'dev-123' };
+
+      updatePlanningAttendee(mockReq as any, mockRes as any, mockNext);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(mockNext).toHaveBeenCalledWith(expect.any(BadRequestError));
+    });
+
+    it('should throw BadRequestError when the attendee ID is missing', async () => {
+      mockReq.params = { id: 'sprint-123' };
+      mockReq.user = { id: 'dev-123' };
+
+      updatePlanningAttendee(mockReq as any, mockRes as any, mockNext);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(mockNext).toHaveBeenCalledWith(expect.any(BadRequestError));
+    });
+
+    it('should throw BadRequestError when the caller is not authenticated', async () => {
+      mockReq.params = { id: 'sprint-123', attendeeId: 'attendee-1' };
+      mockReq.user = undefined;
+
+      updatePlanningAttendee(mockReq as any, mockRes as any, mockNext);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(mockNext).toHaveBeenCalledWith(expect.any(BadRequestError));
+    });
+  });
+
+  describe('deletePlanningAttendee', () => {
+    it('should delete a planning attendee', async () => {
+      mockReq.params = { id: 'sprint-123', attendeeId: 'attendee-1' };
+      mockReq.user = { id: 'dev-123' };
+      (sprintService.deletePlanningAttendee as any).mockResolvedValue(undefined);
+
+      deletePlanningAttendee(mockReq as any, mockRes as any, mockNext);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(mockNext).not.toHaveBeenCalled();
+      expect(sprintService.deletePlanningAttendee).toHaveBeenCalledWith(
+        'sprint-123',
+        'attendee-1',
+        'dev-123'
+      );
+      expect(mockRes._json).toEqual({
+        success: true,
+        data: { message: 'Planning attendee deleted successfully' },
+      });
+    });
+
+    it('should throw BadRequestError when the sprint ID is missing', async () => {
+      mockReq.params = { attendeeId: 'attendee-1' };
+      mockReq.user = { id: 'dev-123' };
+
+      deletePlanningAttendee(mockReq as any, mockRes as any, mockNext);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(mockNext).toHaveBeenCalledWith(expect.any(BadRequestError));
+    });
+
+    it('should throw BadRequestError when the attendee ID is missing', async () => {
+      mockReq.params = { id: 'sprint-123' };
+      mockReq.user = { id: 'dev-123' };
+
+      deletePlanningAttendee(mockReq as any, mockRes as any, mockNext);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(mockNext).toHaveBeenCalledWith(expect.any(BadRequestError));
+    });
+
+    it('should throw BadRequestError when the caller is not authenticated', async () => {
+      mockReq.params = { id: 'sprint-123', attendeeId: 'attendee-1' };
+      mockReq.user = undefined;
+
+      deletePlanningAttendee(mockReq as any, mockRes as any, mockNext);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(mockNext).toHaveBeenCalledWith(expect.any(BadRequestError));
+    });
+  });
+
+  describe('getPlanningParticipation', () => {
+    it('should return planning participation', async () => {
+      mockReq.params = { id: 'sprint-123' };
+      const mockParticipation = { sprintId: 'sprint-123', attendees: [] };
+      (sprintService.getPlanningParticipation as any).mockResolvedValue(mockParticipation);
+
+      getPlanningParticipation(mockReq as any, mockRes as any, mockNext);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(mockNext).not.toHaveBeenCalled();
+      expect(sprintService.getPlanningParticipation).toHaveBeenCalledWith('sprint-123');
+      expect(mockRes._json).toEqual({ success: true, data: mockParticipation });
+    });
+
+    it('should throw BadRequestError when the sprint ID is missing', async () => {
+      mockReq.params = {};
+
+      getPlanningParticipation(mockReq as any, mockRes as any, mockNext);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(mockNext).toHaveBeenCalledWith(expect.any(BadRequestError));
+    });
+  });
+
+  describe('completeSprint (guard clauses)', () => {
+    it('should throw BadRequestError when the sprint ID is missing', async () => {
+      mockReq.params = {};
+      mockReq.user = { id: 'user-123' };
+
+      completeSprint(mockReq as any, mockRes as any, mockNext);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(mockNext).toHaveBeenCalledWith(expect.any(BadRequestError));
+    });
+  });
+
+  describe('cancelSprint (guard clauses)', () => {
+    it('should throw BadRequestError when the sprint ID is missing', async () => {
+      mockReq.params = {};
+      mockReq.user = { id: 'po-123' };
+
+      cancelSprint(mockReq as any, mockRes as any, mockNext);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(mockNext).toHaveBeenCalledWith(expect.any(BadRequestError));
+    });
+
+    it('should throw BadRequestError when the caller is not authenticated', async () => {
+      mockReq.params = { id: 'sprint-123' };
+      mockReq.user = undefined;
+
+      cancelSprint(mockReq as any, mockRes as any, mockNext);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(mockNext).toHaveBeenCalledWith(expect.any(BadRequestError));
+    });
+  });
+
+  describe('getSprintTasks (guard clauses)', () => {
+    it('should throw BadRequestError when the sprint ID is missing', async () => {
+      mockReq.params = {};
+
+      getSprintTasks(mockReq as any, mockRes as any, mockNext);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(mockNext).toHaveBeenCalledWith(expect.any(BadRequestError));
+    });
+  });
+
+  describe('deleteTask (guard clauses)', () => {
+    it('should throw BadRequestError when the sprint ID is missing', async () => {
+      mockReq.params = { taskId: 'task-456' };
+      mockReq.user = { id: 'dev-123' };
+
+      deleteTask(mockReq as any, mockRes as any, mockNext);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(mockNext).toHaveBeenCalledWith(expect.any(BadRequestError));
+    });
+
+    it('should throw BadRequestError when the task ID is missing', async () => {
+      mockReq.params = { sprintId: 'sprint-123' };
+      mockReq.user = { id: 'dev-123' };
+
+      deleteTask(mockReq as any, mockRes as any, mockNext);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(mockNext).toHaveBeenCalledWith(expect.any(BadRequestError));
+    });
+  });
+
+  describe('addPBIToSprint (guard clauses)', () => {
+    it('should throw BadRequestError when the sprint ID is missing', async () => {
+      mockReq.params = {};
+      mockReq.user = { id: 'user-123' };
+
+      addPBIToSprint(mockReq as any, mockRes as any, mockNext);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(mockNext).toHaveBeenCalledWith(expect.any(BadRequestError));
+    });
+  });
+
+  describe('removePBIFromSprint (guard clauses)', () => {
+    it('should throw BadRequestError when the sprint ID is missing', async () => {
+      mockReq.params = { pbiId: 'pbi-456' };
+      mockReq.user = { id: 'user-123' };
+
+      removePBIFromSprint(mockReq as any, mockRes as any, mockNext);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(mockNext).toHaveBeenCalledWith(expect.any(BadRequestError));
+    });
+
+    it('should throw BadRequestError when the caller is not authenticated', async () => {
+      mockReq.params = { sprintId: 'sprint-123', pbiId: 'pbi-456' };
+      mockReq.user = undefined;
+
+      removePBIFromSprint(mockReq as any, mockRes as any, mockNext);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(mockNext).toHaveBeenCalledWith(expect.any(BadRequestError));
+    });
+  });
+
+  describe('acknowledgeSprintBacklogChange (guard clauses)', () => {
+    it('should throw BadRequestError when the sprint ID is missing', async () => {
+      mockReq.params = { changeId: 'change-456' };
+      mockReq.user = { id: 'po-123' };
+
+      acknowledgeSprintBacklogChange(mockReq as any, mockRes as any, mockNext);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(mockNext).toHaveBeenCalledWith(expect.any(BadRequestError));
+    });
+
+    it('should throw BadRequestError when the change ID is missing', async () => {
+      mockReq.params = { sprintId: 'sprint-123' };
+      mockReq.user = { id: 'po-123' };
+
+      acknowledgeSprintBacklogChange(mockReq as any, mockRes as any, mockNext);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(mockNext).toHaveBeenCalledWith(expect.any(BadRequestError));
+    });
+  });
+
+  describe('getSprintBacklogChanges (guard clauses)', () => {
+    it('should throw BadRequestError when the sprint ID is missing', async () => {
+      mockReq.params = {};
+
+      getSprintBacklogChanges(mockReq as any, mockRes as any, mockNext);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(mockNext).toHaveBeenCalledWith(expect.any(BadRequestError));
+    });
+  });
+
+  describe('getDoDComplianceReport', () => {
+    it('should return the DoD compliance report for the authenticated user', async () => {
+      mockReq.params = { sprintId: 'sprint-123' };
+      mockReq.user = { id: 'dev-123' };
+      const mockReport = { sprintId: 'sprint-123', compliant: true };
+      (definitionOfDoneService.getDoDComplianceReport as any).mockResolvedValue(mockReport);
+
+      getDoDComplianceReport(mockReq as any, mockRes as any, mockNext);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(mockNext).not.toHaveBeenCalled();
+      expect(definitionOfDoneService.getDoDComplianceReport).toHaveBeenCalledWith(
+        'sprint-123',
+        'dev-123'
+      );
+      expect(mockRes._json).toEqual({ success: true, data: mockReport });
+    });
+
+    it('should prefer the middleware-provided req.userId', async () => {
+      mockReq.params = { sprintId: 'sprint-123' };
+      mockReq.userId = 'middleware-user';
+      mockReq.user = undefined;
+      (definitionOfDoneService.getDoDComplianceReport as any).mockResolvedValue({});
+
+      getDoDComplianceReport(mockReq as any, mockRes as any, mockNext);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(definitionOfDoneService.getDoDComplianceReport).toHaveBeenCalledWith(
+        'sprint-123',
+        'middleware-user'
+      );
+    });
+
+    it('should throw BadRequestError when the sprint ID is missing', async () => {
+      mockReq.params = {};
+      mockReq.user = { id: 'dev-123' };
+
+      getDoDComplianceReport(mockReq as any, mockRes as any, mockNext);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(mockNext).toHaveBeenCalledWith(expect.any(BadRequestError));
+    });
+
+    it('should throw BadRequestError when the user is not authenticated', async () => {
+      mockReq.params = { sprintId: 'sprint-123' };
+      mockReq.user = undefined;
+      mockReq.userId = undefined;
+
+      getDoDComplianceReport(mockReq as any, mockRes as any, mockNext);
       await new Promise((resolve) => setTimeout(resolve, 0));
 
       expect(mockNext).toHaveBeenCalledWith(expect.any(BadRequestError));

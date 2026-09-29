@@ -61,6 +61,18 @@ describe('ListView', () => {
       expect(screen.getByText(i18nT('backlog:listView.labels'))).toBeInTheDocument();
     });
 
+    it('should keep the header and the rows in a single table so columns stay aligned', () => {
+      const { container } = renderWithProviders(
+        <ListView items={mockItems} onItemClick={mockOnItemClick} />
+      );
+
+      // Separate tables would be laid out independently and drift out of alignment.
+      const tables = container.querySelectorAll('table');
+      expect(tables).toHaveLength(1);
+      expect(tables[0]!.querySelectorAll('thead th')).toHaveLength(8);
+      expect(tables[0]!.querySelectorAll('tbody tr')).toHaveLength(mockItems.length);
+    });
+
     it('should render all items', () => {
       renderWithProviders(<ListView items={mockItems} onItemClick={mockOnItemClick} />);
 
@@ -313,6 +325,125 @@ describe('ListView', () => {
       // Should still show MoSCoW badges
       const moscowBadges = screen.getAllByText(i18nT('backlog:moscowLabels.SHOULD_HAVE'));
       expect(moscowBadges.length).toBeGreaterThan(0);
+    });
+  });
+
+  describe('Backlog order', () => {
+    it('should number the rows from the top of the backlog', () => {
+      renderWithProviders(<ListView items={mockItems} onItemClick={mockOnItemClick} />);
+
+      const positions = screen.getAllByLabelText(/^Position \d+ in the Product Backlog$/);
+      expect(positions.map((node) => node.textContent)).toEqual(['1', '2', '3']);
+    });
+
+    it('should move an item one position for the Product Owner', async () => {
+      const user = userEvent.setup();
+      const onMove = vi.fn();
+
+      renderWithProviders(
+        <ListView items={mockItems} onItemClick={mockOnItemClick} onMove={onMove} canOrder />
+      );
+
+      await user.click(
+        screen.getByLabelText(i18nT('backlog:order.moveDownAria', { title: 'Feature A' }))
+      );
+
+      expect(onMove).toHaveBeenCalledWith('pbi-1', 'down');
+    });
+
+    it('should disable the move controls at the ends of the backlog', () => {
+      renderWithProviders(
+        <ListView items={mockItems} onItemClick={mockOnItemClick} onMove={vi.fn()} canOrder />
+      );
+
+      expect(
+        screen.getByLabelText(i18nT('backlog:order.moveUpAria', { title: 'Feature A' }))
+      ).toBeDisabled();
+      expect(
+        screen.getByLabelText(i18nT('backlog:order.moveDownAria', { title: 'Feature C' }))
+      ).toBeDisabled();
+    });
+
+    it('should not offer move controls to anyone but the Product Owner', () => {
+      renderWithProviders(
+        <ListView
+          items={mockItems}
+          onItemClick={mockOnItemClick}
+          onMove={vi.fn()}
+          canOrder={false}
+        />
+      );
+
+      // The position stays readable; only the affordance is withheld.
+      expect(screen.getAllByLabelText(/^Position \d+ in the Product Backlog$/)).toHaveLength(3);
+      expect(screen.queryByLabelText(/^Move /)).not.toBeInTheDocument();
+    });
+
+    it('should move an item up one position for the Product Owner', async () => {
+      const user = userEvent.setup();
+      const onMove = vi.fn();
+
+      renderWithProviders(
+        <ListView items={mockItems} onItemClick={mockOnItemClick} onMove={onMove} canOrder />
+      );
+
+      await user.click(
+        screen.getByLabelText(i18nT('backlog:order.moveUpAria', { title: 'Feature B' }))
+      );
+
+      expect(onMove).toHaveBeenCalledWith('pbi-2', 'up');
+    });
+  });
+
+  describe('Virtualized body', () => {
+    const buildVirtualItems = () =>
+      Array.from({ length: 60 }, (_, i) =>
+        createMockBacklogItem({
+          id: `pbi-${i}`,
+          title: `Feature ${i}`,
+          priority: MoSCoWPriority.MUST_HAVE,
+          status: (i === 0 ? 'UNKNOWN' : ItemStatus.NEW) as never,
+          businessValue: i === 0 ? undefined : 5,
+          storyPoints: i === 0 ? undefined : 3,
+          labels: i === 0 ? ['a', 'b', 'c', 'd'] : ['x'],
+        })
+      );
+
+    it('should render fallbacks and support row click plus move controls', async () => {
+      const user = userEvent.setup();
+      const onMove = vi.fn();
+
+      renderWithProviders(
+        <ListView
+          items={buildVirtualItems()}
+          onItemClick={mockOnItemClick}
+          onMove={onMove}
+          canOrder
+        />
+      );
+
+      // Unknown status falls back to the raw value; missing value/estimate render a dash and
+      // more than two labels collapse into a "+N" overflow indicator.
+      expect(screen.getByText('UNKNOWN')).toBeInTheDocument();
+      expect(screen.getAllByText('-').length).toBeGreaterThanOrEqual(2);
+      expect(screen.getByText('+2')).toBeInTheDocument();
+
+      // Clicking a virtualized row opens the item.
+      await user.click(screen.getByText('Feature 0'));
+      expect(mockOnItemClick).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'pbi-0', title: 'Feature 0' })
+      );
+
+      // Move controls in the virtualized body.
+      await user.click(
+        screen.getByLabelText(i18nT('backlog:order.moveUpAria', { title: 'Feature 1' }))
+      );
+      await user.click(
+        screen.getByLabelText(i18nT('backlog:order.moveDownAria', { title: 'Feature 1' }))
+      );
+
+      expect(onMove).toHaveBeenCalledWith('pbi-1', 'up');
+      expect(onMove).toHaveBeenCalledWith('pbi-1', 'down');
     });
   });
 });

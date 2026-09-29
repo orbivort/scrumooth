@@ -8,10 +8,14 @@ import {
   localizedError,
 } from '../utils/errors';
 import { generateUUIDv7 } from '../utils/uuid';
+import { GATE_CODES } from '@scrumooth/shared';
+import type { IncrementCompositionResult } from '@scrumooth/shared';
 import { workflowService } from './workflow.service';
 import { incrementService } from './increment.service';
+import { checkDoDEligibility } from './incrementAccess';
 import { logger } from '../utils/logger';
 import { BACKLOG_CONFIG, isBacklogLimitEnabled } from '../config/backlog.config';
+import { PRODUCT_BACKLOG_ORDER } from '../config/backlogOrder';
 import type {
   ProductBacklogItem,
   ItemStatus,
@@ -86,6 +90,34 @@ export interface BulkCreateResult {
   createdItems: ProductBacklogItem[];
 }
 
+/**
+ * A reorder request. Two shapes, because both are legitimate:
+ *
+ * - `{ pbiIds }` — the canonical one: the team's *complete* Product Backlog in the requested
+ *   order. The service refuses a partial list rather than silently producing a false success.
+ * - `{ pbiId, targetPbiId, position }` — one positional move, resolved against the team's
+ *   current order. This is what the board sends, so a filtered or paginated view can move an
+ *   item without holding the whole backlog in memory.
+ */
+export type ReorderBacklogInput =
+  { pbiIds: string[] } | { pbiId: string; targetPbiId: string; position: 'before' | 'after' };
+
+/** One entry of the resulting order, returned so the client never guesses the new ranks. */
+export interface ReorderedPBI {
+  id: string;
+  rank: number;
+  priority: MoSCoWPriority;
+}
+
+/**
+ * Upper bound on a single reorder request. The reorder writes one row per item whose rank
+ * actually changed, inside one transaction, so the payload has to stay bounded for the
+ * transaction to remain short. It is deliberately far above the default backlog capacity
+ * (`BACKLOG_CONFIG.MAX_ITEMS_PER_GOAL`, 200) so the limit can be disabled without the
+ * ordering operation becoming the new ceiling.
+ */
+export const MAX_REORDER_ITEMS = 500;
+
 class ProductBacklogService {
   /**
    * Get product backlog for a team
@@ -127,7 +159,7 @@ class ProductBacklogService {
             select: { id: true, firstName: true, lastName: true },
           },
         },
-        orderBy: [{ priority: 'asc' }, { createdAt: 'desc' }],
+        orderBy: PRODUCT_BACKLOG_ORDER,
         skip,
         take: limit,
       }),
@@ -185,21 +217,36 @@ class ProductBacklogService {
       ? await this.assertCanSizeOrResolve(data.teamId, userId, true)
       : null;
 
-    const pbi = await prisma.productBacklogItem.create({
-      data: {
-        id: pbiId,
-        teamId: data.teamId,
-        goalId: data.goalId,
-        title: data.title,
-        description: data.description,
-        storyPoints: data.storyPoints,
-        labels: data.labels ?? [],
-        acceptanceCriteria: data.acceptanceCriteria,
-        createdBy: userId,
-        priority: data.priority ?? 'COULD_HAVE',
-        businessValue: data.businessValue,
-        status: initialStatus,
-      },
+    // Scrum Guide: the Product Backlog is the emergent expression of the Product Goal, so an
+    // item can never be created outside a goal. An omitted goalId is auto-linked to the
+    // team's single ACTIVE goal; a team without one cannot receive new backlog items.
+    const goalId = await this.resolveGoalAnchor(data.teamId, data.goalId);
+    await this.validateGoalCapacity(goalId, 1);
+
+    // A new item joins the *end* of its team's order. Appending keeps every existing
+    // position stable, which is what makes the Product Backlog a list the team can work
+    // top-to-bottom; the Product Owner then moves it with a reorder, not by creating it
+    // somewhere in the middle.
+    const pbi = await prisma.$transaction(async (tx) => {
+      const rank = await this.nextRank(tx, data.teamId);
+
+      return tx.productBacklogItem.create({
+        data: {
+          id: pbiId,
+          teamId: data.teamId,
+          goalId,
+          title: data.title,
+          description: data.description,
+          storyPoints: data.storyPoints,
+          labels: data.labels ?? [],
+          acceptanceCriteria: data.acceptanceCriteria,
+          createdBy: userId,
+          priority: data.priority ?? 'COULD_HAVE',
+          businessValue: data.businessValue,
+          status: initialStatus,
+          rank,
+        },
+      });
     });
 
     // Record initial status in workflow history
@@ -232,8 +279,17 @@ class ProductBacklogService {
 
   /**
    * Update a PBI
+   *
+   * When the update transitions the item to DONE, the result also carries the outcome of composing
+   * the Sprint's Increment: the item is reported as having joined an Increment, as having been
+   * skipped (with the reason), or as having failed. Composition failing never rolls back the Done
+   * write, but the caller must be able to tell that the Increment did not absorb the item.
    */
-  async updatePBI(pbiId: string, userId: string, data: UpdatePBIData): Promise<ProductBacklogItem> {
+  async updatePBI(
+    pbiId: string,
+    userId: string,
+    data: UpdatePBIData
+  ): Promise<ProductBacklogItem & { composition?: IncrementCompositionResult }> {
     // Check if PBI exists
     const existing = await prisma.productBacklogItem.findUnique({
       where: { id: pbiId },
@@ -265,10 +321,36 @@ class ProductBacklogService {
     // rejected even though they may update every other field on the item.
     const isSizingAttempt = data.storyPoints !== undefined;
     if (isSizingAttempt && teamMember.role !== 'DEVELOPERS') {
-      throw localizedError('errors:developerOnlySizing', {}, 403, 'FORBIDDEN');
+      throw localizedError('errors:developerOnlySizing', {}, 403, GATE_CODES.DEVELOPER_ONLY_SIZING);
+    }
+
+    // Ordering the Product Backlog is the Product Owner's accountability, and the MoSCoW band
+    // is part of that order — but only a *change* of band is an ordering decision. An
+    // unchanged value (the edit form resubmits the current priority) is a no-op, so
+    // refinement and the workflow transitions keep working for Developers and Scrum Masters.
+    const isPriorityChange = data.priority !== undefined && data.priority !== existing.priority;
+    if (isPriorityChange && teamMember.role !== 'PRODUCT_OWNER') {
+      throw localizedError(
+        'errors:backlogOrder.productOwnerOnly',
+        {},
+        403,
+        GATE_CODES.PRODUCT_OWNER_ONLY_BACKLOG_ORDER
+      );
     }
 
     const userRoles = [teamMember.role];
+
+    // A backlog item always serves a Product Goal. An item that already carries one keeps it
+    // (a fulfilled or abandoned goal is a historical record that must not be rewritten); an
+    // item created before the anchoring gate was introduced is healed on its next edit. A
+    // goal named by the caller must be the team's ACTIVE goal, so a null goalId never
+    // un-anchors an item.
+    let goalAnchor: string | undefined;
+    if (data.goalId) {
+      goalAnchor = await this.resolveGoalAnchor(existing.teamId, data.goalId);
+    } else if (!existing.goalId) {
+      goalAnchor = await this.resolveGoalAnchor(existing.teamId);
+    }
 
     if (data.status && data.status !== existing.status) {
       const validationResult = await workflowService.validateTransition(
@@ -294,10 +376,13 @@ class ProductBacklogService {
       }
     }
 
+    const { goalId: _requestedGoalId, ...updateData } = data;
+
     const pbi = await prisma.productBacklogItem.update({
       where: { id: pbiId },
       data: {
-        ...data,
+        ...updateData,
+        ...(goalAnchor ? { goalId: goalAnchor } : {}),
         updatedAt: new Date(),
       },
     });
@@ -325,24 +410,51 @@ class ProductBacklogService {
     // Continuously compose the Sprint's Increment from this Done PBI (find-or-create the
     // Sprint Increment then upsert the incrementPBI row) whenever an item transitions to
     // DONE via the existing status-update path. The composition is best-effort and
-    // non-fatal: it never rolls back the successful DONE write.
+    // non-fatal: it never rolls back the successful DONE write. Its outcome is returned
+    // rather than swallowed, so an Increment that under-reports its contents is visible at
+    // the moment it happens and not at the Sprint Review.
     if (data.status === 'DONE') {
-      await incrementService.composeDonePBI(pbiId, userId);
+      const composition = await incrementService.composeDonePBI(pbiId, userId);
+      return { ...pbi, composition };
     }
 
     return pbi;
   }
 
   /**
-   * Update PBI priority (MoSCoW)
+   * Update PBI priority (MoSCoW).
+   *
+   * The MoSCoW band is a categorisation of the Product Backlog order, so reclassifying an
+   * item is the Product Owner's call (Scrum Guide) — enforced here rather than merely hidden
+   * in the interface.
+   *
+   * @param pbiId - the item being reclassified
+   * @param userId - the acting user; must be the team's Product Owner
+   * @param priority - the new MoSCoW band
+   * @throws NotFoundError when the item does not exist
+   * @throws AppError (403, `GATE_PRODUCT_OWNER_ONLY_BACKLOG_ORDER`) when the caller is not the
+   * team's Product Owner
    */
-  async updatePriority(pbiId: string, priority: MoSCoWPriority): Promise<ProductBacklogItem> {
-    const pbi = await prisma.productBacklogItem.update({
+  async updatePriority(
+    pbiId: string,
+    userId: string,
+    priority: MoSCoWPriority
+  ): Promise<ProductBacklogItem> {
+    const existing = await prisma.productBacklogItem.findUnique({
+      where: { id: pbiId },
+      select: { id: true, teamId: true },
+    });
+
+    if (!existing) {
+      throw new NotFoundError('Product Backlog Item');
+    }
+
+    await this.assertProductOwnerBacklogOrder(existing.teamId, userId);
+
+    return prisma.productBacklogItem.update({
       where: { id: pbiId },
       data: { priority },
     });
-
-    return pbi;
   }
 
   /**
@@ -411,8 +523,14 @@ class ProductBacklogService {
     // against direct API/bypass requests, not a common UX path).
     const hasSizingAttempt = items.some((item) => item.storyPoints !== undefined);
     if (hasSizingAttempt && teamMember?.role !== 'DEVELOPERS') {
-      throw localizedError('errors:developerOnlySizing', {}, 403, 'FORBIDDEN');
+      throw localizedError('errors:developerOnlySizing', {}, 403, GATE_CODES.DEVELOPER_ONLY_SIZING);
     }
+
+    // A bulk upload is single-team, so the Product Goal anchor is resolved once for the whole
+    // batch. A team with no ACTIVE Product Goal fails the batch: nothing in it could serve a
+    // goal. A row that names a different goal is reported through the per-row error transport
+    // below rather than discarding the rows that can be anchored correctly.
+    const anchorGoalId = firstItem ? await this.resolveGoalAnchor(firstItem.teamId) : undefined;
 
     // Check for duplicate titles within the batch
     const seenTitles = new Set<string>();
@@ -433,19 +551,38 @@ class ProductBacklogService {
       }
     }
 
+    // Validate capacity against the resolved anchor so auto-linked rows are counted too.
+    await this.validateBulkImportCapacity(
+      processedItems.map((item) => ({ goalId: item.goalId ?? anchorGoalId }))
+    );
+
     for (const item of processedItems) {
       const { _rowNumber, ...createData } = item;
 
       try {
+        if (createData.goalId && createData.goalId !== anchorGoalId) {
+          throw localizedError(
+            'errors:productGoal.notActive',
+            {},
+            409,
+            GATE_CODES.PRODUCT_GOAL_NOT_ACTIVE
+          );
+        }
+
         const pbi = await prisma.$transaction(async (tx) => {
           const pbiId = generateUUIDv7();
           const initialStatus = createData.status ?? 'NEW';
+
+          // Rows are written one transaction at a time, so each row reads the max rank the
+          // previous row committed and the batch appends to the team's order as a block, in
+          // payload order.
+          const rank = await this.nextRank(tx, createData.teamId);
 
           const created = await tx.productBacklogItem.create({
             data: {
               id: pbiId,
               teamId: createData.teamId,
-              goalId: createData.goalId,
+              goalId: anchorGoalId,
               title: createData.title,
               description: createData.description,
               storyPoints: createData.storyPoints,
@@ -455,6 +592,7 @@ class ProductBacklogService {
               priority: createData.priority ?? 'COULD_HAVE',
               businessValue: createData.businessValue,
               status: initialStatus,
+              rank,
             },
           });
 
@@ -521,13 +659,199 @@ class ProductBacklogService {
   }
 
   /**
-   * Reorder PBIs - Note: With MoSCoW priority, reordering is done within each priority category
-   * This function is kept for API compatibility but does not change MoSCoW priorities
+   * Assert that the acting user is the team's Product Owner.
+   *
+   * Scrum Guide: "The Product Owner orders Product Backlog items." Ordering is a decision the
+   * rest of the organisation is required to respect, so it is enforced server-side rather than
+   * merely hidden in the interface. Everything else about an item stays collaborative —
+   * creating, editing, deleting and the workflow transitions (refine, Ready, Done) — because
+   * the Guide assigns those to the whole Scrum Team or to the Developers.
+   *
+   * @param teamId - the team whose backlog is being ordered
+   * @param userId - the acting user
+   * @throws AppError (403, `FORBIDDEN`) when the user is not a member of the team
+   * @throws AppError (403, `GATE_PRODUCT_OWNER_ONLY_BACKLOG_ORDER`) when they are a member
+   * without the Product Owner role
    */
-  async reorderPBIs(_pbiIds: string[]): Promise<void> {
-    // With MoSCoW priority system, items are grouped by priority category
-    // Reordering within categories would require a separate sort order field
-    // For now, this is a no-op as the priority is now categorical
+  private async assertProductOwnerBacklogOrder(teamId: string, userId: string): Promise<void> {
+    const teamMember = await prisma.teamMember.findFirst({
+      where: { teamId, userId },
+      select: { role: true },
+    });
+
+    if (!teamMember) {
+      throw localizedError('errors:notTeamMember', {}, 403, 'FORBIDDEN');
+    }
+
+    if (teamMember.role !== 'PRODUCT_OWNER') {
+      throw localizedError(
+        'errors:backlogOrder.productOwnerOnly',
+        {},
+        403,
+        GATE_CODES.PRODUCT_OWNER_ONLY_BACKLOG_ORDER
+      );
+    }
+  }
+
+  /**
+   * Resolve the rank that appends an item to the end of a team's Product Backlog order.
+   *
+   * Runs on the caller's transaction client so the aggregate and the insert observe the same
+   * snapshot. Two concurrent creates can compute the same value; the `createdAt`/`id`
+   * tiebreakers in `PRODUCT_BACKLOG_ORDER` keep the subsequent read deterministic, and the
+   * next reorder re-densifies. A unique constraint is deliberately avoided — it would surface a
+   * spurious conflict to whichever writer lost the race, for no product benefit.
+   *
+   * @param tx - the transaction client performing the insert
+   * @param teamId - the team whose backlog the item joins
+   * @returns the rank to assign (1 for the first item in an empty backlog)
+   */
+  private async nextRank(tx: Prisma.TransactionClient, teamId: string): Promise<number> {
+    const aggregate = await tx.productBacklogItem.aggregate({
+      where: { teamId },
+      _max: { rank: true },
+    });
+
+    return (aggregate._max.rank ?? 0) + 1;
+  }
+
+  /**
+   * Persist a new Product Backlog order.
+   *
+   * Ordering the Product Backlog is the Product Owner's accountability (Scrum Guide), so this
+   * is Product Owner-only (`GATE_PRODUCT_OWNER_ONLY_BACKLOG_ORDER`). The requested order is
+   * validated against the team's real backlog and then written as dense, 1-based ranks in a
+   * single transaction: a drop that changes nothing writes nothing, and a drop that does
+   * change the order writes only the rows that moved.
+   *
+   * @param userId - the acting user; must be the team's Product Owner
+   * @param input - either the team's complete backlog in order, or one positional move
+   * @returns the resulting order (`id`, `rank`, `priority`) so the client never guesses
+   * @throws NotFoundError when a named item does not exist
+   * @throws BadRequestError when the payload is empty, over the cap, spans teams, repeats an
+   * item, names only part of the backlog, or moves an item relative to itself
+   * @throws AppError (403, `GATE_PRODUCT_OWNER_ONLY_BACKLOG_ORDER`) when the caller is not the
+   * team's Product Owner
+   */
+  async reorderPBIs(userId: string, input: ReorderBacklogInput): Promise<ReorderedPBI[]> {
+    const isPositionalMove = 'pbiId' in input;
+    const requestedIds = isPositionalMove ? [input.pbiId, input.targetPbiId] : input.pbiIds;
+
+    if (requestedIds.length === 0) {
+      throw localizedError('errors:backlogOrder.empty', {}, 400);
+    }
+
+    if (requestedIds.length > MAX_REORDER_ITEMS) {
+      throw localizedError('errors:backlogOrder.tooMany', { max: MAX_REORDER_ITEMS }, 400);
+    }
+
+    if (isPositionalMove && input.pbiId === input.targetPbiId) {
+      throw localizedError('errors:backlogOrder.selfMove', {}, 400);
+    }
+
+    const namedItems = await prisma.productBacklogItem.findMany({
+      where: { id: { in: [...new Set(requestedIds)] } },
+      select: { id: true, teamId: true },
+    });
+
+    const firstNamed = namedItems[0];
+    if (!firstNamed) {
+      throw new NotFoundError('Product Backlog Item');
+    }
+
+    const teamId = firstNamed.teamId;
+    if (namedItems.some((item) => item.teamId !== teamId)) {
+      throw localizedError('errors:backlogOrder.multipleTeams', {}, 400);
+    }
+
+    const foundIds = new Set(namedItems.map((item) => item.id));
+    if (requestedIds.some((id) => !foundIds.has(id))) {
+      throw new NotFoundError('Product Backlog Item');
+    }
+
+    await this.assertProductOwnerBacklogOrder(teamId, userId);
+
+    // The order of record is the team's whole backlog, so a positional move is resolved
+    // against it even when the request describes only one move.
+    const currentOrder = await prisma.productBacklogItem.findMany({
+      where: { teamId },
+      select: { id: true, rank: true, priority: true },
+      orderBy: PRODUCT_BACKLOG_ORDER,
+    });
+
+    const currentIds = currentOrder.map((item) => item.id);
+    const itemById = new Map(currentOrder.map((item) => [item.id, item]));
+
+    let nextIds: string[];
+
+    if (isPositionalMove) {
+      const withoutMoved = currentIds.filter((id) => id !== input.pbiId);
+      const targetIndex = withoutMoved.indexOf(input.targetPbiId);
+
+      if (targetIndex === -1) {
+        throw new NotFoundError('Product Backlog Item');
+      }
+
+      const insertAt = input.position === 'before' ? targetIndex : targetIndex + 1;
+      nextIds = [...withoutMoved.slice(0, insertAt), input.pbiId, ...withoutMoved.slice(insertAt)];
+    } else {
+      const requestedSet = new Set(input.pbiIds);
+
+      if (requestedSet.size !== input.pbiIds.length) {
+        throw localizedError('errors:backlogOrder.duplicateItems', {}, 400);
+      }
+
+      // A partial list would let a client "reorder" a filtered view and silently scramble
+      // the ranks of the items it did not send. Refuse instead of reporting a false success.
+      if (
+        requestedSet.size !== currentIds.length ||
+        !currentIds.every((id) => requestedSet.has(id))
+      ) {
+        throw localizedError(
+          'errors:backlogOrder.incompleteList',
+          { expected: currentIds.length, received: requestedSet.size },
+          400
+        );
+      }
+
+      nextIds = input.pbiIds;
+    }
+
+    const currentRankById = new Map(currentOrder.map((item) => [item.id, item.rank]));
+    const movedItems = nextIds
+      .map((id, index) => ({ id, rank: index + 1 }))
+      .filter((entry) => currentRankById.get(entry.id) !== entry.rank);
+
+    if (movedItems.length > 0) {
+      // One transaction for the whole renumbering: a half-applied order is worse than none.
+      // Rows whose rank is unchanged are skipped, so dropping an item where it already sits
+      // costs no writes.
+      await prisma.$transaction(
+        movedItems.map((entry) =>
+          prisma.productBacklogItem.update({
+            where: { id: entry.id },
+            data: { rank: entry.rank },
+          })
+        )
+      );
+
+      logger.info('Product Backlog reordered', {
+        teamId,
+        userId,
+        itemCount: nextIds.length,
+        movedCount: movedItems.length,
+        mode: isPositionalMove ? 'positional' : 'full-list',
+      });
+    }
+
+    return nextIds.map((id, index) => {
+      const item = itemById.get(id);
+      if (!item) {
+        throw new NotFoundError('Product Backlog Item');
+      }
+
+      return { id, rank: index + 1, priority: item.priority };
+    });
   }
 
   /**
@@ -606,44 +930,92 @@ class ProductBacklogService {
   }
 
   /**
-   * Definition of Done is the gate to "Done". Before an item may transition to DONE, every
-   * active DoD item must be verified for it. A team with no active DoD items has no gate to
-   * satisfy (vacuously compliant), so the transition is allowed.
-   * @throws BadRequestError when the active DoD checklist is not fully verified.
+   * Resolve the Product Goal a Product Backlog item must serve.
+   *
+   * Scrum Guide: the Product Backlog is the emergent expression of the Product Goal, so an
+   * item cannot exist outside a goal. A caller-supplied `goalId` must belong to the same team
+   * and must be that team's ACTIVE goal; an omitted `goalId` adopts the team's single ACTIVE
+   * goal. Either way, a team with no ACTIVE Product Goal cannot receive new items.
+   *
+   * @param teamId - the team the backlog items belong to
+   * @param goalId - the goal the caller asked for, when one was named
+   * @returns the goal id the item must carry
+   * @throws NotFoundError when the requested goal does not belong to the team
+   * @throws AppError (409, `GATE_PRODUCT_GOAL_NOT_ACTIVE`) when the requested goal is not ACTIVE
+   * @throws AppError (400, `GATE_PRODUCT_GOAL_REQUIRED_FOR_BACKLOG`) when the team has no
+   * ACTIVE Product Goal to anchor the item to
    */
-  private async assertFullDoDVerified(pbi: ProductBacklogItem): Promise<void> {
-    const dod = await prisma.definitionOfDone.findUnique({
-      where: { teamId: pbi.teamId },
-      select: {
-        items: {
-          where: { isActive: true },
-          select: { id: true },
-        },
-      },
+  private async resolveGoalAnchor(teamId: string, goalId?: string | null): Promise<string> {
+    if (goalId) {
+      const requestedGoal = await prisma.productGoal.findFirst({
+        where: { id: goalId, teamId },
+        select: { id: true, status: true },
+      });
+
+      if (!requestedGoal) {
+        throw new NotFoundError('Product Goal');
+      }
+
+      if (requestedGoal.status !== 'ACTIVE') {
+        throw localizedError(
+          'errors:productGoal.notActive',
+          {},
+          409,
+          GATE_CODES.PRODUCT_GOAL_NOT_ACTIVE
+        );
+      }
+
+      return requestedGoal.id;
+    }
+
+    // The single-active-goal gate keeps at most one ACTIVE goal per team; the ordering keeps
+    // the lookup deterministic should legacy data ever hold more.
+    const activeGoal = await prisma.productGoal.findFirst({
+      where: { teamId, status: 'ACTIVE' },
+      select: { id: true },
+      orderBy: { createdAt: 'desc' },
     });
 
-    const activeDodItemIds = (dod?.items ?? []).map((item) => item.id);
-    if (activeDodItemIds.length === 0) {
+    if (!activeGoal) {
+      throw localizedError(
+        'errors:productGoal.requiredForBacklog',
+        {},
+        400,
+        GATE_CODES.PRODUCT_GOAL_REQUIRED_FOR_BACKLOG
+      );
+    }
+
+    return activeGoal.id;
+  }
+
+  /**
+   * Definition of Done is the gate to "Done". Before an item may transition to DONE, every
+   * active DoD item must be verified for it.
+   *
+   * A team with no active DoD item is refused rather than allowed: "nothing is Done until the
+   * checklist passes" cannot be satisfied by deleting the checklist, and the previous
+   * vacuous pass made the Definition of Done defeatable with a single API call.
+   *
+   * @throws AppError (400, `GATE_DOD_REQUIRED`) when the team's Definition of Done has no active
+   * item, and (400, `GATE_DOD_NOT_VERIFIED`) when the active checklist is not fully verified.
+   */
+  private async assertFullDoDVerified(pbi: ProductBacklogItem): Promise<void> {
+    const eligibility = await checkDoDEligibility(pbi.id, pbi.teamId);
+
+    if (eligibility.eligible) {
       return;
     }
 
-    const verifiedRows = await prisma.doDChecklistVerification.findMany({
-      where: {
-        pbiId: pbi.id,
-        dodItemId: { in: activeDodItemIds },
-        isVerified: true,
-      },
-      select: { dodItemId: true },
-    });
-
-    const verifiedDodItemIds = new Set(verifiedRows.map((row) => row.dodItemId));
-    const unverified = activeDodItemIds.filter((id) => !verifiedDodItemIds.has(id));
-
-    if (unverified.length > 0) {
-      throw new BadRequestError(
-        `Item cannot be marked Done until all Definition of Done items are verified. Missing verification for ${unverified.length} active DoD item(s).`
-      );
+    if (eligibility.reason === 'NO_DOD') {
+      throw localizedError('errors:dodRequired', {}, 400, GATE_CODES.DOD_REQUIRED);
     }
+
+    throw localizedError(
+      'errors:dodNotVerified',
+      { count: eligibility.unverifiedCount },
+      400,
+      GATE_CODES.DOD_NOT_VERIFIED
+    );
   }
 
   /**
@@ -666,7 +1038,7 @@ class ProductBacklogService {
     });
 
     if (isSizingAttempt && teamMember?.role !== 'DEVELOPERS') {
-      throw localizedError('errors:developerOnlySizing', {}, 403, 'FORBIDDEN');
+      throw localizedError('errors:developerOnlySizing', {}, 403, GATE_CODES.DEVELOPER_ONLY_SIZING);
     }
 
     return teamMember;

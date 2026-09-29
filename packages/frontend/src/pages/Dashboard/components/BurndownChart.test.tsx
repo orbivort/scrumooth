@@ -151,10 +151,10 @@ describe('BurndownChart Component', () => {
       expect(summary).toBeInTheDocument();
     });
 
-    it('should show ideal remaining points in summary', () => {
+    it('should show forecast remaining points in summary', () => {
       renderWithProviders(<BurndownChart data={mockValidData} />);
 
-      const summary = screen.getByText(/Ideal remaining: 20 points/);
+      const summary = screen.getByText(/Forecast remaining: 20 points/);
       expect(summary).toBeInTheDocument();
     });
 
@@ -361,7 +361,7 @@ describe('BurndownChart Component', () => {
       expect(data).toMatchObject({
         datasets: expect.arrayContaining([
           expect.objectContaining({
-            label: 'Ideal',
+            label: 'Forecast (linear)',
             borderDash: [5, 5],
             tension: 0,
           }),

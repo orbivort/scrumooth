@@ -64,6 +64,12 @@ describe('IncrementDetail', () => {
     sprint: { id: 'sprint-1', name: 'Sprint 1' },
     totalStoryPoints: 21,
     includedPBIs: ['pbi-1', 'pbi-2', 'pbi-3'],
+    // An Increment that has walked both gates: additive to prior Increments, and attested usable.
+    integrationVerified: true,
+    usabilityVerified: true,
+    usabilityEvidence: 'Exercised by the Product Owner in staging',
+    usabilityVerifiedAt: '2026-01-09T00:00:00Z',
+    usabilityVerifier: { id: 'user-1', firstName: 'Ada', lastName: 'Lovelace' },
     dodVerifications: [
       {
         id: 'ver-1',
@@ -343,6 +349,32 @@ describe('IncrementDetail', () => {
         name: i18nT('increments:detail.deliverIncrement'),
       });
       expect(deliverButton).toBeEnabled();
+    });
+
+    it('should disable deliver with an explanation when the usable condition is not attested', async () => {
+      (apiService.getIncrement as vi.Mock).mockResolvedValue({
+        data: {
+          ...mockIncrement,
+          status: IncrementStatus.DRAFT,
+          integrationVerified: true,
+          usabilityVerified: false,
+        },
+      });
+      (apiService.getEligiblePBIsForIncrement as vi.Mock).mockResolvedValue({
+        data: mockEligiblePBIs,
+      });
+
+      renderComponent();
+
+      const deliverButton = await screen.findByRole('button', {
+        name: i18nT('increments:detail.deliverIncrement'),
+      });
+
+      expect(deliverButton).toBeDisabled();
+      expect(deliverButton).toHaveAttribute(
+        'data-disabled-reason',
+        'detail.deliverRequiresUsability'
+      );
     });
 
     it('should disable deliver button for DRAFT status when integration is not verified', async () => {

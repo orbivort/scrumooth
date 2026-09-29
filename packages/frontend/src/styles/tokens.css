@@ -370,6 +370,10 @@
      ======================================== */
   --z-base: 1;
   --z-dropdown: 1000;
+
+  /* A sticky element that has to sit underneath the app shell's sticky chrome rather than over it: the
+     topbar owns `--z-sticky`, so a page that pins a sub-header below the bar takes this layer. */
+  --z-under-sticky: 1019;
   --z-sticky: 1020;
   --z-fixed: 1030;
   --z-modal-backdrop: 1040;
@@ -469,6 +473,24 @@
 
   /* Scroll Margin Tokens */
   --scroll-margin-top: var(--space-16); /* accounts for fixed header height */
+
+  /* ========================================
+     MEASURED LAYOUT TOKENS (written at runtime)
+
+     The app shell's sticky chrome, and the space it takes from a page that pins something
+     underneath it. A module that carries an in-page navigation measures both and republishes
+     them here, so the navigation's own `sticky top` and the headings' `scroll-margin-top`
+     derive from one measurement instead of from a constant that would be wrong somewhere.
+
+     The values below are the fallback used before the first measurement, not a design
+     decision. They cannot be fixed: the topbar's height is content-driven (its padding plus
+     whatever sits in it), and below the 768px breakpoint it becomes `position: fixed` while
+     the shell pads the content instead -- so a single hardcoded offset would be wrong on one
+     of the two breakpoints.
+     ======================================== */
+  --app-topbar-height: var(--space-16);
+  --definition-nav-height: 0px;
+  --definition-anchor-gap: var(--space-4);
 
   /* Overscroll Behavior Tokens */
   --overscroll-behavior-contain: contain;

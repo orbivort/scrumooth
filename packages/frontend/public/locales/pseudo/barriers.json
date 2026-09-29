@@ -1,0 +1,120 @@
+{
+  "action": {
+    "add": "[Récórd àn àctíónnnnnn]",
+    "addTitle": "[Àctíón wíth à stàkéhóldérrrrrrrrr]",
+    "cancelled": "[Càncéllédddd]",
+    "complete": "[Màrk dónéééé]",
+    "delete": "[Délété àctíónnnnn]",
+    "description": "[Àctíónnn]",
+    "done": "[DDóónné]",
+    "dueDate": "[Dúéé]",
+    "noDueDate": "[Nó dúé dàtééééé]",
+    "open": "[ÓÓppéén]",
+    "overdue": "[Óvérdúéééé]",
+    "owner": "[Whó àctssss]",
+    "required": "[Déscríbé thé àctíón (àt léàst thréé chàràctérssssssssssssssss).]",
+    "status": "[Stàtússs]"
+  },
+  "actionStatus": {
+    "cancelled": "[Càncéllédddd]",
+    "done": "[DDóónné]",
+    "open": "[ÓÓppéén]"
+  },
+  "actions": {
+    "cancel": "[Càncélll]",
+    "created": "[Bàrríér ràísédddddd]",
+    "delete": "[Délétééé]",
+    "deleted": "[Bàrríér délétédddddd]",
+    "edit": "[ÉÉddíít]",
+    "new": "[Néw bàrríérrrrr]",
+    "reopen": "[Réópénnn]",
+    "resolve": "[Résólvéééé]",
+    "save": "[SSààvvé]",
+    "saved": "[Bàrríér úpdàtédddddd]"
+  },
+  "detail": {
+    "description": "[Déscríptíónnnnn]",
+    "escalatedFrom": "[Éscàlàtéd fróm thé ímpédíméntttttttttt]",
+    "noActions": "[Nó àctíón récórdéd yét. À bàrríér ís rémóvéd by àgrééíng wíth sóméóné óútsídé thé téàmmmmmmmmmmmmmmmmmmmmmmmmmmmm.]",
+    "provenance": "[Hów thís bàrríér wàs ràísédddddddddd]",
+    "raisedBy": "[Ràíséd byyyy]",
+    "resolution": "[Résólútíónnnn]",
+    "resolvedAt": "[Résólvédddd]",
+    "stakeholderActions": "[Stàkéhóldér àctíónsssssss]",
+    "title": "[Bàrríérrrr]"
+  },
+  "errors": {
+    "delete": "[Thé bàrríér cóúld nót bé délétéddddddddddd.]",
+    "load": "[Thé bàrríér régístér cóúld nót bé lóàdédddddddddddddd.]",
+    "resolve": "[Thé bàrríér cóúld nót bé résólvédddddddddddd.]",
+    "save": "[Thé bàrríér cóúld nót bé sàvéddddddddddd.]"
+  },
+  "escalate": {
+    "action": "[Éscàlàté tó à bàrríérrrrrrrr]",
+    "alreadyEscalated": "[Àlréàdy éscàlàtéd tóóóóóóóó “{{title}}”.]",
+    "cancel": "[Càncélll]",
+    "confirm": "[Éscàlàtéééé]",
+    "descriptionLabel": "[Whàt thé órgànízàtíón nééds tó dóóóóóóóóóóó]",
+    "error": "[Thé ímpédímént cóúld nót bé éscàlàtéddddddddddddd.]",
+    "impediment": "[Ímpédíméntttt]",
+    "intro": "[À bàrríér ís à próblém thé téàm cànnót rémóvé by ítsélf. Éscàlàtíng ít récórds whó óútsídé thé téàm hàs tó àcttttttttttttttttttttttttttttttttttt.]",
+    "onlyScrumMaster": "[Ónly thé téàm’s Scrúm Màstér càn éscàlàté àn ímpédíméntttttttttttttttttt.]",
+    "owner": "[Ównérrr]",
+    "priority": "[Ímpàcttt]",
+    "targetDate": "[Tàrgét dàtééééé]",
+    "title": "[Éscàlàté tó àn órgànízàtíónàl bàrríérrrrrrrrrrrrr]",
+    "titleLabel": "[Bàrríér títlééééé]"
+  },
+  "filters": {
+    "all": "[Àlll]",
+    "empty": "[Nó bàrríér màtchés thésé fíltérsssssssssss.]",
+    "priority": "[Ímpàcttt]",
+    "search": "[Séàrchhh]",
+    "searchPlaceholder": "[Séàrch by títlé ór ównérrrrrrrrr]",
+    "status": "[Stàtússs]"
+  },
+  "form": {
+    "createTitle": "[Néw órgànízàtíónàl bàrríérrrrrrrrr]",
+    "description": "[Whàt thé órgànízàtíón nééds tó dóóóóóóóóóóó]",
+    "descriptionRequired": "[Déscríbé whàt thé órgànízàtíón nééds tó dó (àt léàst tén chàràctérssssssssssssssssssssss).]",
+    "editTitle": "[Édít órgànízàtíónàl bàrríérrrrrrrrrr]",
+    "owner": "[Ównérrr]",
+    "priority": "[Ímpàcttt]",
+    "resolution": "[Résólútíónnnn]",
+    "resolutionPlaceholder": "[Whàt chàngéd, ànd whó àgrééd tó ítttttttttttt?]",
+    "resolutionRequired": "[À bàrríér cànnót bé résólvéd ór clóséd wíthóút à wríttén résólútíón: stàté whàt chàngéd, ànd whó àgrééd tó ítttttttttttttttttttttttttttttttttt.]",
+    "status": "[Stàtússs]",
+    "targetDate": "[Tàrgét dàtééééé]",
+    "title": "[Bàrríérrrr]",
+    "titleRequired": "[Gívé thé bàrríér à títlé óf àt léàst thréé chàràctérssssssssssssssssss.]"
+  },
+  "list": {
+    "actions": "[Àctíónssss]",
+    "age": "[Àgéé]",
+    "empty": "[Nó bàrríér hàs béén éscàlàtéd béyónd thé téàmmmmmmmmmmmmmmm.]",
+    "emptyHint": "[Éscàlàté àn ímpédímént thé téàm cànnót rémóvé ón íts ównnnnnnnnnnnnnnnnnnn.]",
+    "noTargetDate": "[Nó tàrgét dàtéééééé]",
+    "overdue": "[Óvérdúéééé]",
+    "owner": "[Ównérrr]",
+    "source": "[Éscàlàtéd frómmmmmm]",
+    "targetDate": "[Tàrgét dàtééééé]",
+    "unassigned": "[Únàssígnédddd]"
+  },
+  "page": {
+    "subtitle": "[Whàt blócks thé Scrúm Téàm fróm óútsídé ít, ànd whó ís àctíng ón ítttttttttttttttttttttt.]",
+    "title": "[Órgànízàtíónàl bàrríérssssssss]"
+  },
+  "priority": {
+    "critical": "[Crítícàllll]",
+    "high": "[HHííggh]",
+    "low": "[Lóww]",
+    "medium": "[Médíúmmm]"
+  },
+  "stats": {
+    "closed": "[Clóséddd]",
+    "inProgress": "[Ín prógréssssss]",
+    "open": "[ÓÓppéén]",
+    "overdue": "[Óvérdúéééé]",
+    "resolved": "[Résólvédddd]"
+  }
+}

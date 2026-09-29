@@ -4,7 +4,7 @@
 
 **Scrumooth** is a self-hosted, open-source web application for teams that run Scrum. It is built for Scrum Masters, Product Owners, and the engineering-led teams that want the process to hold itself to the Guide. It turns the rules of the **2020 Scrum Guide** into gates the backend enforces wherever a tool can — and declares the places where it deliberately does not.
 
-It is **not** a replacement for your issue tracker. As the Scrum Guide enforcement layer your tracker does not have, it owns the Sprint lifecycle, the roles, and the gates, and it refuses to let a process violation pass silently. Your tracker keeps your record; this keeps your rules. Every rule it enforces is listed in [What Scrumooth Enforces](#what-scrumooth-enforces) — and no rule outside that list is claimed.
+It is **not** a replacement for your issue tracker. As the Scrum Guide enforcement layer your tracker does not have, it owns the Sprint lifecycle, the roles, and the gates, and it refuses to let a process violation pass silently. Your tracker keeps your record; this keeps your rules. Every rule it enforces is summarised in [What Scrumooth Enforces](#what-scrumooth-enforces) and catalogued code by code in the [gate rejections reference](docs/api/README.md#gate-rejections) — and no rule outside that catalogue is claimed.
 
 Running a second tool is a real cost — something else to deploy, secure, back up, and keep fed. Scrumooth is deliberately the smallest system that can carry it: a single Compose stack — reverse proxy, backend, frontend, PostgreSQL, and scheduled backups — and one database to look after.
 
@@ -36,7 +36,7 @@ Try Scrumooth instantly in your browser — no installation required. The demo r
   </a>
 </p>
 
-> **Note:** The demo uses in‑memory mock data — any changes you make are local to your browser session and reset on refresh. For persistent data and multi‑user collaboration, follow the [Installation](#installation) guide to self‑host your own instance.
+> **Note:** The demo runs entirely in your browser, on a fictional universe of invented people, teams and products — no real names, employers or data appear anywhere in it. Sign in with one click from the persona cards on the sign-in page, and pick a role to see what that role may do (one person deliberately holds a different role in each team). Requests are answered by a mock backend, so anything you change lasts for your session and resets on refresh. For persistent data and multi-user collaboration, follow the [Installation](#installation) guide to self-host your own instance.
 
 ---
 
@@ -96,16 +96,62 @@ Try Scrumooth instantly in your browser — no installation required. The demo r
 
 These are gates, not warnings or hints. In every case below, the answer is no — and every answer holds in the backend service layer, so a frontend shortcut cannot get around it.
 
-| A 2020 Scrum Guide rule, asked as a question                  | Scrumooth's answer                                                                                                                                            |
-| ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Can a Sprint be closed before its Review and Retrospective?   | Sprint completion is refused until both events are recorded ([sprints API](docs/api/sprints.md)).                                                             |
-| Can an item be called Done without its Definition of Done?    | Completing a Sprint never marks items Done — each item must pass its Definition of Done checklist ([Definition of Done API](docs/api/definition-of-done.md)). |
-| Can a team hold more than one Product Owner or Scrum Master?  | Adding a second holder of either role is refused ([teams API](docs/api/teams.md)).                                                                            |
-| Can a team grow past Scrum Team size?                         | Team size is capped — `TEAM_MAX_SIZE`, default `10` ([teams API](docs/api/teams.md)).                                                                         |
-| Can someone other than a Developer size the work?             | Only Developers can size Product Backlog items — every other role receives `403 Forbidden` ([Product Backlog API](docs/api/product-backlog.md)).              |
-| Can the Product Owner or Scrum Master author the Daily Scrum? | Only Developers can author or join the daily record; the Product Owner and Scrum Master observe ([Daily Scrum API](docs/api/daily-scrum.md)).                 |
-| Can a Sprint be cancelled by anyone but the Product Owner?    | Cancellation is Product-Owner-only, and only while the Sprint is `ACTIVE` ([sprints API](docs/api/sprints.md)).                                               |
-| Can a delivered Increment be rewritten?                       | Delivered Increments are locked against further edits ([increments API](docs/api/increments.md)).                                                             |
+Each one is a distinct refusal the backend can return, and the contract holds **68** of them: 39 Guide gates, 5 complementary-practice gates and 24 process-integrity gates — counted from that one contract and verified in CI, so the totals here cannot drift from what the code enforces.
+
+The tables below group the gates by what they protect and name the headline rule each one enforces. The **complete, code-by-code catalogue** — every `GATE_*` refusal code with the HTTP status it is returned with — is the [gate rejections reference](docs/api/README.md#gate-rejections), which is the single source of truth. This section is a guided tour of that catalogue, not a substitute for it.
+
+| A 2020 Scrum Guide rule, asked as a question                                                   | Scrumooth's answer                                                                                                                                                                                                                                                |
+| ---------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Can a Sprint be closed before its Review and Retrospective?                                    | Sprint completion is refused until both events are recorded ([sprints API](docs/api/sprints.md)).                                                                                                                                                                 |
+| Can an item be called Done without its Definition of Done?                                     | Completing a Sprint never marks items Done — each item must pass its Definition of Done checklist ([Definition of Done API](docs/api/definition-of-done.md)).                                                                                                     |
+| Can a team hold more than one Product Owner or Scrum Master?                                   | Adding a second holder of either role is refused ([teams API](docs/api/teams.md)).                                                                                                                                                                                |
+| Can a team grow past Scrum Team size?                                                          | Team size is capped — `TEAM_MAX_SIZE`, default `10` ([teams API](docs/api/teams.md)).                                                                                                                                                                             |
+| Can two teams on one product hold two Definitions of Done?                                     | No: a team group owns one Definition of Done its teams read, a grouped team cannot edit its own, and joining records the version adopted ([Team Groups API](docs/api/team-groups.md)).                                                                            |
+| Can someone other than a Developer size the work?                                              | Only Developers can size Product Backlog items — every other role receives `403 Forbidden` ([Product Backlog API](docs/api/product-backlog.md)).                                                                                                                  |
+| Can the Product Owner or Scrum Master author the Daily Scrum?                                  | Only Developers can author or join the daily record; the Product Owner and Scrum Master observe ([Daily Scrum API](docs/api/daily-scrum.md)).                                                                                                                     |
+| Can a Sprint be cancelled by anyone but the Product Owner?                                     | Cancellation is Product-Owner-only, and only while the Sprint is `ACTIVE` ([sprints API](docs/api/sprints.md)).                                                                                                                                                   |
+| Can a delivered Increment be rewritten?                                                        | Delivered and archived Increments are terminal — neither can be rewritten, re-delivered, or revived ([increments API](docs/api/increments.md)).                                                                                                                   |
+| Can the Definition of Done be emptied?                                                         | A Definition of Done must keep at least one active item; a Sprint Backlog cannot be committed, and a Sprint cannot start, while a team has none; and work cannot be marked Done while a team has none ([Definition of Done API](docs/api/definition-of-done.md)). |
+| Can an Increment be marked usable, or delivered, without evidence?                             | An Increment must be attested usable in writing — with who attested and when — before it can be verified or delivered ([increments API](docs/api/increments.md)).                                                                                                 |
+| Can someone outside the team read or deliver an Increment?                                     | An Increment belongs to its Scrum Team: reading, verifying, or delivering one requires membership ([increments API](docs/api/increments.md)).                                                                                                                     |
+| Can an Increment silently omit work that reached Done?                                         | Composition reports its outcome (composed, skipped with a reason, or failed), and a Sprint's Increment can be reconciled from its Done items ([increments API](docs/api/increments.md)).                                                                          |
+| Can a Sprint close while it still has unresolved impediments?                                  | No: a Sprint cannot be completed while any impediment is still `OPEN` or `IN_PROGRESS`, and both terminal impediment states require a written resolution ([impediments API](docs/api/impediments.md), [sprints API](docs/api/sprints.md)).                        |
+| Can the Sprint Review or Retrospective run out of order, or before the Sprint's end date?      | No: the Retrospective cannot complete before its Review, and neither event can complete before the day the Sprint's end date names ([sprint reviews API](docs/api/sprint-reviews.md), [retrospectives API](docs/api/retrospectives.md)).                          |
+| Can the Sprint Goal change, or the Sprint Backlog move against it, once the Sprint is running? | No: the Goal is locked once the Sprint is running, and a goal-endangering change stays pending until the Product Owner acknowledges it ([sprints API](docs/api/sprints.md)).                                                                                      |
+| Can the Daily Scrum record omit what it adapted?                                               | No: a record must declare at least one Sprint Backlog adjustment, or explicitly acknowledge that none was needed ([daily scrum API](docs/api/daily-scrum.md)).                                                                                                    |
+| Can a Sprint run longer than a month, overlap another Sprint, or start after a gap?            | No: a Sprint may span at most `SPRINT_MAX_DURATION_DAYS`, a team runs one Sprint at a time, and a new Sprint starts immediately after the previous one ([sprints API](docs/api/sprints.md)).                                                                      |
+| Can the Sprint Backlog be created without the whole Scrum Team?                                | No: a Sprint cannot start unless planning attendance is recorded and includes the Product Owner and at least one Developer, and unless the plan fits the recorded capacity ([sprints API](docs/api/sprints.md)).                                                  |
+| Can someone other than the Product Owner order the Product Backlog?                            | No: the backlog order and the MoSCoW band are the Product Owner's decision alone ([Product Backlog API](docs/api/product-backlog.md)).                                                                                                                            |
+| Can a team pursue more than one Product Goal, or let backlog work drift from it?               | No: one `ACTIVE` Product Goal at a time; items are anchored to it; the Goal is Product-Owner-only and cannot complete without recorded evidence ([Product Goals API](docs/api/product-goals.md)).                                                                 |
+| Can a Sprint start without a Product Goal?                                                     | No: a Sprint cannot start until it is linked to a Product Goal ([sprints API](docs/api/sprints.md)).                                                                                                                                                              |
+| Can an Increment be verified before it integrates with prior Increments?                       | No: "additive to all prior Increments and thoroughly verified" is checked before an Increment can be `VERIFIED` or delivered ([increments API](docs/api/increments.md)).                                                                                          |
+| Can an Increment be delivered by a bare status write?                                          | No: `DELIVERED` is reachable only through the deliver action, which records how value reached users ([increments API](docs/api/increments.md)).                                                                                                                   |
+| Can a Retrospective improvement be quietly unlinked?                                           | No: once an improvement has produced, or been linked to, a Product Backlog item, that link is the evidence it was addressed and cannot be cleared ([retrospectives API](docs/api/retrospectives.md)).                                                             |
+| Can a Sprint Review complete without judging the Sprint Goal?                                  | No: a Review of a Sprint that has a Goal cannot complete without the team's recorded verdict, and a Sprint with no Goal cannot carry one at all ([sprint reviews API](docs/api/sprint-reviews.md)).                                                               |
+
+### Complementary practices Scrumooth also enforces
+
+These are **not 2020 Scrum Guide rules** — the Guide's three artifacts are the Product Backlog, the Sprint Backlog and the Increment, and the Definition of Ready is none of them. They are the product's own additions, labelled as such in the interface, and they are listed here separately so the table above keeps meaning exactly what it says.
+
+| A practice Scrumooth enforces, asked as a question                                         | Scrumooth's answer                                                                                                                                                                                                                                                                                                                                                 |
+| ------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Can a team agree what "ready" means and then plan anyway?                                  | No: the team's Definition of Ready is applied at the Sprint boundary. Committing a Sprint Backlog or starting a Sprint is refused while a selected item still has an unverified active readiness criterion — the refusal names the items — and refused while the team has no active criterion at all ([Definition of Ready API](docs/api/definition-of-ready.md)). |
+| Can a Sprint Backlog include an item that has not been refined to "ready"?                 | No: an item must be refined to `READY` before it can enter a Sprint — at planning time exactly as when it is added mid-Sprint ([Product Backlog API](docs/api/product-backlog.md)).                                                                                                                                                                                |
+| Who maintains the readiness agreement?                                                     | The team's Scrum Master alone. The readiness agreement is one role's declared practice rather than the Scrum Team's shared commitment, so it is the Scrum Master's to shape or retire ([Definition of Ready API](docs/api/definition-of-ready.md)).                                                                                                                |
+| Can someone outside the team read the readiness agreement, or record a verdict against it? | No: reading it or recording a readiness verification requires membership of the team that owns it ([Definition of Ready API](docs/api/definition-of-ready.md)).                                                                                                                                                                                                    |
+
+Two consequences are worth stating plainly. Because it is a product rule rather than a Guide rule, a team that does not want a Definition of Ready still meets it: Scrumooth creates six sensible default criteria the first time the agreement is read, and the team's Scrum Master can shape or retire them. And because refusing a Sprint over a non-Guide artifact is a real trade-off, the checklist says what it is in its own words — a complementary practice, not a Guide artifact — rather than borrowing the Guide's authority.
+
+### Process-integrity and transparency gates
+
+A third class is neither a Guide gate nor a complementary practice but the product's reading of the Guide's transparency and self-management: the work of a Scrum Team belongs to that team, and candid material belongs to the role accountable for it. They are listed separately for the same reason as the practices above.
+
+| A boundary Scrumooth enforces, asked as a question                                   | Scrumooth's answer                                                                                                                                                                                                                                                                                                                                                      |
+| ------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Can someone outside the team read or change a team's artifacts?                      | No: a Sprint, an impediment, a Definition of Done, an Increment, a Review, a Retrospective, a Scrum Values health check, an organizational barrier, a report, and the team's working agreements are each scoped to the team that owns them — reading or writing one requires membership of that team ([gate rejections reference](docs/api/README.md#gate-rejections)). |
+| Can anyone but the Scrum Master read or write the Scrum Master's own material?       | No: the Scrum Master's notes on a Sprint, a Review and a Retrospective, the coaching log, the cross-functionality assessment, the results of a values health check, and the readiness agreement are theirs alone ([gate rejections reference](docs/api/README.md#gate-rejections)).                                                                                     |
+| Can an impediment be escalated into a barrier twice, or by another team?             | No: one barrier per impediment, raised only by the team that raised the impediment, and only the team's Scrum Master may raise, amend, resolve or close it — a terminal state requires a written resolution ([Organizational Barriers API](docs/api/organizational-barriers.md)).                                                                                       |
+| Can a team change which shared Definition of Done governs it without its leadership? | No: joining or leaving a group decides the commitment the team is held to, so it is the team's Product Owner's or Scrum Master's decision; a team belongs to at most one group, and a group that still has teams cannot be removed out from under them ([Team Groups API](docs/api/team-groups.md)).                                                                    |
 
 **Where Scrumooth deliberately does not enforce anything:** the Retrospective Prime Directive is left to the facilitator, and event timeboxes are surfaced through a shared team timer rather than forcibly terminating an event. The Guide asks for self-management in exactly those places, so Scrumooth does not decide for the team.
 
@@ -113,7 +159,7 @@ These are gates, not warnings or hints. In every case below, the answer is no �
 
 Why will the tools you already use not simply add this? In our view, because a gate you can switch off is a setting, not a rule, and configurability is their selling point rather than their oversight. Nor can a hosted service easily promise that your process data never leaves your infrastructure. Scrumooth is not a feature they are missing; it is a trade-off they have already made the other way.
 
-The gates above are the entire claim: if a rule is not in the table, Scrumooth does not enforce it — and because a configuration that breaks the 2020 Scrum Guide is never offered, **the refusal is the product.**
+The tables above are the claim about the 2020 Scrum Guide, grouped by what they protect, and the [gate rejections reference](docs/api/README.md#gate-rejections) is the complete, code-by-code catalogue of every refusal Scrumooth can return. If a rule is not enforced in that catalogue, Scrumooth does not enforce it — and because a configuration that breaks the Guide is never offered, **the refusal is the product.** The complementary practices and the process-integrity gates are the product's own additions, kept in separate tables and labelled so the three can never be mistaken for one another — each gate's class is declared beside the contract, so the separation is verified in CI rather than asserted here.
 
 <a id="who-its-for"></a>
 
@@ -162,31 +208,34 @@ The gates above are the entire claim: if a rule is not in the table, Scrumooth d
 
 ### The Scrum workflow
 
-Everything needed to run the Sprint — the Guide's five events, three artifacts, and three commitments — with the rule it holds attached to each. Bold clauses repeat the gates in [What Scrumooth Enforces](#what-scrumooth-enforces); that table stays the only list of rules Scrumooth claims.
+Everything needed to run the Sprint — the Guide's five events, three artifacts, and three commitments — with the rule it holds attached to each. Bold clauses highlight the gates in [What Scrumooth Enforces](#what-scrumooth-enforces); the full catalogue is the [gate rejections reference](docs/api/README.md#gate-rejections).
 
-- **Product Goal** - Strategic alignment and goal tracking; the commitment the backlog serves
-- **Product Backlog** - MoSCoW prioritisation (Must, Should, Could, Won't); **only Developers size the work**
-- **Sprint Planning** - Configurable sprint durations and capacity planning; **only Developers save the Sprint Backlog**
-- **Sprint Execution** - Interactive Kanban board with drag-and-drop; **only the Product Owner can cancel, and only while the Sprint is `ACTIVE`**
-- **Daily Scrum** - Shared daily record, with impediment surfacing; **only Developers author it — the Product Owner and Scrum Master observe**
-- **Impediment** - Blocker identification and resolution tracking; **a Sprint cannot close before its Impediments are resolved**
-- **Increment** - Product increment management; **The moment a Product Backlog item meets the Definition of Done, an Increment is born**
-- **Sprint Review** - Review management, stakeholder feedback, and backlog adjustment; **a Sprint cannot close before its Review is recorded**
-- **Sprint Retrospective** - Team reflection and tracked improvement; **a Sprint cannot close before its Retrospective is recorded**
+- **Product Goal** - Strategic alignment and goal tracking; the commitment the backlog serves; **only the Product Owner creates or edits one, only one may be `ACTIVE` at a time, and it cannot complete without recorded evidence**
+- **Product Backlog** - MoSCoW prioritisation (Must, Should, Could, Won't); **only Developers size the work, and only the Product Owner orders it and sets its band**
+- **Sprint Planning** - Configurable sprint durations and capacity planning; **only Developers save the Sprint Backlog**, a Sprint cannot start until planning attendance is recorded with the Product Owner and a Developer, and no item enters the Sprint before it is refined to `READY`
+- **Sprint Execution** - Interactive Kanban board with drag-and-drop; **only the Product Owner can cancel, and only while the Sprint is `ACTIVE`**; the Sprint Goal is locked once running, and a goal-endangering change waits for the Product Owner's acknowledgement
+- **Daily Scrum** - Shared daily record, with impediment surfacing; **only Developers author it — the Product Owner and Scrum Master observe**; a record must declare what it adapted, or that nothing needed adapting
+- **Impediment** - Blocker identification and resolution tracking with impact prioritisation (Critical/High/Medium/Low) and target dates; **a Sprint cannot close before its Impediments are resolved**, both terminal states require a written resolution, every write is scoped to the team that raised the impediment, and an unowned impediment falls to the Scrum Master — who is notified when one ages past the escalation threshold
+- **Increment** - Product increment management; **the moment a Product Backlog item meets the Definition of Done, an Increment is born**; an Increment is verified only after it integrates with every prior Increment, attested usable in writing before it can be verified or delivered, and delivered only with a recorded delivery method
+- **Sprint Review** - Review management, stakeholder feedback, and backlog adjustment; **a Sprint cannot close before its Review is recorded**; the Review cannot complete before the Sprint's end date, a Sprint with a Goal cannot complete without the team's own verdict on it, and a Sprint without one cannot carry a verdict at all
+- **Sprint Retrospective** - Team reflection and tracked improvement; **a Sprint cannot close before its Retrospective is recorded**; it cannot complete before its Review, applying Definition of Done changes requires a recorded reflection, and an improvement already linked to a Product Backlog item cannot be unlinked
 
 ### Governance and operations
 
 - **Workflow Engine** - Role-based permissions and gated state transitions, **enforced server-side**
-- **Definition of Done/Ready** - Customisable checklists; **nothing is Done until its checklist passes**
+- **Definition of Done/Ready** - Customisable checklists; **nothing is Done until its checklist passes**, the readiness agreement is the team's Scrum Master's to maintain, and a team in a group is governed by the group's single Definition of Done
 - **Increment integrity** - **Delivered work cannot be silently rewritten**
 
 ### Team and organisation
 
 - **Team composition** - One Product Owner and one Scrum Master; **team size capped** (`TEAM_MAX_SIZE`, default `10`)
+- **Team Groups** - Several Scrum Teams on one product share one Definition of Done; **a grouped team cannot edit its own, joining records the version adopted, and only a team's leadership may join or leave a group**
 - **Audit Logging** - Dedicated, compliance-separated log; **every role change and state transition recorded**
-- **Dashboard & Reporting** - Real-time metrics and visualisations
+- **Dashboard & Reporting** - Real-time metrics and visualisations; **every report is scoped to the team whose history it describes**
 - **Team Communication** - Built-in notifications and messaging
-- **Team Health Check** - Periodic check-in against the five Scrum values
+- **Team Health Check** - Periodic check-in against the five Scrum values; **results are readable only by the team's Scrum Master**
+- **Organizational Barriers** - The register of what blocks a team from outside it and the actions taken to remove it; **only the team's Scrum Master may raise, amend, resolve or close one, and closing requires a written resolution**
+- **Facilitation** - The Scrum Master's coaching log, the team's working agreements, and the cross-functionality assessment; **the candid material belongs to the Scrum Master and the team's agreements to the team**
 - **Shared event timeboxes** - One clock for every participant; **timeboxes are surfaced, never force-closed**
 - **Privacy controls** - Data export and erasure rights, plus consent tracking
 
@@ -336,35 +385,20 @@ cp packages/backend/.env.example packages/backend/.env
 cp packages/frontend/.env.example packages/frontend/.env
 ```
 
-Edit the environment files with your configuration:
+Both example files are documented in full by their own comments. A local backend run needs only three values:
 
-**Backend** (`packages/backend/.env`):
+| Variable       | Purpose                                                      |
+| -------------- | ------------------------------------------------------------ |
+| `DATABASE_URL` | PostgreSQL connection string                                 |
+| `JWT_SECRET`   | Signing key, at least 64 characters (`openssl rand -hex 64`) |
+| `CORS_ORIGIN`  | The frontend origin, e.g. `http://localhost:5173`            |
 
-```env
-# Database Configuration
-DATABASE_URL=postgresql://postgres:password@localhost:5432/scrumooth
-
-# JWT Configuration (generate with: openssl rand -hex 64)
-JWT_SECRET=your-64-character-secret-key-here
-
-# CORS Configuration
-CORS_ORIGIN=http://localhost:5173
-
-# Optional: restrict new-account registration to specific email domains.
-# Leave empty/unset for open registration. Enforced server-side (HTTP 403 on
-# disallowed domains). Tenant-control gate only, not email verification.
-REGISTRATION_ALLOWED_EMAIL_DOMAINS=example.com,example.eu
-```
-
-**Frontend** (`packages/frontend/.env`):
-
-```env
-# Backend API URL
-VITE_API_URL=http://localhost:5001/api/v1
-
-# Use mock API (set to false for real backend)
-VITE_USE_MOCK_API=false
-```
+The frontend needs no configuration for local development: `VITE_API_URL` resolves to the dev proxy.
+To develop without a backend at all, set `VITE_USE_MOCK_API=true` and run `pnpm run dev:frontend` —
+see [Developing without a backend](./CONTRIBUTING.md#developing-without-a-backend) and the
+[mock architecture](./docs/architecture/frontend-mock-architecture.md). Every remaining variable is
+listed in [`packages/backend/.env.example`](packages/backend/.env.example) and
+[`packages/frontend/.env.example`](packages/frontend/.env.example).
 
 ### 4. Database Setup
 
@@ -594,7 +628,7 @@ Scrumooth is under active development. The priorities below deepen what Scrumoot
 
 - [ ] **Scrum Guide conformance report** — a per-Sprint statement of which rules applied, and how each was met
 - [ ] **Exportable Sprint evidence pack** — a shareable record for audits and compliance reviews
-- [ ] **More enforceable rules** — expanding the covered surface of the 2020 Scrum Guide
+- [ ] **More enforceable rules** — the Sprint lifecycle, Product Goal, Team Group, health-check and organizational-barrier gates now let a Scrum Team run the Guide's events, artifacts and commitments end to end; expanding the covered surface continues
 - [ ] **Deeper Definition of Done / Definition of Ready automation**
 - [ ] **Reporting that surfaces process drift**, not just delivery metrics
 - [ ] **Integrations and webhooks**, so Scrumooth can sit alongside the tools you already use

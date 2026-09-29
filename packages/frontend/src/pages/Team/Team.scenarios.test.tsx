@@ -5,7 +5,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 import { useTeamStore, useAuthStore } from '../../store';
 import { apiService } from '../../services';
-import { mockTeams, mockDefinitionOfDone, mockUsers } from '../../services/mockData';
+import { mockTeams, mockDefinitionOfDone, mockUsers } from '../../__mocks__/teamData';
 import { generateAvatarUrl } from '../../utils/avatar';
 
 import { TeamManagement } from './Team';

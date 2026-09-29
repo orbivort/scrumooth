@@ -36,6 +36,7 @@ describe('SprintBoardHeader', () => {
     showBurndown: false,
     canMutate: true,
     isProductOwner: false,
+    pendingApprovalCount: 0,
   };
 
   beforeAll(async () => {
@@ -215,7 +216,7 @@ describe('SprintBoardHeader', () => {
   });
 
   describe('Role-based Controls', () => {
-    it('should hide Add Task and Manage Backlog when the user cannot mutate (PO/SM)', () => {
+    it('should hide Add Task and Manage Backlog from a non-Product-Owner who cannot mutate', () => {
       renderWithProviders(
         <SprintBoardHeader {...defaultProps} canMutate={false} isProductOwner={false} />
       );
@@ -230,6 +231,62 @@ describe('SprintBoardHeader', () => {
       expect(
         screen.getByRole('button', { name: i18nT('sprint:boardHeader.completeSprint') })
       ).toBeInTheDocument();
+    });
+
+    it('should show Manage Backlog to the Product Owner so a pending change can be decided', () => {
+      renderWithProviders(
+        <SprintBoardHeader {...defaultProps} canMutate={false} isProductOwner={true} />
+      );
+
+      // The approval gate lives inside the Sprint Backlog Manager, so the Product Owner must be
+      // able to open it even though they may not mutate the Sprint Backlog.
+      expect(
+        screen.getByRole('button', { name: i18nT('sprint:boardHeader.manageBacklog') })
+      ).toBeInTheDocument();
+      // Add Task stays Developers-only.
+      expect(
+        screen.queryByRole('button', { name: i18nT('sprint:boardHeader.addTask') })
+      ).not.toBeInTheDocument();
+    });
+
+    it('should badge the entry point with the changes awaiting the Product Owner', () => {
+      renderWithProviders(
+        <SprintBoardHeader
+          {...defaultProps}
+          canMutate={false}
+          isProductOwner={true}
+          pendingApprovalCount={2}
+        />
+      );
+
+      const button = screen.getByRole('button', {
+        name: i18nT('sprint:boardHeader.manageBacklogPending', { count: 2 }),
+      });
+      expect(button).toBeInTheDocument();
+      expect(button).toHaveTextContent('2');
+    });
+
+    it('should not badge the entry point when nothing awaits the Product Owner', () => {
+      renderWithProviders(
+        <SprintBoardHeader {...defaultProps} canMutate={false} isProductOwner={true} />
+      );
+
+      const button = screen.getByRole('button', {
+        name: i18nT('sprint:boardHeader.manageBacklog'),
+      });
+      expect(button.querySelector('[class*="button-badge"]')).toBeNull();
+    });
+
+    it('should not badge the entry point for a Developer even when changes are pending', () => {
+      renderWithProviders(
+        <SprintBoardHeader {...defaultProps} canMutate={true} pendingApprovalCount={3} />
+      );
+
+      // A Developer cannot decide a pending change, so the count is not theirs to act on.
+      const button = screen.getByRole('button', {
+        name: i18nT('sprint:boardHeader.manageBacklog'),
+      });
+      expect(button.querySelector('[class*="button-badge"]')).toBeNull();
     });
 
     it('should show Cancel Sprint only for the Product Owner', () => {

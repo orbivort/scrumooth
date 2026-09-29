@@ -46,6 +46,7 @@
     "ownerPlaceholder": "Sélectionner le propriétaire...",
     "productGoalAssessment": "Évaluation du progrès de l'objectif produit",
     "productGoalAssessmentPlaceholder": "Comment l'équipe progresse-t-elle vers l'objectif produit ?",
+    "productGoalAssessmentRequired": "Rédigez l'évaluation de l'objectif de produit ou videz le champ. Une évaluation vide n'est pas enregistrée comme preuve.",
     "relatedPbi": "PBI associé (Optionnel)",
     "requiredFieldsNote": "Les champs requis sont marqués avec *",
     "subtitle": "Capturer des enseignements précieux des parties prenantes pour améliorer votre produit",
@@ -67,6 +68,7 @@
     "cannotAddAdjustmentTitle": "Impossible d'ajouter un ajustement à une Review terminée",
     "description": "Changements au Product Backlog basés sur le retour de la Sprint Review.",
     "empty": "Aucun ajustement du backlog effectué pendant cette revue.",
+    "linkedItem": "Élément lié :",
     "owner": "Propriétaire :",
     "reason": "Raison :",
     "status": {
@@ -93,6 +95,13 @@
       "completeSubtitle": "Vérifiez tous les éléments et confirmez pour marquer cette Sprint Review comme terminée",
       "completeTitle": "Terminer la Sprint Review",
       "confirmation": "Êtes-vous sûr de vouloir marquer cette Sprint Review comme terminée ? Cette action ne peut pas être annulée.",
+      "goalAchieved": "Atteint",
+      "goalNotAchieved": "Non atteint",
+      "goalPartiallyAchieved": "Partiellement atteint",
+      "goalVerdictHint": "Consigné lorsque vous terminez la revue.",
+      "goalVerdictLegend": "Dans quelle mesure l'objectif de sprint a-t-il été atteint ?",
+      "goalVerdictNote": "Les mots de l'équipe (facultatif)",
+      "goalVerdictRequired": "Consignez le verdict de l'équipe sur l'objectif de sprint : atteint, partiellement atteint ou non atteint. L'achèvement des éléments ne le remplace pas.",
       "gotIt": "Compris",
       "validationAttended": "Au moins un participant doit être marqué comme ayant assisté avant de terminer la Sprint Review.",
       "validationAttendees": "Veuillez ajouter au moins un participant avant de terminer la Sprint Review.",
@@ -101,6 +110,7 @@
     },
     "defaultSummary": "Sprint Review terminée.",
     "failed": "Impossible de terminer le Review. Veuillez réessayer.",
+    "sprintNotEnded": "La Sprint Review inspecte le résultat du Sprint. Cette Sprint Review peut être terminée à partir de la date de fin du Sprint ({{endDate}}).",
     "successModal": {
       "close": "Fermer",
       "message": "Sprint Review terminée avec succès !",
@@ -121,6 +131,7 @@
   "detailLabels": {
     "endDate": "Date de fin :",
     "sprintGoal": "Sprint Goal :",
+    "sprintGoalOutcome": "Verdict sur l'objectif de sprint",
     "startDate": "Date de début :",
     "status": "Statut :"
   },
@@ -143,7 +154,7 @@
       "question": "Question",
       "suggestion": "Suggestion"
     },
-    "empty": "Aucun retour collecté. Cliquez sur \"Ajouter un retour\" pour ajouter le retour des parties prenantes.",
+    "empty": "Aucun retour des parties prenantes pour le moment. Ajoutez un retour pour consigner ce qu'elles ont soulevé.",
     "owner": "Propriétaire :",
     "title": "Retour des Parties prenantes"
   },
@@ -184,6 +195,10 @@
     "completedSprints_plural": "Sprints terminés",
     "createIncrement": "Créer un Increment",
     "createReview": "Créer la Sprint Review",
+    "emptyState": {
+      "description": "Une Revue de Sprint peut être tenue pour un Sprint actif ou terminé. Démarrez un Sprint dans le Sprint Planning pour commencer.",
+      "title": "Aucun Sprint à examiner"
+    },
     "goal": "Objectif :",
     "loading": "Chargement des Sprint Reviews...",
     "reviewStatus": {

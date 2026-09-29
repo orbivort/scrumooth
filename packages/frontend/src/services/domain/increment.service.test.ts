@@ -238,4 +238,210 @@ describe('IncrementService', () => {
       expect(result.data?.sprintReviewDeliveries).toBe(6);
     });
   });
+
+  describe('getIntegrationTests', () => {
+    it('should get integration test records for an increment', async () => {
+      const mockResponse = {
+        data: {
+          success: true,
+          data: [
+            {
+              id: 'it-1',
+              incrementId: 'increment-1',
+              priorIncrementId: 'increment-0',
+              testResult: 'PASSED',
+              notes: 'All good',
+            },
+          ],
+        },
+      };
+      vi.mocked(mockApi.get).mockResolvedValue(mockResponse);
+
+      const result = await incrementService.getIntegrationTests('increment-1');
+
+      expect(mockApi.get).toHaveBeenCalledWith('/increments/increment-1/integration-tests');
+      expect(result.success).toBe(true);
+      expect(result.data).toHaveLength(1);
+      expect(result.data?.[0].testResult).toBe('PASSED');
+    });
+  });
+
+  describe('createIntegrationTest', () => {
+    it('should create an integration test record with notes', async () => {
+      const payload = {
+        priorIncrementId: 'increment-0',
+        testResult: 'PASSED' as const,
+        notes: 'Regression suite green',
+      };
+      const mockResponse = {
+        data: {
+          success: true,
+          data: { id: 'it-2', incrementId: 'increment-1', ...payload },
+        },
+      };
+      vi.mocked(mockApi.post).mockResolvedValue(mockResponse);
+
+      const result = await incrementService.createIntegrationTest('increment-1', payload);
+
+      expect(mockApi.post).toHaveBeenCalledWith(
+        '/increments/increment-1/integration-tests',
+        payload
+      );
+      expect(result.success).toBe(true);
+      expect(result.data?.id).toBe('it-2');
+    });
+
+    it('should create a failing integration test record without notes', async () => {
+      const payload = {
+        priorIncrementId: 'increment-0',
+        testResult: 'FAILED' as const,
+      };
+      const mockResponse = {
+        data: {
+          success: true,
+          data: { id: 'it-3', incrementId: 'increment-1', ...payload },
+        },
+      };
+      vi.mocked(mockApi.post).mockResolvedValue(mockResponse);
+
+      const result = await incrementService.createIntegrationTest('increment-1', payload);
+
+      expect(result.data?.testResult).toBe('FAILED');
+    });
+  });
+
+  describe('verifyIntegration', () => {
+    it('should verify integration and return the verification summary', async () => {
+      const mockResponse = {
+        data: {
+          success: true,
+          data: {
+            integrationVerified: false,
+            priorCount: 2,
+            allPassed: false,
+            missingTests: ['increment-0'],
+            failedTests: ['increment-1'],
+          },
+        },
+      };
+      vi.mocked(mockApi.post).mockResolvedValue(mockResponse);
+
+      const result = await incrementService.verifyIntegration('increment-2');
+
+      expect(mockApi.post).toHaveBeenCalledWith('/increments/increment-2/verify-integration');
+      expect(result.success).toBe(true);
+      expect(result.data?.integrationVerified).toBe(false);
+      expect(result.data?.priorCount).toBe(2);
+      expect(result.data?.allPassed).toBe(false);
+      expect(result.data?.missingTests).toEqual(['increment-0']);
+      expect(result.data?.failedTests).toEqual(['increment-1']);
+    });
+
+    it('should return a passing verification summary without error lists', async () => {
+      const mockResponse = {
+        data: {
+          success: true,
+          data: {
+            integrationVerified: true,
+            priorCount: 1,
+            allPassed: true,
+          },
+        },
+      };
+      vi.mocked(mockApi.post).mockResolvedValue(mockResponse);
+
+      const result = await incrementService.verifyIntegration('increment-2');
+
+      expect(result.data?.integrationVerified).toBe(true);
+      expect(result.data?.allPassed).toBe(true);
+      expect(result.data?.missingTests).toBeUndefined();
+    });
+  });
+
+  describe('getIncrementChain', () => {
+    it('should get the increment chain', async () => {
+      const mockResponse = {
+        data: {
+          success: true,
+          data: [
+            { incrementId: 'increment-0', sprintId: 'sprint-0', status: 'DELIVERED' },
+            { incrementId: 'increment-1', sprintId: 'sprint-1', status: 'DRAFT' },
+          ],
+        },
+      };
+      vi.mocked(mockApi.get).mockResolvedValue(mockResponse);
+
+      const result = await incrementService.getIncrementChain('increment-1');
+
+      expect(mockApi.get).toHaveBeenCalledWith('/increments/increment-1/chain');
+      expect(result.success).toBe(true);
+      expect(result.data).toHaveLength(2);
+      expect(result.data?.[0].incrementId).toBe('increment-0');
+    });
+  });
+
+  describe('verifyUsability', () => {
+    it('should record usability evidence for an increment', async () => {
+      const mockResponse = {
+        data: {
+          success: true,
+          data: {
+            id: 'increment-1',
+            sprintId: 'sprint-1',
+            teamId: 'team-1',
+            name: 'Increment 1',
+            includedPBIs: [],
+            dodVerifications: [],
+            totalStoryPoints: 10,
+            status: 'DRAFT',
+            usabilityVerified: true,
+            usabilityEvidence: 'Usable in the demo environment',
+            createdAt: '2024-01-15T00:00:00Z',
+            createdBy: 'user-1',
+          },
+        },
+      };
+      vi.mocked(mockApi.post).mockResolvedValue(mockResponse);
+
+      const result = await incrementService.verifyUsability(
+        'increment-1',
+        'Usable in the demo environment'
+      );
+
+      expect(mockApi.post).toHaveBeenCalledWith('/increments/increment-1/verify-usability', {
+        evidence: 'Usable in the demo environment',
+      });
+      expect(result.success).toBe(true);
+      expect(result.data?.usabilityVerified).toBe(true);
+    });
+  });
+
+  describe('reconcileIncrement', () => {
+    it('should reconcile an open increment from its Done items', async () => {
+      const mockResponse = {
+        data: {
+          success: true,
+          data: {
+            incrementId: 'increment-1',
+            addedPbiIds: ['pbi-1', 'pbi-2'],
+            skippedPbiIds: ['pbi-3'],
+            totalStoryPoints: 13,
+          },
+        },
+      };
+      vi.mocked(mockApi.post).mockResolvedValue(mockResponse);
+
+      const result = await incrementService.reconcileIncrement('team-1', 'sprint-1');
+
+      expect(mockApi.post).toHaveBeenCalledWith('/increments/reconcile', {
+        teamId: 'team-1',
+        sprintId: 'sprint-1',
+      });
+      expect(result.success).toBe(true);
+      expect(result.data?.incrementId).toBe('increment-1');
+      expect(result.data?.addedPbiIds).toEqual(['pbi-1', 'pbi-2']);
+      expect(result.data?.skippedPbiIds).toEqual(['pbi-3']);
+      expect(result.data?.totalStoryPoints).toBe(13);
+    });
+  });
 });

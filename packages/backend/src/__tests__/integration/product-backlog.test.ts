@@ -10,7 +10,7 @@ import bcrypt from 'bcrypt';
 import { CSRF_CONSTANTS } from '../../middleware/csrf.middleware';
 import { getCsrfToken, extractCsrfFromCookies } from '../helpers/test-helpers';
 import { setLocaleHeader, SUPPORTED_LOCALES } from '../helpers/i18n-helpers';
-import type { Locale } from '@scrumooth/shared';
+import { GATE_CODES, type Locale } from '@scrumooth/shared';
 
 // Helper to generate unique test identifier
 const uniqueId = () => `${Date.now()}-${Math.random().toString(36).substring(7)}`;
@@ -111,6 +111,21 @@ describe('Product Backlog Integration Tests', () => {
       },
     });
     return pbi;
+  };
+
+  // Helper to give a team its single ACTIVE Product Goal. The Product Backlog is the emergent
+  // expression of the Product Goal, so creating an item through the API requires one.
+  const createActiveProductGoal = async (teamId: string, userId: string) => {
+    const goalId = generateUUIDv7();
+    return prisma.productGoal.create({
+      data: {
+        id: goalId,
+        teamId,
+        title: 'Active Goal',
+        status: 'ACTIVE',
+        createdBy: userId,
+      },
+    });
   };
 
   // Cleanup helper
@@ -301,6 +316,7 @@ describe('Product Backlog Integration Tests', () => {
       const team = await createTestTeam(teamName);
       // Only Developers may set story points, so use a Developer here.
       await addTeamMember(team.id, user.id, 'DEVELOPERS');
+      await createActiveProductGoal(team.id, user.id);
 
       const cookies = await loginAndGetCookies(email);
 
@@ -435,6 +451,7 @@ describe('Product Backlog Integration Tests', () => {
       const team = await createTestTeam(teamName);
       // Only Developers may set story points, so use a Developer here.
       await addTeamMember(team.id, user.id, 'DEVELOPERS');
+      await createActiveProductGoal(team.id, user.id);
       const pbi = await createTestPBI(team.id, 'Original Title');
 
       const cookies = await loginAndGetCookies(email);
@@ -587,7 +604,7 @@ describe('Product Backlog Integration Tests', () => {
       testTeams.length = 0;
     });
 
-    it('should reorder PBIs', async () => {
+    it('should persist the requested order as dense ranks and return it', async () => {
       const email = `reorder-pbi-${uniqueId()}@example.com`;
       testEmails.push(email);
 
@@ -616,6 +633,132 @@ describe('Product Backlog Integration Tests', () => {
         .expect(200);
 
       expect(response.body.success).toBe(true);
+      expect(response.body.data.items.map((item: { id: string }) => item.id)).toEqual([
+        pbi3.id,
+        pbi1.id,
+        pbi2.id,
+      ]);
+      expect(response.body.data.items.map((item: { rank: number }) => item.rank)).toEqual([
+        1, 2, 3,
+      ]);
+
+      // The order survives a reload: it is persisted, not an optimistic client illusion.
+      const persisted = await request(app)
+        .get('/api/v1/product-backlog')
+        .query({ teamId: team.id })
+        .set('Cookie', cookies)
+        .expect(200);
+
+      expect(persisted.body.data.map((item: { id: string }) => item.id)).toEqual([
+        pbi3.id,
+        pbi1.id,
+        pbi2.id,
+      ]);
+
+      const rows = await prisma.productBacklogItem.findMany({
+        where: { teamId: team.id },
+        select: { id: true, rank: true },
+        orderBy: { rank: 'asc' },
+      });
+      expect(rows.map((row) => row.rank)).toEqual([1, 2, 3]);
+    });
+
+    it('should move one item with the positional shape', async () => {
+      const email = `reorder-positional-${uniqueId()}@example.com`;
+      testEmails.push(email);
+
+      const user = await createTestUserInDb(email);
+      const teamName = `Positional Reorder Team ${uniqueId()}`;
+      testTeams.push(teamName);
+
+      const team = await createTestTeam(teamName);
+      await addTeamMember(team.id, user.id, 'PRODUCT_OWNER');
+      const pbi1 = await createTestPBI(team.id, 'PBI 1');
+      const pbi2 = await createTestPBI(team.id, 'PBI 2');
+      const pbi3 = await createTestPBI(team.id, 'PBI 3');
+
+      const cookies = await loginAndGetCookies(email);
+
+      const { csrfToken } = extractCsrfFromCookies(cookies);
+
+      const response = await request(app)
+        .post('/api/v1/product-backlog/reorder')
+        .set('Cookie', cookies)
+        .set(CSRF_CONSTANTS.HEADER_NAME, csrfToken)
+        .send({
+          pbiId: pbi3.id,
+          targetPbiId: pbi1.id,
+          position: 'before',
+        })
+        .expect(200);
+
+      expect(response.body.data.items.map((item: { id: string }) => item.id)).toEqual([
+        pbi3.id,
+        pbi1.id,
+        pbi2.id,
+      ]);
+    });
+
+    it('should refuse with GATE_PRODUCT_OWNER_ONLY_BACKLOG_ORDER when a Developer reorders', async () => {
+      const email = `reorder-developer-${uniqueId()}@example.com`;
+      testEmails.push(email);
+
+      const user = await createTestUserInDb(email);
+      const teamName = `Developer Reorder Team ${uniqueId()}`;
+      testTeams.push(teamName);
+
+      const team = await createTestTeam(teamName);
+      await addTeamMember(team.id, user.id, 'DEVELOPERS');
+      const pbi1 = await createTestPBI(team.id, 'PBI 1');
+      const pbi2 = await createTestPBI(team.id, 'PBI 2');
+
+      const cookies = await loginAndGetCookies(email);
+
+      const { csrfToken } = extractCsrfFromCookies(cookies);
+
+      const response = await request(app)
+        .post('/api/v1/product-backlog/reorder')
+        .set('Cookie', cookies)
+        .set(CSRF_CONSTANTS.HEADER_NAME, csrfToken)
+        .send({ pbiIds: [pbi2.id, pbi1.id] })
+        .expect(403);
+
+      expect(response.body.error.code).toBe(GATE_CODES.PRODUCT_OWNER_ONLY_BACKLOG_ORDER);
+    });
+
+    it('should refuse a partial list instead of reporting a false success', async () => {
+      const email = `reorder-partial-${uniqueId()}@example.com`;
+      testEmails.push(email);
+
+      const user = await createTestUserInDb(email);
+      const teamName = `Partial Reorder Team ${uniqueId()}`;
+      testTeams.push(teamName);
+
+      const team = await createTestTeam(teamName);
+      await addTeamMember(team.id, user.id, 'PRODUCT_OWNER');
+      const pbi1 = await createTestPBI(team.id, 'PBI 1');
+      const pbi2 = await createTestPBI(team.id, 'PBI 2');
+
+      const cookies = await loginAndGetCookies(email);
+
+      const { csrfToken } = extractCsrfFromCookies(cookies);
+
+      await request(app)
+        .post('/api/v1/product-backlog/reorder')
+        .set('Cookie', cookies)
+        .set(CSRF_CONSTANTS.HEADER_NAME, csrfToken)
+        .send({ pbiIds: [pbi2.id] })
+        .expect(400);
+
+      // Nothing was written: the omitted item kept its place.
+      const rows = await prisma.productBacklogItem.findMany({
+        where: { teamId: team.id },
+        select: { id: true, rank: true },
+        orderBy: { rank: 'asc' },
+      });
+      expect(rows).toHaveLength(2);
+      expect(rows.every((row) => row.rank === 0)).toBe(true);
+      expect(pbi1.id).not.toBe(pbi2.id);
     });
   });
 
@@ -774,6 +917,7 @@ describe('Product Backlog Integration Tests', () => {
       const team = await createTestTeam(teamName);
       // Only Developers may set story points, so use a Developer here.
       await addTeamMember(team.id, user.id, 'DEVELOPERS');
+      await createActiveProductGoal(team.id, user.id);
 
       const cookies = await loginAndGetCookies(email);
       const { csrfToken } = extractCsrfFromCookies(cookies);

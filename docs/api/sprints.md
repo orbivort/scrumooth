@@ -44,23 +44,11 @@ The Sprints API provides comprehensive sprint lifecycle management capabilities 
 - Definition of Done compliance reporting
 - Backlog change history tracking
 
+> **Increments and Sprints.** A Sprint's Increment is composed automatically as its items reach `DONE`, and the outcome of that composition is reported back on the item update. If a composition was skipped or failed, `POST /api/v1/increments/reconcile` recomposes the Sprint's open Increment from its Done items — see the [Increments API](./increments.md#reconcile-sprint-increment).
+
 ## Authentication
 
-All sprint endpoints require authentication. Include the access token in your request:
-
-**Using Cookies (Recommended)**
-
-```http
-GET /api/v1/sprints
-Cookie: accessToken=eyJhbGc...
-```
-
-**Using Bearer Token**
-
-```http
-GET /api/v1/sprints
-Authorization: Bearer eyJhbGc...
-```
+All sprint endpoints require authentication. See [Authentication](./README.md#authentication) for the cookie and bearer-token forms.
 
 ## Sprint States
 
@@ -77,7 +65,8 @@ Sprints follow a defined state machine with specific transition rules:
 
 ```
 PLANNING ──start──> ACTIVE ──complete──> COMPLETED
-                      �?                      └──cancel──> CANCELLED
+                      │
+                      └──cancel──> CANCELLED
 
 ACTIVE ──rollback──> PLANNING
 ```
@@ -152,7 +141,7 @@ Content-Type: application/json
 **Example Request**
 
 ```bash
-curl -X GET "https://api.scrumooth.dev/api/v1/sprints?teamId=550e8400-e29b-41d4-a716-446655440000" \
+curl -X GET "https://api.example.com/api/v1/sprints?teamId=550e8400-e29b-41d4-a716-446655440000" \
   -b cookies.txt
 ```
 
@@ -218,7 +207,7 @@ Content-Type: application/json
 **Example Request**
 
 ```bash
-curl -X GET "https://api.scrumooth.dev/api/v1/sprints/active?teamId=550e8400-e29b-41d4-a716-446655440000" \
+curl -X GET "https://api.example.com/api/v1/sprints/active?teamId=550e8400-e29b-41d4-a716-446655440000" \
   -b cookies.txt
 ```
 
@@ -268,7 +257,7 @@ Content-Type: application/json
 **Example Request**
 
 ```bash
-curl -X GET "https://api.scrumooth.dev/api/v1/sprints/available-pbis?teamId=550e8400-e29b-41d4-a716-446655440000" \
+curl -X GET "https://api.example.com/api/v1/sprints/available-pbis?teamId=550e8400-e29b-41d4-a716-446655440000" \
   -b cookies.txt
 ```
 
@@ -276,7 +265,14 @@ curl -X GET "https://api.scrumooth.dev/api/v1/sprints/available-pbis?teamId=550e
 
 ### Create Sprint
 
-Create a new sprint for a team. Requires Scrum Master role.
+Create a new sprint for a team. The caller must be a member of that team.
+
+The Sprint container rule is enforced here, not only in the interface: the Sprint may span at
+most one month (`SPRINT_MAX_DURATION_DAYS`, 28 days), it may not overlap another Sprint or an
+unmaterialized generated Sprint of the same team, and it must start immediately after the
+previous Sprint concludes (at most the intervening weekend may separate them). The generated
+Sprint calendar produced by `POST /sprint-configuration/generate` already satisfies these rules
+and is unaffected.
 
 **Endpoint**
 
@@ -287,7 +283,7 @@ POST /api/v1/sprints
 **Authentication**
 
 - Required
-- Scrum Master role required
+- Team member of the supplied `teamId` (`GATE_SPRINT_TEAM_MEMBERS_ONLY`)
 
 **Request Body**
 
@@ -347,14 +343,28 @@ Content-Type: application/json
 }
 ```
 
-**400 Bad Request - Invalid Date Range**
+**400 Bad Request - Sprint Longer Than One Month**
 
 ```json
 {
   "success": false,
   "error": {
-    "code": "VALIDATION_ERROR",
-    "message": "End date must be after start date"
+    "code": "GATE_SPRINT_DURATION_LIMIT",
+    "message": "The Sprint cannot be created: its span of 35 days exceeds the one-month maximum of 28 days. Shorten the Sprint to one month or less."
+  }
+}
+```
+
+The same code is returned when the end date is not after the start date.
+
+**400 Bad Request - Sprint-Less Time Between Sprints**
+
+```json
+{
+  "success": false,
+  "error": {
+    "code": "GATE_SPRINT_NOT_CONTIGUOUS",
+    "message": "A new Sprint must start immediately after the previous one concludes: the gap to \"Sprint 1\" is larger than the 3 days allowed for the intervening weekend. Adjust the dates so no Sprint-less time is left between them."
   }
 }
 ```
@@ -365,8 +375,20 @@ Content-Type: application/json
 {
   "success": false,
   "error": {
-    "code": "CONFLICT",
-    "message": "Sprint dates overlap with an existing sprint"
+    "code": "GATE_SPRINT_DATES_OVERLAP",
+    "message": "The Sprint dates overlap an existing Sprint (Sprint 1). A team cannot run two Sprints at the same time."
+  }
+}
+```
+
+**403 Forbidden - Not a Team Member**
+
+```json
+{
+  "success": false,
+  "error": {
+    "code": "GATE_SPRINT_TEAM_MEMBERS_ONLY",
+    "message": "The Sprint belongs to its Scrum Team: only a member of that team can create, start, or replan it."
   }
 }
 ```
@@ -374,7 +396,7 @@ Content-Type: application/json
 **Example Request**
 
 ```bash
-curl -X POST https://api.scrumooth.dev/api/v1/sprints \
+curl -X POST https://api.example.com/api/v1/sprints \
   -H "Content-Type: application/json" \
   -b cookies.txt \
   -d '{
@@ -450,7 +472,7 @@ Content-Type: application/json
 **Example Request**
 
 ```bash
-curl -X GET https://api.scrumooth.dev/api/v1/sprints/660e8400-e29b-41d4-a716-446655440000 \
+curl -X GET https://api.example.com/api/v1/sprints/660e8400-e29b-41d4-a716-446655440000 \
   -b cookies.txt
 ```
 
@@ -458,7 +480,15 @@ curl -X GET https://api.scrumooth.dev/api/v1/sprints/660e8400-e29b-41d4-a716-446
 
 ### Update Sprint
 
-Update sprint information. Only allowed in PLANNING state. Requires Scrum Master role.
+Update sprint information (name, dates, Sprint Goal, linked Product Goal). The caller must be a
+member of the Sprint's team, and only a Sprint that is still being planned (`DRAFT` or
+`PLANNED`) can be updated: once a Sprint is running, its Goal and dates are the commitment the
+team inspects, and the sanctioned way to revise the Goal is the Product Owner's acknowledgement
+of a goal-endangering Sprint Backlog change (see _Acknowledge Sprint Backlog Change_).
+
+The container rules are re-applied to the resulting dates, so an update cannot introduce a
+Sprint the create path would refuse. When the dates change, the linked `GeneratedSprint` is
+updated in the same transaction so the planning calendar stays in sync.
 
 **Endpoint**
 
@@ -469,7 +499,7 @@ PUT /api/v1/sprints/:id
 **Authentication**
 
 - Required
-- Scrum Master role required
+- Team member of the Sprint's team (`GATE_SPRINT_TEAM_MEMBERS_ONLY`)
 
 **Path Parameters**
 
@@ -519,11 +549,16 @@ Content-Type: application/json
 {
   "success": false,
   "error": {
-    "code": "VALIDATION_ERROR",
-    "message": "Cannot update a sprint that is not in PLANNING state"
+    "code": "GATE_SPRINT_GOAL_LOCKED",
+    "message": "Only a Sprint that is still being planned (DRAFT or PLANNED) can be updated. This Sprint is in status ACTIVE."
   }
 }
 ```
+
+**400 Bad Request - Container Rule Violation**
+
+The same refusals as _Create Sprint_ apply to the resulting dates:
+`GATE_SPRINT_DURATION_LIMIT`, `GATE_SPRINT_NOT_CONTIGUOUS`, and `GATE_SPRINT_DATES_OVERLAP`.
 
 **403 Forbidden - Insufficient Permissions**
 
@@ -531,8 +566,8 @@ Content-Type: application/json
 {
   "success": false,
   "error": {
-    "code": "AUTHORIZATION_ERROR",
-    "message": "Scrum Master role required"
+    "code": "GATE_SPRINT_TEAM_MEMBERS_ONLY",
+    "message": "The Sprint belongs to its Scrum Team: only a member of that team can create, start, or replan it."
   }
 }
 ```
@@ -540,7 +575,7 @@ Content-Type: application/json
 **Example Request**
 
 ```bash
-curl -X PUT https://api.scrumooth.dev/api/v1/sprints/660e8400-e29b-41d4-a716-446655440000 \
+curl -X PUT https://api.example.com/api/v1/sprints/660e8400-e29b-41d4-a716-446655440000 \
   -H "Content-Type: application/json" \
   -b cookies.txt \
   -d '{
@@ -553,7 +588,21 @@ curl -X PUT https://api.scrumooth.dev/api/v1/sprints/660e8400-e29b-41d4-a716-446
 
 ### Start Sprint
 
-Start a sprint, transitioning it from PLANNING to ACTIVE. Optionally include backlog items and tasks. Requires Scrum Master role.
+Start a sprint, transitioning it from `DRAFT`/`PLANNED` to `ACTIVE`. The transition is a
+**readiness** check against what was already recorded during Sprint Planning; any request body
+is ignored (the payload shape below is accepted for backward compatibility but not applied).
+Starting is not role-gated — any member of the Sprint's team may start it
+(`GATE_SPRINT_TEAM_MEMBERS_ONLY` refuses a non-member) — but the following must all hold:
+
+- a committed Sprint Goal,
+- a linked Product Goal,
+- a non-empty saved Sprint Backlog with every item refined to `READY`,
+- recorded planning participation that includes the Product Owner and at least one Developer,
+- no other `ACTIVE` Sprint for the team,
+- no selected item already committed to another non-draft Sprint,
+- and, when capacity was recorded during planning, planned hours within the recorded total
+  plus `SPRINT_CAPACITY_TOLERANCE_PCT` (default 10%). When no capacity was recorded the check
+  is skipped.
 
 **Endpoint**
 
@@ -564,7 +613,7 @@ POST /api/v1/sprints/:id/start
 **Authentication**
 
 - Required
-- Scrum Master role required
+- Team member of the Sprint's team required (`GATE_SPRINT_TEAM_MEMBERS_ONLY`)
 
 **Path Parameters**
 
@@ -628,6 +677,95 @@ Content-Type: application/json
 }
 ```
 
+**400 Bad Request - Sprint Has No Product Goal**
+
+```json
+{
+  "success": false,
+  "error": {
+    "code": "GATE_PRODUCT_GOAL_REQUIRED",
+    "message": "The Sprint cannot be started without a linked Product Goal. Link the Sprint to the team's Product Goal first."
+  }
+}
+```
+
+> If the Sprint has no linked Product Goal, the start first adopts the team's active Product
+> Goal. The refusal is returned only when the team has no active Product Goal to adopt, because
+> the Product Backlog's commitment is the Product Goal (Scrum Guide, 2020).
+
+**400 Bad Request - Planning Participation Missing**
+
+The 2020 Scrum Guide states the Sprint Backlog is "created by the collaborative work of the
+entire Scrum Team". A Sprint cannot open on evidence that only one person planned.
+
+```json
+{
+  "success": false,
+  "error": {
+    "code": "GATE_PLANNING_PARTICIPATION_REQUIRED",
+    "message": "The Sprint cannot be started without recorded planning participation. Record attendance that includes the Product Owner and at least one Developer."
+  }
+}
+```
+
+**400 Bad Request - Plan Exceeds Recorded Capacity**
+
+Returned only when capacity was recorded during planning **and** the planned task hours exceed
+the recorded total by more than `SPRINT_CAPACITY_TOLERANCE_PCT` (default 10%).
+
+```json
+{
+  "success": false,
+  "error": {
+    "code": "GATE_CAPACITY_EXCEEDED",
+    "message": "The Sprint cannot be started: the planned work (120h) exceeds the recorded capacity (80h) by more than the allowed tolerance of 10%."
+  }
+}
+```
+
+> Capacity is only enforced against a _recorded_ capacity. A Sprint whose planning never
+> recorded capacity starts on the remaining gates alone, so existing plans are not stranded.
+
+**400 Bad Request - No Definition of Done**
+
+A Sprint cannot open while the team's Definition of Done holds no active item — including a team
+that has never created one. A Sprint opened against no commitment is a Sprint whose Increment could
+never satisfy one, so the boundary asks the same question the Done transition asks, one event
+earlier.
+
+```json
+{
+  "success": false,
+  "error": {
+    "code": "GATE_DOD_REQUIRED",
+    "message": "Nothing is Done until the team has defined what Done means: a Definition of Done must keep at least one active item, and a Sprint cannot be committed or started without one. An empty checklist would let every item be marked Done unchecked."
+  }
+}
+```
+
+**400 Bad Request - Definition of Ready Not Met**
+
+Scrumooth also enforces the team's **Definition of Ready** — a complementary practice, not a 2020
+Scrum Guide artifact (see the [Definition of Ready API](./definition-of-ready.md)). A Sprint cannot
+open while a selected item still has an unverified active readiness criterion; the refusal names the
+items that are not ready. A team with no active readiness criterion at all is refused with
+`GATE_DOR_REQUIRED` instead, so the agreement cannot be emptied to make the rule pass.
+
+```json
+{
+  "success": false,
+  "error": {
+    "code": "GATE_DOR_NOT_VERIFIED",
+    "message": "This Sprint cannot be committed or started until every selected item meets the team's Definition of Ready. 1 item(s) still have unverified readiness criteria: \"Checkout - retry\"."
+  }
+}
+```
+
+> The Definition of Ready is **not** applied to `PUT /sprints/:id/backlog/draft`. A draft is
+> explicitly revisable before the container opens, and refusing every intermediate save would make
+> planning unusable; the agreement bites when the plan becomes the Sprint Backlog and when the
+> Sprint starts.
+
 **409 Conflict - Team Already Has Active Sprint**
 
 ```json
@@ -643,7 +781,7 @@ Content-Type: application/json
 **Example Request**
 
 ```bash
-curl -X POST https://api.scrumooth.dev/api/v1/sprints/660e8400-e29b-41d4-a716-446655440000/start \
+curl -X POST https://api.example.com/api/v1/sprints/660e8400-e29b-41d4-a716-446655440000/start \
   -H "Content-Type: application/json" \
   -b cookies.txt \
   -d '{
@@ -664,9 +802,92 @@ curl -X POST https://api.scrumooth.dev/api/v1/sprints/660e8400-e29b-41d4-a716-44
 
 ---
 
+### Sprint Planning records (capacity and attendance)
+
+Sprint Planning persists two facts beyond the selected backlog and its tasks. Both are read
+back with the planning draft and are enforced when the Sprint opens.
+
+**Recorded capacity** — `PUT /api/v1/sprints/:id/backlog/draft` accepts a `capacity` array
+(one entry per Developer) and persists it:
+
+```json
+{
+  "items": [{ "pbiId": "880e8400-e29b-41d4-a716-446655440001" }],
+  "tasks": [],
+  "sprintGoal": "Deliver the auth module",
+  "capacity": [
+    {
+      "memberId": "990e8400-e29b-41d4-a716-446655440001",
+      "userId": "user-1",
+      "availableHours": 40
+    },
+    { "userId": "user-2", "availableHours": 32 }
+  ]
+}
+```
+
+- Every `userId` must be a `DEVELOPERS`-role member of the Sprint's team.
+- The write is a diff keyed by `(sprintId, userId)`: entries not present are removed, existing
+  entries are updated, new ones are created. Omitting `capacity` entirely leaves the recorded
+  capacity untouched.
+- `GET /api/v1/sprints/:id/planning-draft` returns the recorded `capacity` array (readable by
+  any authenticated team member).
+
+**Recorded participation** — the planning draft also accepts an `attendees` array, and the
+following endpoints manage attendance incrementally:
+
+| Method   | Endpoint                                             | Access                        |
+| -------- | ---------------------------------------------------- | ----------------------------- |
+| `GET`    | `/api/v1/sprints/:id/planning-attendees`             | Any authenticated team member |
+| `POST`   | `/api/v1/sprints/:id/planning-attendees`             | Any member of the Scrum Team  |
+| `PUT`    | `/api/v1/sprints/:id/planning-attendees/:attendeeId` | Any member of the Scrum Team  |
+| `DELETE` | `/api/v1/sprints/:id/planning-attendees/:attendeeId` | Any member of the Scrum Team  |
+
+Attendee body: `{ "name": string, "email"?: string, "role": "product_owner" | "scrum_master" |
+"developers" | "stakeholder", "attended": boolean }`.
+
+Sprint Planning is the Developers' event to run but the _whole Scrum Team's_ to attend, and the
+participation record is the evidence that the Sprint Backlog was "created by the collaborative work
+of the entire Scrum Team" — so every member of the team may add, correct, and remove it, exactly as
+they may record attendance at the Sprint Review and the Retrospective. Only the Sprint Backlog
+itself (its items, tasks, and capacity) is the Developers'.
+
+The `GET` response carries the derived readiness used by the start gate:
+
+```json
+{
+  "success": true,
+  "data": {
+    "attendees": [
+      {
+        "id": "…",
+        "name": "Ada Lovelace",
+        "email": null,
+        "role": "product_owner",
+        "attended": true
+      },
+      { "id": "…", "name": "Grace Hopper", "email": null, "role": "developers", "attended": true }
+    ],
+    "hasProductOwner": true,
+    "developerCount": 1,
+    "isReadyToStart": true
+  }
+}
+```
+
+Writes are refused once the Sprint is no longer being planned (`DRAFT`/`PLANNED`), and with
+`GATE_SPRINT_TEAM_MEMBERS_ONLY` (`403`) for a caller who is not a member of the team that owns the
+Sprint. The Sprint Backlog remains Developers-only (`GATE_DEVELOPER_ONLY_SPRINT_BACKLOG`); attendance
+is deliberately not tied to it.
+
+---
+
 ### Rollback Sprint Start
 
-Rollback a sprint that was just started, returning it to PLANNING state. Requires Scrum Master role.
+Rollback a Sprint start that failed partway, returning the Sprint to `PLANNED` and removing the
+records the failed start created. This is a compensating call: the caller supplies the previous
+Product Backlog item statuses and the ids that were created, and the payload is applied as given. It
+requires authentication but is not additionally role-restricted.
 
 **Endpoint**
 
@@ -677,7 +898,6 @@ POST /api/v1/sprints/:id/rollback
 **Authentication**
 
 - Required
-- Scrum Master role required
 
 **Path Parameters**
 
@@ -721,7 +941,7 @@ Content-Type: application/json
 **Example Request**
 
 ```bash
-curl -X POST https://api.scrumooth.dev/api/v1/sprints/660e8400-e29b-41d4-a716-446655440000/rollback \
+curl -X POST https://api.example.com/api/v1/sprints/660e8400-e29b-41d4-a716-446655440000/rollback \
   -b cookies.txt
 ```
 
@@ -729,7 +949,7 @@ curl -X POST https://api.scrumooth.dev/api/v1/sprints/660e8400-e29b-41d4-a716-44
 
 ### Complete Sprint
 
-Complete a sprint, transitioning it from ACTIVE to COMPLETED. Requires Scrum Master role.
+Complete a sprint, transitioning it from ACTIVE to COMPLETED. Any member of the Sprint's team may complete it: the 2020 Scrum Guide does not assign the act of closing the container to a single role. Two Guide gates must pass first — the Sprint Review and the Sprint Retrospective must both be completed, and no impediment of the Sprint may still be `OPEN` or `IN_PROGRESS`.
 
 **Endpoint**
 
@@ -740,7 +960,7 @@ POST /api/v1/sprints/:id/complete
 **Authentication**
 
 - Required
-- Scrum Master role required
+- Team member of the Sprint's team required
 
 **Path Parameters**
 
@@ -781,10 +1001,38 @@ Content-Type: application/json
 }
 ```
 
+**400 Bad Request - Sprint Review or Retrospective Not Completed**
+
+The Sprint Review is the second-to-last event of the Sprint and the Sprint Retrospective concludes it, so neither can be absent when the Sprint closes. The message names the missing event(s).
+
+```json
+{
+  "success": false,
+  "error": {
+    "code": "GATE_SPRINT_EVENTS_MISSING",
+    "message": "The Sprint cannot be completed because the following event(s) have not concluded: Sprint Review, Sprint Retrospective. Record them before closing the Sprint."
+  }
+}
+```
+
+**400 Bad Request - Unresolved Impediments**
+
+An impediment that is still `OPEN` or `IN_PROGRESS` blocks the close: an Increment is only inspectable if the Sprint is not still stuck on a known blocker. The message names the impediments. Resolving or closing them (with a written resolution) lifts the refusal.
+
+```json
+{
+  "success": false,
+  "error": {
+    "code": "GATE_IMPEDIMENTS_UNRESOLVED",
+    "message": "The Sprint cannot be completed while it still has unresolved impediments: API dependency blocking dashboard work. Resolve or close them before closing the Sprint."
+  }
+}
+```
+
 **Example Request**
 
 ```bash
-curl -X POST https://api.scrumooth.dev/api/v1/sprints/660e8400-e29b-41d4-a716-446655440000/complete \
+curl -X POST https://api.example.com/api/v1/sprints/660e8400-e29b-41d4-a716-446655440000/complete \
   -b cookies.txt
 ```
 
@@ -792,7 +1040,7 @@ curl -X POST https://api.scrumooth.dev/api/v1/sprints/660e8400-e29b-41d4-a716-44
 
 ### Cancel Sprint
 
-Cancel a sprint, transitioning it from ACTIVE to CANCELLED. Requires Scrum Master role.
+Cancel a sprint, transitioning it from ACTIVE to CANCELLED. Only the **Product Owner** of the Sprint's team may cancel it — the 2020 Scrum Guide grants that authority to the Product Owner alone, and the Sprint must still be `ACTIVE`.
 
 **Endpoint**
 
@@ -803,7 +1051,7 @@ POST /api/v1/sprints/:id/cancel
 **Authentication**
 
 - Required
-- Scrum Master role required
+- Product Owner of the Sprint's team required
 
 **Path Parameters**
 
@@ -870,10 +1118,24 @@ Content-Type: application/json
 }
 ```
 
+**403 Forbidden - Caller is not the Product Owner**
+
+The 2020 Scrum Guide gives only the Product Owner the authority to cancel a Sprint. A Scrum Master, a Developer, or a member of another team is refused.
+
+```json
+{
+  "success": false,
+  "error": {
+    "code": "GATE_PRODUCT_OWNER_ONLY_CANCELLATION",
+    "message": "Only the Product Owner can cancel a Sprint"
+  }
+}
+```
+
 **Example Request**
 
 ```bash
-curl -X POST https://api.scrumooth.dev/api/v1/sprints/660e8400-e29b-41d4-a716-446655440000/cancel \
+curl -X POST https://api.example.com/api/v1/sprints/660e8400-e29b-41d4-a716-446655440000/cancel \
   -H "Content-Type: application/json" \
   -b cookies.txt \
   -d '{
@@ -950,7 +1212,7 @@ Content-Type: application/json
 **Example Request**
 
 ```bash
-curl -X GET https://api.scrumooth.dev/api/v1/sprints/660e8400-e29b-41d4-a716-446655440000/burndown \
+curl -X GET https://api.example.com/api/v1/sprints/660e8400-e29b-41d4-a716-446655440000/burndown \
   -b cookies.txt
 ```
 
@@ -1005,7 +1267,7 @@ Content-Type: application/json
 **Example Request**
 
 ```bash
-curl -X GET https://api.scrumooth.dev/api/v1/sprints/660e8400-e29b-41d4-a716-446655440000/tasks \
+curl -X GET https://api.example.com/api/v1/sprints/660e8400-e29b-41d4-a716-446655440000/tasks \
   -b cookies.txt
 ```
 
@@ -1013,7 +1275,9 @@ curl -X GET https://api.scrumooth.dev/api/v1/sprints/660e8400-e29b-41d4-a716-446
 
 ### Create Task
 
-Create a new task within a sprint. Requires team membership.
+Create a new task within a sprint. Restricted to **Developers**: the Sprint Backlog is a plan by and
+for them, so decomposing work is theirs. If an assignee is supplied it must be a Developer on the
+same team — self-assignment, with the acting user as the assignee.
 
 **Endpoint**
 
@@ -1024,6 +1288,7 @@ POST /api/v1/sprints/:sprintId/tasks
 **Authentication**
 
 - Required
+- Developer role required
 
 **Path Parameters**
 
@@ -1103,7 +1368,7 @@ Content-Type: application/json
 **Example Request**
 
 ```bash
-curl -X POST https://api.scrumooth.dev/api/v1/sprints/660e8400-e29b-41d4-a716-446655440000/tasks \
+curl -X POST https://api.example.com/api/v1/sprints/660e8400-e29b-41d4-a716-446655440000/tasks \
   -H "Content-Type: application/json" \
   -b cookies.txt \
   -d '{
@@ -1119,7 +1384,9 @@ curl -X POST https://api.scrumooth.dev/api/v1/sprints/660e8400-e29b-41d4-a716-44
 
 ### Update Task
 
-Update a task within a sprint. Requires team membership.
+Update a task within a sprint. Restricted to **Developers**: editing a task's status, title,
+description, or hours is a Developers-only mutation of the Sprint Backlog. The `REVIEW` → `DONE` step
+additionally requires a team member other than the task's assignee, so a task cannot be self-approved.
 
 **Endpoint**
 
@@ -1130,6 +1397,7 @@ PUT /api/v1/sprints/:sprintId/tasks/:taskId
 **Authentication**
 
 - Required
+- Developer role required
 
 **Path Parameters**
 
@@ -1203,7 +1471,7 @@ Content-Type: application/json
 **Example Request**
 
 ```bash
-curl -X PUT https://api.scrumooth.dev/api/v1/sprints/660e8400-e29b-41d4-a716-446655440000/tasks/990e8400-e29b-41d4-a716-446655440001 \
+curl -X PUT https://api.example.com/api/v1/sprints/660e8400-e29b-41d4-a716-446655440000/tasks/990e8400-e29b-41d4-a716-446655440001 \
   -H "Content-Type: application/json" \
   -b cookies.txt \
   -d '{
@@ -1216,7 +1484,8 @@ curl -X PUT https://api.scrumooth.dev/api/v1/sprints/660e8400-e29b-41d4-a716-446
 
 ### Delete Task
 
-Delete a task from a sprint. Requires Scrum Master role.
+Delete a task from a sprint. Restricted to **Developers**: the Sprint Backlog is a plan by and for
+them, so removing a task from it is theirs.
 
 **Endpoint**
 
@@ -1227,7 +1496,7 @@ DELETE /api/v1/sprints/:sprintId/tasks/:taskId
 **Authentication**
 
 - Required
-- Scrum Master role required
+- Developer role required
 
 **Path Parameters**
 
@@ -1262,14 +1531,17 @@ Content-Type: application/json
 }
 ```
 
-**403 Forbidden - Insufficient Permissions**
+**403 Forbidden - Not a Developer**
+
+The Sprint Backlog is the Developers' plan, so only a Developer-role member of the Sprint's team may
+delete a task.
 
 ```json
 {
   "success": false,
   "error": {
     "code": "AUTHORIZATION_ERROR",
-    "message": "Scrum Master role required"
+    "message": "Only Developers can create and decompose tasks, as the Developers who perform the work own task decomposition."
   }
 }
 ```
@@ -1277,7 +1549,7 @@ Content-Type: application/json
 **Example Request**
 
 ```bash
-curl -X DELETE https://api.scrumooth.dev/api/v1/sprints/660e8400-e29b-41d4-a716-446655440000/tasks/990e8400-e29b-41d4-a716-446655440001 \
+curl -X DELETE https://api.example.com/api/v1/sprints/660e8400-e29b-41d4-a716-446655440000/tasks/990e8400-e29b-41d4-a716-446655440001 \
   -b cookies.txt
 ```
 
@@ -1327,7 +1599,7 @@ Content-Type: application/json
 **Example Request**
 
 ```bash
-curl -X GET https://api.scrumooth.dev/api/v1/sprints/660e8400-e29b-41d4-a716-446655440000/eligible-pbis \
+curl -X GET https://api.example.com/api/v1/sprints/660e8400-e29b-41d4-a716-446655440000/eligible-pbis \
   -b cookies.txt
 ```
 
@@ -1378,7 +1650,7 @@ Content-Type: application/json
 **Example Request**
 
 ```bash
-curl -X GET https://api.scrumooth.dev/api/v1/sprints/660e8400-e29b-41d4-a716-446655440000/backlog-pbis \
+curl -X GET https://api.example.com/api/v1/sprints/660e8400-e29b-41d4-a716-446655440000/backlog-pbis \
   -b cookies.txt
 ```
 
@@ -1386,7 +1658,18 @@ curl -X GET https://api.scrumooth.dev/api/v1/sprints/660e8400-e29b-41d4-a716-446
 
 ### Add PBI to Sprint
 
-Add a product backlog item to the sprint backlog. Requires Scrum Master or Product Owner role.
+Add a product backlog item to an `ACTIVE` Sprint's Sprint Backlog. Developers-only: the Sprint
+Backlog is owned by the Developers who do the work.
+
+The change must state **why** it is being made and whether it **endangers the Sprint Goal**:
+
+- `goalImpact: "SUPPORTS_GOAL"` — the change is applied immediately and recorded as `APPLIED`.
+- `goalImpact: "ENDANGERS_GOAL"` — nothing is applied. The request is recorded as `PENDING`, the
+  Sprint Backlog is left untouched, and the response carries `pending: true`. The Product Owner
+  must then acknowledge it (see _Acknowledge Sprint Backlog Change_).
+
+Every recorded change stores the Sprint Goal that was in force when it was requested
+(`sprintGoalAtChange`), so the audit trail cannot be rewritten by a later goal edit.
 
 **Endpoint**
 
@@ -1397,7 +1680,7 @@ POST /api/v1/sprints/:sprintId/backlog-items
 **Authentication**
 
 - Required
-- Scrum Master or Product Owner role required
+- Developer role on the Sprint's team
 
 **Path Parameters**
 
@@ -1408,11 +1691,12 @@ POST /api/v1/sprints/:sprintId/backlog-items
 ```json
 {
   "pbiId": "string (required, UUID of the product backlog item)",
-  "reason": "string (optional, max 500 chars)"
+  "reason": "string (required, 1-500 chars)",
+  "goalImpact": "string (required, one of: SUPPORTS_GOAL, ENDANGERS_GOAL)"
 }
 ```
 
-**Success Response**
+**Success Response — applied**
 
 ```http
 HTTP/1.1 201 Created
@@ -1421,41 +1705,124 @@ Content-Type: application/json
 {
   "success": true,
   "data": {
-    "backlogItem": {
+    "pending": false,
+    "sprintBacklogItem": {
       "id": "aa0e8400-e29b-41d4-a716-446655440001",
       "sprintId": "660e8400-e29b-41d4-a716-446655440000",
-      "pbiId": "880e8400-e29b-41d4-a716-446655440003",
-      "addedAt": "2026-05-05T10:00:00.000Z",
-      "addedBy": "550e8400-e29b-41d4-a716-446655440001",
-      "reason": "Critical bug fix needed for release"
+      "pbiId": "880e8400-e29b-41d4-a716-446655440003"
     },
-    "message": "PBI added to sprint backlog successfully"
+    "change": {
+      "id": "bb0e8400-e29b-41d4-a716-446655440002",
+      "changeType": "ADDED",
+      "reason": "Critical bug fix needed for release",
+      "goalImpact": "SUPPORTS_GOAL",
+      "approvalStatus": "APPLIED",
+      "sprintGoalAtChange": "Deliver user authentication module",
+      "changedBy": "550e8400-e29b-41d4-a716-446655440001",
+      "changedByName": "Dana Developer",
+      "createdAt": "2026-05-05T10:00:00.000Z"
+    }
+  }
+}
+```
+
+**Success Response — awaiting the Product Owner**
+
+```http
+HTTP/1.1 201 Created
+Content-Type: application/json
+
+{
+  "success": true,
+  "data": {
+    "pending": true,
+    "sprintBacklogItem": null,
+    "change": {
+      "id": "bb0e8400-e29b-41d4-a716-446655440003",
+      "changeType": "ADDED",
+      "reason": "Legal requirement arrived mid-Sprint",
+      "goalImpact": "ENDANGERS_GOAL",
+      "approvalStatus": "PENDING",
+      "sprintGoalAtChange": "Deliver user authentication module",
+      "createdAt": "2026-05-05T10:00:00.000Z"
+    }
   }
 }
 ```
 
 **Error Responses**
 
-**404 Not Found - PBI Not Found**
+**400 Bad Request - Missing Reason or Goal Impact**
 
 ```json
 {
   "success": false,
   "error": {
-    "code": "NOT_FOUND",
-    "message": "Product backlog item not found"
+    "code": "VALIDATION_ERROR",
+    "message": "Validation failed",
+    "details": [
+      {
+        "field": "reason",
+        "message": "Reason is required"
+      }
+    ]
   }
 }
 ```
 
-**409 Conflict - PBI Already in Sprint**
+**400 Bad Request - Item Not Refined**
 
 ```json
 {
   "success": false,
   "error": {
-    "code": "CONFLICT",
-    "message": "PBI is already in the sprint backlog"
+    "code": "GATE_PBI_NOT_READY",
+    "message": "Only Product Backlog items refined to READY can enter a Sprint. 1 selected item(s) are not READY yet: \"Checkout - retry\"."
+  }
+}
+```
+
+**400 Bad Request - No Definition of Done**
+
+The commitment the Sprint Backlog is written against has to exist before the backlog is committed,
+not only before an item is marked Done. A team with no active Definition of Done item — including
+one that has never created a Definition of Done at all — is refused here.
+
+```json
+{
+  "success": false,
+  "error": {
+    "code": "GATE_DOD_REQUIRED",
+    "message": "Nothing is Done until the team has defined what Done means: a Definition of Done must keep at least one active item, and a Sprint cannot be committed or started without one. An empty checklist would let every item be marked Done unchecked."
+  }
+}
+```
+
+**400 Bad Request - Definition of Ready Not Met**
+
+The team's **Definition of Ready** — a complementary practice rather than a Guide artifact — is
+applied at the moment the plan becomes the Sprint Backlog: every selected item must have verified
+every active readiness criterion. The refusal names the items that are not ready, and a team with no
+active criterion at all is refused with `GATE_DOR_REQUIRED`.
+
+```json
+{
+  "success": false,
+  "error": {
+    "code": "GATE_DOR_NOT_VERIFIED",
+    "message": "This Sprint cannot be committed or started until every selected item meets the team's Definition of Ready. 2 item(s) still have unverified readiness criteria: \"Checkout - retry, Bulk export\"."
+  }
+}
+```
+
+**409 Conflict - Goal-Endangering Change Already Pending**
+
+```json
+{
+  "success": false,
+  "error": {
+    "code": "GATE_SPRINT_SCOPE_CHANGE_ALREADY_PENDING",
+    "message": "A change to this item that endangers the Sprint Goal is already awaiting the Product Owner's acknowledgement. Resolve it before requesting another."
   }
 }
 ```
@@ -1463,12 +1830,13 @@ Content-Type: application/json
 **Example Request**
 
 ```bash
-curl -X POST https://api.scrumooth.dev/api/v1/sprints/660e8400-e29b-41d4-a716-446655440000/backlog-items \
+curl -X POST https://api.example.com/api/v1/sprints/660e8400-e29b-41d4-a716-446655440000/backlog-items \
   -H "Content-Type: application/json" \
   -b cookies.txt \
   -d '{
     "pbiId": "880e8400-e29b-41d4-a716-446655440003",
-    "reason": "Critical bug fix needed for release"
+    "reason": "Critical bug fix needed for release",
+    "goalImpact": "SUPPORTS_GOAL"
   }'
 ```
 
@@ -1476,7 +1844,16 @@ curl -X POST https://api.scrumooth.dev/api/v1/sprints/660e8400-e29b-41d4-a716-44
 
 ### Remove PBI from Sprint
 
-Remove a product backlog item from the sprint backlog. Requires Scrum Master or Product Owner role.
+Remove a product backlog item from an `ACTIVE` Sprint's Sprint Backlog. Developers-only. The
+same two-phase contract as _Add PBI to Sprint_ applies: a change declared as endangering the
+Sprint Goal is recorded as `PENDING` and the Sprint Backlog is left unchanged until the Product
+Owner acknowledges it.
+
+`taskAction` decides what happens to the item's tasks once the change is applied:
+
+- `delete` — the tasks are deleted,
+- `return_to_backlog` — the item returns to `READY` and its tasks are deleted,
+- `keep_in_sprint` — the tasks remain.
 
 **Endpoint**
 
@@ -1487,7 +1864,7 @@ DELETE /api/v1/sprints/:sprintId/backlog-items/:pbiId
 **Authentication**
 
 - Required
-- Scrum Master or Product Owner role required
+- Developer role on the Sprint's team
 
 **Path Parameters**
 
@@ -1499,11 +1876,12 @@ DELETE /api/v1/sprints/:sprintId/backlog-items/:pbiId
 ```json
 {
   "taskAction": "string (required, one of: delete, return_to_backlog, keep_in_sprint)",
-  "reason": "string (optional, max 500 chars)"
+  "reason": "string (required, 1-500 chars)",
+  "goalImpact": "string (required, one of: SUPPORTS_GOAL, ENDANGERS_GOAL)"
 }
 ```
 
-**Success Response**
+**Success Response — applied**
 
 ```http
 HTTP/1.1 200 OK
@@ -1512,8 +1890,37 @@ Content-Type: application/json
 {
   "success": true,
   "data": {
-    "message": "PBI removed from sprint backlog successfully",
-    "taskAction": "return_to_backlog"
+    "pending": false,
+    "sprintBacklogItem": null,
+    "change": {
+      "id": "bb0e8400-e29b-41d4-a716-446655440004",
+      "changeType": "REMOVED",
+      "reason": "Scope reduced for this sprint",
+      "goalImpact": "SUPPORTS_GOAL",
+      "approvalStatus": "APPLIED",
+      "taskAction": "return_to_backlog",
+      "sprintGoalAtChange": "Deliver user authentication module",
+      "createdAt": "2026-05-06T09:00:00.000Z"
+    }
+  }
+}
+```
+
+**Success Response — awaiting the Product Owner**
+
+```json
+{
+  "success": true,
+  "data": {
+    "pending": true,
+    "sprintBacklogItem": null,
+    "change": {
+      "id": "bb0e8400-e29b-41d4-a716-446655440005",
+      "changeType": "REMOVED",
+      "goalImpact": "ENDANGERS_GOAL",
+      "approvalStatus": "PENDING",
+      "taskAction": "keep_in_sprint"
+    }
   }
 }
 ```
@@ -1527,7 +1934,7 @@ Content-Type: application/json
   "success": false,
   "error": {
     "code": "NOT_FOUND",
-    "message": "PBI is not in the sprint backlog"
+    "message": "Sprint Backlog Item not found"
   }
 }
 ```
@@ -1539,7 +1946,13 @@ Content-Type: application/json
   "success": false,
   "error": {
     "code": "VALIDATION_ERROR",
-    "message": "Invalid task action. Must be one of: delete, return_to_backlog, keep_in_sprint"
+    "message": "Validation failed",
+    "details": [
+      {
+        "field": "taskAction",
+        "message": "Invalid option"
+      }
+    ]
   }
 }
 ```
@@ -1547,12 +1960,146 @@ Content-Type: application/json
 **Example Request**
 
 ```bash
-curl -X DELETE https://api.scrumooth.dev/api/v1/sprints/660e8400-e29b-41d4-a716-446655440000/backlog-items/880e8400-e29b-41d4-a716-446655440003 \
+curl -X DELETE https://api.example.com/api/v1/sprints/660e8400-e29b-41d4-a716-446655440000/backlog-items/880e8400-e29b-41d4-a716-446655440003 \
   -H "Content-Type: application/json" \
   -b cookies.txt \
   -d '{
     "taskAction": "return_to_backlog",
-    "reason": "Scope reduced for this sprint"
+    "reason": "Scope reduced for this sprint",
+    "goalImpact": "SUPPORTS_GOAL"
+  }'
+```
+
+---
+
+### Acknowledge Sprint Backlog Change
+
+Acknowledge (approve) or reject a Sprint Backlog change that was recorded as `PENDING` because
+it endangers the Sprint Goal. Product-Owner-only: "no changes are made that would endanger the
+Sprint Goal", so the acknowledgement is the Product Owner's decision to conclude.
+
+- `APPROVE` re-validates the deferred change (an addition still requires the item to be `READY`
+  and absent; a removal still requires the item to be present), applies it in one transaction,
+  and requires `sprintGoal`: the renegotiated Sprint Goal, which replaces the commitment and is
+  mirrored onto the linked `GeneratedSprint`. The goal that was in force _before_ the change
+  stays recorded on the change row (`sprintGoalAtChange`).
+- `REJECT` clears the pending state without touching the Sprint Backlog, so a pending change can
+  never become un-clearable.
+
+**Endpoint**
+
+```
+POST /api/v1/sprints/:sprintId/backlog-changes/:changeId/acknowledge
+```
+
+**Authentication**
+
+- Required
+- Product Owner of the Sprint's team (`GATE_SPRINT_SCOPE_CHANGE_NEEDS_PO`)
+
+**Path Parameters**
+
+- `sprintId` (string, required): Sprint UUID
+- `changeId` (string, required): Sprint Backlog change UUID
+
+**Request Body**
+
+```json
+{
+  "decision": "string (required, one of: APPROVE, REJECT)",
+  "sprintGoal": "string (required when approving, 1-500 chars)",
+  "note": "string (optional, max 1000 chars)"
+}
+```
+
+**Success Response**
+
+```http
+HTTP/1.1 200 OK
+Content-Type: application/json
+
+{
+  "success": true,
+  "data": {
+    "applied": true,
+    "sprint": {
+      "id": "660e8400-e29b-41d4-a716-446655440000",
+      "sprintGoal": "Deliver checkout and authentication"
+    },
+    "change": {
+      "id": "bb0e8400-e29b-41d4-a716-446655440003",
+      "changeType": "ADDED",
+      "approvalStatus": "APPLIED",
+      "sprintGoalAtChange": "Deliver user authentication module",
+      "acknowledgedBy": "770e8400-e29b-41d4-a716-446655440009",
+      "acknowledgedByName": "Pat Owner",
+      "acknowledgedAt": "2026-05-06T08:00:00.000Z",
+      "acknowledgementNote": "Agreed with the team"
+    }
+  }
+}
+```
+
+**Error Responses**
+
+**403 Forbidden - Not the Product Owner**
+
+```json
+{
+  "success": false,
+  "error": {
+    "code": "GATE_SPRINT_SCOPE_CHANGE_NEEDS_PO",
+    "message": "Only the Product Owner can acknowledge a Sprint Backlog change that endangers the Sprint Goal."
+  }
+}
+```
+
+**400 Bad Request - Not Pending**
+
+```json
+{
+  "success": false,
+  "error": {
+    "code": "BAD_REQUEST",
+    "message": "This Sprint Backlog change is not awaiting acknowledgement (status: APPLIED)."
+  }
+}
+```
+
+**400 Bad Request - Renegotiated Goal Missing**
+
+```json
+{
+  "success": false,
+  "error": {
+    "code": "BAD_REQUEST",
+    "message": "Approving a change that endangers the Sprint Goal requires the renegotiated Sprint Goal, so the team knows what it is now working toward."
+  }
+}
+```
+
+**400 Bad Request - Stale Approval**
+
+```json
+{
+  "success": false,
+  "error": {
+    "code": "GATE_PBI_NOT_READY",
+    "message": "Only Product Backlog items refined to READY can enter a Sprint. 1 selected item(s) are not READY yet: \"Checkout - retry\"."
+  }
+}
+```
+
+**Example Request**
+
+```bash
+curl -X POST https://api.example.com/api/v1/sprints/660e8400-e29b-41d4-a716-446655440000/backlog-changes/bb0e8400-e29b-41d4-a716-446655440003/acknowledge \
+  -H "Content-Type: application/json" \
+  -b cookies.txt \
+  -d '{
+    "decision": "APPROVE",
+    "sprintGoal": "Deliver checkout and authentication",
+    "note": "Agreed with the team"
   }'
 ```
 
@@ -1612,7 +2159,7 @@ Content-Type: application/json
 **Example Request**
 
 ```bash
-curl -X GET https://api.scrumooth.dev/api/v1/sprints/660e8400-e29b-41d4-a716-446655440000/backlog-changes \
+curl -X GET https://api.example.com/api/v1/sprints/660e8400-e29b-41d4-a716-446655440000/backlog-changes \
   -b cookies.txt
 ```
 
@@ -1631,6 +2178,7 @@ GET /api/v1/sprints/:sprintId/dod-compliance
 **Authentication**
 
 - Required
+- The caller must be a member of the team that owns the Sprint: the report describes the team's own commitment, and the verifications it lists are the team's (`403 GATE_DOD_TEAM_MEMBERS_ONLY`).
 
 **Path Parameters**
 
@@ -1692,7 +2240,7 @@ Content-Type: application/json
 **Example Request**
 
 ```bash
-curl -X GET https://api.scrumooth.dev/api/v1/sprints/660e8400-e29b-41d4-a716-446655440000/dod-compliance \
+curl -X GET https://api.example.com/api/v1/sprints/660e8400-e29b-41d4-a716-446655440000/dod-compliance \
   -b cookies.txt
 ```
 
@@ -1707,6 +2255,33 @@ curl -X GET https://api.scrumooth.dev/api/v1/sprints/660e8400-e29b-41d4-a716-446
 | `AUTHORIZATION_ERROR`  | 403         | Insufficient permissions for the requested operation               |
 | `NOT_FOUND`            | 404         | Sprint, task, or PBI not found                                     |
 | `CONFLICT`             | 409         | Resource conflict (e.g., overlapping sprint, active sprint exists) |
+
+### Gate rejections
+
+The Sprint lifecycle refuses with stable `GATE_*` codes; each is documented inline on the endpoint above that can raise it, and the complete catalogue lives in the [API overview](./README.md#gate-rejections). The gates this API can refuse with are:
+
+| Code                                       | HTTP | Rule                                                                                          |
+| ------------------------------------------ | ---- | --------------------------------------------------------------------------------------------- |
+| `GATE_SPRINT_EVENTS_MISSING`               | 400  | A Sprint cannot close before its Review and Retrospective are completed                       |
+| `GATE_IMPEDIMENTS_UNRESOLVED`              | 400  | A Sprint cannot close while it has unresolved impediments                                     |
+| `GATE_PRODUCT_OWNER_ONLY_CANCELLATION`     | 403  | Only the Product Owner of the Sprint's team may cancel the Sprint                             |
+| `GATE_SPRINT_TEAM_MEMBERS_ONLY`            | 403  | Creating, starting, or replanning a Sprint requires membership of the team that owns it       |
+| `GATE_SPRINT_DURATION_LIMIT`               | 400  | A Sprint is one month or less (`SPRINT_MAX_DURATION_DAYS`)                                    |
+| `GATE_SPRINT_DATES_OVERLAP`                | 409  | A team runs one Sprint at a time                                                              |
+| `GATE_SPRINT_NOT_CONTIGUOUS`               | 400  | A new Sprint starts immediately after the conclusion of the previous one                      |
+| `GATE_SPRINT_GOAL_LOCKED`                  | 400  | The Sprint Goal is only editable while the Sprint is `DRAFT`/`PLANNED`                        |
+| `GATE_SPRINT_SCOPE_CHANGE_NEEDS_PO`        | 403  | Only the Product Owner acknowledges a goal-endangering Sprint Backlog change                  |
+| `GATE_SPRINT_SCOPE_CHANGE_ALREADY_PENDING` | 409  | One goal-endangering change per item may await the Product Owner at a time                    |
+| `GATE_SPRINT_SM_NOTES_SM_ONLY`             | 403  | Only the team's Scrum Master may read or write the Sprint's Scrum Master notes                |
+| `GATE_PBI_NOT_READY`                       | 400  | A Product Backlog item must be refined to `READY` before it can enter a Sprint                |
+| `GATE_DOD_REQUIRED`                        | 400  | The team must hold at least one active Definition of Done criterion                           |
+| `GATE_DOD_TEAM_MEMBERS_ONLY`               | 403  | The Definition of Done belongs to the team that works to it                                   |
+| `GATE_DOR_REQUIRED`                        | 400  | The team must hold at least one active Definition of Ready criterion (complementary practice) |
+| `GATE_DOR_NOT_VERIFIED`                    | 400  | A selected item still has an unverified active readiness criterion (complementary practice)   |
+| `GATE_PLANNING_PARTICIPATION_REQUIRED`     | 400  | Sprint Planning attendance must be recorded and include the Product Owner and a Developer     |
+| `GATE_CAPACITY_EXCEEDED`                   | 400  | The plan exceeds the recorded capacity beyond `SPRINT_CAPACITY_TOLERANCE_PCT`                 |
+| `GATE_PRODUCT_GOAL_REQUIRED`               | 400  | A Sprint cannot start until it is linked to a Product Goal                                    |
+| `GATE_DEVELOPER_ONLY_SPRINT_BACKLOG`       | 403  | Only Developers save the Sprint Backlog                                                       |
 
 ## Best Practices
 
@@ -1738,9 +2313,22 @@ curl -X GET https://api.scrumooth.dev/api/v1/sprints/660e8400-e29b-41d4-a716-446
 3. **State Integrity**: Enforce state transition rules to prevent invalid operations
 4. **Reason Tracking**: Require reasons for significant changes (cancellation, PBI removal)
 
+## Scrum Master notes and their revision history
+
+A Sprint carries the Scrum Master's coaching notes (`smNotes`), which are readable and writable only
+by the team's Scrum Master:
+
+- **Read:** `smNotes` is omitted from the Sprint list, the active Sprint and the Sprint detail for
+  every other caller.
+- **Write:** `PATCH /sprints/:id/sm-notes` with `{ "smNotes": "..." }` refuses anyone else with
+  `GATE_SPRINT_SM_NOTES_SM_ONLY`.
+- **History:** `GET /sprints/:id/sm-notes/revisions?limit=20&offset=0` returns the trail, newest
+  first. Each real edit appends a revision in the same transaction as the update; a write whose text
+  is unchanged appends nothing, so the trail answers "what did the notes say before" without noise.
+
 ---
 
-**Last Updated**: 2026-05-10
+**Last Updated**: 2026-09-28
 
 **Related Documentation**
 

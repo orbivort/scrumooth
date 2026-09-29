@@ -115,6 +115,26 @@ describe('notificationTranslation', () => {
       expect(mockT).toHaveBeenCalledWith('sprintStarted', {});
       expect(result).toBe('Sprint Unknown started');
     });
+
+    it('should return the stored title when the key has no translation', () => {
+      const notification = {
+        id: '1',
+        title: 'Stored Title',
+        message: 'Stored Message',
+        params: {
+          titleKey: 'aKeyThisInterfaceDoesNotKnow',
+          titleParams: {},
+        },
+      } as Notification;
+
+      const result = getNotificationTitle(notification, mockT);
+
+      expect(mockT).toHaveBeenCalledWith('aKeyThisInterfaceDoesNotKnow', {});
+      // i18next answers with the key itself when it holds no translation for it, so
+      // the key name would have been shown as the title. The text the backend
+      // rendered is the honest answer until the interface learns the key.
+      expect(result).toBe('Stored Title');
+    });
   });
 
   describe('getNotificationMessage', () => {

@@ -101,6 +101,9 @@ const mockBacklogItems: ProductBacklogItem[] = [
 const setup = (overrides = {}) => {
   mockUseTeamStore.mockReturnValue({
     currentTeam: mockTeam,
+    // Authoring a Product Goal is a Product Owner action. Default the mocked member to the
+    // Product Owner so the existing authoring flows behave as before; non-PO cases override.
+    userRoleInCurrentTeam: 'PRODUCT_OWNER',
     ...overrides.teamStore,
   });
 
@@ -592,6 +595,104 @@ describe('ProductGoalsPage', () => {
 
       await waitFor(() => {
         expect(apiService.createProductGoal).toHaveBeenCalled();
+      });
+    });
+  });
+
+  describe('Product Owner gating', () => {
+    test('should disable the New Goal action for a non-Product-Owner member', async () => {
+      const { render } = setup({
+        teamStore: { userRoleInCurrentTeam: 'DEVELOPERS' },
+      });
+      render();
+
+      await waitFor(() => {
+        expect(screen.getByText('New Goal')).toBeInTheDocument();
+      });
+
+      expect(screen.getByText('New Goal').closest('button')).toBeDisabled();
+    });
+
+    test('should disable edit and delete actions for a non-Product-Owner member', async () => {
+      const { render } = setup({
+        teamStore: { userRoleInCurrentTeam: 'SCRUM_MASTER' },
+      });
+      render();
+
+      await waitFor(() => {
+        expect(screen.getByText('Improve Performance')).toBeInTheDocument();
+      });
+
+      // The NEW goal is editable and deletable by status, so any disabled state observed here
+      // comes from the Product Owner gate rather than the goal-status rules.
+      expect(screen.getByLabelText('Edit goal: Improve Performance')).toBeDisabled();
+      expect(screen.getByLabelText('Delete goal: Improve Performance')).toBeDisabled();
+    });
+
+    test('should surface the active-goal gate refusal returned by the server', async () => {
+      apiService.createProductGoal.mockRejectedValue({
+        response: {
+          data: {
+            error: {
+              code: 'GATE_PRODUCT_GOAL_ALREADY_ACTIVE',
+              message: 'An active Product Goal already exists for this team.',
+            },
+          },
+        },
+      });
+
+      const { render } = setup();
+      render();
+
+      await waitFor(() => {
+        expect(screen.getByText('New Goal')).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByText('New Goal'));
+
+      await waitFor(() => {
+        expect(screen.getByText('Create New Goal')).toBeInTheDocument();
+      });
+
+      fireEvent.change(
+        screen.getByPlaceholderText('e.g., Launch mobile app v2.0 with offline sync capability'),
+        {
+          target: { value: 'Second Active Goal' },
+        }
+      );
+
+      fireEvent.change(
+        screen.getByPlaceholderText(
+          "Describe the problem you're solving, who benefits, and why it matters..."
+        ),
+        {
+          target: { value: 'Should be refused by the server gate' },
+        }
+      );
+
+      const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      const hiddenDateInput = document.querySelector('input[type="date"]');
+      if (hiddenDateInput) {
+        fireEvent.change(hiddenDateInput, { target: { value: tomorrow } });
+      }
+
+      fireEvent.change(
+        screen.getByPlaceholderText(
+          'Define measurable success criteria... e.g., 25% increase in DAU, 4.5+ app rating, <5s sync time'
+        ),
+        {
+          target: { value: 'Test metrics' },
+        }
+      );
+
+      fireEvent.click(screen.getByText('Create Goal'));
+
+      await waitFor(() => {
+        expect(
+          screen.getAllByText(
+            'This team already has an active Product Goal. Fulfil or abandon it before activating another.'
+          ).length
+        ).toBeGreaterThan(0);
       });
     });
   });

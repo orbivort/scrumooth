@@ -34,21 +34,7 @@ The Teams API provides comprehensive team management capabilities including:
 
 ## Authentication
 
-All team endpoints require authentication. Include the access token in your request:
-
-**Using Cookies (Recommended)**
-
-```http
-GET /api/v1/teams
-Cookie: accessToken=eyJhbGc...
-```
-
-**Using Bearer Token**
-
-```http
-GET /api/v1/teams
-Authorization: Bearer eyJhbGc...
-```
+All team endpoints require authentication. See [Authentication](./README.md#authentication) for the cookie and bearer-token forms.
 
 ## Team Roles
 
@@ -139,7 +125,7 @@ Content-Type: application/json
 **Example Request**
 
 ```bash
-curl -X GET https://api.scrumooth.dev/api/v1/teams \
+curl -X GET https://api.example.com/api/v1/teams \
   -b cookies.txt
 ```
 
@@ -184,7 +170,7 @@ Content-Type: application/json
 **Example Request**
 
 ```bash
-curl -X GET https://api.scrumooth.dev/api/v1/teams/my-teams \
+curl -X GET https://api.example.com/api/v1/teams/my-teams \
   -b cookies.txt
 ```
 
@@ -277,7 +263,7 @@ Content-Type: application/json
 **Example Request**
 
 ```bash
-curl -X POST https://api.scrumooth.dev/api/v1/teams \
+curl -X POST https://api.example.com/api/v1/teams \
   -H "Content-Type: application/json" \
   -b cookies.txt \
   -d '{
@@ -372,7 +358,7 @@ Content-Type: application/json
 **Example Request**
 
 ```bash
-curl -X GET https://api.scrumooth.dev/api/v1/teams/550e8400-e29b-41d4-a716-446655440000 \
+curl -X GET https://api.example.com/api/v1/teams/550e8400-e29b-41d4-a716-446655440000 \
   -b cookies.txt
 ```
 
@@ -442,7 +428,7 @@ Content-Type: application/json
 **Example Request**
 
 ```bash
-curl -X PUT https://api.scrumooth.dev/api/v1/teams/550e8400-e29b-41d4-a716-446655440000 \
+curl -X PUT https://api.example.com/api/v1/teams/550e8400-e29b-41d4-a716-446655440000 \
   -H "Content-Type: application/json" \
   -b cookies.txt \
   -d '{
@@ -503,7 +489,7 @@ Content-Type: application/json
 **Example Request**
 
 ```bash
-curl -X DELETE https://api.scrumooth.dev/api/v1/teams/550e8400-e29b-41d4-a716-446655440000 \
+curl -X DELETE https://api.example.com/api/v1/teams/550e8400-e29b-41d4-a716-446655440000 \
   -b cookies.txt
 ```
 
@@ -607,7 +593,7 @@ The Scrum Team has reached its configured maximum number of members (default `10
 **Example Request**
 
 ```bash
-curl -X POST https://api.scrumooth.dev/api/v1/teams/550e8400-e29b-41d4-a716-446655440000/members \
+curl -X POST https://api.example.com/api/v1/teams/550e8400-e29b-41d4-a716-446655440000/members \
   -H "Content-Type: application/json" \
   -b cookies.txt \
   -d '{
@@ -666,14 +652,14 @@ Content-Type: application/json
 }
 ```
 
-**403 Forbidden - Cannot Remove Last Admin**
+**403 Forbidden - Cannot Remove Yourself**
 
 ```json
 {
   "success": false,
   "error": {
     "code": "AUTHORIZATION_ERROR",
-    "message": "Cannot remove the last administrator"
+    "message": "You cannot remove yourself from the team. Ask another Product Owner or Scrum Master of this team to remove you."
   }
 }
 ```
@@ -681,7 +667,7 @@ Content-Type: application/json
 **Example Request**
 
 ```bash
-curl -X DELETE https://api.scrumooth.dev/api/v1/teams/550e8400-e29b-41d4-a716-446655440000/members/550e8400-e29b-41d4-a716-446655440003 \
+curl -X DELETE https://api.example.com/api/v1/teams/550e8400-e29b-41d4-a716-446655440000/members/550e8400-e29b-41d4-a716-446655440003 \
   -b cookies.txt
 ```
 
@@ -739,7 +725,7 @@ Content-Type: application/json
 **Example Request**
 
 ```bash
-curl -X PUT https://api.scrumooth.dev/api/v1/teams/550e8400-e29b-41d4-a716-446655440000/members/550e8400-e29b-41d4-a716-446655440003 \
+curl -X PUT https://api.example.com/api/v1/teams/550e8400-e29b-41d4-a716-446655440000/members/550e8400-e29b-41d4-a716-446655440003 \
   -H "Content-Type: application/json" \
   -b cookies.txt \
   -d '{
@@ -792,7 +778,7 @@ Content-Type: application/json
 **Example Request**
 
 ```bash
-curl -X GET https://api.scrumooth.dev/api/v1/teams/550e8400-e29b-41d4-a716-446655440000/my-role \
+curl -X GET https://api.example.com/api/v1/teams/550e8400-e29b-41d4-a716-446655440000/my-role \
   -b cookies.txt
 ```
 
@@ -841,7 +827,7 @@ Content-Type: application/json
 **Example Request**
 
 ```bash
-curl -X POST https://api.scrumooth.dev/api/v1/teams/select-team \
+curl -X POST https://api.example.com/api/v1/teams/select-team \
   -H "Content-Type: application/json" \
   -b cookies.txt \
   -d '{
@@ -857,6 +843,46 @@ For Definition of Done and Definition of Ready endpoints, see:
 
 - [Definition of Done API](./definition-of-done.md)
 - [Definition of Ready API](./definition-of-ready.md)
+
+## Team groups
+
+A team that works on a product with other Scrum Teams complies with **one shared Definition of
+Done**, owned by a team group. The team detail response reports it:
+
+```json
+{
+  "id": "550e8400-...",
+  "name": "Team A",
+  "group": { "id": "0199a2c1-...", "name": "Payments product", "dodVersion": 3 },
+  "groupDodVersionAtJoin": 2,
+  "groupJoinedAt": "2026-09-01T09:00:00.000Z"
+}
+```
+
+`group.dodVersion` is the version in force; `groupDodVersionAtJoin` is the version the team adopted.
+A team whose adopted version is behind has not re-adopted a change made after it agreed, and the
+interface surfaces that as drift.
+
+Membership is decided on the team, by its Product Owner or Scrum Master:
+
+- `POST /api/v1/teams/:teamId/group` — adopt a group's shared Definition of Done, naming the version
+  adopted (`409 GATE_TEAM_GROUP_ALREADY_MEMBER`, `400 GATE_TEAM_GROUP_DOD_ACKNOWLEDGEMENT_REQUIRED`).
+- `DELETE /api/v1/teams/:teamId/group` — leave, keeping the Definition of Done the team has been
+  complying with.
+
+Group management itself lives under `/api/v1/team-groups`:
+[Team Groups API](./team-groups.md).
+
+## Guarantees under concurrency
+
+- **One Product Owner and one Scrum Master per team, and no more than `TEAM_MAX_SIZE` members.** Both
+  are read-modify-write rules, so the count and the write share one `Serializable` transaction
+  (`packages/backend/src/utils/serializableTransaction.ts`). Where two requests race, PostgreSQL
+  aborts one and the bounded retry re-runs it, which then sees the winner's row and returns the same
+  refusal a single request would have produced — `409 GATE_LEADERSHIP_ROLE_TAKEN` or
+  `409 GATE_TEAM_SIZE_LIMIT`. The refusal is never a server error.
+- **A group cannot be removed while a team still complies with its Definition of Done**
+  (`409 GATE_TEAM_GROUP_NOT_EMPTY`), enforced by the API and by `teams.groupId ON DELETE RESTRICT`.
 
 ## Error Codes
 
@@ -888,6 +914,29 @@ For Definition of Done and Definition of Ready endpoints, see:
 ---
 
 **Last Updated**: 2026-05-10
+
+## Scrum Values health checks
+
+A health check is a survey of the team's own judgement of how it lives the five Scrum Values. It is
+opened by the team's Scrum Master and answered by the team.
+
+| Endpoint                              | Method | Who                                                |
+| ------------------------------------- | ------ | -------------------------------------------------- |
+| `/teams/:teamId/health-checks`        | POST   | The team's Scrum Master                            |
+| `/teams/:teamId/health-checks/latest` | GET    | Any member of the team                             |
+| `/teams/:teamId/health-check-trend`   | GET    | The team's Scrum Master                            |
+| `/health-checks/:id/responses`        | POST   | Any member of the team the survey belongs to       |
+| `/health-checks/:id/results`          | GET    | The Scrum Master of the team the survey belongs to |
+
+**The resource's own team governs access, and nothing else does.** Results and trend aggregate the
+team's own scores, so they are readable only by the Scrum Master _of that team_: a Scrum Master of
+another team is refused with `GATE_HEALTH_CHECK_RESULTS_SM_OF_TEAM_ONLY`, and answering a survey or
+looking up its status requires membership of the team being surveyed
+(`GATE_HEALTH_CHECK_TEAM_MEMBERS_ONLY`). The check is resolved from the health check's own team,
+because the results route carries no `teamId` — a generic role guard there would fall back to
+"holds this role in any team", which is exactly the defect this rule closes.
+
+Results are aggregate-only: per-value averages and response counts, never an individual score.
 
 **Related Documentation**
 

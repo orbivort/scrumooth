@@ -10,6 +10,9 @@ const defaultProps: BurndownInsightProps = {
   size: 'default',
 };
 
+const FORECAST_NOTE =
+  'A straight-line forecast over estimated hours — not a target and not a verdict. Treat the variance as an input to the Daily Scrum.';
+
 describe('BurndownInsight', () => {
   beforeAll(async () => {
     await initTestI18n();
@@ -27,17 +30,29 @@ describe('BurndownInsight', () => {
 
     it('should render on-track status text', () => {
       renderWithProviders(<BurndownInsight {...defaultProps} status="on-track" percentage={0} />);
-      expect(screen.getByText('On track')).toBeInTheDocument();
+      expect(screen.getByText('Tracking the forecast')).toBeInTheDocument();
     });
 
     it('should render ahead status text', () => {
       renderWithProviders(<BurndownInsight {...defaultProps} status="ahead" percentage={10} />);
-      expect(screen.getByText('Ahead of schedule')).toBeInTheDocument();
+      expect(screen.getByText('Ahead of the forecast')).toBeInTheDocument();
     });
 
     it('should render behind status text', () => {
       renderWithProviders(<BurndownInsight {...defaultProps} status="behind" percentage={5} />);
-      expect(screen.getByText('Behind schedule')).toBeInTheDocument();
+      expect(screen.getByText('Behind the forecast')).toBeInTheDocument();
+    });
+  });
+
+  describe('Forecast framing', () => {
+    it('states that the variance is an input to the Daily Scrum, not a verdict', () => {
+      renderWithProviders(<BurndownInsight {...defaultProps} />);
+      expect(screen.getByText(FORECAST_NOTE)).toBeInTheDocument();
+    });
+
+    it('omits the framing note in the compact variant', () => {
+      renderWithProviders(<BurndownInsight {...defaultProps} size="compact" />);
+      expect(screen.queryByText(FORECAST_NOTE)).not.toBeInTheDocument();
     });
   });
 
@@ -54,7 +69,8 @@ describe('BurndownInsight', () => {
 
     it('should show zero percentage with empty percentage text', () => {
       renderWithProviders(<BurndownInsight {...defaultProps} status="on-track" percentage={0} />);
-      expect(screen.getByText('On track')).toBeInTheDocument();
+      expect(screen.queryByText(/% ahead/)).not.toBeInTheDocument();
+      expect(screen.queryByText(/% behind/)).not.toBeInTheDocument();
     });
 
     it('should use absolute value for display', () => {
@@ -127,7 +143,7 @@ describe('BurndownInsight', () => {
       renderWithProviders(<BurndownInsight {...defaultProps} status="on-track" percentage={0} />);
       expect(screen.getByRole('status')).toHaveAttribute(
         'aria-label',
-        'Burndown status: On track. On target'
+        'Burndown variance against the linear forecast: Tracking the forecast. Level with the forecast'
       );
     });
 
@@ -135,7 +151,7 @@ describe('BurndownInsight', () => {
       renderWithProviders(<BurndownInsight {...defaultProps} status="ahead" percentage={15} />);
       expect(screen.getByRole('status')).toHaveAttribute(
         'aria-label',
-        'Burndown status: Ahead of schedule. 15% ahead'
+        'Burndown variance against the linear forecast: Ahead of the forecast. 15% ahead'
       );
     });
 
@@ -143,7 +159,7 @@ describe('BurndownInsight', () => {
       renderWithProviders(<BurndownInsight {...defaultProps} status="behind" percentage={-15} />);
       expect(screen.getByRole('status')).toHaveAttribute(
         'aria-label',
-        'Burndown status: Behind schedule. 15% behind'
+        'Burndown variance against the linear forecast: Behind the forecast. 15% behind'
       );
     });
 
@@ -170,9 +186,8 @@ describe('BurndownInsight', () => {
     });
 
     it('should render without message when not provided', () => {
-      const { container } = renderWithProviders(<BurndownInsight {...defaultProps} />);
-      const message = container.querySelector('p');
-      expect(message).not.toBeInTheDocument();
+      renderWithProviders(<BurndownInsight {...defaultProps} />);
+      expect(screen.queryByText('Keep up the good work!')).not.toBeInTheDocument();
     });
   });
 

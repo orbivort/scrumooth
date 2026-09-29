@@ -1,0 +1,46 @@
+{
+  "evidence": {
+    "completionSnapshot": "Letto dal verbale di chiusura di ogni sprint ({{recorded}} registrati, {{reconstructed}} ricostruiti dallo storico degli stati)",
+    "dodVerifications": "Letto da {{verified}} verifiche della Definition of Done registrate",
+    "impedimentRegister": "Letto dal registro degli impedimenti del team ({{total}} registrati in totale)",
+    "sprintBacklogChanges": "Letto da {{changes}} modifiche allo Sprint Backlog registrate",
+    "sprintGoalVerdict": "Il giudizio dello Scrum Team stesso, registrato nella Sprint Review ({{assessed}} dei {{sprintCount}} sprint valutati)",
+    "sprintHistory": "Letto dallo storico di {{sprintCount}} sprint conclusi",
+    "sprintRecord": "Registrato in {{sprintName}}"
+  },
+  "insights": {
+    "activeSprintGoal": {
+      "description": "{{sprintName}} sta lavorando verso: {{sprintGoal}}",
+      "title": "Obiettivo dello sprint in corso"
+    },
+    "adaptation": {
+      "description": "Porta questi segnali nella retrospettiva dello sprint e trasforma quelli che contano in miglioramenti per lo sprint successivo.",
+      "title": "Ispezionare e adattare"
+    },
+    "completedPointsHistory": {
+      "description": "Negli ultimi {{sprintCount}} sprint osservati il team ha completato in media {{average}} punti, con un intervallo da {{min}} a {{max}}. Sono fatti, non un obiettivo, e non sono confrontabili con quelli di un altro team.",
+      "title": "Storico dei punti completati"
+    },
+    "definitionOfDone": {
+      "description": "Il {{compliancePercentage}}% dei criteri della Definition of Done verificati sugli elementi degli sprint osservati è stato soddisfatto ({{verified}} verifiche).",
+      "title": "Definition of Done"
+    },
+    "openImpediments": {
+      "description": "{{openCount}} impedimenti sono aperti; {{atRiskCount}} non sono risolti da più di uno sprint e il più vecchio è aperto da {{oldestAgeDays}} giorni.",
+      "title": "Impedimenti aperti"
+    },
+    "sprintBacklogChurn": {
+      "description": "Lo Sprint Backlog è cambiato {{changes}} volte durante gli sprint osservati; {{endangeringGoal}} di queste modifiche sono state dichiarate pericolose per l'obiettivo dello sprint e {{awaitingAcknowledgement}} attendono ancora il riconoscimento del Product Owner.",
+      "title": "Modifiche allo Sprint Backlog"
+    },
+    "sprintBacklogCompletion": {
+      "description": "{{delivered}} dei {{sprintCount}} sprint osservati hanno consegnato tutti i punti pianificati. Uno sprint può consegnare tutti i punti pianificati senza raggiungere il proprio obiettivo e raggiungere il proprio obiettivo senza consegnare tutti i punti.",
+      "title": "Completamento dello Sprint Backlog"
+    },
+    "sprintGoalVerdicts": {
+      "description": "Il team ha registrato un giudizio sull'obiettivo dello sprint per {{assessed}} dei {{sprintCount}} sprint: {{achieved}} raggiunto, {{partiallyAchieved}} parzialmente raggiunto, {{notAchieved}} non raggiunto.",
+      "noneRecorded": "Non è ancora stato registrato alcun giudizio sull'obiettivo dello sprint. È nella Sprint Review che il team valuta quanto l'obiettivo dello sprint sia stato raggiunto.",
+      "title": "Valutazione dell'obiettivo dello sprint"
+    }
+  }
+}

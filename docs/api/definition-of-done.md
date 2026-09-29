@@ -41,6 +41,16 @@ The **Definition of Done (DoD)** is a shared agreement within a Scrum team on wh
 - **Evolving**: The DoD should be regularly reviewed and improved during retrospectives to raise the quality bar over time
 - **Per-Team**: Each team defines its own DoD, which may differ from other teams based on context and maturity
 
+### What the API enforces
+
+The DoD is the Increment's commitment, so the API holds five rules around it rather than treating it as a setting:
+
+- **It cannot be emptied.** A DoD must keep at least one active item (`400 GATE_DOD_REQUIRED`). An empty checklist would silently satisfy the Done gate — the one call that could defeat the rule the DoD exists to enforce.
+- **A Sprint cannot open without it.** Committing a Sprint Backlog (`POST /sprints/:id/backlog`) and starting a Sprint (`POST /sprints/:id/start`) are both refused while the team's governing DoD holds no active item (`400 GATE_DOD_REQUIRED`) — including for a team that has never created one (`400 GATE_DOD_REQUIRED`). A Sprint opened against no commitment is a Sprint whose Increment can never satisfy one.
+- **Work cannot be marked Done without it.** A Product Backlog item cannot transition to `DONE` while the team has no active DoD item, and every active item must be verified for it (`400 GATE_DOD_REQUIRED`, `400 GATE_DOD_NOT_VERIFIED`).
+- **It belongs to its team.** Reading or changing a team's DoD, recording a verification against one of its items, and reading its Sprint compliance report all require membership of that team (`403 GATE_DOD_TEAM_MEMBERS_ONLY`).
+- **It is append-only, and edits are not destructive.** `GET /history` lists every version the DoD has had, newest first, with the current version marked; a change preserves the version it supersedes instead of erasing it. A criterion the payload keeps by id is updated in place, so the verifications recorded against it survive the edit.
+
 ### Common DoD Criteria Examples
 
 - Code has been peer-reviewed
@@ -63,21 +73,7 @@ The **Definition of Done (DoD)** is a shared agreement within a Scrum team on wh
 
 ## Authentication
 
-All DoD endpoints require authentication. Include the access token in your request:
-
-**Using Cookies (Recommended)**
-
-```http
-GET /api/v1/teams/:teamId/definition-of-done
-Cookie: accessToken=eyJhbGc...
-```
-
-**Using Bearer Token**
-
-```http
-GET /api/v1/teams/:teamId/definition-of-done
-Authorization: Bearer eyJhbGc...
-```
+All DoD endpoints require authentication. See [Authentication](./README.md#authentication) for the cookie and bearer-token forms.
 
 ## Endpoints
 
@@ -168,7 +164,7 @@ Content-Type: application/json
 **Example Request**
 
 ```bash
-curl -X GET https://api.scrumooth.dev/api/v1/teams/550e8400-e29b-41d4-a716-446655440000/definition-of-done \
+curl -X GET https://api.example.com/api/v1/teams/550e8400-e29b-41d4-a716-446655440000/definition-of-done \
   -b cookies.txt
 ```
 
@@ -176,7 +172,7 @@ curl -X GET https://api.scrumooth.dev/api/v1/teams/550e8400-e29b-41d4-a716-44665
 
 ### Update Team DoD
 
-Update the Definition of Done for a team. Replaces all existing items. Requires Scrum Master role.
+Replace the Definition of Done for a team with a new version.
 
 **Endpoint**
 
@@ -187,7 +183,14 @@ PUT /api/v1/teams/:teamId/definition-of-done
 **Authentication**
 
 - Required
-- Scrum Master role required
+- The caller must be a member of the team. The DoD is "created by the Scrum Team" for its own product, so it is the team's agreement rather than a single role's setting.
+
+**Behaviour**
+
+- The supplied list becomes the new version, and the version is incremented.
+- **The version being superseded is preserved**: the update writes an append-only snapshot of it inside the same transaction, so `GET /history` can show what the team previously worked to and who changed it.
+- **A DoD with no active item is refused** with `400 GATE_DOD_REQUIRED`.
+- **A criterion that survives the edit keeps its row** (see _How the list is applied_), so the verifications recorded against it survive too.
 
 **Path Parameters**
 
@@ -199,11 +202,33 @@ PUT /api/v1/teams/:teamId/definition-of-done
 {
   "items": [
     {
-      "description": "string (required, 1-500 chars)"
+      "id": "550e8400-e29b-41d4-a716-446655440021 (optional, UUID of an existing criterion)",
+      "description": "string (required, 1-500 chars)",
+      "category": "string (optional)",
+      "isActive": "boolean (required)",
+      "order": "number (accepted, ignored: the final order follows list position)"
     }
   ]
 }
 ```
+
+**How the list is applied**
+
+Each criterion's identity decides how it is applied:
+
+- an item carrying an `id` that names a criterion **of this Definition of Done** updates that row in
+  place. Every `DoDChecklistVerification` recorded against it survives, so rewording one criterion
+  no longer discards the evidence that an item satisfied the others;
+- an item with **no `id`** — or with an `id` this Definition of Done does not hold — is inserted as a
+  new criterion, under an id the service assigns. An id cannot be used to reach across teams or
+  across scopes;
+- a criterion **absent from the payload** is deleted, and its verifications go with it. The snapshot
+  of the superseded version still records what the criterion said, so the change is auditable even
+  though the verifications are gone — a removed criterion is one nobody can satisfy any more.
+
+Send the whole list, with ids for the criteria that already exist. Omitting the ids is read as
+"replace every criterion with these new ones": the old rows are deleted, taking their verifications
+with them.
 
 **Success Response**
 
@@ -285,7 +310,7 @@ Content-Type: application/json
 **Example Request**
 
 ```bash
-curl -X PUT https://api.scrumooth.dev/api/v1/teams/550e8400-e29b-41d4-a716-446655440000/definition-of-done \
+curl -X PUT https://api.example.com/api/v1/teams/550e8400-e29b-41d4-a716-446655440000/definition-of-done \
   -H "Content-Type: application/json" \
   -b cookies.txt \
   -d '{
@@ -302,7 +327,7 @@ curl -X PUT https://api.scrumooth.dev/api/v1/teams/550e8400-e29b-41d4-a716-44665
 
 ### Get DoD Version History
 
-Get the version history of the team's Definition of Done, showing how it has evolved over time.
+Get the append-only version history of the team's Definition of Done, newest first, so it is auditable over time: what the team previously worked to, when it changed, and who changed it.
 
 **Endpoint**
 
@@ -313,18 +338,15 @@ GET /api/v1/teams/:teamId/definition-of-done/history
 **Authentication**
 
 - Required
-- User must be a team member
+- The caller must be a member of the team
 
 **Path Parameters**
 
 - `teamId` (string, required): Team UUID
 
-**Query Parameters**
-
-- `page` (integer, optional): Page number (default: 1)
-- `limit` (integer, optional): Items per page (default: 20, max: 100)
-
 **Success Response**
+
+The response is an array of versions, newest first. `isCurrent` marks the version the team works to now; every other entry is a preserved snapshot of a superseded version. A team that has never changed its DoD sees exactly one entry.
 
 ```http
 HTTP/1.1 200 OK
@@ -332,79 +354,59 @@ Content-Type: application/json
 
 {
   "success": true,
-  "data": {
-    "history": [
-      {
-        "id": "550e8400-e29b-41d4-a716-446655440030",
-        "version": 2,
-        "items": [
-          {
-            "id": "550e8400-e29b-41d4-a716-446655440021",
-            "description": "Code has been peer-reviewed by at least one team member",
-            "order": 1
-          },
-          {
-            "id": "550e8400-e29b-41d4-a716-446655440022",
-            "description": "Unit tests pass with at least 80% coverage",
-            "order": 2
-          },
-          {
-            "id": "550e8400-e29b-41d4-a716-446655440023",
-            "description": "Integration tests pass in staging environment",
-            "order": 3
-          },
-          {
-            "id": "550e8400-e29b-41d4-a716-446655440024",
-            "description": "Documentation has been updated",
-            "order": 4
-          }
-        ],
-        "updatedBy": {
-          "id": "550e8400-e29b-41d4-a716-446655440001",
-          "firstName": "John",
-          "lastName": "Doe"
+  "data": [
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440030",
+      "teamId": "550e8400-e29b-41d4-a716-446655440000",
+      "version": 3,
+      "items": [
+        {
+          "description": "Code has been peer-reviewed by at least one team member",
+          "category": "review",
+          "isActive": true,
+          "order": 0,
+          "defaultKey": null
         },
-        "createdAt": "2026-04-29T13:00:00.000Z"
-      },
-      {
-        "id": "550e8400-e29b-41d4-a716-446655440031",
-        "version": 1,
-        "items": [
-          {
-            "id": "550e8400-e29b-41d4-a716-446655440011",
-            "description": "Code has been peer-reviewed",
-            "order": 1
-          },
-          {
-            "id": "550e8400-e29b-41d4-a716-446655440012",
-            "description": "Unit tests pass with adequate coverage",
-            "order": 2
-          },
-          {
-            "id": "550e8400-e29b-41d4-a716-446655440013",
-            "description": "No critical or high-severity defects remain",
-            "order": 3
-          }
-        ],
-        "updatedBy": {
-          "id": "550e8400-e29b-41d4-a716-446655440001",
-          "firstName": "John",
-          "lastName": "Doe"
-        },
-        "createdAt": "2026-04-29T12:00:00.000Z"
-      }
-    ],
-    "pagination": {
-      "page": 1,
-      "limit": 20,
-      "total": 2,
-      "totalPages": 1,
-      "hasNext": false,
-      "hasPrev": false
+        {
+          "description": "Code is properly documented",
+          "category": "documentation",
+          "isActive": true,
+          "order": 1,
+          "defaultKey": "documentation"
+        }
+      ],
+      "createdAt": "2026-09-22T09:00:00.000Z",
+      "createdBy": "550e8400-e29b-41d4-a716-446655440005",
+      "createdByName": "Ada Lovelace",
+      "isCurrent": true
+    },
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440029",
+      "teamId": "550e8400-e29b-41d4-a716-446655440000",
+      "version": 2,
+      "items": [
+        {
+          "description": "Unit tests pass with at least 80% coverage",
+          "category": "testing",
+          "isActive": true,
+          "order": 0,
+          "defaultKey": null
+        }
+      ],
+      "createdAt": "2026-08-01T09:00:00.000Z",
+      "createdBy": "550e8400-e29b-41d4-a716-446655440006",
+      "createdByName": "Grace Hopper",
+      "isCurrent": false
     }
-  }
+  ]
 }
 ```
+
+`defaultKey` names the built-in criterion a criterion descends from, so a version stays readable in
+the reader's language after the team rewords it; `null` means the team wrote it itself. It is owned by
+the service: the write payload has no such field, and an edit preserves whatever the row already
+carries. Snapshots written before the field existed report `null`, and the reader falls back to
+matching the sentence.
 
 **Error Responses**
 
@@ -423,7 +425,7 @@ Content-Type: application/json
 **Example Request**
 
 ```bash
-curl -X GET https://api.scrumooth.dev/api/v1/teams/550e8400-e29b-41d4-a716-446655440000/definition-of-done/history \
+curl -X GET https://api.example.com/api/v1/teams/550e8400-e29b-41d4-a716-446655440000/definition-of-done/history \
   -b cookies.txt
 ```
 
@@ -539,7 +541,7 @@ Content-Type: application/json
 **Example Request**
 
 ```bash
-curl -X POST https://api.scrumooth.dev/api/v1/product-backlog/550e8400-e29b-41d4-a716-446655440050/verify-dod \
+curl -X POST https://api.example.com/api/v1/product-backlog/550e8400-e29b-41d4-a716-446655440050/verify-dod \
   -H "Content-Type: application/json" \
   -b cookies.txt \
   -d '{
@@ -642,7 +644,7 @@ Content-Type: application/json
 **Example Request**
 
 ```bash
-curl -X GET https://api.scrumooth.dev/api/v1/product-backlog/550e8400-e29b-41d4-a716-446655440050/dod-verifications \
+curl -X GET https://api.example.com/api/v1/product-backlog/550e8400-e29b-41d4-a716-446655440050/dod-verifications \
   -b cookies.txt
 ```
 
@@ -724,7 +726,7 @@ Content-Type: application/json
 **Example Request**
 
 ```bash
-curl -X GET https://api.scrumooth.dev/api/v1/sprints/550e8400-e29b-41d4-a716-446655440060/dod-compliance \
+curl -X GET https://api.example.com/api/v1/sprints/550e8400-e29b-41d4-a716-446655440060/dod-compliance \
   -b cookies.txt
 ```
 
@@ -739,6 +741,15 @@ curl -X GET https://api.scrumooth.dev/api/v1/sprints/550e8400-e29b-41d4-a716-446
 | `AUTHORIZATION_ERROR`  | 403         | Insufficient permissions or not a team member |
 | `NOT_FOUND`            | 404         | Team, PBI, or sprint not found                |
 | `CONFLICT`             | 409         | Resource conflict                             |
+
+### Gate Rejections
+
+| Code                         | HTTP | Rule enforced                                                                                                                                                                |
+| ---------------------------- | ---- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GATE_DOD_REQUIRED`          | 400  | A DoD must keep at least one active item; a Sprint Backlog cannot be committed, and a Sprint cannot start, without one; and work cannot be marked Done while a team has none |
+| `GATE_DOD_NOT_VERIFIED`      | 400  | A Product Backlog item cannot be marked Done until every active DoD item is verified for it                                                                                  |
+| `GATE_DOD_TEAM_MEMBERS_ONLY` | 403  | The DoD belongs to its Scrum Team: reading, changing, or verifying against it requires membership                                                                            |
+| `GATE_DOD_GROUP_GOVERNED`    | 409  | A team in a group complies with the group's shared DoD, so it cannot replace its own — see [Team Groups API](./team-groups.md)                                               |
 
 ## Best Practices
 
@@ -765,11 +776,52 @@ curl -X GET https://api.scrumooth.dev/api/v1/sprints/550e8400-e29b-41d4-a716-446
 
 ---
 
-**Last Updated**: 2026-05-10
+## Shared Definition of Done (team groups)
+
+> _"If there are multiple Scrum Teams working together on a product, they must mutually define and
+> comply with the same Definition of Done."_
+
+A Definition of Done belongs either to one team (`teamId`) or to the group of Scrum Teams working on
+one product (`groupId`) — never both, held by `CHECK ((team_id IS NULL) <> (group_id IS NULL))`. The
+`GET` and `PUT` endpoints on `/teams/:teamId/definition-of-done` therefore do not always act on a
+team-owned row:
+
+- **Reading** resolves the Definition of Done that _governs_ the team: the group's row when the team
+  belongs to a group, otherwise the team's own. The response is still reported under the team that
+  asked, so the shape is unchanged.
+- **Writing** is refused with `409 GATE_DOD_GROUP_GOVERNED` for a grouped team. A team that could
+  still edit its own Definition of Done would not be complying with the same one, and the change
+  would be invisible to the teams that share it. Change it at the group:
+  `PUT /api/v1/team-groups/:groupId/shared-definition-of-done`.
+- **Version history** follows the same resolution, so a group's history stays with the group and a
+  team's adoption is visible as `Team.groupDodVersionAtJoin`.
+- The same resolution applies to the Done gate: `checkDoDEligibility` and the batch check in
+  `incrementAccess.ts` verify against the governing Definition of Done, so the gate and the editor
+  cannot disagree about which commitment an item has to satisfy.
+
+A team that leaves a group keeps the Definition of Done it has been complying with: the shared items
+are written into its own row through the ordinary versioned update, which is snapshotted like any
+other change.
+
+### Where this lives in the product
+
+A group's shared Definition of Done is not edited from a team's own panel — a grouped team is shown
+it read-only, with a link to where it is changed. Both the group and its shared Definition of Done
+are managed on **Settings → Team → Team Groups**: create, rename and delete a group, read its roster
+and the version each team adopted, and replace the commitment every team in it complies with.
+Joining and leaving stay on the team, under **Team → Scrum Health → Shared Definition of Done**,
+because that decision is the team's own.
+
+See the [Team Groups API](./team-groups.md).
+
+---
+
+**Last Updated**: 2026-09-24
 
 **Related Documentation**
 
 - [Definition of Ready API](./definition-of-ready.md)
 - [Teams API](./teams.md)
+- [Team Groups API](./team-groups.md)
 - [Product Backlog API](./product-backlog.md)
 - [Sprints API](./sprints.md)

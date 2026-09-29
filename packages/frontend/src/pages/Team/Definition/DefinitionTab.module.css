@@ -1,0 +1,9 @@
+/* The Definition tab: three commitments read top to bottom as one document.
+   The spacing between sections is a full step larger than the spacing inside one, so the eye
+   registers three subjects rather than one long list. The module owns the padding around this. */
+
+.tab {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}

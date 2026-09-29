@@ -1,0 +1,108 @@
+/* A refusal, stated in place: warning-toned rather than error-toned, because a gate is the process
+   working, not a fault. The reader is being told what the rule is and how to satisfy it. */
+
+.callout {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border: var(--border-width-1) solid var(--color-warning-300);
+  border-left-width: var(--border-width-4);
+  border-radius: var(--radius-lg);
+  background: var(--color-warning-50);
+  color: var(--color-text-primary);
+}
+
+.head {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+
+.icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: var(--border-width-2);
+  color: var(--color-warning-700);
+}
+
+.rule {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-normal);
+}
+
+.dismiss {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+
+  /* 24x24 minimum target, per WCAG 2.2 Target Size. */
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border-width: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-warning-700);
+  cursor: pointer;
+}
+
+.dismiss:hover {
+  background: var(--color-warning-100);
+}
+
+.dismiss:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+/* The Guide citation is quoted rather than paraphrased: it is the reason the rule exists, and a
+   paraphrase of it would be this product's opinion instead of the Guide's words. */
+.clause {
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border-left: var(--border-width-2) solid var(--color-warning-200);
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  background: var(--color-background-card);
+}
+
+.clause-text {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  font-style: italic;
+  line-height: var(--line-height-relaxed);
+}
+
+.clause-source {
+  display: block;
+  margin-top: var(--space-1);
+  color: var(--color-text-tertiary);
+  font-size: var(--font-size-xs);
+  font-style: normal;
+}
+
+.recovery {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-normal);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+@media (width <= 768px) {
+  .callout {
+    padding: var(--space-3);
+  }
+}

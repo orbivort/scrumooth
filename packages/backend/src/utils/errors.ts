@@ -31,9 +31,10 @@ export class AppError extends Error {
 export class BadRequestError extends AppError {
   constructor(
     message: string = 'Bad Request',
-    details?: Array<{ field: string; message: string }>
+    details?: Array<{ field: string; message: string }>,
+    code: string = 'BAD_REQUEST'
   ) {
-    super(message, 400, 'BAD_REQUEST', details);
+    super(message, 400, code, details);
   }
 }
 
@@ -46,8 +47,8 @@ export class UnauthorizedError extends AppError {
 
 // 403 Forbidden
 export class ForbiddenError extends AppError {
-  constructor(message: string = 'Forbidden') {
-    super(message, 403, 'FORBIDDEN');
+  constructor(message: string = 'Forbidden', code: string = 'FORBIDDEN') {
+    super(message, 403, code);
   }
 }
 
@@ -60,8 +61,8 @@ export class NotFoundError extends AppError {
 
 // 409 Conflict
 export class ConflictError extends AppError {
-  constructor(message: string = 'Conflict') {
-    super(message, 409, 'CONFLICT');
+  constructor(message: string = 'Conflict', code: string = 'CONFLICT') {
+    super(message, 409, code);
   }
 }
 
@@ -255,6 +256,10 @@ export function notFound(entityKey: string, params?: Record<string, unknown>): N
 
 /**
  * Resolve an arbitrary localized error. Use when the message must be translated.
+ *
+ * Returns the semantic subclass matching the status code (e.g. `BadRequestError`
+ * for 400), mirroring the `notFound` helper, so callers can rely on `instanceof`
+ * checks. The explicit `code` is always preserved.
  */
 export function localizedError(
   key: string,
@@ -262,7 +267,18 @@ export function localizedError(
   statusCode = 400,
   code = 'BAD_REQUEST'
 ): AppError {
-  return new AppError(reqT(key, params), statusCode, code);
+  const message = reqT(key, params);
+
+  switch (statusCode) {
+    case 400:
+      return new BadRequestError(message, undefined, code);
+    case 403:
+      return new ForbiddenError(message, code);
+    case 409:
+      return new ConflictError(message, code);
+    default:
+      return new AppError(message, statusCode, code);
+  }
 }
 
 export default {

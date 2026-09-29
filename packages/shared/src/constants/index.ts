@@ -1,3 +1,6 @@
+export * from './definitionDefaults.js';
+export * from './gateCodes.js';
+export * from './gateOrigins.js';
 export * from './time.js';
 export * from './validation.js';
 
@@ -23,14 +26,41 @@ export const WORKFLOW_STATES = {
   },
 } as const;
 
+/**
+ * Notification types persisted on `notifications.type` — the Prisma `NotificationType`
+ * enum. Kept in lockstep with `packages/backend/prisma/schema.prisma`: a value that is
+ * absent from the database enum cannot be stored, so new types are added here and in the
+ * schema (with a migration) in the same change set.
+ */
 export const NOTIFICATION_TYPES = {
-  SPRINT_STARTED: 'SPRINT_STARTED',
-  SPRINT_ENDED: 'SPRINT_ENDED',
-  TASK_ASSIGNED: 'TASK_ASSIGNED',
-  MENTION: 'MENTION',
-  IMPEDIMENT_CREATED: 'IMPEDIMENT_CREATED',
-  IMPEDIMENT_RESOLVED: 'IMPEDIMENT_RESOLVED',
+  TEAM_INVITATION: 'TEAM_INVITATION',
+  TEAM_REMOVAL: 'TEAM_REMOVAL',
+  TASK_ASSIGNMENT: 'TASK_ASSIGNMENT',
+  IMPEDIMENT_ASSIGNMENT: 'IMPEDIMENT_ASSIGNMENT',
+  IMPEDIMENT_ESCALATION: 'IMPEDIMENT_ESCALATION',
+  DAILY_SCRUM_SIGNAL: 'DAILY_SCRUM_SIGNAL',
+  TEAM_CREATED: 'TEAM_CREATED',
+  TEAM_UPDATED: 'TEAM_UPDATED',
+  TEAM_DELETED: 'TEAM_DELETED',
+  DIRECT_MESSAGE: 'DIRECT_MESSAGE',
+  ACCOUNT_DELETION_SCHEDULED: 'ACCOUNT_DELETION_SCHEDULED',
+  ACCOUNT_DELETION_CANCELLED: 'ACCOUNT_DELETION_CANCELLED',
+  ORGANIZATIONAL_BARRIER: 'ORGANIZATIONAL_BARRIER',
+  SPRINT_BACKLOG_CHANGE_PENDING: 'SPRINT_BACKLOG_CHANGE_PENDING',
 } as const;
+
+/**
+ * Impediment priority, declared most-critical-first.
+ *
+ * The declaration order is load-bearing: PostgreSQL compares enum values by the order in
+ * which they were declared on the type, so a Prisma `orderBy: { priority: 'asc' }` means
+ * CRITICAL → LOW. Reordering these values is a database migration, not a code change.
+ */
+export const IMPEDIMENT_PRIORITIES = ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'] as const;
+export type ImpedimentPriority = (typeof IMPEDIMENT_PRIORITIES)[number];
+
+/** An impediment reported without an explicit priority is treated as Medium. */
+export const DEFAULT_IMPEDIMENT_PRIORITY: ImpedimentPriority = 'MEDIUM';
 
 export const ERROR_CODES = {
   UNAUTHORIZED: 'UNAUTHORIZED',

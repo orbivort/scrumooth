@@ -86,7 +86,7 @@ async function takeRtlScreenshot(
 }
 
 test.describe('RTL Layout Dry-Run @rtl', () => {
-  test.beforeEach(async ({ loginPage, page, mockApi }) => {
+  test.beforeEach(async ({ loginPage, page }) => {
     // Register and log in using the mock API
     const timestamp = Date.now();
     await loginPage.goto();

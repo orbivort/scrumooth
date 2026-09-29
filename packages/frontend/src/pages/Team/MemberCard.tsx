@@ -14,7 +14,6 @@ const ROLE_BADGE_CLASSES: Record<string, string> = {
   scrum_master: 'role-scrum-master',
   product_owner: 'role-product-owner',
   developers: 'role-developer',
-  administrator: 'role-administrator',
 };
 
 const getRoleBadgeClass = (role: string): string => {
@@ -64,7 +63,6 @@ export const MemberCard: React.FC<MemberCardProps> = ({
       scrum_master: 'scrumMaster',
       product_owner: 'productOwner',
       developers: 'developers',
-      administrator: 'administrator',
     };
     const i18nKey = roleKeyMap[normalizedRole];
     if (i18nKey) {

@@ -15,6 +15,7 @@ import {
   createI18nTestUser,
   expectTranslatedError,
 } from '../helpers/i18n-helpers';
+import { GATE_CODES } from '@scrumooth/shared';
 import type { Locale } from '@scrumooth/shared';
 
 const uniqueId = () => `${Date.now()}-${Math.random().toString(36).substring(7)}`;
@@ -378,15 +379,11 @@ describe('Reports Integration Tests', () => {
           .set('Cookie', cookies)
           .set(setLocaleHeader('es'));
 
-        // Accept either 200 (with empty/zero metrics) or 403 (forbidden)
-        expect([200, 403]).toContain(response.status);
-
-        if (response.status === 403) {
-          expect(response.body.success).toBe(false);
-          expect(response.body.error.code).toBe('FORBIDDEN');
-        } else {
-          expect(response.body.success).toBe(true);
-        }
+        // A report reads a team's own history, so a caller who is not a member is refused. There
+        // is no "empty report" answer for a team you do not belong to.
+        expect(response.status).toBe(403);
+        expect(response.body.success).toBe(false);
+        expect(response.body.error.code).toBe(GATE_CODES.REPORTS_TEAM_MEMBERS_ONLY);
       });
 
       it('should return translated forbidden error when user lacks team membership', async () => {
@@ -402,22 +399,17 @@ describe('Reports Integration Tests', () => {
 
         const cookies = await loginAndGetCookies(email);
 
-        // Note: Backend may return 200 with empty data or 403 depending on authorization logic
+        // A report reads a team's own history, so a caller who is not a member is refused, in the
+        // caller's own locale and with the module's stable gate code.
         const response = await request(app)
           .get('/api/v1/reports/velocity')
           .query({ teamId: team.id })
           .set('Cookie', cookies)
           .set(setLocaleHeader('fr'));
 
-        // Accept either 200 (with empty/zero data) or 403 (forbidden)
-        expect([200, 403]).toContain(response.status);
-
-        if (response.status === 403) {
-          expect(response.body.success).toBe(false);
-          expect(response.body.error.code).toBe('FORBIDDEN');
-        } else {
-          expect(response.body.success).toBe(true);
-        }
+        expect(response.status).toBe(403);
+        expect(response.body.success).toBe(false);
+        expect(response.body.error.code).toBe(GATE_CODES.REPORTS_TEAM_MEMBERS_ONLY);
       });
 
       it('should return translated unauthorized error when not authenticated', async () => {
@@ -462,12 +454,12 @@ describe('Reports Integration Tests', () => {
         const testLocales: Locale[] = ['en', 'de', 'fr', 'it', 'es'];
 
         for (const locale of testLocales) {
-          // Format averageVelocity with locale-specific formatting
-          const avgVelocity = metrics.averageVelocity ?? 0;
+          // Format averageCompletedPoints with locale-specific formatting
+          const averageCompletedPoints = metrics.averageCompletedPoints ?? 0;
           const formattedVelocity = new Intl.NumberFormat(locale, {
             style: 'decimal',
             maximumFractionDigits: 1,
-          }).format(avgVelocity);
+          }).format(averageCompletedPoints);
 
           expect(typeof formattedVelocity).toBe('string');
           expect(formattedVelocity.length).toBeGreaterThan(0);
@@ -483,12 +475,12 @@ describe('Reports Integration Tests', () => {
         }
       });
 
-      it('should format velocity trend with locale-specific percentage formatting', async () => {
-        const email = `i18n-trend-${uniqueId()}@example.com`;
+      it('should report an observed range rather than a trend in completed points', async () => {
+        const email = `i18n-range-${uniqueId()}@example.com`;
         testEmails.push(email);
 
         const user = await createI18nTestUser(email, 'it', prisma);
-        const teamName = `Trend Team ${uniqueId()}`;
+        const teamName = `Range Team ${uniqueId()}`;
         testTeams.push(teamName);
 
         const team = await createTestTeam(teamName);
@@ -506,24 +498,16 @@ describe('Reports Integration Tests', () => {
         expect(response.body.success).toBe(true);
         const metrics = response.body.data;
 
-        // Test velocity trend formatting for Italian locale
-        const velocityTrend = metrics.velocityTrend ?? 0;
-        const formattedTrendIt = new Intl.NumberFormat('it', {
-          style: 'decimal',
-          signDisplay: 'exceptZero',
-        }).format(velocityTrend);
+        // Velocity is descriptive history, so the record is stated as a range the interface can
+        // format per locale -- not as a trend framed as good or bad news.
+        expect(metrics).not.toHaveProperty('velocityTrend');
 
-        expect(typeof formattedTrendIt).toBe('string');
+        const min = metrics.minCompletedPoints ?? 0;
+        const max = metrics.maxCompletedPoints ?? 0;
+        const formatterIt = new Intl.NumberFormat('it', { maximumFractionDigits: 1 });
 
-        // Verify different locales produce different formats for same number
-        const formattedTrendEn = new Intl.NumberFormat('en', {
-          style: 'decimal',
-          signDisplay: 'exceptZero',
-        }).format(velocityTrend);
-
-        // Both should be valid strings
-        expect(typeof formattedTrendEn).toBe('string');
-        expect(typeof formattedTrendIt).toBe('string');
+        expect(typeof formatterIt.format(min)).toBe('string');
+        expect(typeof formatterIt.format(max)).toBe('string');
       });
 
       it('should return sprint history data with numeric fields that support locale formatting', async () => {
@@ -630,24 +614,27 @@ describe('Reports Integration Tests', () => {
         expect(response.body.success).toBe(true);
         const velocityData = response.body.data;
 
-        // Test that planned/completed arrays can be formatted
-        if (velocityData.planned && velocityData.completed) {
-          const testLocale: Locale = 'de';
-          const formatter = new Intl.NumberFormat(testLocale, {
-            style: 'decimal',
-            maximumFractionDigits: 0,
-          });
+        // Each Sprint carries its own evidence, so the interface can format the observed points and
+        // show a gap where the evidence does not survive.
+        expect(Array.isArray(velocityData.points)).toBe(true);
 
-          // Format each planned point value
-          for (const points of velocityData.planned) {
-            const formatted = formatter.format(points);
-            expect(typeof formatted).toBe('string');
+        const testLocale: Locale = 'de';
+        const formatter = new Intl.NumberFormat(testLocale, {
+          style: 'decimal',
+          maximumFractionDigits: 0,
+        });
+
+        for (const point of velocityData.points) {
+          expect(point.sprintId).toBeDefined();
+          expect(['recorded', 'reconstructed', 'in_progress', 'not_available']).toContain(
+            point.provenance
+          );
+
+          if (point.plannedPoints !== null) {
+            expect(typeof formatter.format(point.plannedPoints)).toBe('string');
           }
-
-          // Format each completed point value
-          for (const points of velocityData.completed) {
-            const formatted = formatter.format(points);
-            expect(typeof formatted).toBe('string');
+          if (point.completedPoints !== null) {
+            expect(typeof formatter.format(point.completedPoints)).toBe('string');
           }
         }
       });
@@ -695,6 +682,163 @@ describe('Reports Integration Tests', () => {
           expect(formattedPercentages[locale].length).toBeGreaterThan(0);
         }
       });
+    });
+  });
+
+  describe('Reports scrum-guide regression coverage', () => {
+    const testEmails: string[] = [];
+    const testTeams: string[] = [];
+
+    afterEach(async () => {
+      await cleanupTestData(testEmails);
+      await cleanupTeams(testTeams);
+      testEmails.length = 0;
+      testTeams.length = 0;
+    });
+
+    it('refuses every report endpoint to a caller who is not a member of the team', async () => {
+      const email = `reports-outsider-${uniqueId()}@example.com`;
+      testEmails.push(email);
+      await createTestUserInDb(email);
+
+      const teamName = `Reports Outsider Team ${uniqueId()}`;
+      testTeams.push(teamName);
+      const team = await createTestTeam(teamName);
+
+      const cookies = await loginAndGetCookies(email);
+
+      for (const endpoint of ['velocity', 'sprint-history', 'metrics', 'insights']) {
+        const response = await request(app)
+          .get(`/api/v1/reports/${endpoint}`)
+          .query({ teamId: team.id })
+          .set('Cookie', cookies);
+
+        expect(response.status).toBe(403);
+        expect(response.body.success).toBe(false);
+        expect(response.body.error.code).toBe(GATE_CODES.REPORTS_TEAM_MEMBERS_ONLY);
+      }
+    });
+
+    it('does not let a later status change rewrite what a closed Sprint delivered', async () => {
+      const email = `reports-frozen-${uniqueId()}@example.com`;
+      testEmails.push(email);
+      const user = await createTestUserInDb(email);
+
+      const teamName = `Reports Frozen Team ${uniqueId()}`;
+      testTeams.push(teamName);
+      const team = await createTestTeam(teamName);
+      await addTeamMember(team.id, user.id, 'SCRUM_MASTER');
+
+      const sprint = await createTestSprint(
+        team.id,
+        'Closed Sprint',
+        'COMPLETED',
+        new Date(Date.now() - 28 * 24 * 60 * 60 * 1000),
+        new Date(Date.now() - 14 * 24 * 60 * 60 * 1000)
+      );
+
+      const pbi = await prisma.productBacklogItem.create({
+        data: {
+          id: generateUUIDv7(),
+          teamId: team.id,
+          title: 'Delivered item',
+          storyPoints: 13,
+          status: 'DONE',
+        },
+      });
+      await prisma.sprintBacklogItem.create({
+        data: { id: generateUUIDv7(), sprintId: sprint.id, pbiId: pbi.id },
+      });
+
+      // What the Sprint delivered, as it was frozen at close.
+      await prisma.sprintCompletionSnapshot.create({
+        data: {
+          id: generateUUIDv7(),
+          sprintId: sprint.id,
+          teamId: team.id,
+          plannedPoints: 13,
+          completedPoints: 13,
+          itemCount: 1,
+          completedItemCount: 1,
+          items: [{ pbiId: pbi.id, storyPoints: 13, completed: true }],
+        },
+      });
+
+      // The item is reopened long after the Sprint closed.
+      await prisma.productBacklogItem.update({
+        where: { id: pbi.id },
+        data: { status: 'IN_PROGRESS' },
+      });
+
+      const cookies = await loginAndGetCookies(email);
+      const response = await request(app)
+        .get('/api/v1/reports/velocity')
+        .query({ teamId: team.id })
+        .set('Cookie', cookies)
+        .expect(200);
+
+      const points = response.body.data.points.filter(
+        (point: { sprintId: string }) => point.sprintId === sprint.id
+      );
+
+      expect(points).toHaveLength(1);
+      expect(points[0]).toMatchObject({
+        plannedPoints: 13,
+        completedPoints: 13,
+        provenance: 'recorded',
+      });
+      expect(response.body.data.averageCompletedPoints).toBe(13);
+    });
+
+    it('reports a closed Sprint with no surviving evidence as not available, never as zero', async () => {
+      const email = `reports-unrecorded-${uniqueId()}@example.com`;
+      testEmails.push(email);
+      const user = await createTestUserInDb(email);
+
+      const teamName = `Reports Unrecorded Team ${uniqueId()}`;
+      testTeams.push(teamName);
+      const team = await createTestTeam(teamName);
+      await addTeamMember(team.id, user.id, 'SCRUM_MASTER');
+
+      const sprint = await createTestSprint(
+        team.id,
+        'Unrecorded Sprint',
+        'COMPLETED',
+        new Date(Date.now() - 28 * 24 * 60 * 60 * 1000),
+        new Date(Date.now() - 14 * 24 * 60 * 60 * 1000)
+      );
+
+      const pbi = await prisma.productBacklogItem.create({
+        data: {
+          id: generateUUIDv7(),
+          teamId: team.id,
+          title: 'Unknown outcome',
+          storyPoints: 8,
+          status: 'DONE',
+        },
+      });
+      await prisma.sprintBacklogItem.create({
+        data: { id: generateUUIDv7(), sprintId: sprint.id, pbiId: pbi.id },
+      });
+
+      const cookies = await loginAndGetCookies(email);
+      const response = await request(app)
+        .get('/api/v1/reports/velocity')
+        .query({ teamId: team.id })
+        .set('Cookie', cookies)
+        .expect(200);
+
+      const points = response.body.data.points.filter(
+        (point: { sprintId: string }) => point.sprintId === sprint.id
+      );
+
+      expect(points[0]).toMatchObject({
+        plannedPoints: null,
+        completedPoints: null,
+        provenance: 'not_available',
+      });
+      // The live "DONE" status is not evidence about the past, so it must not reach the average.
+      expect(response.body.data.averageCompletedPoints).toBeNull();
     });
   });
 });

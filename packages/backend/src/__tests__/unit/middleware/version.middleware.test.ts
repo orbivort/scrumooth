@@ -162,17 +162,24 @@ describe('Version Middleware', () => {
     it('should complete version detection in < 3ms', () => {
       mockReq.path = '/api/v1/teams';
 
-      const startTime = process.hrtime.bigint();
-
+      // A single cold invocation measures everything except the middleware: V8's first-call
+      // compilation, lazy module initialisation, and whatever the CPU scheduler does to this
+      // thread. Warm up once and then take the fastest of several runs, so the assertion measures
+      // the work the middleware does rather than the machine it happens to run on.
       versionMiddleware(mockReq as Request, mockRes as Response, mockNext);
 
-      const endTime = process.hrtime.bigint();
-      const durationMs = Number(endTime - startTime) / 1_000_000;
+      const durationsMs: number[] = [];
 
-      // A single cold invocation is dominated by test-infrastructure/CPU-scheduling
-      // jitter, so use a generous wall-clock threshold here. The meaningful throughput
-      // guarantee is the < 1ms average asserted by the batch test below.
-      expect(durationMs).toBeLessThan(10);
+      for (let i = 0; i < 20; i++) {
+        const startTime = process.hrtime.bigint();
+
+        versionMiddleware(mockReq as Request, mockRes as Response, mockNext);
+
+        const endTime = process.hrtime.bigint();
+        durationsMs.push(Number(endTime - startTime) / 1_000_000);
+      }
+
+      expect(Math.min(...durationsMs)).toBeLessThan(3);
     });
 
     it('should handle 1000 requests efficiently', () => {

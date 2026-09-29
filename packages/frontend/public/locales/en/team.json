@@ -110,7 +110,6 @@
     },
     "memberSince": "Member since",
     "roleNames": {
-      "administrator": "Administrator",
       "developers": "Developers",
       "productOwner": "Product Owner",
       "scrumMaster": "Scrum Master"
@@ -156,6 +155,9 @@
     }
   },
   "noTeam": "No Team",
+  "overview": {
+    "metricsTitle": "At a glance"
+  },
   "selectTeam": "Select a Team",
   "sendMessageModal": {
     "cancel": "Cancel",
@@ -180,7 +182,14 @@
       "maxLength": "Message must be less than {{limit}} characters."
     }
   },
-  "subtitle": "Manage team members and team standards",
+  "subtitle": "Your team's members, agreements and Scrum health",
+  "tabs": {
+    "ariaLabel": "Team sections",
+    "definition": "Definition",
+    "health": "Scrum Health",
+    "members": "Members",
+    "overview": "Overview"
+  },
   "teamInfo": {
     "created": "Created: {{date}}",
     "lastUpdated": "Last updated: {{date}}",
@@ -198,11 +207,12 @@
     "sprintCompletionRate": "Sprint Backlog Completion Rate",
     "storyPointsCompleted": "Story Points Completed"
   },
-  "title": "Team",
+  "title": "My Team",
   "welcome": {
     "selectRole": "Select Your Role to Continue",
     "subtitle": "Your agile journey starts here...",
-    "title": "Welcome to Scrumooth, {{name}}!"
+    "title": "Welcome to Scrumooth, {{name}}!",
+    "titleAnonymous": "Welcome to Scrumooth!"
   },
   "yourTeams": "Your Teams"
 }

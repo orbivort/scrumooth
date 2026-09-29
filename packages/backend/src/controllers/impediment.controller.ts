@@ -2,6 +2,32 @@ import { type Request, type Response } from 'express';
 import { impedimentService } from '../services/impediment.service';
 import { asyncHandler, createSuccessResponse, BadRequestError } from '../utils/errors';
 import { getParamValue } from '../utils/validation';
+import { IMPEDIMENT_PRIORITIES, type ImpedimentPriority } from '@scrumooth/shared';
+
+/** Read a priority from an untrusted body, refusing anything outside the known set. */
+const parsePriority = (value: unknown): ImpedimentPriority | undefined => {
+  if (value === undefined || value === null || value === '') {
+    return undefined;
+  }
+  if (typeof value === 'string' && (IMPEDIMENT_PRIORITIES as readonly string[]).includes(value)) {
+    return value as ImpedimentPriority;
+  }
+  throw new BadRequestError('Invalid priority');
+};
+
+/** Normalize an optional date: an empty string clears the target date rather than storing one. */
+const parseTargetDate = (value: unknown): string | null | undefined => {
+  if (value === undefined) {
+    return undefined;
+  }
+  if (value === null || value === '') {
+    return null;
+  }
+  if (typeof value === 'string' || value instanceof Date) {
+    return value instanceof Date ? value.toISOString() : value;
+  }
+  throw new BadRequestError('Invalid target date');
+};
 
 export const getImpediments = asyncHandler(async (req: Request, res: Response) => {
   const { teamId, sprintId } = req.query;
@@ -48,13 +74,14 @@ export const createImpediment = asyncHandler(async (req: Request, res: Response)
     throw new BadRequestError('User not authenticated');
   }
 
-  const impediment = await impedimentService.createImpediment({
+  const impediment = await impedimentService.createImpediment(req.userId, {
     teamId,
     sprintId,
     title,
     description,
     ownerId,
-    reportedById: req.userId,
+    priority: parsePriority(req.body.priority),
+    targetDate: parseTargetDate(req.body.targetDate),
   });
 
   return res.status(201).json(createSuccessResponse(impediment));
@@ -71,10 +98,16 @@ export const updateImpediment = asyncHandler(async (req: Request, res: Response)
     throw new BadRequestError('teamId is required');
   }
 
-  const impediment = await impedimentService.updateImpediment(id, teamId, {
+  if (!req.userId) {
+    throw new BadRequestError('User not authenticated');
+  }
+
+  const impediment = await impedimentService.updateImpediment(id, teamId, req.userId, {
     status,
     resolution,
     ownerId,
+    priority: parsePriority(req.body.priority),
+    targetDate: parseTargetDate(req.body.targetDate),
   });
 
   return res.json(createSuccessResponse(impediment));
@@ -91,7 +124,11 @@ export const deleteImpediment = asyncHandler(async (req: Request, res: Response)
     throw new BadRequestError('teamId is required');
   }
 
-  await impedimentService.deleteImpediment(id, teamId);
+  if (!req.userId) {
+    throw new BadRequestError('User not authenticated');
+  }
+
+  await impedimentService.deleteImpediment(id, teamId, req.userId);
   return res.json(createSuccessResponse({ message: 'Impediment deleted successfully' }));
 });
 

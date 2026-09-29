@@ -1,0 +1,70 @@
+{
+  "agreements": {
+    "active": "Active",
+    "add": "Add agreement",
+    "agreedAt": "Agreed",
+    "cancel": "Cancel",
+    "created": "Agreement added",
+    "createdBy": "Added by",
+    "edit": "Edit",
+    "empty": "No working agreement recorded yet.",
+    "hint": "Any team member can add or retire an agreement.",
+    "reactivate": "Reactivate",
+    "retire": "Retire",
+    "retired": "Retired",
+    "retiredAt": "Retired",
+    "retiredDisclosure": "Show retired agreements ({{count}})",
+    "retiredGroup": "Retired agreements",
+    "save": "Save",
+    "saved": "Agreement updated",
+    "title": "Agreements",
+    "updatedBy": "Last changed by"
+  },
+  "assessmentForm": {
+    "addSkill": "Add skill",
+    "atLeastOneSkill": "Record at least one skill.",
+    "cancel": "Cancel",
+    "removeSkill": "Remove skill",
+    "save": "Save assessment",
+    "saved": "Assessment recorded",
+    "skillCoverage": "Coverage",
+    "skillName": "Skill",
+    "skillNote": "Note",
+    "skillRequired": "Every row needs a skill name.",
+    "summary": "What the team concluded",
+    "title": "Cross-functionality assessment"
+  },
+  "crossFunctionality": {
+    "assessedAt": "Assessed",
+    "assessedBy": "Recorded by",
+    "coverage": "Coverage",
+    "covered": "Covered",
+    "empty": "No cross-functionality assessment recorded yet.",
+    "gaps": "Gaps",
+    "hint": "Skills the team needs, and how far the team covers them.",
+    "history": "Earlier assessments",
+    "need": "Skill needed",
+    "none": "Not covered",
+    "note": "Note",
+    "onlyScrumMaster": "Only the team’s Scrum Master records the assessment.",
+    "openFacilitation": "Record or review the assessment",
+    "partial": "Partially covered",
+    "record": "Record an assessment",
+    "summary": "{{covered}} covered · {{partial}} partial · {{gaps}} not covered",
+    "title": "Cross-functionality"
+  },
+  "errors": {
+    "delete": "The change could not be discarded.",
+    "load": "The working agreements could not be loaded.",
+    "record": "The assessment could not be recorded.",
+    "save": "The change could not be saved."
+  },
+  "form": {
+    "createTitle": "New working agreement",
+    "description": "What the team agreed",
+    "descriptionRequired": "Describe what the team agreed (at least ten characters).",
+    "editTitle": "Edit working agreement",
+    "title": "Agreement",
+    "titleRequired": "Give the agreement a title of at least three characters."
+  }
+}

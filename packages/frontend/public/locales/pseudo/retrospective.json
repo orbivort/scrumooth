@@ -15,6 +15,12 @@
     "title": "[Àctíón Ítémsssss]",
     "unassigned": "[Únàssígnédddd]"
   },
+  "anonymity": {
+    "authorHidden": "[Ànónymóússss]",
+    "badge": "[Ànónymóússss]",
+    "chooseLabel": "[Rún thís Rétróspéctívé ànónymóúslyyyyyyyyyyyy]",
+    "hint": "[Ítém àúthórs àré nót récórdéd, fór ànyóné — ínclúdíng thé Scrúm Màstérrrrrrrrrrrrrrrrrrrrrrr.]"
+  },
   "ariaLabels": {
     "columnsRegion": "[Rétróspéctívé féédbàck cólúmnssssssssss]",
     "sprintInfoRegion": "[Sprínt Ínfórmàtíónnnnnnn]",
@@ -68,7 +74,8 @@
     "ariaLabel": "[Màrk rétróspéctívé às cómplétéddddddddddd]",
     "button": "[Cómplété Rétróspéctívéééééééé]",
     "completing": "[Cómplétínggggg...]",
-    "description": "[Màrk thís rétróspéctívé às cómplétéd tó fínàlízé ít ànd prévént fúrthér édítsssssssssssssssssssssssss.]"
+    "description": "[Màrk thís rétróspéctívé às cómplétéd tó fínàlízé ít ànd prévént fúrthér édítsssssssssssssssssssssssss.]",
+    "sprintNotEnded": "[Thé Sprínt Révíéw ínspécts thé óútcómé óf thé Sprínt ànd thé Sprínt Rétróspéctívé cónclúdés ít. Thís Rétróspéctívé càn bé cómplétéd fróm thé Sprínt's énd dàtééééééééééééééééééééééééééééééééééééééééééééééééé ({{endDate}}).]"
   },
   "confirmationModal": {
     "cancel": "[Càncélll]",
@@ -109,6 +116,44 @@
     "message": "[Délété Àctíón Ítémmmmmmm]",
     "title": "[Cónfírm Délétíónnnnnn]"
   },
+  "dodInspection": {
+    "addCriterion": "[Àdd crítéríónnnnn]",
+    "addCriterionPlaceholder": "[À crítéríón thé téàm shóúld àdddddddddddd]",
+    "adoptedVersion": "[Àdóptéd vvvv{{version}}]",
+    "applyChanges": "[Àpply tó Défínítíón óf Dónéééééééééé]",
+    "applyFailed": "[Thé Défínítíón óf Dóné cóúld nót bé úpdàtéd. Nóthíng wàs chàngéd — àdjúst thé décísíóns ànd try àgàínnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn.]",
+    "applying": "[Àpplyíngggg…]",
+    "arriving": "[Àrrívíngggg]",
+    "cancel": "[Càncélll]",
+    "changeIncomplete": "[Évéry chàngéd crítéríón nééds íts néw wórdínggggggggggggggg]",
+    "confirmApply": "[Àpply chàngésssss]",
+    "confirmSubtitle": "[Thís réplàcés Défínítíón óf Dóné vvvvvvvvvvvv{{from}} wwíítthh v{{to}} ànd kééps vvvvv{{from}} ín thé vérsíón hístóryyyyyyyyy.]",
+    "confirmTitle": "[Àpply thésé chàngés tó thé Défínítíón óf Dónééééééééééééééé?]",
+    "currentVersion": "[Défínítíón óf Dóné vvvvvvv{{version}}]",
+    "decisionLabel": "[Décísíón fórrrrr {{criterion}}]",
+    "decisions": {
+      "CHANGE": "[Chàngééé]",
+      "KEEP": "[KKéééép]",
+      "RETIRE": "[Rétírééé]"
+    },
+    "discardProposal": "[Díscàrd própósàllllll]",
+    "loading": "[Lóàdíng thé Défínítíón óf Dónééééééééééé…]",
+    "noCriteria": "[Thís téàm hàs nó àctívé Défínítíón óf Dóné crítéríón yét. Àdd thé crítéríà thé téàm wórks tó, ór défíné thém ín Téàm Défínítíónssssssssssssssssssssssssssssssssssssssss.]",
+    "none": "[NNóónné]",
+    "noteLabel": "[Réàsón (óptíónàlllllll)]",
+    "notePlaceholder": "[Why thís décísíónnnnnnn?]",
+    "notesLabel": "[Whàt thé téàm cónclúdéd àbóút íts Défínítíón óf Dónééééééééééééééééé]",
+    "notesPlaceholder": "[Récórd thé réàsóníng béhínd thésé décísíónsssssssssssssss…]",
+    "proposedLabel": "[Néw wórdínggggg]",
+    "proposedPlaceholder": "[Hów shóúld thís crítéríón réàd ínstéàddddddddddddd?]",
+    "retiring": "[Rétíríngggg]",
+    "rewording": "[Réwórdíngggg]",
+    "saveFailed": "[Thé réfléctíón cóúld nót bé sàvéd. Yóúr décísíóns àré stíll ón scréénnnnnnnnnnnnnnnnnnnnnn.]",
+    "saveReflection": "[Sàvé réfléctíónnnnnn]",
+    "saving": "[SSààvvíínng…]",
+    "subtitle": "[Thé Scrúm Gúídé àsks thís évént tó ínspéct thé Défínítíón óf Dóné ànd ídéntífy thé móst hélpfúl chàngés. Décídé ón éàch crítéríón, thén àpply whàt thé téàm àccéptsssssssssssssssssssssssssssssssssssssssssssssssssss.]",
+    "title": "[Défínítíón óf Dóné ínspéctíónnnnnnnnnn]"
+  },
   "errorState": {
     "backToRetrospectives": "[Bàck tó Rétróspéctívéssssssss]",
     "message": "[Thé rétróspéctívé fór thís sprínt cóúld nót bé lóàdédddddddddddddddddd.]",
@@ -130,8 +175,14 @@
     "completedSprint": "[Cómplétéd Spríntttttt]",
     "completedSprints": "[Cómplétéd Spríntsssssss]",
     "completedSprints_plural": "[Cómplétéd Spríntsssssss]",
+    "createCancel": "[Càncélll]",
+    "createConfirm": "[Créàtééé]",
     "createRetrospective": "[Créàté Rétróspéctívééééééé]",
     "creating": "[CCrrééààttíínng...]",
+    "emptyState": {
+      "description": "[À Rétróspéctívé càn bé héld fór àn àctívé ór cómplétéd Sprínt. Stàrt à Sprínt ín Sprínt Plànníng tó bégínnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn.]",
+      "title": "[Nó Sprínts tó Réfléct Ónnnnnnnnn]"
+    },
     "goal": "[GGóóààl:]",
     "items": "[ítémsss]",
     "loading": "[Lóàdíng rétróspéctívésssssssss...]",
@@ -155,6 +206,24 @@
     "viewRetrospective": "[Víéw Rétróspéctívééééééé]"
   },
   "loading": "[Lóàdíng Rétróspéctívééééééééé...]",
+  "phases": {
+    "close": {
+      "description": "[Wríté dówn whàt thé téàm décídéd, màrk whó wàs ín thé róóm, ànd cómplété thé Rétróspéctívééééééééééééééééééééééééééééé.]",
+      "title": "[Récórd ànd clóséééééé]"
+    },
+    "decide": {
+      "description": "[Ínspéct thé Défínítíón óf Dóné, thén túrn thé ímpróvéménts thé téàm àgréés ón íntó àctíón ítémssssssssssssssssssssssssssssss.]",
+      "title": "[Whàt wé chàngéééééé]"
+    },
+    "reflect": {
+      "description": "[Gàthér whàt wént wéll, whàt díd nót, ànd whàt thé téàm wànts tó ímpróvé — óné thóúght pér ítémmmmmmmmmmmmmmmmmmmmmmmmmmmmmm.]",
+      "title": "[Whàt hàppénéddddd]"
+    },
+    "stage": {
+      "description": "[Bríng thé Sprínt yóú àré àbóút tó ínspéct íntó thé róóm, àlóng wíth thé Scrúm Vàlúés thàt sét thé tónéééééééééééééééééééééééééééééééé.]",
+      "title": "[Sét thé stàgééééé]"
+    }
+  },
   "pts": "[ptss]",
   "sprintInfo": {
     "businessDay_one": "[{{count}} búsínéss dàyyyyy]",

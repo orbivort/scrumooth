@@ -235,4 +235,57 @@ describe('ValidationModal', () => {
       });
     });
   });
+
+  describe('Translated labels, error banner and check changes', () => {
+    const SetWorkflowError: React.FC = () => {
+      const { setWorkflowError } = useBacklogContext();
+      React.useEffect(() => {
+        setWorkflowError('DoR failed');
+      }, [setWorkflowError]);
+      return null;
+    };
+
+    it('should map known labels/categories, let the user dismiss the error and toggle a check', async () => {
+      const onCheckChange = vi.fn();
+
+      renderWithProviders(
+        <BacklogProvider>
+          <SetSelectedItem />
+          <SetWorkflowError />
+          <ValidationModal
+            isOpen={true}
+            validationType="ready"
+            dorItems={[
+              {
+                id: 'dor-known',
+                label: 'Clear title and description provided',
+                description: 'documentation',
+              },
+            ]}
+            dodItems={mockDodItems}
+            validationChecks={{}}
+            onCheckChange={onCheckChange}
+            onConfirm={vi.fn()}
+            onCancel={vi.fn()}
+            isUpdating={false}
+          />
+        </BacklogProvider>
+      );
+
+      // Error banner (workflowError truthy branch) + dismissal via the close button.
+      expect(await screen.findByText('DoR failed')).toBeInTheDocument();
+      await userEvent.click(screen.getByLabelText('validation.closeError'));
+      await waitFor(() => {
+        expect(screen.queryByText('DoR failed')).not.toBeInTheDocument();
+      });
+
+      // Known label/category resolve through the translation maps.
+      expect(screen.getByText('validation.dorItems.clearTitleAndDescription')).toBeInTheDocument();
+      expect(screen.getByText('validation.categories.documentation')).toBeInTheDocument();
+
+      // Checkbox change is forwarded.
+      await userEvent.click(screen.getByRole('checkbox'));
+      expect(onCheckChange).toHaveBeenCalledWith('dor-known', true);
+    });
+  });
 });

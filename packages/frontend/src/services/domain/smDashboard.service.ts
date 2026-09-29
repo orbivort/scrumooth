@@ -1,4 +1,6 @@
 // Scrum Master Dashboard Service
+import type { SmNotesRevisionPage } from '@scrumooth/shared';
+
 import type {
   ApiResponse,
   EventComplianceSummary,
@@ -13,13 +15,8 @@ export interface SmDashboardData {
   eventCompliance: EventComplianceSummary[];
   impedimentMetrics: ImpedimentMetrics;
   dodComplianceTrend: DoDComplianceTrend[];
-  sprintGoalAchievement: SprintGoalAchievement & {
-    achievementRate: number;
-    achieved: number;
-    partial: number;
-    notAchieved: number;
-    list: Array<{ sprintId: string; sprintName: string; sprintGoal: string; achievement: string }>;
-  };
+  /** The Scrum Team's recorded verdicts, with how many Sprints were actually assessed. */
+  sprintGoalAchievement: SprintGoalAchievement;
   actionItemCompletion: ActionItemCompletion;
   healthCheck: {
     healthCheckId: string;
@@ -65,6 +62,40 @@ class SmDashboardService {
 
   async updateRetrospectiveSmNotes(retroId: string, smNotes: string): Promise<ApiResponse<never>> {
     const { data } = await this.api.patch(`/retrospectives/${retroId}/sm-notes`, { smNotes });
+    return data;
+  }
+
+  /**
+   * The revision history of one event's Scrum Master notes, newest first.
+   *
+   * Reads and writes carry the same rule -- only the team's Scrum Master may see the notes, and
+   * the history *is* the notes -- so a refusal here is the same refusal the editor would get.
+   */
+  async getSprintSmNotesRevisions(
+    sprintId: string,
+    params: { limit?: number; offset?: number } = {}
+  ): Promise<ApiResponse<SmNotesRevisionPage>> {
+    const { data } = await this.api.get(`/sprints/${sprintId}/sm-notes/revisions`, { params });
+    return data;
+  }
+
+  async getSprintReviewSmNotesRevisions(
+    reviewId: string,
+    params: { limit?: number; offset?: number } = {}
+  ): Promise<ApiResponse<SmNotesRevisionPage>> {
+    const { data } = await this.api.get(`/sprint-reviews/${reviewId}/sm-notes/revisions`, {
+      params,
+    });
+    return data;
+  }
+
+  async getRetrospectiveSmNotesRevisions(
+    retroId: string,
+    params: { limit?: number; offset?: number } = {}
+  ): Promise<ApiResponse<SmNotesRevisionPage>> {
+    const { data } = await this.api.get(`/retrospectives/${retroId}/sm-notes/revisions`, {
+      params,
+    });
     return data;
   }
 }

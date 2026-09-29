@@ -1,10 +1,13 @@
 {
   "allStatus": "All Status",
   "card": {
+    "escalated": "Escalated to the Scrum Master",
     "owner": "Owner",
     "reportedBy": "Reported by",
     "resolution": "Resolution",
     "sprint": "Sprint",
+    "targetDate": "Target: {{date}}",
+    "targetDateOverdue": "Overdue: {{date}}",
     "unknown": "Unknown",
     "viewDetailsAria": "View details for impediment: {{title}}. Status: {{status}}"
   },
@@ -14,8 +17,11 @@
     "creating": "Creating...",
     "descriptionLabel": "Description",
     "descriptionPlaceholder": "Provide details about the impediment",
+    "optional": "Optional",
+    "priorityLabel": "Priority",
     "sprintLabel": "Sprint",
     "subtitle": "Document blockers affecting your team's progress",
+    "targetDateLabel": "Target date",
     "title": "Report New Impediment",
     "titleLabel": "Title",
     "titlePlaceholder": "Brief description of the impediment"
@@ -36,17 +42,22 @@
     "close": "Close",
     "createdLabel": "Created",
     "deleteLabel": "Delete",
+    "deleteNotPermitted": "Only the reporter, the owner, or the Scrum Master can delete this impediment.",
     "deleting": "Deleting...",
     "descriptionLabel": "Description",
+    "escalated": "This impediment aged past the escalation threshold, so the Scrum Master has been notified.",
     "ownerLabel": "Owner",
+    "priorityLabel": "Priority",
     "reportedByLabel": "Reported by",
     "resolutionLabel": "Resolution",
     "resolutionPlaceholder": "Describe how this impediment was resolved...",
+    "resolutionRequiredFor": "A written resolution is required to mark this impediment as {{status}}.",
     "saveResolution": "Save Resolution",
     "saving": "Saving...",
     "sprintLabel": "Sprint",
     "statusLabel": "Status",
     "subtitle": "View and manage impediment information",
+    "targetDateLabel": "Target date",
     "title": "Impediment Details",
     "titleLabel": "Title"
   },
@@ -64,6 +75,13 @@
     "title": "Error Loading Data"
   },
   "filterByStatus": "Filter by status",
+  "moduleSubtitle": "What blocks the team today, and the barriers only the organization can remove.",
+  "priority": {
+    "critical": "Critical",
+    "high": "High",
+    "low": "Low",
+    "medium": "Medium"
+  },
   "reportImpediment": "Report Impediment",
   "stats": {
     "CLOSED": "Closed",
@@ -86,6 +104,11 @@
     "resolved": "Resolved"
   },
   "subtitle": "{{sprintName}} - Track and resolve blockers affecting the team",
+  "tabs": {
+    "ariaLabel": "Impediment registers",
+    "barriers": "Organizational barriers",
+    "impediments": "Impediments"
+  },
   "title": "Impediments",
   "toast": {
     "created": "Impediment created successfully",

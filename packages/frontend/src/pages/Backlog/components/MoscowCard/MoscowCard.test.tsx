@@ -117,6 +117,73 @@ describe('MoscowCard', () => {
       expect(screen.getByTitle('Effort (Story Points)')).toHaveTextContent('E5');
     });
 
+    it('should show the item position when one is provided', () => {
+      renderWithAnnouncer(
+        <MoscowCard
+          item={mockItem}
+          onDragStart={mockOnDragStart}
+          onDragEnd={mockOnDragEnd}
+          onClick={mockOnClick}
+          isDragging={false}
+          position={4}
+        />
+      );
+
+      expect(
+        screen.getByLabelText(i18nT('backlog:order.positionLabel', { position: 4 }))
+      ).toHaveTextContent('4');
+    });
+
+    it('should omit the position when none is provided', () => {
+      renderWithAnnouncer(
+        <MoscowCard
+          item={mockItem}
+          onDragStart={mockOnDragStart}
+          onDragEnd={mockOnDragEnd}
+          onClick={mockOnClick}
+          isDragging={false}
+        />
+      );
+
+      expect(
+        screen.queryByLabelText(/^Position \d+ in the Product Backlog$/)
+      ).not.toBeInTheDocument();
+    });
+
+    it('should keep the card draggable for a Product Owner', () => {
+      const { container } = renderWithAnnouncer(
+        <MoscowCard
+          item={mockItem}
+          onDragStart={mockOnDragStart}
+          onDragEnd={mockOnDragEnd}
+          onClick={mockOnClick}
+          isDragging={false}
+          canOrder
+        />
+      );
+
+      expect(container.querySelector('[draggable="true"]')).toBeInTheDocument();
+      expect(container.querySelector('[data-order-locked="true"]')).not.toBeInTheDocument();
+    });
+
+    it('should not offer the drag affordance to anyone but the Product Owner', () => {
+      const { container } = renderWithAnnouncer(
+        <MoscowCard
+          item={mockItem}
+          onDragStart={mockOnDragStart}
+          onDragEnd={mockOnDragEnd}
+          onClick={mockOnClick}
+          isDragging={false}
+          canOrder={false}
+        />
+      );
+
+      // The card is still readable; the ordering gesture is withheld and the lock is exposed.
+      expect(screen.getByText('Test Backlog Item')).toBeInTheDocument();
+      expect(container.querySelector('[draggable="true"]')).not.toBeInTheDocument();
+      expect(container.querySelector('[data-order-locked="true"]')).toBeInTheDocument();
+    });
+
     it('should display labels', () => {
       renderWithAnnouncer(
         <MoscowCard

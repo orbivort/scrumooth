@@ -1,0 +1,283 @@
+/* A version badge that opens what it names, and the timeline it reveals. */
+
+.wrapper {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+/* The badge itself. Quiet at rest, because the criteria below it are the content and the version is
+   a fact about them -- but obviously interactive, because a number nobody can open is a dead end. */
+.trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: 24px;
+  padding: var(--space-1) var(--space-2);
+  border: var(--border-width-1) solid var(--color-border-default);
+  border-radius: var(--radius-full);
+  background: var(--color-background-card);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  transition:
+    background-color 150ms ease-out,
+    border-color 150ms ease-out,
+    color 150ms ease-out;
+}
+
+.trigger:hover {
+  border-color: var(--color-primary-300);
+  background: var(--color-primary-50);
+  color: var(--color-primary-700);
+}
+
+.trigger:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.trigger[data-open] {
+  border-color: var(--color-primary-400);
+  background: var(--color-primary-50);
+  color: var(--color-primary-700);
+}
+
+.trigger-chevron {
+  display: flex;
+  align-items: center;
+  transition: transform 150ms ease-out;
+}
+
+.trigger[data-open] .trigger-chevron {
+  transform: rotate(180deg);
+}
+
+/* The panel floats over the criteria rather than pushing them down: opening a history must not move
+   the page the reader was comparing it against. */
+.panel {
+  position: absolute;
+  top: calc(100% + var(--space-2));
+  left: 0;
+  z-index: var(--z-popover);
+  width: min(26rem, calc(100vw - var(--space-8)));
+  max-height: 24rem;
+  overflow-y: auto;
+  padding: var(--space-3);
+  border: var(--border-width-1) solid var(--color-border-default);
+  border-radius: var(--radius-lg);
+  background: var(--color-background-card);
+  box-shadow: var(--shadow-lg);
+  animation: reveal 150ms ease-out;
+}
+
+.panel:focus {
+  outline: none;
+}
+
+.panel:focus-visible {
+  box-shadow: var(--focus-ring);
+}
+
+@keyframes reveal {
+  from {
+    opacity: 0;
+    transform: translateY(calc(var(--space-1) * -1));
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .panel {
+    animation: none;
+  }
+
+  .trigger,
+  .trigger-chevron {
+    transition: none;
+  }
+}
+
+.panel-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+
+.panel-title {
+  margin: 0;
+  color: var(--color-text-primary);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+}
+
+.panel-close {
+  min-height: 24px;
+  padding: var(--space-1);
+  border-width: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-primary-600);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+}
+
+.panel-close:hover {
+  text-decoration: underline;
+}
+
+.panel-close:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.entry {
+  padding: var(--space-2) var(--space-3);
+  border: var(--border-width-1) solid var(--color-border-default);
+  border-radius: var(--radius-md);
+  background: var(--color-background-page);
+}
+
+/* The version in force is the one the criteria on the page belong to, so the timeline marks it
+   rather than leaving the reader to sort by number. */
+.entry[data-current] {
+  border-color: var(--color-success-300);
+  background: var(--color-success-50);
+}
+
+.entry-head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.entry-version {
+  color: var(--color-text-primary);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  font-variant-numeric: tabular-nums;
+}
+
+.entry-current {
+  padding: 0 var(--space-1);
+  border-radius: var(--radius-sm);
+  background: var(--color-success-100);
+  color: var(--color-success-800);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+}
+
+.entry-date {
+  margin-left: auto;
+  color: var(--color-text-tertiary);
+  font-size: var(--font-size-xs);
+}
+
+.entry-author {
+  margin: var(--space-1) 0 0;
+  color: var(--color-text-tertiary);
+  font-size: var(--font-size-xs);
+}
+
+.entry-empty {
+  margin: var(--space-2) 0 0;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+}
+
+.entry-criteria {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: var(--space-2) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.entry-criterion {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+  line-height: var(--line-height-normal);
+}
+
+.criterion-number {
+  flex-shrink: 0;
+  min-width: 1rem;
+  color: var(--color-text-tertiary);
+  font-variant-numeric: tabular-nums;
+}
+
+.error {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+
+.error-text {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+}
+
+.error-retry {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: 24px;
+  padding: var(--space-1) var(--space-2);
+  border: var(--border-width-1) solid var(--color-border-default);
+  border-radius: var(--radius-md);
+  background: var(--color-background-card);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-xs);
+  cursor: pointer;
+}
+
+.error-retry:hover {
+  border-color: var(--color-primary-300);
+  color: var(--color-primary-700);
+}
+
+.error-retry:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.empty {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+}
+
+/* At the module's narrow width the panel spans the column instead of floating: a 26rem card anchored
+   to a badge near the right edge would be clipped. */
+@media (width <= 768px) {
+  .panel {
+    left: auto;
+    right: 0;
+    width: min(26rem, calc(100vw - var(--space-6)));
+  }
+}

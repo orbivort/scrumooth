@@ -1,6 +1,12 @@
 import { describe, it, expect } from 'vitest';
 
-import { getRoleLabel, getRoleBadgeClass, getRoleBadgeColor, canStartSprint } from './roleUtils';
+import {
+  getRoleLabel,
+  getRoleBadgeClass,
+  getRoleBadgeColor,
+  canStartSprint,
+  canOrderBacklog,
+} from './roleUtils';
 
 describe('roleUtils', () => {
   describe('getRoleLabel', () => {
@@ -115,20 +121,77 @@ describe('roleUtils', () => {
   });
 
   describe('canStartSprint', () => {
-    it('should return true when both a Sprint Goal and a saved backlog are present', () => {
-      expect(canStartSprint({ hasSprintGoal: true, hasSavedBacklog: true })).toBe(true);
+    it('should return true when the goal, the saved backlog and participation are all present', () => {
+      expect(
+        canStartSprint({
+          hasSprintGoal: true,
+          hasSavedBacklog: true,
+          hasPlanningParticipation: true,
+        })
+      ).toBe(true);
     });
 
     it('should return false when there is no Sprint Goal', () => {
-      expect(canStartSprint({ hasSprintGoal: false, hasSavedBacklog: true })).toBe(false);
+      expect(
+        canStartSprint({
+          hasSprintGoal: false,
+          hasSavedBacklog: true,
+          hasPlanningParticipation: true,
+        })
+      ).toBe(false);
     });
 
     it('should return false when the Sprint Backlog has not been saved', () => {
-      expect(canStartSprint({ hasSprintGoal: true, hasSavedBacklog: false })).toBe(false);
+      expect(
+        canStartSprint({
+          hasSprintGoal: true,
+          hasSavedBacklog: false,
+          hasPlanningParticipation: true,
+        })
+      ).toBe(false);
     });
 
-    it('should return false when neither prerequisite is met', () => {
-      expect(canStartSprint({ hasSprintGoal: false, hasSavedBacklog: false })).toBe(false);
+    it('should return false when planning participation is not recorded', () => {
+      expect(
+        canStartSprint({
+          hasSprintGoal: true,
+          hasSavedBacklog: true,
+          hasPlanningParticipation: false,
+        })
+      ).toBe(false);
+    });
+
+    it('should return false when no prerequisite is met', () => {
+      expect(
+        canStartSprint({
+          hasSprintGoal: false,
+          hasSavedBacklog: false,
+          hasPlanningParticipation: false,
+        })
+      ).toBe(false);
+    });
+  });
+
+  describe('canOrderBacklog', () => {
+    it('should allow the Product Owner', () => {
+      expect(canOrderBacklog('PRODUCT_OWNER')).toBe(true);
+    });
+
+    it('should accept the lowercase role form', () => {
+      expect(canOrderBacklog('product_owner')).toBe(true);
+    });
+
+    it('should refuse the Scrum Master', () => {
+      expect(canOrderBacklog('SCRUM_MASTER')).toBe(false);
+    });
+
+    it('should refuse a Developer', () => {
+      expect(canOrderBacklog('DEVELOPERS')).toBe(false);
+    });
+
+    it('should refuse a missing role', () => {
+      expect(canOrderBacklog(null)).toBe(false);
+      expect(canOrderBacklog(undefined)).toBe(false);
     });
   });
 });

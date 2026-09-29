@@ -12,6 +12,7 @@ export { productBacklogService } from './domain/productBacklog.service';
 export { sprintService } from './domain/sprint.service';
 export { sprintBacklogService } from './domain/sprintBacklog.service';
 export { dailyScrumService } from './domain/dailyScrum.service';
+export { dailyScrumScheduleService } from './domain/dailyScrumSchedule.service';
 export { impedimentsService } from './domain/impediments.service';
 export { reportsService } from './domain/reports.service';
 export { productGoalsService } from './domain/productGoals.service';
@@ -33,6 +34,7 @@ import { productBacklogService } from './domain/productBacklog.service';
 import { sprintService } from './domain/sprint.service';
 import { sprintBacklogService } from './domain/sprintBacklog.service';
 import { dailyScrumService } from './domain/dailyScrum.service';
+import { dailyScrumScheduleService } from './domain/dailyScrumSchedule.service';
 import { impedimentsService } from './domain/impediments.service';
 import { reportsService } from './domain/reports.service';
 import { productGoalsService } from './domain/productGoals.service';
@@ -91,6 +93,10 @@ class ApiService {
     productBacklogService.updateProductBacklogItem.bind(productBacklogService);
   updateBacklogItemPriority =
     productBacklogService.updateBacklogItemPriority.bind(productBacklogService);
+  reorderProductBacklogItems =
+    productBacklogService.reorderProductBacklogItems.bind(productBacklogService);
+  getBacklogItemCountByGoal =
+    productBacklogService.getBacklogItemCountByGoal.bind(productBacklogService);
   deleteProductBacklogItem =
     productBacklogService.deleteProductBacklogItem.bind(productBacklogService);
 
@@ -103,6 +109,10 @@ class ApiService {
   saveSprintBacklog = sprintService.saveSprintBacklog.bind(sprintService);
   saveSprintPlanningDraft = sprintService.saveSprintPlanningDraft.bind(sprintService);
   getSprintPlanningDraft = sprintService.getSprintPlanningDraft.bind(sprintService);
+  getPlanningParticipation = sprintService.getPlanningParticipation.bind(sprintService);
+  addPlanningAttendee = sprintService.addPlanningAttendee.bind(sprintService);
+  updatePlanningAttendee = sprintService.updatePlanningAttendee.bind(sprintService);
+  deletePlanningAttendee = sprintService.deletePlanningAttendee.bind(sprintService);
   rollbackSprintStart = sprintService.rollbackSprintStart.bind(sprintService);
   updateSprint = sprintService.updateSprint.bind(sprintService);
   completeSprint = sprintService.completeSprint.bind(sprintService);
@@ -120,17 +130,30 @@ class ApiService {
   getTasksByPbiId = sprintBacklogService.getTasksByPbiId.bind(sprintBacklogService);
   addPBIToSprint = sprintBacklogService.addPBIToSprint.bind(sprintBacklogService);
   removePBIFromSprint = sprintBacklogService.removePBIFromSprint.bind(sprintBacklogService);
+  acknowledgeSprintBacklogChange =
+    sprintBacklogService.acknowledgeSprintBacklogChange.bind(sprintBacklogService);
   getSprintBacklogChanges = sprintBacklogService.getSprintBacklogChanges.bind(sprintBacklogService);
 
   // Daily Scrum endpoints (team-level, goal-focused)
   getDailyScrum = dailyScrumService.getDailyScrum.bind(dailyScrumService);
   getDailyScrums = dailyScrumService.getDailyScrums.bind(dailyScrumService);
+  getDailyScrumCadence = dailyScrumService.getCadence.bind(dailyScrumService);
   createDailyScrum = dailyScrumService.createDailyScrum.bind(dailyScrumService);
   updateDailyScrum = dailyScrumService.updateDailyScrum.bind(dailyScrumService);
   recordDailyScrumParticipation = dailyScrumService.recordParticipation.bind(dailyScrumService);
   getDailyScrumParticipation = dailyScrumService.getParticipation.bind(dailyScrumService);
   sendDailyScrumTeamSignal = dailyScrumService.sendTeamSignal.bind(dailyScrumService);
   promoteImpedimentFromDailyScrum = dailyScrumService.promoteToImpediment.bind(dailyScrumService);
+
+  // Daily Scrum standing commitment (Scrum Master writes, team reads)
+  getDailyScrumSchedule = dailyScrumScheduleService.getSchedule.bind(dailyScrumScheduleService);
+  saveDailyScrumSchedule = dailyScrumScheduleService.saveSchedule.bind(dailyScrumScheduleService);
+  getDailyScrumNonWorkingDays =
+    dailyScrumScheduleService.listNonWorkingDays.bind(dailyScrumScheduleService);
+  addDailyScrumNonWorkingDay =
+    dailyScrumScheduleService.addNonWorkingDay.bind(dailyScrumScheduleService);
+  deleteDailyScrumNonWorkingDay =
+    dailyScrumScheduleService.deleteNonWorkingDay.bind(dailyScrumScheduleService);
 
   // Impediments endpoints
   getImpediments = impedimentsService.getImpediments.bind(impedimentsService);
@@ -176,6 +199,8 @@ class ApiService {
   updateIncrement = incrementService.updateIncrement.bind(incrementService);
   deliverIncrement = incrementService.deliverIncrement.bind(incrementService);
   verifyIntegration = incrementService.verifyIntegration.bind(incrementService);
+  verifyUsability = incrementService.verifyUsability.bind(incrementService);
+  reconcileIncrement = incrementService.reconcileIncrement.bind(incrementService);
   getIncrementMetrics = incrementService.getIncrementMetrics.bind(incrementService);
 
   // Sprint Review endpoints
@@ -187,6 +212,8 @@ class ApiService {
   getPendingAdjustments = sprintReviewService.getPendingAdjustments.bind(sprintReviewService);
   markAdjustmentImplemented =
     sprintReviewService.markAdjustmentImplemented.bind(sprintReviewService);
+  materializeAdjustment = sprintReviewService.materializeAdjustment.bind(sprintReviewService);
+  linkAdjustmentToPbi = sprintReviewService.linkAdjustmentToPbi.bind(sprintReviewService);
   getPendingFeedback = sprintReviewService.getPendingFeedback.bind(sprintReviewService);
   markFeedbackAddressed = sprintReviewService.markFeedbackAddressed.bind(sprintReviewService);
   addAttendee = sprintReviewService.addAttendee.bind(sprintReviewService);
@@ -216,6 +243,9 @@ class ApiService {
   addRetroAttendee = retrospectiveService.addRetroAttendee.bind(retrospectiveService);
   updateRetroAttendee = retrospectiveService.updateRetroAttendee.bind(retrospectiveService);
   deleteRetroAttendee = retrospectiveService.deleteRetroAttendee.bind(retrospectiveService);
+  applyDodChanges = retrospectiveService.applyDodChanges.bind(retrospectiveService);
+  materializeActionItem = retrospectiveService.materializeActionItem.bind(retrospectiveService);
+  linkActionItemToPbi = retrospectiveService.linkActionItemToPbi.bind(retrospectiveService);
 
   // Timebox endpoints (Scrum event timeboxes)
   getTimebox = timeboxService.getTimebox.bind(timeboxService);
@@ -226,6 +256,7 @@ class ApiService {
 
   // Definition of Done endpoints
   getDefinitionOfDone = definitionService.getDefinitionOfDone.bind(definitionService);
+  getDoDComplianceReport = definitionService.getDoDComplianceReport.bind(definitionService);
 
   // Data Export endpoints (GDPR Article 20)
   initiateDataExport = dataExportService.initiateExport.bind(dataExportService);

@@ -2,7 +2,12 @@
 import prisma from '../utils/prisma';
 import config from '../config';
 import { NotFoundError, ForbiddenError, ConflictError, localizedError } from '../utils/errors';
+import { GATE_CODES } from '@scrumooth/shared';
 import { generateUUIDv7 } from '../utils/uuid';
+import {
+  withSerializableTransaction,
+  type TransactionClient,
+} from '../utils/serializableTransaction';
 import { NotificationService } from './notification.service';
 import {
   NotificationType,
@@ -18,8 +23,13 @@ const notificationService = new NotificationService();
 const ALLOWED_SORT_FIELDS = ['createdAt', 'updatedAt', 'name', 'description'] as const;
 type SortField = (typeof ALLOWED_SORT_FIELDS)[number];
 
-// Team with members
-export type TeamWithMembers = Team & {
+// Team with members.
+//
+// The group columns are declared here rather than inherited from `Team` because only the team
+// *detail* read resolves them (with the group's name and the current version of the shared
+// Definition of Done); the list reads do not carry the group, and a raw `groupId` nobody can
+// resolve would be a worse answer than none.
+export type TeamWithMembers = Omit<Team, 'groupId' | 'groupJoinedAt' | 'groupDodVersionAtJoin'> & {
   members: (Omit<TeamMember, 'createdAt' | 'createdBy' | 'updatedAt' | 'updatedBy'> & {
     user: Omit<
       User,
@@ -36,7 +46,24 @@ export type TeamWithMembers = Team & {
   memberCount: number;
   maxSize: number;
   userRole?: UserRole;
+  /**
+   * The group this team shares a product with, when it belongs to one, naming the Definition of
+   * Done that governs it: *"they must mutually define and comply with the same Definition of
+   * Done."*
+   */
+  group?: TeamGroupSummary | null;
+  /** The shared Definition of Done version the team adopted when it joined. */
+  groupDodVersionAtJoin?: number | null;
+  groupJoinedAt?: Date | null;
 };
+
+/** A team's group as the team surfaces it: who it is, and which shared DoD version is current. */
+export interface TeamGroupSummary {
+  id: string;
+  name: string;
+  /** The group's current Definition of Done version, to compare against the adopted one. */
+  dodVersion: number;
+}
 
 // Create team data
 export interface CreateTeamData {
@@ -196,6 +223,19 @@ class TeamService {
             },
           },
         },
+        // The team's group, resolved to the two facts the interface acts on: which group it is,
+        // and which version of the shared Definition of Done is current -- so a team can see that
+        // the version it adopted on joining is no longer the one in force.
+        groupId: true,
+        groupJoinedAt: true,
+        groupDodVersionAtJoin: true,
+        group: {
+          select: {
+            id: true,
+            name: true,
+            definitionOfDone: { select: { version: true } },
+          },
+        },
       },
     });
 
@@ -203,10 +243,17 @@ class TeamService {
       throw new NotFoundError('Team');
     }
 
-    const teamWithMemberCount = {
+    const teamWithMemberCount: TeamWithMembers = {
       ...team,
       memberCount: team.members.length,
       maxSize: config.team.maxSize,
+      group: team.group
+        ? {
+            id: team.group.id,
+            name: team.group.name,
+            dodVersion: team.group.definitionOfDone?.version ?? 0,
+          }
+        : null,
     };
 
     // Check if user is a member
@@ -479,36 +526,43 @@ class TeamService {
       throw new ConflictError('User is already a team member');
     }
 
-    // Enforce exactly one Product Owner / Scrum Master per team
-    if (data.role === 'PRODUCT_OWNER' || data.role === 'SCRUM_MASTER') {
-      await this.assertLeadershipRoleAvailable(teamId, data.role);
-    }
-
-    // Enforce the Scrum Guide maximum team size
-    const memberCount = await prisma.teamMember.count({ where: { teamId } });
-    if (memberCount >= config.team.maxSize) {
-      throw localizedError(
-        'errors:teamSizeLimitReached',
-        { max: config.team.maxSize },
-        409,
-        'TEAM_SIZE_LIMIT_REACHED'
-      );
-    }
-
     const memberId = generateUUIDv7();
 
-    const member = await prisma.teamMember.create({
-      data: {
-        id: memberId,
-        teamId,
-        userId: userToAdd.id,
-        role: data.role,
-        createdBy: userId,
-      },
-      include: {
-        user: true,
-        team: true,
-      },
+    // The two Guide rules this method holds -- one Product Owner and one Scrum Master, and no more
+    // than `TEAM_MAX_SIZE` people -- are read-modify-write rules, so the count and the insert run in
+    // one serializable transaction. Read outside it, two concurrent adds can each see zero holders
+    // and both insert; at `Serializable` PostgreSQL aborts one of them, and the retry then sees the
+    // row the winner wrote and refuses it with the same gate the caller would have seen anyway.
+    const member = await withSerializableTransaction(async (tx) => {
+      // Enforce exactly one Product Owner / Scrum Master per team
+      if (data.role === 'PRODUCT_OWNER' || data.role === 'SCRUM_MASTER') {
+        await this.assertLeadershipRoleAvailable(teamId, data.role, undefined, tx);
+      }
+
+      // Enforce the Scrum Guide maximum team size
+      const memberCount = await tx.teamMember.count({ where: { teamId } });
+      if (memberCount >= config.team.maxSize) {
+        throw localizedError(
+          'errors:teamSizeLimitReached',
+          { max: config.team.maxSize },
+          409,
+          GATE_CODES.TEAM_SIZE_LIMIT
+        );
+      }
+
+      return tx.teamMember.create({
+        data: {
+          id: memberId,
+          teamId,
+          userId: userToAdd.id,
+          role: data.role,
+          createdBy: userId,
+        },
+        include: {
+          user: true,
+          team: true,
+        },
+      });
     });
 
     // Create notification for the invited user
@@ -551,7 +605,7 @@ class TeamService {
 
     if (memberToRemove.userId === userId) {
       throw new ForbiddenError(
-        'You cannot remove yourself from the team. Please contact another Scrum Master or Administrator.'
+        'You cannot remove yourself from the team. Ask another Product Owner or Scrum Master of this team to remove you.'
       );
     }
 
@@ -615,29 +669,36 @@ class TeamService {
       throw new NotFoundError('Team member');
     }
 
-    // Enforce exactly one Product Owner / Scrum Master per team
-    if (role === 'PRODUCT_OWNER' || role === 'SCRUM_MASTER') {
-      await this.assertLeadershipRoleAvailable(teamId, role, member.id);
-    }
+    // Promoting a member to a leadership role is the same read-modify-write as adding one, so it
+    // runs under the same serializable guarantee: two concurrent promotions cannot both see the
+    // role as free and both take it.
+    return withSerializableTransaction(async (tx) => {
+      // Enforce exactly one Product Owner / Scrum Master per team
+      if (role === 'PRODUCT_OWNER' || role === 'SCRUM_MASTER') {
+        await this.assertLeadershipRoleAvailable(teamId, role, member.id, tx);
+      }
 
-    const updatedMember = await prisma.teamMember.update({
-      where: { id: memberId },
-      data: { role },
+      return tx.teamMember.update({
+        where: { id: memberId },
+        data: { role },
+      });
     });
-
-    return updatedMember;
   }
 
   /**
    * Ensure the team does not already have a member with the given leadership role.
    * Each team can have exactly one Product Owner and one Scrum Master.
+   *
+   * The count is taken through the caller's transaction client, so it is part of the same
+   * serializable read as the write it guards.
    */
   private async assertLeadershipRoleAvailable(
     teamId: string,
     role: 'PRODUCT_OWNER' | 'SCRUM_MASTER',
-    excludeMemberId?: string
+    excludeMemberId: string | undefined,
+    client: TransactionClient
   ): Promise<void> {
-    const count = await prisma.teamMember.count({
+    const count = await client.teamMember.count({
       where: {
         teamId,
         role,
@@ -651,7 +712,7 @@ class TeamService {
         'errors:roleAlreadyTaken',
         { role: roleLabel },
         409,
-        'ROLE_ALREADY_TAKEN'
+        GATE_CODES.LEADERSHIP_ROLE_TAKEN
       );
     }
   }

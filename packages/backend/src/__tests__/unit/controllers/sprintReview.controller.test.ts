@@ -13,6 +13,8 @@ import {
   addAttendee,
   updateAttendee,
   deleteAttendee,
+  materializeAdjustment,
+  linkAdjustmentToPbi,
 } from '../../../controllers/sprintReview.controller';
 import { sprintReviewService } from '../../../services/sprintReview.service';
 import { createMockRequest, createMockResponse, createMockNext } from '../../setup/testSetup';
@@ -27,6 +29,8 @@ vi.mock('../../../services/sprintReview.service', () => ({
     deleteSprintReview: vi.fn(),
     getPendingAdjustments: vi.fn(),
     markAdjustmentImplemented: vi.fn(),
+    materializeAdjustment: vi.fn(),
+    linkAdjustmentToPbi: vi.fn(),
     getPendingFeedback: vi.fn(),
     markFeedbackAddressed: vi.fn(),
     addAttendee: vi.fn(),
@@ -50,6 +54,7 @@ describe('SprintReview Controller', () => {
   describe('getSprintReviews', () => {
     it('should return sprint reviews for a team', async () => {
       mockReq.query = { teamId: 'team-123' };
+      mockReq.user = { id: 'user-123' };
       const mockReviews = [{ id: 'review-1', name: 'Sprint 1 Review' }];
 
       (sprintReviewService.getSprintReviews as any).mockResolvedValue(mockReviews);
@@ -58,7 +63,12 @@ describe('SprintReview Controller', () => {
       await new Promise((resolve) => setTimeout(resolve, 0));
 
       expect(mockNext).not.toHaveBeenCalled();
-      expect(sprintReviewService.getSprintReviews).toHaveBeenCalledWith('team-123', undefined);
+      // The actor travels with the read so the service can redact the Scrum Master's notes.
+      expect(sprintReviewService.getSprintReviews).toHaveBeenCalledWith(
+        'team-123',
+        undefined,
+        'user-123'
+      );
       expect(mockRes._json).toEqual({
         success: true,
         data: mockReviews,
@@ -67,6 +77,7 @@ describe('SprintReview Controller', () => {
 
     it('should return sprint reviews filtered by sprint', async () => {
       mockReq.query = { teamId: 'team-123', sprintId: 'sprint-456' };
+      mockReq.user = { id: 'user-123' };
       const mockReviews = [{ id: 'review-1', name: 'Sprint 1 Review' }];
 
       (sprintReviewService.getSprintReviews as any).mockResolvedValue(mockReviews);
@@ -74,7 +85,11 @@ describe('SprintReview Controller', () => {
       getSprintReviews(mockReq as any, mockRes as any, mockNext);
       await new Promise((resolve) => setTimeout(resolve, 0));
 
-      expect(sprintReviewService.getSprintReviews).toHaveBeenCalledWith('team-123', 'sprint-456');
+      expect(sprintReviewService.getSprintReviews).toHaveBeenCalledWith(
+        'team-123',
+        'sprint-456',
+        'user-123'
+      );
     });
 
     it('should handle service errors', async () => {
@@ -93,6 +108,7 @@ describe('SprintReview Controller', () => {
   describe('getSprintReviewById', () => {
     it('should return sprint review by ID', async () => {
       mockReq.params = { id: 'review-123' };
+      mockReq.user = { id: 'user-123' };
       const mockReview = { id: 'review-123', name: 'Test Review' };
 
       (sprintReviewService.getSprintReviewById as any).mockResolvedValue(mockReview);
@@ -101,7 +117,10 @@ describe('SprintReview Controller', () => {
       await new Promise((resolve) => setTimeout(resolve, 0));
 
       expect(mockNext).not.toHaveBeenCalled();
-      expect(sprintReviewService.getSprintReviewById).toHaveBeenCalledWith('review-123');
+      expect(sprintReviewService.getSprintReviewById).toHaveBeenCalledWith(
+        'review-123',
+        'user-123'
+      );
       expect(mockRes._json).toEqual({
         success: true,
         data: mockReview,
@@ -294,7 +313,7 @@ describe('SprintReview Controller', () => {
       await new Promise((resolve) => setTimeout(resolve, 0));
 
       expect(mockNext).not.toHaveBeenCalled();
-      expect(sprintReviewService.deleteSprintReview).toHaveBeenCalledWith('review-123');
+      expect(sprintReviewService.deleteSprintReview).toHaveBeenCalledWith('review-123', undefined);
       expect(mockRes._json).toEqual({
         success: true,
         data: { message: 'Sprint review deleted successfully' },
@@ -514,7 +533,7 @@ describe('SprintReview Controller', () => {
       await new Promise((resolve) => setTimeout(resolve, 0));
 
       expect(mockNext).not.toHaveBeenCalled();
-      expect(sprintReviewService.deleteAttendee).toHaveBeenCalledWith('attendee-123');
+      expect(sprintReviewService.deleteAttendee).toHaveBeenCalledWith('attendee-123', undefined);
       expect(mockRes._json).toEqual({
         success: true,
         data: { message: 'Attendee deleted successfully' },
@@ -529,6 +548,63 @@ describe('SprintReview Controller', () => {
 
       expect(mockNext).toHaveBeenCalledWith(expect.any(Error));
       expect((mockNext.mock.calls[0] as any)[0].message).toBe('Attendee ID is required');
+    });
+  });
+
+  describe('materializeAdjustment', () => {
+    it('should materialise an adjustment into a backlog item', async () => {
+      mockReq.params = { id: 'adj-123' };
+      mockReq.body = { title: 'Add SSO' };
+      mockReq.validatedBody = { title: 'Add SSO' };
+      mockReq.user = { id: 'user-123' };
+      const serviceResult = { adjustment: { id: 'adj-123' }, pbi: { id: 'pbi-1' } };
+
+      (sprintReviewService.materializeAdjustment as any).mockResolvedValue(serviceResult);
+
+      materializeAdjustment(mockReq as any, mockRes as any, mockNext);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(mockNext).not.toHaveBeenCalled();
+      expect(sprintReviewService.materializeAdjustment).toHaveBeenCalledWith(
+        'adj-123',
+        'user-123',
+        {
+          title: 'Add SSO',
+        }
+      );
+      expect(mockRes._status).toBe(201);
+      expect(mockRes._json).toEqual({ success: true, data: serviceResult });
+    });
+
+    it('should throw error when ID is missing', async () => {
+      mockReq.params = {};
+
+      materializeAdjustment(mockReq as any, mockRes as any, mockNext);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(mockNext).toHaveBeenCalledWith(expect.any(Error));
+    });
+  });
+
+  describe('linkAdjustmentToPbi', () => {
+    it('should link an adjustment to an existing backlog item', async () => {
+      mockReq.params = { id: 'adj-123' };
+      mockReq.validatedBody = { pbiId: 'pbi-1' };
+      mockReq.user = { id: 'user-123' };
+      const linked = { id: 'adj-123', createdPbiId: 'pbi-1', implemented: true };
+
+      (sprintReviewService.linkAdjustmentToPbi as any).mockResolvedValue(linked);
+
+      linkAdjustmentToPbi(mockReq as any, mockRes as any, mockNext);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(mockNext).not.toHaveBeenCalled();
+      expect(sprintReviewService.linkAdjustmentToPbi).toHaveBeenCalledWith(
+        'adj-123',
+        'pbi-1',
+        'user-123'
+      );
+      expect(mockRes._json).toEqual({ success: true, data: linked });
     });
   });
 });

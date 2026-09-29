@@ -25,8 +25,14 @@ export const LazySprintConfiguration = lazy(() =>
   }))
 );
 
-export const LazyTeamDefinitionsPage = lazy(() =>
-  import('../pages/Settings/TeamDefinitions').then((module) => ({
+export const LazyDailyScrumSchedule = lazy(() =>
+  import('../pages/Settings/DailyScrumSchedule').then((module) => ({
+    default: module.DailyScrumSchedule,
+  }))
+);
+
+export const LazyTeamGroupsPage = lazy(() =>
+  import('../pages/Settings/TeamGroups').then((module) => ({
     default: module.default,
   }))
 );
@@ -73,9 +79,11 @@ export const LazyReports = lazy(() =>
   }))
 );
 
-export const LazySmDashboard = lazy(() =>
-  import('../pages/SmDashboard/SmDashboard').then((module) => ({
-    default: module.SmDashboard,
+// The facilitation lens is the second tab of the Dashboard module rather than a route of its own,
+// so it is loaded on demand from inside that module: a Developer or Product Owner never downloads it.
+export const LazyFacilitationPanel = lazy(() =>
+  import('../pages/SmDashboard/FacilitationPanel').then((module) => ({
+    default: module.FacilitationPanel,
   }))
 );
 

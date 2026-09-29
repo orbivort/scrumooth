@@ -19,6 +19,7 @@ import {
   getCsrfToken,
   CSRF_CONSTANTS,
 } from '@e2e-helpers';
+import { GATE_CODES } from '@scrumooth/shared';
 
 describe('E2E: Reports', () => {
   const testEmails: string[] = [];
@@ -76,10 +77,10 @@ describe('E2E: Reports', () => {
         .expect(HTTP_STATUS.OK);
 
       expect(response.body.success).toBe(true);
-      expect(response.body.data).toHaveProperty('sprints');
-      expect(response.body.data).toHaveProperty('planned');
-      expect(response.body.data).toHaveProperty('completed');
-      expect(Array.isArray(response.body.data.sprints)).toBe(true);
+      expect(Array.isArray(response.body.data.points)).toBe(true);
+      expect(response.body.data).toHaveProperty('averageCompletedPoints');
+      expect(response.body.data).toHaveProperty('observedSprints');
+      expect(response.body.data).toHaveProperty('unavailableSprints');
     });
 
     it('should return velocity data with sprint history', async () => {
@@ -118,7 +119,8 @@ describe('E2E: Reports', () => {
         .expect(HTTP_STATUS.BAD_REQUEST);
 
       expect(response.body.success).toBe(false);
-      expect(response.body.error.code).toBe(ERROR_CODES.VALIDATION_ERROR);
+      // The team-context gate answers a missing team before any handler runs.
+      expect(response.body.error.code).toBe(ERROR_CODES.BAD_REQUEST);
     });
 
     it('should return 401 UNAUTHORIZED when not authenticated', async () => {
@@ -183,7 +185,8 @@ describe('E2E: Reports', () => {
         .expect(HTTP_STATUS.BAD_REQUEST);
 
       expect(response.body.success).toBe(false);
-      expect(response.body.error.code).toBe(ERROR_CODES.VALIDATION_ERROR);
+      // The team-context gate answers a missing team before any handler runs.
+      expect(response.body.error.code).toBe(ERROR_CODES.BAD_REQUEST);
     });
 
     it('should return 401 UNAUTHORIZED when not authenticated', async () => {
@@ -212,9 +215,12 @@ describe('E2E: Reports', () => {
         .expect(HTTP_STATUS.OK);
 
       expect(response.body.success).toBe(true);
-      expect(response.body.data).toHaveProperty('averageVelocity');
-      expect(response.body.data).toHaveProperty('velocityTrend');
+      expect(response.body.data).toHaveProperty('averageCompletedPoints');
       expect(response.body.data).toHaveProperty('completionRate');
+      expect(response.body.data).toHaveProperty('itemCompletion');
+      expect(response.body.data).toHaveProperty('sprintGoalVerdicts');
+      // Velocity is descriptive history, never a trend to police.
+      expect(response.body.data).not.toHaveProperty('velocityTrend');
     });
 
     it('should return metrics with sprint data', async () => {
@@ -251,7 +257,8 @@ describe('E2E: Reports', () => {
         .expect(HTTP_STATUS.BAD_REQUEST);
 
       expect(response.body.success).toBe(false);
-      expect(response.body.error.code).toBe(ERROR_CODES.VALIDATION_ERROR);
+      // The team-context gate answers a missing team before any handler runs.
+      expect(response.body.error.code).toBe(ERROR_CODES.BAD_REQUEST);
     });
 
     it('should return 401 UNAUTHORIZED when not authenticated', async () => {
@@ -321,7 +328,8 @@ describe('E2E: Reports', () => {
         .expect(HTTP_STATUS.BAD_REQUEST);
 
       expect(response.body.success).toBe(false);
-      expect(response.body.error.code).toBe(ERROR_CODES.VALIDATION_ERROR);
+      // The team-context gate answers a missing team before any handler runs.
+      expect(response.body.error.code).toBe(ERROR_CODES.BAD_REQUEST);
     });
 
     it('should return 401 UNAUTHORIZED when not authenticated', async () => {
@@ -350,9 +358,10 @@ describe('E2E: Reports', () => {
         .expect(HTTP_STATUS.OK);
 
       expect(response.body.success).toBe(true);
-      expect(response.body.data.sprints).toEqual([]);
-      expect(response.body.data.planned).toEqual([]);
-      expect(response.body.data.completed).toEqual([]);
+      expect(response.body.data.points).toEqual([]);
+      // Nothing was observed, so there is no average -- rather than an average of zero.
+      expect(response.body.data.averageCompletedPoints).toBeNull();
+      expect(response.body.data.observedSprints).toBe(0);
     });
 
     it('should handle metrics for team with no data', async () => {
@@ -370,7 +379,8 @@ describe('E2E: Reports', () => {
         .expect(HTTP_STATUS.OK);
 
       expect(response.body.success).toBe(true);
-      expect(response.body.data.averageVelocity).toBe(0);
+      expect(response.body.data.averageCompletedPoints).toBeNull();
+      expect(response.body.data.completionRate).toBeNull();
     });
 
     it('should handle insights for team with no data', async () => {
@@ -390,7 +400,32 @@ describe('E2E: Reports', () => {
       expect(response.body.success).toBe(true);
     });
 
-    it('should handle non-existent team', async () => {
+    it('should refuse every report for a team the caller does not belong to', async () => {
+      const email = `non-member-${uniqueTestId()}@example.com`;
+      testEmails.push(email);
+
+      // Another team entirely: a report reads that team's own observed history, so a caller who is
+      // not a member of it is refused rather than shown an empty report.
+      const otherTeamName = `Reports Other Team ${uniqueTestId()}`;
+      testTeamNames.push(otherTeamName);
+      const otherTeam = await createTestTeamInDb(otherTeamName);
+
+      await createTestUser(email);
+      const cookies = await loginAndGetCookies(email);
+
+      for (const endpoint of ['velocity', 'sprint-history', 'metrics', 'insights']) {
+        const response = await request(app)
+          .get(`/api/v1/reports/${endpoint}`)
+          .query({ teamId: otherTeam.id })
+          .set('Cookie', cookies)
+          .expect(HTTP_STATUS.FORBIDDEN);
+
+        expect(response.body.success).toBe(false);
+        expect(response.body.error.code).toBe(GATE_CODES.REPORTS_TEAM_MEMBERS_ONLY);
+      }
+    });
+
+    it('should refuse a report for a team that does not exist', async () => {
       const email = `nonexistent-team-${uniqueTestId()}@example.com`;
       testEmails.push(email);
 
@@ -400,9 +435,11 @@ describe('E2E: Reports', () => {
       const response = await request(app)
         .get('/api/v1/reports/velocity')
         .query({ teamId: '00000000-0000-0000-0000-000000000000' })
-        .set('Cookie', cookies);
+        .set('Cookie', cookies)
+        .expect(HTTP_STATUS.FORBIDDEN);
 
-      expect(response.body.success).toBe(true);
+      expect(response.body.success).toBe(false);
+      expect(response.body.error.code).toBe(GATE_CODES.REPORTS_TEAM_MEMBERS_ONLY);
     });
   });
 

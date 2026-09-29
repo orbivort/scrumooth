@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import {
   register,
+  getRegistrationPolicy,
   login,
   logout,
   logoutAllSessions,
@@ -642,6 +643,208 @@ describe('Auth Controller', () => {
         'new-Password1',
         expect.any(Object)
       );
+      expect(mockRes._json.success).toBe(true);
+    });
+  });
+
+  describe('session header parsing', () => {
+    it('register derives session info from an array user-agent and a forwarded IP', async () => {
+      mockReq.body = {
+        email: 'x@example.com',
+        password: 'Password123!',
+        firstName: 'X',
+        lastName: 'Y',
+      };
+      mockReq.ip = undefined;
+      mockReq.headers['user-agent'] = ['agent-one', 'agent-two'];
+      mockReq.headers['x-forwarded-for'] = '203.0.113.7, 10.0.0.1';
+
+      (authService.register as any).mockResolvedValue({
+        user: mockUser,
+        tokens: mockTokens,
+        sessionInfo: mockSessionInfo,
+      });
+
+      register(mockReq as any, mockRes as any, mockNext);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(authService.register).toHaveBeenCalledWith(
+        expect.objectContaining({ email: 'x@example.com' }),
+        { userAgent: 'agent-one, agent-two', ipAddress: '203.0.113.7' }
+      );
+    });
+
+    it('login audits a non-Error failure and rethrows it', async () => {
+      mockReq.body = { email: 'test@example.com', password: 'pw' };
+
+      (authService.login as any).mockRejectedValue('boom');
+
+      login(mockReq as any, mockRes as any, mockNext);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(mockNext).toHaveBeenCalledWith('boom');
+    });
+
+    it('register keeps a supported locale as-is for the locale cookie', async () => {
+      mockReq.body = {
+        email: 'x@example.com',
+        password: 'Password123!',
+        firstName: 'X',
+        lastName: 'Y',
+      };
+
+      (authService.register as any).mockResolvedValue({
+        user: { ...mockUser, locale: 'de' },
+        tokens: mockTokens,
+        sessionInfo: mockSessionInfo,
+      });
+
+      register(mockReq as any, mockRes as any, mockNext);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(mockRes.cookie).toHaveBeenCalledWith(expect.any(String), 'de', expect.any(Object));
+    });
+
+    it('login keeps a supported locale as-is for the locale cookie', async () => {
+      mockReq.body = { email: 'test@example.com', password: 'password' };
+
+      (authService.login as any).mockResolvedValue({
+        user: { ...mockUser, locale: 'fr' },
+        tokens: mockTokens,
+        sessionInfo: mockSessionInfo,
+      });
+
+      login(mockReq as any, mockRes as any, mockNext);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(mockRes.cookie).toHaveBeenCalledWith(expect.any(String), 'fr', expect.any(Object));
+    });
+  });
+
+  describe('getRegistrationPolicy', () => {
+    it('returns the current registration policy', async () => {
+      await getRegistrationPolicy(mockReq as any, mockRes as any, mockNext);
+
+      expect(mockRes._json.success).toBe(true);
+      expect(mockRes._json.data).toHaveProperty('restricted');
+      expect(mockRes._json.data).toHaveProperty('allowedDomains');
+    });
+  });
+
+  describe('unauthenticated guards', () => {
+    it('logoutAllSessions rejects without a user', async () => {
+      logoutAllSessions(mockReq as any, mockRes as any, mockNext);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(mockNext).toHaveBeenCalledWith(expect.any(UnauthorizedError));
+      expect(authService.logoutAllSessions).not.toHaveBeenCalled();
+    });
+
+    it('getCurrentUser rejects without a user', async () => {
+      getCurrentUser(mockReq as any, mockRes as any, mockNext);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(mockNext).toHaveBeenCalledWith(expect.any(UnauthorizedError));
+    });
+
+    it('getActiveSessions rejects without a user', async () => {
+      getActiveSessions(mockReq as any, mockRes as any, mockNext);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(mockNext).toHaveBeenCalledWith(expect.any(UnauthorizedError));
+    });
+
+    it('revokeSession rejects without a user once the token is present', async () => {
+      mockReq.params = { tokenId: 'token-1' };
+
+      revokeSession(mockReq as any, mockRes as any, mockNext);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(mockNext).toHaveBeenCalledWith(expect.any(UnauthorizedError));
+      expect(authService.revokeSession).not.toHaveBeenCalled();
+    });
+
+    it('checkDeletionEligibility rejects without a user', async () => {
+      checkDeletionEligibility(mockReq as any, mockRes as any, mockNext);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(mockNext).toHaveBeenCalledWith(expect.any(UnauthorizedError));
+    });
+
+    it('deleteAccount rejects without a user', async () => {
+      mockReq.body = { confirmation: 'DELETE MY ACCOUNT' };
+
+      deleteAccount(mockReq as any, mockRes as any, mockNext);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(mockNext).toHaveBeenCalledWith(expect.any(UnauthorizedError));
+    });
+
+    it('scheduleDeletion rejects without a user', async () => {
+      mockReq.body = { confirmation: 'SCHEDULE DELETION' };
+
+      scheduleDeletion(mockReq as any, mockRes as any, mockNext);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(mockNext).toHaveBeenCalledWith(expect.any(UnauthorizedError));
+    });
+
+    it('cancelScheduledDeletion rejects without a user', async () => {
+      cancelScheduledDeletion(mockReq as any, mockRes as any, mockNext);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(mockNext).toHaveBeenCalledWith(expect.any(UnauthorizedError));
+    });
+
+    it('forceDeleteAccount rejects without a user', async () => {
+      mockReq.body = { confirmation: 'DELETE MY ACCOUNT' };
+
+      forceDeleteAccount(mockReq as any, mockRes as any, mockNext);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(mockNext).toHaveBeenCalledWith(expect.any(UnauthorizedError));
+    });
+
+    it('getDeletionStatus rejects without a user', async () => {
+      getDeletionStatus(mockReq as any, mockRes as any, mockNext);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(mockNext).toHaveBeenCalledWith(expect.any(UnauthorizedError));
+    });
+
+    it('updateProfile rejects without a user', async () => {
+      mockReq.body = { firstName: 'Updated' };
+
+      updateProfile(mockReq as any, mockRes as any, mockNext);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(mockNext).toHaveBeenCalledWith(expect.any(UnauthorizedError));
+    });
+
+    it('changePassword rejects without a user', async () => {
+      mockReq.body = { currentPassword: 'old', newPassword: 'new-Password1' };
+
+      changePassword(mockReq as any, mockRes as any, mockNext);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(mockNext).toHaveBeenCalledWith(expect.any(UnauthorizedError));
+    });
+  });
+
+  describe('updateProfile locale side effects', () => {
+    it('audits a locale change and falls back to the default locale cookie', async () => {
+      mockReq.userId = 'user-id';
+      mockReq.body = { locale: 'fr' };
+
+      (prisma.user.findUnique as any).mockResolvedValue(null);
+      const updatedUser = { ...mockUser, locale: 'zz' };
+      (authService.updateProfile as any).mockResolvedValue(updatedUser);
+
+      updateProfile(mockReq as any, mockRes as any, mockNext);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(authService.updateProfile).toHaveBeenCalledWith('user-id', { locale: 'fr' });
+      expect(mockRes.cookie).toHaveBeenCalledWith(expect.any(String), 'en', expect.any(Object));
       expect(mockRes._json.success).toBe(true);
     });
   });

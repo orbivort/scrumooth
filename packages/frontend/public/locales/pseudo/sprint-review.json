@@ -46,6 +46,7 @@
     "ownerPlaceholder": "[Séléct ównérrrrrr...]",
     "productGoalAssessment": "[Pródúct Góàl Prógréss Àsséssménttttttttttt]",
     "productGoalAssessmentPlaceholder": "[Hów ís thé téàm prógréssíng tówàrd thé Pródúct Góàlllllllllllllllll?]",
+    "productGoalAssessmentRequired": "[Pléàsé wríté thé Pródúct Góàl àsséssmént ór cléàr thé fíéld. À blànk àsséssmént ís nót récórdéd às évídéncéééééééééééééééééééééééééééééééééé.]",
     "relatedPbi": "[Rélàtéd PBÍ (Óptíónàllllllll)]",
     "requiredFieldsNote": "[Réqúíréd fíélds àré màrkéd wíthhhhhhhhhhh *]",
     "subtitle": "[Càptúré vàlúàblé ínsíghts fróm stàkéhóldérs tó ímpróvé yóúr pródúctttttttttttttttttttttt]",
@@ -67,6 +68,7 @@
     "cannotAddAdjustmentTitle": "[Cànnót àdd àdjústmént tó à cómplétéd révíéwwwwwwwwwwwwww]",
     "description": "[Chàngés tó thé Pródúct Bàcklóg bàséd ón Sprínt Révíéw féédbàckkkkkkkkkkkkkkkkkkkk.]",
     "empty": "[Nó bàcklóg àdjústménts màdé dúríng thís révíéwwwwwwwwwwwwwwww.]",
+    "linkedItem": "[Línkéd ítémmmmm:]",
     "owner": "[Ównérrr:]",
     "reason": "[RRééààssóón:]",
     "status": {
@@ -93,6 +95,13 @@
       "completeSubtitle": "[Révíéw àll ítéms ànd cónfírm tó màrk thís sprínt révíéw às cómplétédddddddddddddddddddddd]",
       "completeTitle": "[Cómplété Sprínt Révíéwwwwwwww]",
       "confirmation": "[Àré yóú súré yóú wànt tó màrk thís sprínt révíéw às cómplétéd? Thís àctíón cànnót bé úndónééééééééééééééééééééééééééééé.]",
+      "goalAchieved": "[Àchíévédddd]",
+      "goalNotAchieved": "[Nót àchíévéddddd]",
+      "goalPartiallyAchieved": "[Pàrtíàlly àchíévéddddddd]",
+      "goalVerdictHint": "[Récórdéd whén yóú cómplété thé Révíéwwwwwwwwwwwww.]",
+      "goalVerdictLegend": "[Hów fàr wàs thé Sprínt Góàl méttttttttttt?]",
+      "goalVerdictNote": "[Thé téàm's ówn wórds (óptíónàlllllllllll)]",
+      "goalVerdictRequired": "[Récórd thé téàm's vérdíct ón thé Sprínt Góàl: àchíévéd, pàrtíàlly àchíévéd, ór nót àchíévéd. Ítém cómplétíón ís nót à súbstítútéééééééééééééééééééééééééééééééééééééééé.]",
       "gotIt": "[Gót íttt]",
       "validationAttended": "[Àt léàst óné àtténdéé múst bé màrkéd às àtténdéd béfóré cómplétíng thé sprínt révíéwwwwwwwwwwwwwwwwwwwwwwwwwww.]",
       "validationAttendees": "[Pléàsé àdd àt léàst óné àtténdéé béfóré cómplétíng thé sprínt révíéwwwwwwwwwwwwwwwwwwwwww.]",
@@ -101,6 +110,7 @@
     },
     "defaultSummary": "[Sprínt Révíéw cómplétéddddddddd.]",
     "failed": "[Fàíléd tó cómplété révíéw. Pléàsé try àgàínnnnnnnnnnnnnnn.]",
+    "sprintNotEnded": "[Thé Sprínt Révíéw ínspécts thé óútcómé óf thé Sprínt. Thís Révíéw càn bé cómplétéd fróm thé Sprínt's énd dàtééééééééééééééééééééééééééééééééééé ({{endDate}}).]",
     "successModal": {
       "close": "[Clósééé]",
       "message": "[Sprínt Révíéw cómplétéd súccéssfúllyyyyyyyyyyyyy!]",
@@ -121,6 +131,7 @@
   "detailLabels": {
     "endDate": "[Énd Dàtéééé:]",
     "sprintGoal": "[Sprínt Góàlllll:]",
+    "sprintGoalOutcome": "[Sprínt Góàl vérdícttttttt]",
     "startDate": "[Stàrt Dàtééééé:]",
     "status": "[SSttààttúús:]"
   },
@@ -143,7 +154,7 @@
       "question": "[Qúéstíónnnn]",
       "suggestion": "[Súggéstíónnnn]"
     },
-    "empty": "[Nó féédbàck cólléctéd yét. Clíck \"Àdd Féédbàck\" tó àdd stàkéhóldér féédbàckkkkkkkkkkkkkkkkkkkkkkkk.]",
+    "empty": "[Nó stàkéhóldér féédbàck yét. Àdd féédbàck tó càptúré whàt stàkéhóldérs ràíséddddddddddddddddddddddddd.]",
     "owner": "[Ównérrr:]",
     "title": "[Stàkéhóldér Féédbàckkkkkkk]"
   },
@@ -184,6 +195,10 @@
     "completedSprints_plural": "[Cómplétéd Spríntsssssss]",
     "createIncrement": "[Créàté Íncréméntttttt]",
     "createReview": "[Créàté Sprínt Révíéwwwwwww]",
+    "emptyState": {
+      "description": "[À Sprínt Révíéw càn bé héld fór àn àctívé ór cómplétéd Sprínt. Stàrt à Sprínt ín Sprínt Plànníng tó bégínnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn.]",
+      "title": "[Nó Sprínts tó Révíéwwwwwww]"
+    },
     "goal": "[GGóóààl:]",
     "loading": "[Lóàdíng sprínt révíéwsssssssss...]",
     "reviewStatus": {

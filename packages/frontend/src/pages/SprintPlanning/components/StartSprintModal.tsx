@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
+import { GATE_CODES } from '@scrumooth/shared';
 
 import styles from './StartSprintModal.module.css';
 
@@ -33,13 +34,73 @@ export interface StartSprintModalProps {
   stats: SprintStats;
   teamCapacity: number;
   capacityPercentage: number;
+  /** Over-commitment tolerance mirrored from the server (`SPRINT_CAPACITY_TOLERANCE_PCT`). */
+  capacityTolerancePct?: number;
+  /** True when recorded planning participation includes the PO and at least one Developer. */
+  participationReady?: boolean;
+  /** Whether the Product Owner is recorded as present (drives the actionable refusal copy). */
+  participationHasProductOwner?: boolean;
+  /** How many Developers are recorded as present. */
+  participationDeveloperCount?: number;
   error?: string | null;
+  /** Stable gate code from the refusal envelope (`error.code`), when the server supplied one. */
+  errorCode?: string | null;
   isLoading?: boolean;
   hasSprintGoal?: boolean;
   hasSavedBacklog?: boolean;
+  /** Whether the team's resolved Definition of Done holds at least one active criterion. */
+  hasDefinitionOfDone?: boolean;
+  /** How many selected items still have an unverified active readiness criterion. */
+  unreadyReadinessItemCount?: number;
+  /** Leaves this dialog for the agreement the refusal points at (the team's Definition tab). */
+  onOpenDefinitions?: () => void;
 }
 
 // Icons imported from shared library
+
+/**
+ * Resolve the refusal copy from the machine-readable gate code.
+ *
+ * Branches on the stable contract rather than on the message text, so a localized refusal is
+ * explained by its rule instead of falling through to a generic HTTP-status message. Returns
+ * `null` for codes this dialog has no dedicated copy for, so the message matcher below stays the
+ * fallback.
+ */
+const getFriendlyErrorFromCode = (
+  code: string,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- TFunction signature varies by i18next version
+  t: any
+): { title: string; message: string } | null => {
+  if (code === GATE_CODES.SPRINT_TEAM_MEMBERS_ONLY) {
+    return {
+      title: t('sprintPlanning.startSprintModal.error.teamMembersOnly'),
+      message: t('sprintPlanning.startSprintModal.error.teamMembersOnlyMessage'),
+    };
+  }
+
+  if (code === GATE_CODES.DOD_REQUIRED) {
+    return {
+      title: t('sprintPlanning.startSprintModal.error.definitionOfDoneRequired'),
+      message: t('sprintPlanning.startSprintModal.error.definitionOfDoneRequiredMessage'),
+    };
+  }
+
+  if (code === GATE_CODES.DOR_REQUIRED) {
+    return {
+      title: t('sprintPlanning.startSprintModal.error.definitionOfReadyRequired'),
+      message: t('sprintPlanning.startSprintModal.error.definitionOfReadyRequiredMessage'),
+    };
+  }
+
+  if (code === GATE_CODES.DOR_NOT_VERIFIED) {
+    return {
+      title: t('sprintPlanning.startSprintModal.error.definitionOfReadyNotVerified'),
+      message: t('sprintPlanning.startSprintModal.error.definitionOfReadyNotVerifiedMessage'),
+    };
+  }
+
+  return null;
+};
 
 // Helper function to get user-friendly error message
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- TFunction signature varies by i18next version
@@ -142,23 +203,35 @@ export const StartSprintModal: React.FC<StartSprintModalProps> = ({
   stats,
   teamCapacity,
   capacityPercentage,
+  capacityTolerancePct = 10,
+  participationReady = true,
+  participationHasProductOwner = true,
+  participationDeveloperCount = 0,
   error,
+  errorCode,
   isLoading = false,
   hasSprintGoal = false,
   hasSavedBacklog = false,
+  hasDefinitionOfDone = true,
+  unreadyReadinessItemCount = 0,
+  onOpenDefinitions,
 }) => {
   const { t } = useTranslation('sprint');
   const modalRef = useRef<HTMLDivElement>(null);
   const previousActiveElement = useRef<HTMLElement | null>(null);
 
-  // Get friendly error message if error exists
-  // If error is already formatted (contains periods and spaces), display it directly
+  // Get friendly error message if error exists.
+  // The stable gate code wins over the message text, so the specific rule is explained instead
+  // of degrading to a generic HTTP-status message. Otherwise: an already formatted message is
+  // displayed directly, and a short one goes through the message matcher.
   const isPreFormatted = error && (error.includes('. ') || error.length > 100);
-  const friendlyError = error
+  const codeError = errorCode ? getFriendlyErrorFromCode(errorCode, t) : null;
+  const fallbackError = error
     ? isPreFormatted
       ? { title: t('sprintPlanning.startSprintModal.error.unableToStart'), message: error }
       : getFriendlyErrorMessage(error, t)
     : null;
+  const friendlyError = codeError ?? fallbackError;
 
   // Reset and handle modal open/close
   useEffect(() => {
@@ -215,16 +288,32 @@ export const StartSprintModal: React.FC<StartSprintModalProps> = ({
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, isLoading, onClose]);
 
-  // Determine capacity status
+  // Determine capacity status. The danger threshold mirrors the server gate: a plan may exceed
+  // recorded capacity by up to `capacityTolerancePct` before starting is refused.
   const getCapacityStatus = () => {
-    if (capacityPercentage > 100) return 'danger';
+    if (capacityPercentage > 100 + capacityTolerancePct) return 'danger';
     if (capacityPercentage > 80) return 'warning';
     return 'success';
   };
 
   const capacityStatus = getCapacityStatus();
-  // Starting a Sprint is readiness-gated (Sprint Goal + saved backlog), not role-gated.
-  const readyToStart = canStartSprint({ hasSprintGoal, hasSavedBacklog });
+  // Over capacity, but still inside the tolerance band the server accepts: a caution, not a block.
+  const withinTolerance =
+    capacityPercentage > 100 && capacityPercentage <= 100 + capacityTolerancePct;
+  // Starting a Sprint is readiness-gated (Sprint Goal + saved backlog + recorded team
+  // participation), not role-gated. `backlogReady` is tracked separately only so the two
+  // distinct reasons can be explained side by side.
+  const backlogReady = hasSprintGoal && hasSavedBacklog;
+  // The two commitments the Sprint boundary is also gated on. The service refuses a Sprint opened
+  // without a Definition of Done, or with a selected item that has not met the team's readiness
+  // agreement; both are surfaced here so the refusal is explained, not discovered on submit.
+  const commitmentsReady = hasDefinitionOfDone && unreadyReadinessItemCount === 0;
+  const readyToStart =
+    canStartSprint({
+      hasSprintGoal,
+      hasSavedBacklog,
+      hasPlanningParticipation: participationReady,
+    }) && commitmentsReady;
 
   if (!isOpen) return null;
 
@@ -283,7 +372,7 @@ export const StartSprintModal: React.FC<StartSprintModalProps> = ({
         {/* Body */}
         <div className={styles.body}>
           {/* Readiness Warning */}
-          {!readyToStart && (
+          {!backlogReady && (
             <div className={styles['error-banner']} role="alert">
               <span className={styles['error-icon']}>
                 <AlertTriangleIcon size={16} />
@@ -294,6 +383,72 @@ export const StartSprintModal: React.FC<StartSprintModalProps> = ({
                 </span>
                 <span className={styles['error-text']}>
                   {t('sprintPlanning.startSprintModal.saveBacklogFirstMessage')}
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* Participation Warning — the Sprint Backlog is created by the whole Scrum Team. */}
+          {!participationReady && (
+            <div className={styles['error-banner']} role="alert">
+              <span className={styles['error-icon']}>
+                <AlertTriangleIcon size={16} />
+              </span>
+              <div className={styles['error-content']}>
+                <span className={styles['error-title']}>
+                  {t('sprintPlanning.startSprintModal.participationIncomplete')}
+                </span>
+                <span className={styles['error-text']}>
+                  {!participationHasProductOwner && participationDeveloperCount === 0
+                    ? t('sprintPlanning.startSprintModal.participationMissingBoth')
+                    : !participationHasProductOwner
+                      ? t('sprintPlanning.startSprintModal.participationMissingProductOwner')
+                      : t('sprintPlanning.startSprintModal.participationMissingDeveloper')}
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* Definition of Done Warning — a Sprint cannot open against an empty commitment. */}
+          {!hasDefinitionOfDone && (
+            <div className={styles['error-banner']} role="alert">
+              <span className={styles['error-icon']}>
+                <AlertTriangleIcon size={16} />
+              </span>
+              <div className={styles['error-content']}>
+                <span className={styles['error-title']}>
+                  {t('sprintPlanning.startSprintModal.commitment.definitionOfDoneMissing')}
+                </span>
+                <span className={styles['error-text']}>
+                  {t('sprintPlanning.startSprintModal.commitment.definitionOfDoneMissingMessage')}
+                </span>
+                {onOpenDefinitions && (
+                  <button
+                    type="button"
+                    className={styles['button-secondary']}
+                    onClick={onOpenDefinitions}
+                  >
+                    {t('sprintPlanning.startSprintModal.commitment.openDefinitions')}
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Definition of Ready Warning — the agreement is enforced at the Sprint boundary. */}
+          {hasDefinitionOfDone && unreadyReadinessItemCount > 0 && (
+            <div className={styles['error-banner']} role="alert">
+              <span className={styles['error-icon']}>
+                <AlertTriangleIcon size={16} />
+              </span>
+              <div className={styles['error-content']}>
+                <span className={styles['error-title']}>
+                  {t('sprintPlanning.startSprintModal.commitment.readinessIncomplete')}
+                </span>
+                <span className={styles['error-text']}>
+                  {t('sprintPlanning.startSprintModal.commitment.readinessIncompleteMessage', {
+                    count: unreadyReadinessItemCount,
+                  })}
                 </span>
               </div>
             </div>
@@ -319,7 +474,9 @@ export const StartSprintModal: React.FC<StartSprintModalProps> = ({
                 {t('sprintPlanning.startSprintModal.sprintSummary')}
               </h3>
               <span className={styles['summary-badge']}>
-                {t('sprintPlanning.startSprintModal.readyToStart')}
+                {readyToStart
+                  ? t('sprintPlanning.startSprintModal.readyToStart')
+                  : t('sprintPlanning.startSprintModal.notReady')}
               </span>
             </div>
 
@@ -423,7 +580,15 @@ export const StartSprintModal: React.FC<StartSprintModalProps> = ({
                   {t('sprintPlanning.startSprintModal.overCapacityWarning')}
                 </p>
               )}
-              {capacityStatus === 'warning' && (
+              {capacityStatus === 'warning' && withinTolerance && (
+                <p className={styles['capacity-warning-message']}>
+                  <AlertTriangleIcon size={16} />
+                  {t('sprintPlanning.startSprintModal.withinToleranceWarning', {
+                    tolerance: capacityTolerancePct,
+                  })}
+                </p>
+              )}
+              {capacityStatus === 'warning' && !withinTolerance && (
                 <p className={styles['capacity-warning-message']}>
                   <AlertTriangleIcon size={16} />
                   {t('sprintPlanning.startSprintModal.nearCapacityWarning')}
@@ -475,7 +640,15 @@ export const StartSprintModal: React.FC<StartSprintModalProps> = ({
             disabled={isLoading || capacityStatus === 'danger' || !readyToStart}
             aria-busy={isLoading}
             title={
-              !readyToStart ? t('sprintPlanning.startSprintModal.saveBacklogFirstHint') : undefined
+              !readyToStart
+                ? !hasDefinitionOfDone
+                  ? t('sprintPlanning.startSprintModal.commitment.definitionOfDoneMissing')
+                  : unreadyReadinessItemCount > 0
+                    ? t('sprintPlanning.startSprintModal.commitment.readinessIncomplete')
+                    : !participationReady
+                      ? t('sprintPlanning.startSprintModal.participationIncomplete')
+                      : t('sprintPlanning.startSprintModal.saveBacklogFirstHint')
+                : undefined
             }
           >
             {isLoading ? (

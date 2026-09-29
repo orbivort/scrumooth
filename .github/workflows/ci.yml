@@ -109,6 +109,9 @@ jobs:
       - name: i18n check
         run: pnpm run i18n:check
 
+      - name: Gate catalogue check
+        run: pnpm run gates:verify
+
       - name: i18n glossary
         run: pnpm run i18n:glossary
 
@@ -167,11 +170,13 @@ jobs:
       fail-fast: false
       matrix:
         shard: [1/2, 2/2]
+    # The dev server the specs drive is configured by `webServer.env` in
+    # packages/frontend/playwright.config.ts, so mock mode and the same-origin API
+    # base are set there rather than here: one place, no value that can disagree
+    # with what the config already says.
     env:
       CI: true
       E2E_BROWSERS: desktop
-      VITE_USE_MOCK_API: false
-      VITE_API_URL: http://localhost:5001/api/v1
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
@@ -221,11 +226,10 @@ jobs:
     if: >-
       (needs.detect-changes.outputs.frontend == 'true' || needs.detect-changes.outputs.shared == 'true') &&
       github.event_name == 'pull_request'
+    # As above: the mock flags live in playwright.config.ts's `webServer.env`.
     env:
       CI: true
       E2E_BROWSERS: chromium
-      VITE_USE_MOCK_API: false
-      VITE_API_URL: http://localhost:5001/api/v1
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5

@@ -1,0 +1,120 @@
+{
+  "action": {
+    "add": "Record an action",
+    "addTitle": "Action with a stakeholder",
+    "cancelled": "Cancelled",
+    "complete": "Mark done",
+    "delete": "Delete action",
+    "description": "Action",
+    "done": "Done",
+    "dueDate": "Due",
+    "noDueDate": "No due date",
+    "open": "Open",
+    "overdue": "Overdue",
+    "owner": "Who acts",
+    "required": "Describe the action (at least three characters).",
+    "status": "Status"
+  },
+  "actionStatus": {
+    "cancelled": "Cancelled",
+    "done": "Done",
+    "open": "Open"
+  },
+  "actions": {
+    "cancel": "Cancel",
+    "created": "Barrier raised",
+    "delete": "Delete",
+    "deleted": "Barrier deleted",
+    "edit": "Edit",
+    "new": "New barrier",
+    "reopen": "Reopen",
+    "resolve": "Resolve",
+    "save": "Save",
+    "saved": "Barrier updated"
+  },
+  "detail": {
+    "description": "Description",
+    "escalatedFrom": "Escalated from the impediment",
+    "noActions": "No action recorded yet. A barrier is removed by agreeing with someone outside the team.",
+    "provenance": "How this barrier was raised",
+    "raisedBy": "Raised by",
+    "resolution": "Resolution",
+    "resolvedAt": "Resolved",
+    "stakeholderActions": "Stakeholder actions",
+    "title": "Barrier"
+  },
+  "errors": {
+    "delete": "The barrier could not be deleted.",
+    "load": "The barrier register could not be loaded.",
+    "resolve": "The barrier could not be resolved.",
+    "save": "The barrier could not be saved."
+  },
+  "escalate": {
+    "action": "Escalate to a barrier",
+    "alreadyEscalated": "Already escalated to “{{title}}”.",
+    "cancel": "Cancel",
+    "confirm": "Escalate",
+    "descriptionLabel": "What the organization needs to do",
+    "error": "The impediment could not be escalated.",
+    "impediment": "Impediment",
+    "intro": "A barrier is a problem the team cannot remove by itself. Escalating it records who outside the team has to act.",
+    "onlyScrumMaster": "Only the team’s Scrum Master can escalate an impediment.",
+    "owner": "Owner",
+    "priority": "Impact",
+    "targetDate": "Target date",
+    "title": "Escalate to an organizational barrier",
+    "titleLabel": "Barrier title"
+  },
+  "filters": {
+    "all": "All",
+    "empty": "No barrier matches these filters.",
+    "priority": "Impact",
+    "search": "Search",
+    "searchPlaceholder": "Search by title or owner",
+    "status": "Status"
+  },
+  "form": {
+    "createTitle": "New organizational barrier",
+    "description": "What the organization needs to do",
+    "descriptionRequired": "Describe what the organization needs to do (at least ten characters).",
+    "editTitle": "Edit organizational barrier",
+    "owner": "Owner",
+    "priority": "Impact",
+    "resolution": "Resolution",
+    "resolutionPlaceholder": "What changed, and who agreed to it?",
+    "resolutionRequired": "A barrier cannot be resolved or closed without a written resolution: state what changed, and who agreed to it.",
+    "status": "Status",
+    "targetDate": "Target date",
+    "title": "Barrier",
+    "titleRequired": "Give the barrier a title of at least three characters."
+  },
+  "list": {
+    "actions": "Actions",
+    "age": "Age",
+    "empty": "No barrier has been escalated beyond the team.",
+    "emptyHint": "Escalate an impediment the team cannot remove on its own.",
+    "noTargetDate": "No target date",
+    "overdue": "Overdue",
+    "owner": "Owner",
+    "source": "Escalated from",
+    "targetDate": "Target date",
+    "unassigned": "Unassigned"
+  },
+  "page": {
+    "subtitle": "What blocks the Scrum Team from outside it, and who is acting on it.",
+    "title": "Organizational barriers"
+  },
+  "priority": {
+    "critical": "Critical",
+    "high": "High",
+    "low": "Low",
+    "medium": "Medium"
+  },
+  "stats": {
+    "closed": "Closed",
+    "inProgress": "In progress",
+    "open": "Open",
+    "overdue": "Overdue",
+    "resolved": "Resolved"
+  }
+}

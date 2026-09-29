@@ -4,7 +4,7 @@ This document contains the license information for third-party packages used in 
 
 **Project:** Scrumooth — The self-hosted Scrum Guide enforcement layer
 **License:** Apache-2.0
-**Last Updated:** September 13, 2026
+**Last Updated:** September 29, 2026
 
 ---
 
@@ -135,6 +135,7 @@ This document contains the license information for third-party packages used in 
 | globals                     | 17.11.0 | MIT          | Sindre Sorhus              | https://github.com/sindresorhus/globals                  |
 | i18next-cli                 | 1.69.0  | MIT          | i18next                    | https://github.com/i18next/i18next-cli                   |
 | jsdom                       | 29.1.1  | MIT          | Elijah Insua               | https://github.com/jsdom/jsdom                           |
+| msw                         | 2.15.0  | MIT          | Artem Zakharchenko         | https://github.com/mswjs/msw                             |
 | prettier                    | 3.9.6   | MIT          | Prettier                   | https://github.com/prettier/prettier                     |
 | rimraf                      | 6.1.3   | MIT          | Isaac Z. Schlueter         | https://github.com/isaacs/rimraf                         |
 | rollup-plugin-visualizer    | 7.1.1   | MIT          | Denis Bardadym             | https://github.com/btd/rollup-plugin-visualizer          |
@@ -473,7 +474,7 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
 
 | License Type       | Package Count | Percentage |
 | ------------------ | ------------- | ---------- |
-| MIT                | 124           | 88.6%      |
+| MIT                | 125           | 88.7%      |
 | Apache-2.0         | 9             | 6.4%       |
 | ISC                | 2             | 1.4%       |
 | BSD-2-Clause       | 2             | 1.4%       |
@@ -481,7 +482,7 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
 | OFL-1.1            | 1             | 0.7%       |
 | PostgreSQL License | 1             | 0.7%       |
 
-**Counts:** The package counts above cover all direct npm dependencies listed in the dependency tables (134) plus the pinned runtime/toolchain engines (5) and the bundled font asset (1), for a total of 140 listed third-party components. Counts reflect the number of distinct entries in each table; duplicate package names across workspace tables are counted per occurrence.
+**Counts:** The package counts above cover all direct npm dependencies listed in the dependency tables (135) plus the pinned runtime/toolchain engines (5) and the bundled font asset (1), for a total of 141 listed third-party components. Counts reflect the number of distinct entries in each table; duplicate package names across workspace tables are counted per occurrence.
 
 ---
 
@@ -516,5 +517,5 @@ This document should be updated whenever:
 
 ---
 
-**Document Version:** 3.1  
-**Generated:** September 13, 2026
+**Document Version:** 3.2  
+**Generated:** September 29, 2026

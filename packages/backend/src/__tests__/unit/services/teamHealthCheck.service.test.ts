@@ -5,6 +5,9 @@ vi.mock('../../../utils/prisma', () => ({
     team: {
       findUnique: vi.fn(),
     },
+    teamMember: {
+      findFirst: vi.fn(),
+    },
     teamHealthCheck: {
       create: vi.fn(),
       findUnique: vi.fn(),
@@ -15,6 +18,7 @@ vi.mock('../../../utils/prisma', () => ({
       findUnique: vi.fn(),
       create: vi.fn(),
       update: vi.fn(),
+      findMany: vi.fn(),
     },
   },
 }));
@@ -27,10 +31,24 @@ import { teamHealthCheckService } from '../../../services/teamHealthCheck.servic
 import prisma from '../../../utils/prisma';
 import { NotFoundError, BadRequestError } from '../../../utils/errors';
 import { ScrumValue } from '../../../generated/prisma/client';
+import { GATE_CODES } from '@scrumooth/shared';
+
+/** The caller is the Scrum Master of whichever team the resource belongs to. */
+const callerIsScrumMaster = () =>
+  vi.mocked(prisma.teamMember.findFirst).mockResolvedValue({ role: 'SCRUM_MASTER' } as any);
+
+/** The caller is a member of the team, but not its Scrum Master. */
+const callerIsDeveloper = () =>
+  vi.mocked(prisma.teamMember.findFirst).mockResolvedValue({ role: 'DEVELOPERS' } as any);
+
+/** The caller is a Scrum Master -- of some other team. */
+const callerIsNotAMember = () =>
+  vi.mocked(prisma.teamMember.findFirst).mockResolvedValue(null as any);
 
 describe('TeamHealthCheckService', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    callerIsScrumMaster();
   });
 
   afterEach(() => {
@@ -47,7 +65,7 @@ describe('TeamHealthCheckService', () => {
         responses: [],
       } as any);
 
-      const result = await teamHealthCheckService.createHealthCheck('team-1');
+      const result = await teamHealthCheckService.createHealthCheck('team-1', undefined, 'user-1');
 
       expect(result.id).toBe('hc-1');
       expect(prisma.teamHealthCheck.create).toHaveBeenCalledWith({
@@ -84,23 +102,50 @@ describe('TeamHealthCheckService', () => {
     it('should throw NotFoundError when team is missing', async () => {
       vi.mocked(prisma.team.findUnique).mockResolvedValue(null as any);
 
-      await expect(teamHealthCheckService.createHealthCheck('missing')).rejects.toThrow(
-        NotFoundError
-      );
+      await expect(
+        teamHealthCheckService.createHealthCheck('missing', undefined, 'user-1')
+      ).rejects.toThrow(NotFoundError);
       expect(prisma.teamHealthCheck.create).not.toHaveBeenCalled();
+    });
+
+    it('should refuse to open a survey for a team the caller does not lead', async () => {
+      vi.mocked(prisma.team.findUnique).mockResolvedValue({ id: 'team-1' } as any);
+      callerIsDeveloper();
+
+      await expect(
+        teamHealthCheckService.createHealthCheck('team-1', undefined, 'user-2')
+      ).rejects.toMatchObject({ code: GATE_CODES.HEALTH_CHECK_RESULTS_SM_OF_TEAM_ONLY });
+      expect(prisma.teamHealthCheck.create).not.toHaveBeenCalled();
+    });
+
+    it('should refuse a caller with no identity', async () => {
+      vi.mocked(prisma.team.findUnique).mockResolvedValue({ id: 'team-1' } as any);
+
+      await expect(
+        teamHealthCheckService.createHealthCheck('team-1', undefined, undefined)
+      ).rejects.toMatchObject({ code: GATE_CODES.HEALTH_CHECK_RESULTS_SM_OF_TEAM_ONLY });
     });
 
     it('should propagate database errors', async () => {
       vi.mocked(prisma.team.findUnique).mockResolvedValue({ id: 'team-1' } as any);
       vi.mocked(prisma.teamHealthCheck.create).mockRejectedValue(new Error('db failure'));
 
-      await expect(teamHealthCheckService.createHealthCheck('team-1')).rejects.toThrow(
-        'db failure'
-      );
+      await expect(
+        teamHealthCheckService.createHealthCheck('team-1', undefined, 'user-1')
+      ).rejects.toThrow('db failure');
     });
   });
 
   describe('submitResponses', () => {
+    beforeEach(() => {
+      vi.mocked(prisma.teamHealthCheck.findUnique).mockResolvedValue({
+        id: 'hc-1',
+        teamId: 'team-1',
+        status: 'OPEN',
+        createdAt: new Date('2024-01-15T10:00:00.000Z'),
+      } as any);
+    });
+
     it('should throw NotFoundError when health check does not exist', async () => {
       vi.mocked(prisma.teamHealthCheck.findUnique).mockResolvedValue(null as any);
 
@@ -111,11 +156,18 @@ describe('TeamHealthCheckService', () => {
       ).rejects.toThrow(NotFoundError);
     });
 
+    it('should refuse a ballot from someone outside the surveyed team', async () => {
+      callerIsNotAMember();
+
+      await expect(
+        teamHealthCheckService.submitResponses('outsider', 'hc-1', {
+          responses: [{ scrumValue: 'COMMITMENT', score: 3, anonymous: false }],
+        })
+      ).rejects.toMatchObject({ code: GATE_CODES.HEALTH_CHECK_TEAM_MEMBERS_ONLY });
+      expect(prisma.teamHealthCheckResponse.create).not.toHaveBeenCalled();
+    });
+
     it('should reject more than five responses', async () => {
-      vi.mocked(prisma.teamHealthCheck.findUnique).mockResolvedValue({
-        id: 'hc-1',
-        status: 'OPEN',
-      } as any);
       const responses: Array<{ scrumValue: ScrumValue; score: number; anonymous: boolean }> = [
         { scrumValue: ScrumValue.COMMITMENT, score: 3, anonymous: false },
         { scrumValue: ScrumValue.FOCUS, score: 3, anonymous: false },
@@ -132,11 +184,6 @@ describe('TeamHealthCheckService', () => {
     });
 
     it('should reject scores above 5', async () => {
-      vi.mocked(prisma.teamHealthCheck.findUnique).mockResolvedValue({
-        id: 'hc-1',
-        status: 'OPEN',
-      } as any);
-
       await expect(
         teamHealthCheckService.submitResponses('user-1', 'hc-1', {
           responses: [{ scrumValue: 'COMMITMENT', score: 6, anonymous: false }],
@@ -145,11 +192,6 @@ describe('TeamHealthCheckService', () => {
     });
 
     it('should reject scores below 1', async () => {
-      vi.mocked(prisma.teamHealthCheck.findUnique).mockResolvedValue({
-        id: 'hc-1',
-        status: 'OPEN',
-      } as any);
-
       await expect(
         teamHealthCheckService.submitResponses('user-1', 'hc-1', {
           responses: [{ scrumValue: 'COMMITMENT', score: 0, anonymous: false }],
@@ -158,11 +200,6 @@ describe('TeamHealthCheckService', () => {
     });
 
     it('should reject an invalid Scrum value', async () => {
-      vi.mocked(prisma.teamHealthCheck.findUnique).mockResolvedValue({
-        id: 'hc-1',
-        status: 'OPEN',
-      } as any);
-
       await expect(
         teamHealthCheckService.submitResponses('user-1', 'hc-1', {
           responses: [{ scrumValue: 'SOMETHING' as ScrumValue, score: 3, anonymous: false }],
@@ -171,10 +208,6 @@ describe('TeamHealthCheckService', () => {
     });
 
     it('should save responses for each Scrum value', async () => {
-      vi.mocked(prisma.teamHealthCheck.findUnique).mockResolvedValue({
-        id: 'hc-1',
-        status: 'OPEN',
-      } as any);
       vi.mocked(prisma.teamHealthCheckResponse.findUnique).mockResolvedValue(null as any);
       vi.mocked(prisma.teamHealthCheckResponse.create).mockResolvedValue({
         id: 'r-1',
@@ -191,10 +224,6 @@ describe('TeamHealthCheckService', () => {
     });
 
     it('should create responses with the correct data payload', async () => {
-      vi.mocked(prisma.teamHealthCheck.findUnique).mockResolvedValue({
-        id: 'hc-1',
-        status: 'OPEN',
-      } as any);
       vi.mocked(prisma.teamHealthCheckResponse.findUnique).mockResolvedValue(null as any);
       vi.mocked(prisma.teamHealthCheckResponse.create).mockResolvedValue({
         id: 'r-1',
@@ -222,10 +251,6 @@ describe('TeamHealthCheckService', () => {
     });
 
     it('should update an existing response instead of creating a duplicate', async () => {
-      vi.mocked(prisma.teamHealthCheck.findUnique).mockResolvedValue({
-        id: 'hc-1',
-        status: 'OPEN',
-      } as any);
       vi.mocked(prisma.teamHealthCheckResponse.findUnique).mockResolvedValue({
         id: 'existing-1',
         scrumValue: 'COMMITMENT',
@@ -250,10 +275,6 @@ describe('TeamHealthCheckService', () => {
     });
 
     it('should propagate errors from response creation', async () => {
-      vi.mocked(prisma.teamHealthCheck.findUnique).mockResolvedValue({
-        id: 'hc-1',
-        status: 'OPEN',
-      } as any);
       vi.mocked(prisma.teamHealthCheckResponse.findUnique).mockResolvedValue(null as any);
       vi.mocked(prisma.teamHealthCheckResponse.create).mockRejectedValue(new Error('db failure'));
 
@@ -269,22 +290,71 @@ describe('TeamHealthCheckService', () => {
     it('should throw NotFoundError when health check is missing', async () => {
       vi.mocked(prisma.teamHealthCheck.findUnique).mockResolvedValue(null as any);
 
-      await expect(teamHealthCheckService.getResults('missing')).rejects.toThrow(NotFoundError);
+      await expect(teamHealthCheckService.getResults('missing', 'user-1')).rejects.toThrow(
+        NotFoundError
+      );
+    });
+
+    it('should refuse a Scrum Master of a different team', async () => {
+      vi.mocked(prisma.teamHealthCheck.findUnique).mockResolvedValue({
+        id: 'hc-1',
+        teamId: 'team-2',
+        status: 'OPEN',
+        createdAt: new Date(),
+      } as any);
+      callerIsNotAMember();
+
+      await expect(
+        teamHealthCheckService.getResults('hc-1', 'other-team-sm')
+      ).rejects.toMatchObject({ code: GATE_CODES.HEALTH_CHECK_RESULTS_SM_OF_TEAM_ONLY });
+      expect(prisma.teamHealthCheckResponse.findMany).not.toHaveBeenCalled();
+    });
+
+    it('should refuse a team member who is not the Scrum Master', async () => {
+      vi.mocked(prisma.teamHealthCheck.findUnique).mockResolvedValue({
+        id: 'hc-1',
+        teamId: 'team-1',
+        status: 'OPEN',
+        createdAt: new Date(),
+      } as any);
+      callerIsDeveloper();
+
+      await expect(teamHealthCheckService.getResults('hc-1', 'user-1')).rejects.toMatchObject({
+        code: GATE_CODES.HEALTH_CHECK_RESULTS_SM_OF_TEAM_ONLY,
+      });
+    });
+
+    it('should resolve the role against the health check own team', async () => {
+      vi.mocked(prisma.teamHealthCheck.findUnique).mockResolvedValue({
+        id: 'hc-1',
+        teamId: 'team-9',
+        status: 'OPEN',
+        createdAt: new Date('2024-01-15T10:00:00.000Z'),
+      } as any);
+      vi.mocked(prisma.teamHealthCheckResponse.findMany).mockResolvedValue([] as any);
+
+      await teamHealthCheckService.getResults('hc-1', 'user-1');
+
+      expect(prisma.teamMember.findFirst).toHaveBeenCalledWith({
+        where: { teamId: 'team-9', userId: 'user-1' },
+        select: { role: true },
+      });
     });
 
     it('should compute average scores per Scrum value', async () => {
       vi.mocked(prisma.teamHealthCheck.findUnique).mockResolvedValue({
         id: 'hc-1',
+        teamId: 'team-1',
         status: 'OPEN',
         createdAt: new Date(),
-        responses: [
-          { id: 'r1', scrumValue: 'COMMITMENT', score: 4 },
-          { id: 'r2', scrumValue: 'COMMITMENT', score: 5 },
-          { id: 'r3', scrumValue: 'FOCUS', score: 3 },
-        ],
       } as any);
+      vi.mocked(prisma.teamHealthCheckResponse.findMany).mockResolvedValue([
+        { scrumValue: 'COMMITMENT', score: 4 },
+        { scrumValue: 'COMMITMENT', score: 5 },
+        { scrumValue: 'FOCUS', score: 3 },
+      ] as any);
 
-      const result = await teamHealthCheckService.getResults('hc-1');
+      const result = await teamHealthCheckService.getResults('hc-1', 'user-1');
 
       const commitment = result.results.find((r) => r.scrumValue === 'COMMITMENT');
       expect(commitment?.averageScore).toBe(4.5);
@@ -295,12 +365,13 @@ describe('TeamHealthCheckService', () => {
     it('should return zero averages when there are no responses', async () => {
       vi.mocked(prisma.teamHealthCheck.findUnique).mockResolvedValue({
         id: 'hc-1',
+        teamId: 'team-1',
         status: 'OPEN',
         createdAt: new Date('2024-01-15T10:00:00.000Z'),
-        responses: [],
       } as any);
+      vi.mocked(prisma.teamHealthCheckResponse.findMany).mockResolvedValue([] as any);
 
-      const result = await teamHealthCheckService.getResults('hc-1');
+      const result = await teamHealthCheckService.getResults('hc-1', 'user-1');
 
       expect(result.results).toHaveLength(5);
       for (const r of result.results) {
@@ -313,16 +384,17 @@ describe('TeamHealthCheckService', () => {
     it('should compute the overall average across all Scrum values', async () => {
       vi.mocked(prisma.teamHealthCheck.findUnique).mockResolvedValue({
         id: 'hc-1',
+        teamId: 'team-1',
         status: 'CLOSED',
         createdAt: new Date('2024-01-15T10:00:00.000Z'),
-        responses: [
-          { id: 'r1', scrumValue: 'COMMITMENT', score: 4 },
-          { id: 'r2', scrumValue: 'COMMITMENT', score: 5 },
-          { id: 'r3', scrumValue: 'FOCUS', score: 3 },
-        ],
       } as any);
+      vi.mocked(prisma.teamHealthCheckResponse.findMany).mockResolvedValue([
+        { scrumValue: 'COMMITMENT', score: 4 },
+        { scrumValue: 'COMMITMENT', score: 5 },
+        { scrumValue: 'FOCUS', score: 3 },
+      ] as any);
 
-      const result = await teamHealthCheckService.getResults('hc-1');
+      const result = await teamHealthCheckService.getResults('hc-1', 'user-1');
 
       expect(result.healthCheckId).toBe('hc-1');
       expect(result.status).toBe('CLOSED');
@@ -333,10 +405,19 @@ describe('TeamHealthCheckService', () => {
   });
 
   describe('getTrend', () => {
+    it('should refuse the trend for anyone but the team Scrum Master', async () => {
+      callerIsNotAMember();
+
+      await expect(
+        teamHealthCheckService.getTrend('team-1', 'other-team-sm')
+      ).rejects.toMatchObject({ code: GATE_CODES.HEALTH_CHECK_RESULTS_SM_OF_TEAM_ONLY });
+      expect(prisma.teamHealthCheck.findMany).not.toHaveBeenCalled();
+    });
+
     it('should return an empty array when the team has no health checks', async () => {
       vi.mocked(prisma.teamHealthCheck.findMany).mockResolvedValue([] as any);
 
-      const result = await teamHealthCheckService.getTrend('team-1');
+      const result = await teamHealthCheckService.getTrend('team-1', 'user-1');
 
       expect(result).toEqual([]);
       expect(prisma.teamHealthCheck.findMany).toHaveBeenCalledWith({
@@ -364,7 +445,7 @@ describe('TeamHealthCheckService', () => {
         },
       ] as any);
 
-      const result = await teamHealthCheckService.getTrend('team-1');
+      const result = await teamHealthCheckService.getTrend('team-1', 'user-1');
 
       expect(result).toHaveLength(2);
 
@@ -392,7 +473,7 @@ describe('TeamHealthCheckService', () => {
         },
       ] as any);
 
-      const result = await teamHealthCheckService.getTrend('team-1');
+      const result = await teamHealthCheckService.getTrend('team-1', 'user-1');
 
       expect(result).toHaveLength(1);
       expect(result[0]?.healthCheckId).toBe('hc-empty');
@@ -402,10 +483,19 @@ describe('TeamHealthCheckService', () => {
   });
 
   describe('getLatestForTeam', () => {
+    it('should refuse the latest results for anyone but the team Scrum Master', async () => {
+      callerIsDeveloper();
+
+      await expect(
+        teamHealthCheckService.getLatestForTeam('team-1', 'user-1')
+      ).rejects.toMatchObject({ code: GATE_CODES.HEALTH_CHECK_RESULTS_SM_OF_TEAM_ONLY });
+      expect(prisma.teamHealthCheck.findFirst).not.toHaveBeenCalled();
+    });
+
     it('should return null when the team has no health checks', async () => {
       vi.mocked(prisma.teamHealthCheck.findFirst).mockResolvedValue(null as any);
 
-      const result = await teamHealthCheckService.getLatestForTeam('team-1');
+      const result = await teamHealthCheckService.getLatestForTeam('team-1', 'user-1');
 
       expect(result).toBeNull();
       expect(prisma.teamHealthCheck.findFirst).toHaveBeenCalledWith({
@@ -416,23 +506,38 @@ describe('TeamHealthCheckService', () => {
     });
 
     it('should return the aggregated results of the latest health check', async () => {
-      vi.mocked(prisma.teamHealthCheck.findFirst).mockResolvedValue({ id: 'hc-latest' } as any);
-      const getResultsSpy = vi
-        .spyOn(teamHealthCheckService, 'getResults')
-        .mockResolvedValue({ healthCheckId: 'hc-latest', overallAverage: 4 } as any);
+      vi.mocked(prisma.teamHealthCheck.findFirst).mockResolvedValue({
+        id: 'hc-latest',
+        teamId: 'team-1',
+        status: 'CLOSED',
+        createdAt: new Date('2024-02-01T10:00:00.000Z'),
+        responses: [{ scrumValue: 'COMMITMENT', score: 4 }],
+      } as any);
 
-      const result = await teamHealthCheckService.getLatestForTeam('team-1');
+      const result = await teamHealthCheckService.getLatestForTeam('team-1', 'user-1');
 
-      expect(getResultsSpy).toHaveBeenCalledWith('hc-latest');
-      expect(result).toEqual({ healthCheckId: 'hc-latest', overallAverage: 4 });
+      expect(result).toMatchObject({
+        healthCheckId: 'hc-latest',
+        status: 'CLOSED',
+        overallAverage: 0.8,
+      });
     });
   });
 
   describe('getLatestStatusForTeam', () => {
+    it('should refuse the status for someone outside the team', async () => {
+      callerIsNotAMember();
+
+      await expect(
+        teamHealthCheckService.getLatestStatusForTeam('team-1', 'outsider')
+      ).rejects.toMatchObject({ code: GATE_CODES.HEALTH_CHECK_TEAM_MEMBERS_ONLY });
+      expect(prisma.teamHealthCheck.findFirst).not.toHaveBeenCalled();
+    });
+
     it('should return null when the team has no health checks', async () => {
       vi.mocked(prisma.teamHealthCheck.findFirst).mockResolvedValue(null as any);
 
-      const result = await teamHealthCheckService.getLatestStatusForTeam('team-1');
+      const result = await teamHealthCheckService.getLatestStatusForTeam('team-1', 'user-1');
 
       expect(result).toBeNull();
       expect(prisma.teamHealthCheck.findFirst).toHaveBeenCalledWith({
@@ -453,7 +558,7 @@ describe('TeamHealthCheckService', () => {
         createdAt: new Date('2024-02-01T10:00:00.000Z'),
       } as any);
 
-      const result = await teamHealthCheckService.getLatestStatusForTeam('team-1');
+      const result = await teamHealthCheckService.getLatestStatusForTeam('team-1', 'user-1');
 
       expect(result).toEqual({
         healthCheckId: 'hc-latest',

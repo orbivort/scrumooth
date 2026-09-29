@@ -19,17 +19,30 @@ const teamQuerySchema = z.object({
   sprintId: z.string().uuid('Invalid sprint ID').optional(),
 });
 
+/**
+ * The Scrum Team's own verdict on its Sprint Goal.
+ *
+ * A closed set of values rather than free text: the reports count these, and the interface renders
+ * them as text badges, so an unrecognised value would be uncountable and unrenderable. Attainment
+ * is a judgement the team records; it is never derived from item completion.
+ */
+const sprintGoalOutcomeSchema = z.enum(['ACHIEVED', 'PARTIALLY_ACHIEVED', 'NOT_ACHIEVED']);
+
 const createReviewSchema = z.object({
   sprintId: z.string().uuid('Invalid sprint ID'),
   teamId: z.string().uuid('Invalid team ID'),
   incrementId: z.string().uuid('Invalid increment ID').optional(),
   reviewDate: z.string().transform((val) => new Date(val)),
   summary: z.string().max(2000).optional(),
+  sprintGoalOutcome: sprintGoalOutcomeSchema.optional(),
+  sprintGoalNote: z.string().max(2000).optional(),
 });
 
 const updateReviewSchema = z.object({
   summary: z.string().max(2000).optional(),
   status: z.enum(['in_progress', 'completed']).optional(),
+  sprintGoalOutcome: sprintGoalOutcomeSchema.optional(),
+  sprintGoalNote: z.string().max(2000).optional(),
   reviewDate: z
     .string()
     .transform((val) => new Date(val))
@@ -84,24 +97,37 @@ const addFeedbackSchema = z.object({
   ownerId: z.string().uuid().nullable().optional(),
 });
 
+const attendeeRoleSchema = z.enum(['product_owner', 'scrum_master', 'developers', 'stakeholder'], {
+  error: 'Invalid role selected',
+});
+
 const addAttendeeSchema = z.object({
+  // Linking an attendee to a registered user is optional: a genuinely external stakeholder is
+  // recorded with free-text name/email instead.
+  userId: z.string().uuid('Invalid user ID').nullable().optional(),
   name: z.string().min(1, 'Name is required').max(100, 'Name is too long'),
   email: z.string().email('Invalid email format').max(255).optional().or(z.literal('')),
-  role: z.enum(['product_owner', 'scrum_master', 'developers', 'stakeholder'], {
-    error: 'Invalid role selected',
-  }),
+  role: attendeeRoleSchema,
   attended: z.boolean().default(true),
 });
 
 const updateAttendeeSchema = z.object({
+  userId: z.string().uuid('Invalid user ID').nullable().optional(),
   name: z.string().min(1, 'Name is required').max(100, 'Name is too long').optional(),
   email: z.string().email('Invalid email format').max(255).optional().or(z.literal('')),
-  role: z
-    .enum(['product_owner', 'scrum_master', 'developers', 'stakeholder'], {
-      error: 'Invalid role selected',
-    })
-    .optional(),
+  role: attendeeRoleSchema.optional(),
   attended: z.boolean().optional(),
+});
+
+const materializeAdjustmentSchema = z.object({
+  title: z.string().min(1).max(500).optional(),
+  description: z.string().max(5000).optional(),
+  storyPoints: z.number().int().positive().optional(),
+  acceptanceCriteria: z.string().max(5000).optional(),
+});
+
+const linkAdjustmentSchema = z.object({
+  pbiId: z.string().uuid('Invalid product backlog item ID'),
 });
 
 router.get('/', validateQuery(teamQuerySchema), sprintReviewController.getSprintReviews);
@@ -116,6 +142,20 @@ router.put(
   '/adjustments/:id/implement',
   validateParams(z.object({ id: z.string().uuid('Invalid adjustment ID') })),
   sprintReviewController.markAdjustmentImplemented
+);
+
+router.post(
+  '/adjustments/:id/materialize',
+  validateParams(z.object({ id: z.string().uuid('Invalid adjustment ID') })),
+  validateBody(materializeAdjustmentSchema),
+  sprintReviewController.materializeAdjustment
+);
+
+router.put(
+  '/adjustments/:id/link',
+  validateParams(z.object({ id: z.string().uuid('Invalid adjustment ID') })),
+  validateBody(linkAdjustmentSchema),
+  sprintReviewController.linkAdjustmentToPbi
 );
 
 router.get(
@@ -175,6 +215,17 @@ router.patch(
   smDashboardController.updateSprintReviewSmNotes
 );
 
+/**
+ * @route   GET /api/v1/sprint-reviews/:id/sm-notes/revisions
+ * @desc    The Scrum Master's notes history for a Sprint Review, newest first
+ * @access  Private (the team's Scrum Master)
+ */
+router.get(
+  '/:id/sm-notes/revisions',
+  validateParams(reviewIdSchema),
+  smDashboardController.getSprintReviewSmNotesRevisions
+);
+
 // Product Goal integration at Sprint Review
 router.get(
   '/:id/product-goal',
@@ -186,10 +237,19 @@ router.post(
   '/:id/product-goal-assessment',
   validateParams(reviewIdSchema),
   validateBody(
-    z.object({
-      assessment: z.string().max(5000).optional(),
-      successMetricValues: z.record(z.string(), z.any()).optional(),
-    })
+    z
+      .object({
+        assessment: z.string().max(5000).optional(),
+        successMetricValues: z.record(z.string(), z.any()).optional(),
+      })
+      // A snapshot is the evidence a Product Goal is judged against, so an empty payload is
+      // not a valid snapshot: it must carry an assessment or at least one measured value.
+      .refine(
+        (value) =>
+          (value.assessment?.trim().length ?? 0) > 0 ||
+          Object.keys(value.successMetricValues ?? {}).length > 0,
+        { message: 'errors:productGoal.snapshotEvidenceRequired' }
+      )
   ),
   productGoalSnapshotController.submitProductGoalAssessment
 );

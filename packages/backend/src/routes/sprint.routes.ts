@@ -88,9 +88,38 @@ const saveSprintBacklogSchema = z.object({
     .optional(),
 });
 
+// Sprint Planning attendance (any member of the owning Scrum Team may write). Roles mirror the
+// Sprint Review / Retrospective attendee contract so all three events record participation
+// identically.
+const planningAttendeeRoleSchema = z.enum(
+  ['product_owner', 'scrum_master', 'developers', 'stakeholder'],
+  { error: 'Invalid role selected' }
+);
+
+const planningAttendeeInputSchema = z.object({
+  name: z.string().min(1, 'Name is required').max(100, 'Name is too long'),
+  email: z.string().email('Invalid email format').max(255).optional().or(z.literal('')),
+  role: planningAttendeeRoleSchema,
+  attended: z.boolean().default(true),
+});
+
+const updatePlanningAttendeeSchema = z
+  .object({
+    name: z.string().min(1, 'Name is required').max(100, 'Name is too long').optional(),
+    email: z.string().email('Invalid email format').max(255).optional().or(z.literal('')),
+    role: planningAttendeeRoleSchema.optional(),
+    attended: z.boolean().optional(),
+  })
+  .strict();
+
+const planningAttendeeIdSchema = z.object({
+  id: z.string().uuid('Invalid sprint ID'),
+  attendeeId: z.string().uuid('Invalid attendee ID'),
+});
+
 // Incremental Sprint Planning draft payload (selected PBIs, decomposed tasks, working
-// Sprint Goal, optional capacity). `strict()` rejects unknown fields so a stale client
-// cannot drift the persisted state.
+// Sprint Goal, recorded capacity, and an optional attendance snapshot). `strict()` rejects
+// unknown fields so a stale client cannot drift the persisted state.
 const saveSprintPlanningDraftSchema = z
   .object({
     items: z
@@ -117,23 +146,47 @@ const saveSprintPlanningDraftSchema = z
     capacity: z
       .array(
         z.object({
-          memberId: z.string().uuid().optional(),
+          memberId: z.string().uuid().optional().nullable(),
           userId: z.string().uuid('Invalid user ID'),
           availableHours: z.number().min(0),
         })
       )
       .optional(),
+    attendees: z.array(planningAttendeeInputSchema).optional(),
   })
   .strict();
 
+// A mid-Sprint Sprint Backlog change must state why it is made and whether it endangers the
+// Sprint Goal. "No changes are made that would endanger the Sprint Goal": a change declared as
+// endangering the goal is recorded as pending and needs the Product Owner's acknowledgement.
+const sprintGoalImpactSchema = z.enum(['SUPPORTS_GOAL', 'ENDANGERS_GOAL'], {
+  error: 'Select whether this change endangers the Sprint Goal',
+});
+
 const addPBIToSprintSchema = z.object({
   pbiId: z.string().uuid('Invalid PBI ID'),
-  reason: z.string().max(500).optional(),
+  reason: z.string().min(1, 'Reason is required').max(500, 'Reason is too long'),
+  goalImpact: sprintGoalImpactSchema,
 });
 
 const removePBIFromSprintSchema = z.object({
   taskAction: z.enum(['delete', 'return_to_backlog', 'keep_in_sprint']),
-  reason: z.string().max(500).optional(),
+  reason: z.string().min(1, 'Reason is required').max(500, 'Reason is too long'),
+  goalImpact: sprintGoalImpactSchema,
+});
+
+const acknowledgeSprintBacklogChangeSchema = z
+  .object({
+    decision: z.enum(['APPROVE', 'REJECT'], { error: 'Decision must be APPROVE or REJECT' }),
+    note: z.string().max(1000, 'Note is too long').optional(),
+    // Required when approving a change that endangers the Sprint Goal: the renegotiated goal.
+    sprintGoal: z.string().min(1, 'Sprint Goal cannot be empty').max(500).optional(),
+  })
+  .strict();
+
+const backlogChangeIdSchema = z.object({
+  sprintId: z.string().uuid('Invalid sprint ID'),
+  changeId: z.string().uuid('Invalid change ID'),
 });
 
 const pbiIdSchema = z.object({
@@ -182,14 +235,15 @@ router.get('/:id', validateParams(sprintIdSchema), sprintController.getSprintByI
 
 /**
  * @route   PUT /api/v1/sprints/:id
- * @desc    Update sprint
- * @access  Private
+ * @desc    Update a Sprint that is still being planned (name, dates, Sprint Goal)
+ * @access  Private (team members). Only DRAFT/PLANNED Sprints; the Sprint container rules
+ *          (one month or less, no overlap, no sprint-less time) are re-applied.
  */
 router.put(
   '/:id',
   validateParams(sprintIdSchema),
   validateBody(updateSprintSchema),
-  sprintController.getSprintById // TODO: implement updateSprint
+  sprintController.updateSprint
 );
 
 /**
@@ -237,6 +291,52 @@ router.get(
   '/:id/planning-draft',
   validateParams(sprintIdSchema),
   sprintController.getSprintPlanningDraft
+);
+
+/**
+ * @route   GET /api/v1/sprints/:id/planning-attendees
+ * @desc    Read the recorded Sprint Planning participation (read-only)
+ * @access  Private (any authenticated team member)
+ */
+router.get(
+  '/:id/planning-attendees',
+  validateParams(sprintIdSchema),
+  sprintController.getPlanningParticipation
+);
+
+/**
+ * @route   POST /api/v1/sprints/:id/planning-attendees
+ * @desc    Record a Sprint Planning attendee (any member of the Scrum Team)
+ * @access  Private (Scrum Team members)
+ */
+router.post(
+  '/:id/planning-attendees',
+  validateParams(sprintIdSchema),
+  validateBody(planningAttendeeInputSchema),
+  sprintController.addPlanningAttendee
+);
+
+/**
+ * @route   PUT /api/v1/sprints/:id/planning-attendees/:attendeeId
+ * @desc    Update a recorded Sprint Planning attendee (any member of the Scrum Team)
+ * @access  Private (Scrum Team members)
+ */
+router.put(
+  '/:id/planning-attendees/:attendeeId',
+  validateParams(planningAttendeeIdSchema),
+  validateBody(updatePlanningAttendeeSchema),
+  sprintController.updatePlanningAttendee
+);
+
+/**
+ * @route   DELETE /api/v1/sprints/:id/planning-attendees/:attendeeId
+ * @desc    Remove a recorded Sprint Planning attendee (any member of the Scrum Team)
+ * @access  Private (Scrum Team members)
+ */
+router.delete(
+  '/:id/planning-attendees/:attendeeId',
+  validateParams(planningAttendeeIdSchema),
+  sprintController.deletePlanningAttendee
 );
 
 /**
@@ -350,6 +450,12 @@ router.get(
   })
 );
 
+/**
+ * @route   POST /api/v1/sprints/:sprintId/backlog-items
+ * @desc    Add a Product Backlog item to an ACTIVE Sprint's Sprint Backlog
+ * @access  Private (Developers). Requires a reason and a goal-impact declaration; a change
+ *          declared as endangering the Sprint Goal is recorded as pending and not applied.
+ */
 router.post(
   '/:sprintId/backlog-items',
   validateParams(sprintIdParamSchema),
@@ -357,6 +463,12 @@ router.post(
   sprintController.addPBIToSprint
 );
 
+/**
+ * @route   DELETE /api/v1/sprints/:sprintId/backlog-items/:pbiId
+ * @desc    Remove a Product Backlog item from an ACTIVE Sprint's Sprint Backlog
+ * @access  Private (Developers). Requires a reason and a goal-impact declaration; a change
+ *          declared as endangering the Sprint Goal is recorded as pending and not applied.
+ */
 router.delete(
   '/:sprintId/backlog-items/:pbiId',
   validateParams(pbiIdSchema),
@@ -368,6 +480,20 @@ router.get(
   '/:sprintId/backlog-changes',
   validateParams(sprintIdParamSchema),
   sprintController.getSprintBacklogChanges
+);
+
+/**
+ * @route   POST /api/v1/sprints/:sprintId/backlog-changes/:changeId/acknowledge
+ * @desc    Acknowledge (approve) or reject a pending Sprint Backlog change that endangers the
+ *          Sprint Goal. Approving applies the deferred change and records the renegotiated
+ *          Sprint Goal; rejecting clears the pending state without touching the Sprint Backlog.
+ * @access  Private (Product Owner)
+ */
+router.post(
+  '/:sprintId/backlog-changes/:changeId/acknowledge',
+  validateParams(backlogChangeIdSchema),
+  validateBody(acknowledgeSprintBacklogChangeSchema),
+  sprintController.acknowledgeSprintBacklogChange
 );
 
 /**
@@ -386,6 +512,17 @@ router.patch(
   validateParams(sprintIdSchema),
   validateBody(z.object({ smNotes: z.string().max(5000).optional().default('') })),
   smDashboardController.updateSprintSmNotes
+);
+
+/**
+ * @route   GET /api/v1/sprints/:id/sm-notes/revisions
+ * @desc    The Scrum Master's notes history for a Sprint, newest first
+ * @access  Private (the team's Scrum Master)
+ */
+router.get(
+  '/:id/sm-notes/revisions',
+  validateParams(sprintIdSchema),
+  smDashboardController.getSprintSmNotesRevisions
 );
 
 export default router;
