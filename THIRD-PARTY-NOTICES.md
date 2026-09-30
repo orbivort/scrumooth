@@ -131,7 +131,7 @@ This document contains the license information for third-party packages used in 
 | eslint-plugin-react         | 7.37.5  | MIT          | Yannick Croissant          | https://github.com/jsx-eslint/eslint-plugin-react        |
 | globals                     | 17.12.0 | MIT          | Sindre Sorhus              | https://github.com/sindresorhus/globals                  |
 | i18next-cli                 | 1.69.0  | MIT          | i18next                    | https://github.com/i18next/i18next-cli                   |
-| jsdom                       | 29.1.1  | MIT          | Elijah Insua               | https://github.com/jsdom/jsdom                           |
+| jsdom                       | 30.1.1  | MIT          | Elijah Insua               | https://github.com/jsdom/jsdom                           |
 | msw                         | 2.15.0  | MIT          | Artem Zakharchenko         | https://github.com/mswjs/msw                             |
 | prettier                    | 3.9.9   | MIT          | Prettier                   | https://github.com/prettier/prettier                     |
 | rimraf                      | 6.1.3   | MIT          | Isaac Z. Schlueter         | https://github.com/isaacs/rimraf                         |

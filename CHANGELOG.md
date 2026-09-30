@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [3.1.1] - 2026-09-30
 
+### Fixed
+
+- Frontend unit tests no longer fail on `calc()` styles: `jsdom` 29.1.1 → 30.1.1 — **transitive
+  development dependency** of the Vitest toolchain. jsdom 29.1.1 regressed its CSSOM serialization
+  of math functions, returning CSS token internals instead of the value, so `calc(100% - 20px)`
+  read back as `calc(percentage-token,100%,5,8,[object Object])` from both `style.width` and
+  `getComputedStyle()`. That broke `SkeletonText`'s "handles lastLineWidth with calc()" case and
+  the `Frontend Tests` CI job. jsdom 30.1.1 serializes the value unchanged (`29.0.x` and `29.1.0`
+  are unaffected)
+
 ### Security
 
 - Remediate **high**-, **moderate**-, and **low**-severity dependency vulnerabilities

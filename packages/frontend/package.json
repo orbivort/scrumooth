@@ -107,7 +107,7 @@
     "eslint-plugin-react": "catalog:",
     "globals": "catalog:",
     "i18next-cli": "^1.67.0",
-    "jsdom": "^29.1.1",
+    "jsdom": "^30.1.1",
     "msw": "^2.15.0",
     "prettier": "catalog:",
     "rimraf": "catalog:",
