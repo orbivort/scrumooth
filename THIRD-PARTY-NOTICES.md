@@ -4,7 +4,7 @@ This document contains the license information for third-party packages used in 
 
 **Project:** Scrumooth — The self-hosted Scrum Guide enforcement layer
 **License:** Apache-2.0
-**Last Updated:** September 29, 2026
+**Last Updated:** September 30, 2026
 
 ---
 
@@ -42,7 +42,7 @@ This document contains the license information for third-party packages used in 
 | intl-pluralrules          | 2.0.1   | ISC          | Eemeli Aro                    | https://github.com/eemeli/intl-pluralrules                         |
 | jsonwebtoken              | 9.0.3   | MIT          | Auth0, Inc.                   | https://github.com/auth0/node-jsonwebtoken                         |
 | node-cron                 | 4.6.0   | MIT          | Lucas Merencia                | https://github.com/merencia/node-cron                              |
-| nodemailer                | 9.1.1   | MIT-0        | Andris Reinman                | https://github.com/nodemailer/nodemailer                           |
+| nodemailer                | 10.0.12 | MIT-0        | Andris Reinman                | https://github.com/nodemailer/nodemailer                           |
 | resolve-accept-language   | 3.2.2   | MIT          | Nicolas Bouvrette             | https://github.com/resolve-accept-language/resolve-accept-language |
 | sanitize-html             | 2.17.7  | MIT          | Apostrophe Technologies, Inc. | https://github.com/apostrophecms/sanitize-html                     |
 | uuid                      | 14.0.1  | MIT          | uuidjs                        | https://github.com/uuidjs/uuid                                     |
@@ -54,36 +54,33 @@ This document contains the license information for third-party packages used in 
 
 ## Backend Development Dependencies
 
-| Dependency Name                  | Version | License Type | Copyright Holder      | Source/Repository URL                                  |
-| -------------------------------- | ------- | ------------ | --------------------- | ------------------------------------------------------ |
-| @eslint/js                       | 10.0.1  | MIT          | OpenJS Foundation     | https://github.com/eslint/eslint                       |
-| @faker-js/faker                  | 10.5.0  | MIT          | FakerJS               | https://github.com/faker-js/faker                      |
-| @types/bcrypt                    | 6.0.0   | MIT          | DefinitelyTyped       | https://github.com/DefinitelyTyped/DefinitelyTyped     |
-| @types/compression               | 1.8.1   | MIT          | DefinitelyTyped       | https://github.com/DefinitelyTyped/DefinitelyTyped     |
-| @types/cookie-parser             | 1.4.10  | MIT          | DefinitelyTyped       | https://github.com/DefinitelyTyped/DefinitelyTyped     |
-| @types/cors                      | 2.8.19  | MIT          | DefinitelyTyped       | https://github.com/DefinitelyTyped/DefinitelyTyped     |
-| @types/express                   | 5.0.6   | MIT          | DefinitelyTyped       | https://github.com/DefinitelyTyped/DefinitelyTyped     |
-| @types/jsonwebtoken              | 9.0.10  | MIT          | DefinitelyTyped       | https://github.com/DefinitelyTyped/DefinitelyTyped     |
-| @types/node                      | 24.13.3 | MIT          | DefinitelyTyped       | https://github.com/DefinitelyTyped/DefinitelyTyped     |
-| @types/node-cron                 | 3.0.11  | MIT          | DefinitelyTyped       | https://github.com/DefinitelyTyped/DefinitelyTyped     |
-| @types/nodemailer                | 8.0.1   | MIT          | DefinitelyTyped       | https://github.com/DefinitelyTyped/DefinitelyTyped     |
-| @types/sanitize-html             | 2.16.1  | MIT          | DefinitelyTyped       | https://github.com/DefinitelyTyped/DefinitelyTyped     |
-| @types/supertest                 | 7.2.1   | MIT          | DefinitelyTyped       | https://github.com/DefinitelyTyped/DefinitelyTyped     |
-| @typescript-eslint/eslint-plugin | 8.67.0  | MIT          | TypeScript ESLint     | https://github.com/typescript-eslint/typescript-eslint |
-| @typescript-eslint/parser        | 8.67.0  | MIT          | TypeScript ESLint     | https://github.com/typescript-eslint/typescript-eslint |
-| @vitest/coverage-v8              | 4.1.11  | MIT          | Vladimir Sheremet     | https://github.com/vitest-dev/vitest                   |
-| cross-env                        | 10.1.0  | MIT          | Kent C. Dodds         | https://github.com/kentcdodds/cross-env                |
-| eslint                           | 10.8.1  | MIT          | OpenJS Foundation     | https://github.com/eslint/eslint                       |
-| eslint-config-prettier           | 10.1.8  | MIT          | Simon Lydell          | https://github.com/prettier/eslint-config-prettier     |
-| eslint-plugin-unicorn            | 64.0.0  | MIT          | Sindre Sorhus         | https://github.com/sindresorhus/eslint-plugin-unicorn  |
-| globals                          | 17.11.0 | MIT          | Sindre Sorhus         | https://github.com/sindresorhus/globals                |
-| prettier                         | 3.9.6   | MIT          | Prettier              | https://github.com/prettier/prettier                   |
-| prisma                           | 7.9.1   | Apache-2.0   | Prisma Data, Inc.     | https://github.com/prisma/prisma                       |
-| rimraf                           | 6.1.3   | MIT          | Isaac Z. Schlueter    | https://github.com/isaacs/rimraf                       |
-| supertest                        | 7.2.2   | MIT          | TJ Holowaychuk        | https://github.com/ladjs/supertest                     |
-| tsx                              | 4.23.12 | MIT          | Hiroki Osame          | https://github.com/privatenumber/tsx                   |
-| typescript                       | 6.0.3   | Apache-2.0   | Microsoft Corporation | https://github.com/microsoft/TypeScript                |
-| vitest                           | 4.1.11  | MIT          | Vladimir Sheremet     | https://github.com/vitest-dev/vitest                   |
+| Dependency Name        | Version | License Type | Copyright Holder      | Source/Repository URL                                 |
+| ---------------------- | ------- | ------------ | --------------------- | ----------------------------------------------------- |
+| @eslint/js             | 10.0.1  | MIT          | OpenJS Foundation     | https://github.com/eslint/eslint                      |
+| @faker-js/faker        | 10.5.0  | MIT          | FakerJS               | https://github.com/faker-js/faker                     |
+| @types/bcrypt          | 6.0.0   | MIT          | DefinitelyTyped       | https://github.com/DefinitelyTyped/DefinitelyTyped    |
+| @types/compression     | 1.8.1   | MIT          | DefinitelyTyped       | https://github.com/DefinitelyTyped/DefinitelyTyped    |
+| @types/cookie-parser   | 1.4.10  | MIT          | DefinitelyTyped       | https://github.com/DefinitelyTyped/DefinitelyTyped    |
+| @types/cors            | 2.8.19  | MIT          | DefinitelyTyped       | https://github.com/DefinitelyTyped/DefinitelyTyped    |
+| @types/express         | 5.0.6   | MIT          | DefinitelyTyped       | https://github.com/DefinitelyTyped/DefinitelyTyped    |
+| @types/jsonwebtoken    | 9.0.10  | MIT          | DefinitelyTyped       | https://github.com/DefinitelyTyped/DefinitelyTyped    |
+| @types/node            | 24.13.3 | MIT          | DefinitelyTyped       | https://github.com/DefinitelyTyped/DefinitelyTyped    |
+| @types/node-cron       | 3.0.11  | MIT          | DefinitelyTyped       | https://github.com/DefinitelyTyped/DefinitelyTyped    |
+| @types/sanitize-html   | 2.16.1  | MIT          | DefinitelyTyped       | https://github.com/DefinitelyTyped/DefinitelyTyped    |
+| @types/supertest       | 7.2.1   | MIT          | DefinitelyTyped       | https://github.com/DefinitelyTyped/DefinitelyTyped    |
+| @vitest/coverage-v8    | 4.1.11  | MIT          | Vladimir Sheremet     | https://github.com/vitest-dev/vitest                  |
+| cross-env              | 10.1.0  | MIT          | Kent C. Dodds         | https://github.com/kentcdodds/cross-env               |
+| eslint                 | 10.11.0 | MIT          | OpenJS Foundation     | https://github.com/eslint/eslint                      |
+| eslint-config-prettier | 10.1.8  | MIT          | Simon Lydell          | https://github.com/prettier/eslint-config-prettier    |
+| eslint-plugin-unicorn  | 76.0.0  | MIT          | Sindre Sorhus         | https://github.com/sindresorhus/eslint-plugin-unicorn |
+| globals                | 17.12.0 | MIT          | Sindre Sorhus         | https://github.com/sindresorhus/globals               |
+| prettier               | 3.9.9   | MIT          | Prettier              | https://github.com/prettier/prettier                  |
+| prisma                 | 7.9.1   | Apache-2.0   | Prisma Data, Inc.     | https://github.com/prisma/prisma                      |
+| rimraf                 | 6.1.3   | MIT          | Isaac Z. Schlueter    | https://github.com/isaacs/rimraf                      |
+| supertest              | 7.2.2   | MIT          | TJ Holowaychuk        | https://github.com/ladjs/supertest                    |
+| tsx                    | 4.23.12 | MIT          | Hiroki Osame          | https://github.com/privatenumber/tsx                  |
+| typescript             | 6.0.3   | Apache-2.0   | Microsoft Corporation | https://github.com/microsoft/TypeScript               |
+| vitest                 | 4.1.11  | MIT          | Vladimir Sheremet     | https://github.com/vitest-dev/vitest                  |
 
 ---
 
@@ -129,21 +126,21 @@ This document contains the license information for third-party packages used in 
 | @vitest/coverage-v8         | 4.1.11  | MIT          | Vladimir Sheremet          | https://github.com/vitest-dev/vitest                     |
 | @vitest/ui                  | 4.1.11  | MIT          | Vladimir Sheremet          | https://github.com/vitest-dev/vitest                     |
 | cross-env                   | 10.1.0  | MIT          | Kent C. Dodds              | https://github.com/kentcdodds/cross-env                  |
-| eslint                      | 10.8.1  | MIT          | OpenJS Foundation          | https://github.com/eslint/eslint                         |
+| eslint                      | 10.11.0 | MIT          | OpenJS Foundation          | https://github.com/eslint/eslint                         |
 | eslint-config-prettier      | 10.1.8  | MIT          | Simon Lydell               | https://github.com/prettier/eslint-config-prettier       |
 | eslint-plugin-react         | 7.37.5  | MIT          | Yannick Croissant          | https://github.com/jsx-eslint/eslint-plugin-react        |
-| globals                     | 17.11.0 | MIT          | Sindre Sorhus              | https://github.com/sindresorhus/globals                  |
+| globals                     | 17.12.0 | MIT          | Sindre Sorhus              | https://github.com/sindresorhus/globals                  |
 | i18next-cli                 | 1.69.0  | MIT          | i18next                    | https://github.com/i18next/i18next-cli                   |
 | jsdom                       | 29.1.1  | MIT          | Elijah Insua               | https://github.com/jsdom/jsdom                           |
 | msw                         | 2.15.0  | MIT          | Artem Zakharchenko         | https://github.com/mswjs/msw                             |
-| prettier                    | 3.9.6   | MIT          | Prettier                   | https://github.com/prettier/prettier                     |
+| prettier                    | 3.9.9   | MIT          | Prettier                   | https://github.com/prettier/prettier                     |
 | rimraf                      | 6.1.3   | MIT          | Isaac Z. Schlueter         | https://github.com/isaacs/rimraf                         |
 | rollup-plugin-visualizer    | 7.1.1   | MIT          | Denis Bardadym             | https://github.com/btd/rollup-plugin-visualizer          |
-| stylelint                   | 17.14.1 | MIT          | stylelint                  | https://github.com/stylelint/stylelint                   |
+| stylelint                   | 17.15.0 | MIT          | stylelint                  | https://github.com/stylelint/stylelint                   |
 | stylelint-config-standard   | 40.0.0  | MIT          | stylelint                  | https://github.com/stylelint/stylelint-config-standard   |
 | tsx                         | 4.23.12 | MIT          | Hiroki Osame               | https://github.com/privatenumber/tsx                     |
 | typescript                  | 6.0.3   | Apache-2.0   | Microsoft Corporation      | https://github.com/microsoft/TypeScript                  |
-| typescript-eslint           | 8.67.0  | MIT          | TypeScript ESLint          | https://github.com/typescript-eslint/typescript-eslint   |
+| typescript-eslint           | 8.71.0  | MIT          | TypeScript ESLint          | https://github.com/typescript-eslint/typescript-eslint   |
 | vi-axe                      | 1.0.0   | MIT          | Chan Zuckerberg Initiative | https://github.com/chanzuckerberg/vi-axe                 |
 | vite                        | 8.2.1   | MIT          | Vite                       | https://github.com/vitejs/vite                           |
 | vitest                      | 4.1.11  | MIT          | Vladimir Sheremet          | https://github.com/vitest-dev/vitest                     |
@@ -154,31 +151,29 @@ This document contains the license information for third-party packages used in 
 
 | Dependency Name                           | Version | License Type | Copyright Holder       | Source/Repository URL                                                 |
 | ----------------------------------------- | ------- | ------------ | ---------------------- | --------------------------------------------------------------------- |
-| @commitlint/cli                           | 21.2.2  | MIT          | conventional-changelog | https://github.com/conventional-changelog/commitlint                  |
-| @commitlint/config-conventional           | 21.2.2  | MIT          | conventional-changelog | https://github.com/conventional-changelog/commitlint                  |
+| @commitlint/cli                           | 21.2.3  | MIT          | conventional-changelog | https://github.com/conventional-changelog/commitlint                  |
+| @commitlint/config-conventional           | 21.2.3  | MIT          | conventional-changelog | https://github.com/conventional-changelog/commitlint                  |
 | @eslint/js                                | 10.0.1  | MIT          | OpenJS Foundation      | https://github.com/eslint/eslint                                      |
-| @typescript-eslint/eslint-plugin          | 8.67.0  | MIT          | TypeScript ESLint      | https://github.com/typescript-eslint/typescript-eslint                |
-| @typescript-eslint/parser                 | 8.67.0  | MIT          | TypeScript ESLint      | https://github.com/typescript-eslint/typescript-eslint                |
-| concurrently                              | 10.0.4  | MIT          | Kimmo Brunfeldt        | https://github.com/open-cli-tools/concurrently                        |
+| concurrently                              | 10.0.5  | MIT          | Kimmo Brunfeldt        | https://github.com/open-cli-tools/concurrently                        |
 | dotenv-cli                                | 11.0.0  | MIT          | Scott Donaldson        | https://github.com/entropitor/dotenv-cli                              |
 | entities                                  | 8.0.0   | MIT          | Felix Böhm             | https://github.com/fb55/entities                                      |
-| eslint                                    | 10.8.1  | MIT          | OpenJS Foundation      | https://github.com/eslint/eslint                                      |
+| eslint                                    | 10.11.0 | MIT          | OpenJS Foundation      | https://github.com/eslint/eslint                                      |
 | eslint-config-prettier                    | 10.1.8  | MIT          | Simon Lydell           | https://github.com/prettier/eslint-config-prettier                    |
 | eslint-plugin-import-x                    | 4.17.1  | MIT          | un-ts                  | https://github.com/un-ts/eslint-plugin-import-x                       |
 | eslint-plugin-formatjs                    | 6.4.19  | MIT          | FormatJS               | https://github.com/formatjs/formatjs                                  |
 | eslint-plugin-react                       | 7.37.5  | MIT          | Yannick Croissant      | https://github.com/jsx-eslint/eslint-plugin-react                     |
 | eslint-plugin-react-hooks                 | 7.1.1   | MIT          | Meta Platforms, Inc.   | https://github.com/facebook/react                                     |
-| eslint-plugin-react-refresh               | 0.5.4   | MIT          | Arnaud Barré           | https://github.com/ArnaudBarre/eslint-plugin-react-refresh            |
-| globals                                   | 17.11.0 | MIT          | Sindre Sorhus          | https://github.com/sindresorhus/globals                               |
+| eslint-plugin-react-refresh               | 0.5.7   | MIT          | Arnaud Barré           | https://github.com/ArnaudBarre/eslint-plugin-react-refresh            |
+| globals                                   | 17.12.0 | MIT          | Sindre Sorhus          | https://github.com/sindresorhus/globals                               |
 | husky                                     | 9.1.7   | MIT          | Typicode               | https://github.com/typicode/husky                                     |
-| lint-staged                               | 17.3.0  | MIT          | Andrey Okonetchnikov   | https://github.com/lint-staged/lint-staged                            |
-| prettier                                  | 3.9.6   | MIT          | Prettier               | https://github.com/prettier/prettier                                  |
+| lint-staged                               | 17.6.0  | MIT          | Andrey Okonetchnikov   | https://github.com/lint-staged/lint-staged                            |
+| prettier                                  | 3.9.9   | MIT          | Prettier               | https://github.com/prettier/prettier                                  |
 | rimraf                                    | 6.1.3   | MIT          | Isaac Z. Schlueter     | https://github.com/isaacs/rimraf                                      |
-| stylelint                                 | 17.14.1 | MIT          | stylelint              | https://github.com/stylelint/stylelint                                |
+| stylelint                                 | 17.15.0 | MIT          | stylelint              | https://github.com/stylelint/stylelint                                |
 | stylelint-config-standard                 | 40.0.0  | MIT          | stylelint              | https://github.com/stylelint/stylelint-config-standard                |
-| stylelint-no-unsupported-browser-features | 8.1.1   | MIT          | Cédric Delpoux         | https://github.com/RJWadley/stylelint-no-unsupported-browser-features |
+| stylelint-no-unsupported-browser-features | 8.1.2   | MIT          | Cédric Delpoux         | https://github.com/RJWadley/stylelint-no-unsupported-browser-features |
 | typescript                                | 6.0.3   | Apache-2.0   | Microsoft Corporation  | https://github.com/microsoft/TypeScript                               |
-| typescript-eslint                         | 8.67.0  | MIT          | TypeScript ESLint      | https://github.com/typescript-eslint/typescript-eslint                |
+| typescript-eslint                         | 8.71.0  | MIT          | TypeScript ESLint      | https://github.com/typescript-eslint/typescript-eslint                |
 | vitest                                    | 4.1.11  | MIT          | Vladimir Sheremet      | https://github.com/vitest-dev/vitest                                  |
 
 ---
@@ -191,10 +186,10 @@ This document contains the license information for third-party packages used in 
 | @types/node            | 24.13.3 | MIT          | DefinitelyTyped        | https://github.com/DefinitelyTyped/DefinitelyTyped |
 | @vitest/coverage-v8    | 4.1.11  | MIT          | Vladimir Sheremet      | https://github.com/vitest-dev/vitest               |
 | date-fns               | 4.4.0   | MIT          | Sasha Koss, Lesha Koss | https://github.com/date-fns/date-fns               |
-| eslint                 | 10.8.1  | MIT          | OpenJS Foundation      | https://github.com/eslint/eslint                   |
+| eslint                 | 10.11.0 | MIT          | OpenJS Foundation      | https://github.com/eslint/eslint                   |
 | eslint-config-prettier | 10.1.8  | MIT          | Simon Lydell           | https://github.com/prettier/eslint-config-prettier |
-| globals                | 17.11.0 | MIT          | Sindre Sorhus          | https://github.com/sindresorhus/globals            |
-| prettier               | 3.9.6   | MIT          | Prettier               | https://github.com/prettier/prettier               |
+| globals                | 17.12.0 | MIT          | Sindre Sorhus          | https://github.com/sindresorhus/globals            |
+| prettier               | 3.9.9   | MIT          | Prettier               | https://github.com/prettier/prettier               |
 | rimraf                 | 6.1.3   | MIT          | Isaac Z. Schlueter     | https://github.com/isaacs/rimraf                   |
 | typescript             | 6.0.3   | Apache-2.0   | Microsoft Corporation  | https://github.com/microsoft/TypeScript            |
 | vitest                 | 4.1.11  | MIT          | Vladimir Sheremet      | https://github.com/vitest-dev/vitest               |
@@ -474,15 +469,15 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
 
 | License Type       | Package Count | Percentage |
 | ------------------ | ------------- | ---------- |
-| MIT                | 125           | 88.7%      |
-| Apache-2.0         | 9             | 6.4%       |
-| ISC                | 2             | 1.4%       |
-| BSD-2-Clause       | 2             | 1.4%       |
+| MIT                | 120           | 88.2%      |
+| Apache-2.0         | 9             | 6.6%       |
+| ISC                | 2             | 1.5%       |
+| BSD-2-Clause       | 2             | 1.5%       |
 | MIT-0              | 1             | 0.7%       |
 | OFL-1.1            | 1             | 0.7%       |
 | PostgreSQL License | 1             | 0.7%       |
 
-**Counts:** The package counts above cover all direct npm dependencies listed in the dependency tables (135) plus the pinned runtime/toolchain engines (5) and the bundled font asset (1), for a total of 141 listed third-party components. Counts reflect the number of distinct entries in each table; duplicate package names across workspace tables are counted per occurrence.
+**Counts:** The package counts above cover all direct npm dependencies listed in the dependency tables (130) plus the pinned runtime/toolchain engines (5) and the bundled font asset (1), for a total of 136 listed third-party components. Counts reflect the number of distinct entries in each table; duplicate package names across workspace tables are counted per occurrence.
 
 ---
 
@@ -517,5 +512,5 @@ This document should be updated whenever:
 
 ---
 
-**Document Version:** 3.2  
-**Generated:** September 29, 2026
+**Document Version:** 3.4  
+**Generated:** September 30, 2026

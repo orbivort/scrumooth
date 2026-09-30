@@ -6,7 +6,12 @@
  */
 
 import nodemailer from 'nodemailer';
-import type SMTPTransport from 'nodemailer/lib/smtp-transport';
+import type {
+  SendMailOptions,
+  SMTPTransportOptions,
+  SMTPSentMessageInfo,
+  Transporter,
+} from 'nodemailer';
 import type tls from 'node:tls';
 import type {
   IEmailProvider,
@@ -68,7 +73,7 @@ export interface SMTPConfig {
  */
 export class SMTPProvider implements IEmailProvider {
   readonly name = 'smtp';
-  private transporter: nodemailer.Transporter<SMTPTransport.SentMessageInfo>;
+  private transporter: Transporter<SMTPSentMessageInfo, SMTPTransportOptions>;
   private config: SMTPConfig;
 
   /**
@@ -81,7 +86,7 @@ export class SMTPProvider implements IEmailProvider {
     // Build transport options with pooling support
     // Note: pool, maxConnections, maxMessages, rateLimit are valid nodemailer options
     // but not included in SMTPTransport.Options type
-    const transportOptions: SMTPTransport.Options & {
+    const transportOptions: SMTPTransportOptions & {
       pool?: boolean;
       maxConnections?: number;
       maxMessages?: number;
@@ -221,7 +226,7 @@ export class SMTPProvider implements IEmailProvider {
    * @param email - The email message
    * @returns Nodemailer mail options object
    */
-  private prepareMailOptions(email: EmailMessage): nodemailer.SendMailOptions {
+  private prepareMailOptions(email: EmailMessage): SendMailOptions {
     return {
       from: this.formatAddress(email.from),
       to: this.formatAddresses(email.to),

@@ -5,6 +5,50 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Security
+
+- Remediate **high**-, **moderate**-, and **low**-severity dependency vulnerabilities
+  (14 findings: 2 high, 9 moderate, 3 low):
+  - `nodemailer` 9.1.1 → 10.0.12 — **direct production dependency**. Fixes a process-global DNS
+    cache that reused the TLS `servername` across transports, allowing cross-tenant SMTP credential
+    disclosure
+    ([GHSA-6vj9-mwq6-2f5v](https://github.com/advisories/GHSA-6vj9-mwq6-2f5v)), and a stack
+    exhaustion denial of service via nested structured recipient arrays that bypass the parser
+    depth limit ([GHSA-8vvx-rff5-p5rq](https://github.com/advisories/GHSA-8vvx-rff5-p5rq)).
+    `nodemailer` 10 ships first-party type declarations, so `@types/nodemailer` is dropped and
+    `SMTPProvider` imports `Transporter`, `SendMailOptions`, `SMTPTransportOptions`, and
+    `SMTPSentMessageInfo` from the package instead of the DefinitelyTyped namespace
+  - `ip-address` 10.5.0 → 10.7.2 — **transitive production dependency**, pulled by
+    `express-rate-limit`. Fixes `Address6.isLinkLocal()` recognizing `fe80::/64` instead of
+    `fe80::/10`
+    ([GHSA-rpw4-54j3-4h4q](https://github.com/advisories/GHSA-rpw4-54j3-4h4q)) and no classifier
+    recognizing the NAT64 local-use range `64:ff9b:1::/48`
+    ([GHSA-2vr4-cq9g-pvrc](https://github.com/advisories/GHSA-2vr4-cq9g-pvrc)); both allow SSRF and
+    trust-boundary bypass
+  - `undici` 7.29.0 → 7.30.0 — **transitive development dependency**, pulled by `jsdom` through the
+    Vitest toolchain. Fixes ten issues: **high** severity denial of service via unrequested WebSocket
+    subprotocol ([GHSA-rfgv-xxqx-mfg5](https://github.com/advisories/GHSA-rfgv-xxqx-mfg5)) and TLS
+    certificate validation bypass via dropped connect options in `BalancedPool`
+    ([GHSA-w293-vg96-wgc3](https://github.com/advisories/GHSA-w293-vg96-wgc3)); **moderate** severity
+    denial of service via an unhandled error in WebSocket `permessage-deflate` decompression
+    ([GHSA-3wwx-pv8p-q78v](https://github.com/advisories/GHSA-3wwx-pv8p-q78v)), via an orphaned
+    `RetryHandler` response body
+    ([GHSA-pmjh-fq2x-6v4x](https://github.com/advisories/GHSA-pmjh-fq2x-6v4x)), via unbounded
+    decompression of compressed responses
+    ([GHSA-3xpg-4rpp-hhhm](https://github.com/advisories/GHSA-3xpg-4rpp-hhhm)), and via an unclean
+    `WebSocketStream` close
+    ([GHSA-rx4f-c7p8-82vq](https://github.com/advisories/GHSA-rx4f-c7p8-82vq)), plus cross-user
+    cookie disclosure via `Set-Cookie` caching in shared caches
+    ([GHSA-2jfj-6hjv-fm6j](https://github.com/advisories/GHSA-2jfj-6hjv-fm6j)); and **low** severity
+    downstream response splitting via the retry interceptor
+    ([GHSA-r53p-7pc4-xj5r](https://github.com/advisories/GHSA-r53p-7pc4-xj5r)), response truncation
+    via oversized chunked responses in the dump interceptor
+    ([GHSA-2gqq-gqf2-x968](https://github.com/advisories/GHSA-2gqq-gqf2-x968)), and caching and
+    replay of unsafe HTTP method responses
+    ([GHSA-8436-99hf-9mmv](https://github.com/advisories/GHSA-8436-99hf-9mmv))
+
 ## [3.1.0] - 2026-09-29
 
 ### Breaking Changes
