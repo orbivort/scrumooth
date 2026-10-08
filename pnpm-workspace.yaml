@@ -10,7 +10,7 @@ publicHoistPattern:
 
 catalog:
   '@eslint/js': ^10.0.1
-  '@types/node': ^24.13.3
+  '@types/node': ^26.6.4
   '@vitest/coverage-v8': ^4.1.11
   '@vitest/ui': ^4.1.11
   cross-env: ^10.1.0
