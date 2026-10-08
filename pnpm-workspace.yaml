@@ -56,13 +56,13 @@ overrides:
   ini: ^4.1.3 # Fixed: GHSA-qqgx-2p2h-9c37 prototype pollution vulnerability
   follow-redirects: ^1.16.0
   '@hono/node-server': ^2.0.5 # Fixed: GHSA-frvp-7c67-39w9 moderate path traversal vulnerability
-  fast-uri: ^3.1.6 # Fixed: GHSA-v2hh-gcrm-f6hx, GHSA-4c8g-83qw-93j6, GHSA-7p8r-x3mc-p8w7, GHSA-5jgf-p345-68v8, GHSA-f65p-4m7j-42xc, GHSA-fph4-wmhf-6fwf, and GHSA-jqff-g426-hqxp high severity host confusion/SSRF vulnerabilities
+  fast-uri: ^3.1.8 # Fixed: GHSA-v2hh-gcrm-f6hx, GHSA-4c8g-83qw-93j6, GHSA-7p8r-x3mc-p8w7, GHSA-5jgf-p345-68v8, GHSA-f65p-4m7j-42xc, GHSA-fph4-wmhf-6fwf, and GHSA-jqff-g426-hqxp high severity host confusion/SSRF vulnerabilities, plus GHSA-hrr3-gc8f-f4qj moderate severity inconsistent host case normalization via percent-encoded octets
   form-data: ^4.0.6 # Fixed: GHSA-hmw2-7cc7-3qxx CRLF injection vulnerability
   hono: ^4.12.34 # Fixed: GHSA-xgm2-5f3f-mvvc, GHSA-hvrm-45r6-mjfj, GHSA-w62v-xxxg-mg59, and GHSA-8j4g-w8fx-2239 moderate vulnerabilities
   js-yaml: ^4.3.2 # Fixed: GHSA-52cp-r559-cp3m, CVE-2026-59870 high (!!omap quadratic CPU), and GHSA-2883-xcg3-v3hh high (maxTotalMergeKeys does not limit CPU use for empty merge sources)
   colord: ^2.9.4 # Fixed: GHSA-2wm5-q62r-hmrv moderate slow rejection of oversized malformed color strings
   nanoid: ^3.3.17 # Fixed: GHSA-2v37-7h3g-55p8 high severity DoS when custom generators run with size zero
-  shell-quote: ^1.8.5 # Fixed: GHSA-395f-4hp3-45gv high severity DoS vulnerability
+  shell-quote: ^1.12.0 # Fixed: GHSA-395f-4hp3-45gv high severity DoS vulnerability, plus GHSA-pqg4-j6r4-53mv critical severity command injection in quote() via a line terminator after a `{ comment }` token
   body-parser: ^2.3.0 # Fixed: GHSA-v422-hmwv-36x6 low severity DoS vulnerability
   qs: ^6.16.0 # Fixed: GHSA-x5fp-wj9c-mxmx and GHSA-4mjr-xmp4-gh2g moderate array-limit bypass and DoS vulnerabilities
   https-proxy-agent: ^7.0.6
@@ -74,6 +74,9 @@ overrides:
   browserslist: ^4.28.7 # Fixed: GHSA-c83g-rgw3-j3cx and GHSA-73wf-gq98-2v4g high severity unbounded memory growth and prototype write vulnerabilities
   mysql2: ^3.23.1 # Fixed: GHSA-3f6p-5ww8-9rcr high (auth downgrade) and GHSA-rgwj-5xj2-c3m3 moderate (decompression-bomb DoS); unused optional transitive dep of prisma (project uses PostgreSQL)
   moment: ^2.31.0 # Fixed: moment.locale() path traversal (CVE-2022-24785 bypass), patched in 2.31.0; transitive dep of file-stream-rotator (via winston-daily-rotate-file), which only uses moment()/.format(), never moment.locale()
+  proxy-addr: ^2.0.8 # Fixed: GHSA-jqcg-44mw-7w3h critical severity IP spoofing via IPv4-mapped IPv6 trust subnet; transitive runtime dep of express and express-rate-limit (Express pins ~2.0.7)
+  source-map-js: ^1.2.2 # Fixed: GHSA-68fv-2mgg-jv7q high severity event-loop DoS via indexed source-map section offsets; transitive dep of postcss, css-tree, vite, and jsdom (build/test tooling only)
+  postcss-selector-parser: ^7.1.6 # Fixed: GHSA-rj75-hqrm-r3gf moderate severity quadratic complexity in flat selector parsing (CPU exhaustion); transitive dep of stylelint (dev tooling only)
 
 # Peer dependency rules (migrated from package.json)
 peerDependencyRules:
@@ -101,3 +104,22 @@ verifyDepsBeforeRun: false
 # Audit Configuration
 auditConfig:
   registry: https://registry.npmjs.org/ # use official registry for security audits
+
+  # Suppressed advisories. Every entry needs the reason it is not actionable, the compensating
+  # control that keeps it out of the shipped runtime, and the condition that makes it removable
+  # again - a bare GHSA id without that context is not acceptable, because it hides the decision
+  # from whoever next reads the audit output.
+  ignoreGhsas:
+    # braces <= 3.0.3 stack-exhaustion DoS via deeply nested patterns (CWE-674, high,
+    # CVE-2026-93687). 3.0.3 is the newest published release and the advisory records no patched
+    # version, so no upgrade and no `overrides` entry can clear the finding. Reachability is
+    # limited to the linting toolchain
+    # (stylelint -> micromatch -> fast-glob / globby), which compiles repository-declared glob
+    # patterns, never untrusted input; the package is absent from the backend runtime tree and
+    # from the shipped frontend bundle, so the recursion cannot be driven by a request or a
+    # user-supplied value. Suppressing it keeps the CI `security-audit` job
+    # (`pnpm audit --registry https://registry.npmjs.org/ --audit-level=high`) from failing on a
+    # finding that cannot be remediated in this repository.
+    # Remove this entry once a fixed `braces` release is published and adopted - upstream is
+    # tracked at https://github.com/micromatch/braces/issues/70
+    - GHSA-vfj7-8cjw-p6xm
