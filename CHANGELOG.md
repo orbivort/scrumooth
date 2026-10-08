@@ -5,6 +5,81 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Security
+
+- Remediate dependency vulnerabilities across the runtime and tooling trees
+  (19 findings: 2 critical, 9 high, 7 moderate, 1 low → 18 resolved, 1 suppressed with a documented
+  rationale so `pnpm audit` exits cleanly):
+  - `proxy-addr` 2.0.7 → 2.0.8 — **transitive production dependency**, pulled by `express` and
+    `express-rate-limit`. Express pins `~2.0.7`, so the fix is applied through a `proxy-addr`
+    override in `pnpm-workspace.yaml`. Fixes IP spoofing via an IPv4-mapped IPv6 trust subnet
+    ([GHSA-jqcg-44mw-7w3h](https://github.com/advisories/GHSA-jqcg-44mw-7w3h))
+  - `shell-quote` 1.10.0 → 1.12.0 — **transitive development dependency**, pulled by
+    `concurrently`. The existing `shell-quote` override is raised to `^1.12.0`. Fixes command
+    injection in `quote()` via a line terminator in a token after a `{ comment }` token
+    ([GHSA-pqg4-j6r4-53mv](https://github.com/advisories/GHSA-pqg4-j6r4-53mv))
+  - `axios` 1.19.0 → 1.20.0 — **direct production dependency** of the frontend. Fixes seven
+    **high** severity issues: ReDoS in the `fromDataURI` `data:` URL parser that freezes the Node
+    event loop ([GHSA-c29m-xwm3-cm6r](https://github.com/advisories/GHSA-c29m-xwm3-cm6r)),
+    quadratic-time ReDoS in host normalization reachable through an untrusted redirect `Location`
+    ([GHSA-mghh-pgcx-3jjj](https://github.com/advisories/GHSA-mghh-pgcx-3jjj)), a
+    prototype-pollution gadget in the `toFormData` options
+    ([GHSA-x97p-jq2g-jp4f](https://github.com/advisories/GHSA-x97p-jq2g-jp4f)) and in the Node HTTP
+    adapter through an inherited `createConnection` that allows request socket hijack
+    ([GHSA-m8m8-qj5v-23w3](https://github.com/advisories/GHSA-m8m8-qj5v-23w3)), an HTTP/2 adapter
+    that bypasses the configured DNS lookup and proxy controls
+    ([GHSA-3pq3-5fj3-cg6v](https://github.com/advisories/GHSA-3pq3-5fj3-cg6v)), a denial of service
+    from an unhandled `error` event during HTTP/2 session initialization
+    ([GHSA-542g-h47m-68v8](https://github.com/advisories/GHSA-542g-h47m-68v8)), and a fetch adapter
+    that does not enforce `maxRedirects: 0`, allowing redirect-based SSRF
+    ([GHSA-r4gj-5m52-g5wh](https://github.com/advisories/GHSA-r4gj-5m52-g5wh)); plus five
+    **moderate** severity issues: prototype-pollution gadgets in the fetch adapter
+    ([GHSA-vh66-26gq-q6x8](https://github.com/advisories/GHSA-vh66-26gq-q6x8)) and in the default
+    instance, where an inherited `Object.prototype.method` overrides the HTTP method
+    ([GHSA-9fr6-4gfg-395g](https://github.com/advisories/GHSA-9fr6-4gfg-395g)), header injection
+    through inherited `headers` after a minimal interceptor
+    ([GHSA-j8rh-479h-cp32](https://github.com/advisories/GHSA-j8rh-479h-cp32)) and through an
+    inherited `FormData.getHeaders`
+    ([GHSA-4hqw-qxg8-jxx2](https://github.com/advisories/GHSA-4hqw-qxg8-jxx2)), and a proxy-exclusion
+    bypass where CIDR-form `NO_PROXY` entries are ignored
+    ([GHSA-44g4-m2mj-wpvx](https://github.com/advisories/GHSA-44g4-m2mj-wpvx))
+  - `source-map-js` 1.2.1 → 1.2.2 — **transitive build and test dependency**, pulled by `postcss`,
+    `css-tree` (through `stylelint` and `jsdom`), and `vite`. Applied through a `source-map-js`
+    override. Fixes an event-loop denial of service through indexed source-map section offsets
+    ([GHSA-68fv-2mgg-jv7q](https://github.com/advisories/GHSA-68fv-2mgg-jv7q))
+  - `postcss-selector-parser` 7.1.5 → 7.1.6 — **transitive development dependency**, pulled by
+    `stylelint`. Applied through a `postcss-selector-parser` override. Fixes CPU exhaustion through
+    quadratic complexity in flat selector parsing
+    ([GHSA-rj75-hqrm-r3gf](https://github.com/advisories/GHSA-rj75-hqrm-r3gf))
+  - `fast-uri` 3.1.7 → 3.1.8 — **transitive tooling dependency**, pulled by `ajv` (through
+    `commitlint`, `stylelint`, and Prisma's local dev server). The existing `fast-uri` override is
+    raised to `^3.1.8`. Fixes inconsistent host case normalization via percent-encoded octets
+    ([GHSA-hrr3-gc8f-f4qj](https://github.com/advisories/GHSA-hrr3-gc8f-f4qj))
+  - `i18next-http-backend` 3.0.6 → 4.0.2 — **direct production dependency** of the frontend. Fixes
+    incomplete URL validation that permits SSRF
+    ([GHSA-xvq9-wjp8-hwqf](https://github.com/advisories/GHSA-xvq9-wjp8-hwqf)). This is a **major**
+    upgrade: v4 drops the bundled `cross-fetch` dependency and now requires a host-provided `fetch`
+    (native in every supported browser and in Node ≥ 18 — Scrumooth requires Node ^24.19.0), and
+    raises the package's minimum Node version to 18. The documented entry points and the default
+    export are unchanged, and the `loadPath` template used here (`/locales/{{lng}}/{{ns}}.json`)
+    carries a leading path segment, so it was never in the shape the advisory affects
+- Suppress the remaining `braces` stack-exhaustion denial of service in the audit configuration, so
+  the `security-audit` CI job reports it as ignored instead of blocking on an item that cannot be
+  remediated here
+  ([GHSA-vfj7-8cjw-p6xm](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm) /
+  [CVE-2026-93687](https://nvd.nist.gov/vuln/detail/CVE-2026-93687), **high**, CVSS 7.5, CWE-674).
+  The finding is listed under `auditConfig.ignoreGhsas` in `pnpm-workspace.yaml` next to the reason
+  it is not actionable, the compensating control, and the condition that makes it removable, so the
+  decision stays in the open rather than being dropped. `braces` is reached only through the
+  linting toolchain (`stylelint` → `micromatch` → `fast-glob` / `globby`), which compiles
+  repository-declared glob patterns and never untrusted input, and it is absent from the backend
+  runtime tree and from the shipped frontend bundle, so the recursion cannot be driven by a request
+  or a user-supplied value. Upgrading cannot clear it: `3.0.3` is the newest published release, so
+  an `overrides` entry has no fixed version to point at. Re-check the suppression once a fixed
+  release lands ([micromatch/braces#70](https://github.com/micromatch/braces/issues/70))
+
 ## [3.1.1] - 2026-09-30
 
 ### Fixed
