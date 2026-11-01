@@ -76,7 +76,7 @@
     "intl-pluralrules": "catalog:",
     "jsonwebtoken": "^9.0.3",
     "node-cron": "^4.2.1",
-    "nodemailer": "^10.0.14",
+    "nodemailer": "^10.1.4",
     "resolve-accept-language": "^3.2.2",
     "sanitize-html": "^2.18.0",
     "uuid": "^14.0.2",
