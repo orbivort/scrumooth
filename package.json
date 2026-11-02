@@ -107,11 +107,11 @@
     "loadtest:generate-data": "cd packages/backend && pnpm run loadtest:data"
   },
   "devDependencies": {
-    "@commitlint/cli": "^21.2.3",
-    "@commitlint/config-conventional": "^21.2.3",
+    "@commitlint/cli": "^21.2.4",
+    "@commitlint/config-conventional": "^21.2.4",
     "@eslint/js": "catalog:",
-    "concurrently": "^10.0.5",
-    "dotenv-cli": "^11.0.0",
+    "concurrently": "^10.0.6",
+    "dotenv-cli": "^11.1.0",
     "eslint": "catalog:",
     "eslint-config-prettier": "catalog:",
     "eslint-plugin-import-x": "^4.17.1",
