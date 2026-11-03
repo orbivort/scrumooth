@@ -76,13 +76,13 @@
     "intl-pluralrules": "catalog:",
     "jsonwebtoken": "^9.0.3",
     "node-cron": "^4.2.1",
-    "nodemailer": "^10.0.14",
+    "nodemailer": "^10.1.4",
     "resolve-accept-language": "^3.2.2",
-    "sanitize-html": "^2.18.0",
+    "sanitize-html": "^2.18.1",
     "uuid": "^14.0.2",
     "winston": "^3.19.0",
     "winston-daily-rotate-file": "^5.0.0",
-    "zod": "^4.6.5"
+    "zod": "^4.6.6"
   },
   "devDependencies": {
     "@eslint/js": "catalog:",

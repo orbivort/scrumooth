@@ -11,8 +11,8 @@ publicHoistPattern:
 catalog:
   '@eslint/js': ^10.0.1
   '@types/node': ^24.13.3
-  '@vitest/coverage-v8': ^4.1.11
-  '@vitest/ui': ^4.1.11
+  '@vitest/coverage-v8': ^4.1.12
+  '@vitest/ui': ^4.1.12
   cross-env: ^10.1.0
   date-fns: ^4.4.0
   eslint: ^10.12.0
@@ -30,7 +30,7 @@ catalog:
   tsx: ^4.23.15
   typescript: ^6.0.3
   typescript-eslint: ^8.71.0
-  vitest: ^4.1.11
+  vitest: ^4.1.12
 
 # Build configuration for pnpm v11
 allowBuilds:
@@ -52,22 +52,22 @@ strictPeerDependencies: false
 overrides:
   brace-expansion: ^5.0.12 # Fixed: GHSA-3jxr-9vmj-r5cp and GHSA-rgw5-rvv9-x895 high severity DoS vulnerabilities, plus the quadratic-time {a},b} rewrite stall (CWE-407); dev tooling only (eslint, stylelint, rimraf, glob/minimatch), not in the app's runtime tree
   esbuild: ^0.28.1 # Fixed: GHSA-gv7w-rqvm-qjhr high severity vulnerability
-  glob: ^11.1.0 # Fixed: GHSA-5j98-mcp5-4vw2 command injection vulnerability
+  glob: ^14.0.2 # Fixed: GHSA-5j98-mcp5-4vw2 command injection vulnerability and GHSA-3g3m-2fjr-6pw4 moderate AbortSignal cancellation bypass that allows post-timeout filesystem traversal (CWE-400); dev tooling only (rimraf, i18next-cli), not in the app's runtime tree
   ini: ^4.1.3 # Fixed: GHSA-qqgx-2p2h-9c37 prototype pollution vulnerability
-  follow-redirects: ^1.16.0
+  follow-redirects: ^1.16.2 # Fixed: GHSA-q3jh-wrc6-jgq8 high (array-form headers bypass cross-origin credential stripping), GHSA-8r9p-f939-6h3c high (sensitiveHeaders regex escaping exposes credential headers), and GHSA-mrwp-f3q8-3g9p high (cross-realm sensitiveHeaders arrays discarded on redirect); transitive dep of axios (frontend HTTP client)
   '@hono/node-server': ^2.0.5 # Fixed: GHSA-frvp-7c67-39w9 moderate path traversal vulnerability
-  fast-uri: ^3.1.8 # Fixed: GHSA-v2hh-gcrm-f6hx, GHSA-4c8g-83qw-93j6, GHSA-7p8r-x3mc-p8w7, GHSA-5jgf-p345-68v8, GHSA-f65p-4m7j-42xc, GHSA-fph4-wmhf-6fwf, and GHSA-jqff-g426-hqxp high severity host confusion/SSRF vulnerabilities, plus GHSA-hrr3-gc8f-f4qj moderate severity inconsistent host case normalization via percent-encoded octets
+  fast-uri: ^3.1.9 # Fixed: GHSA-v2hh-gcrm-f6hx, GHSA-4c8g-83qw-93j6, GHSA-7p8r-x3mc-p8w7, GHSA-5jgf-p345-68v8, GHSA-f65p-4m7j-42xc, GHSA-fph4-wmhf-6fwf, and GHSA-jqff-g426-hqxp high severity host confusion/SSRF vulnerabilities, GHSA-hrr3-gc8f-f4qj moderate severity inconsistent host case normalization via percent-encoded octets, plus GHSA-w74x-v6f9-j3xg moderate (percent-encoded scheme spoofing), GHSA-wjr9-j795-jxcr moderate (WHATWG host canonicalization confusion), GHSA-xhq7-xmqj-769h low (relative reference path equivalence), and GHSA-333x-w4r6-6crp low (suffix-reference scheme injection)
   form-data: ^4.0.6 # Fixed: GHSA-hmw2-7cc7-3qxx CRLF injection vulnerability
   hono: ^4.12.34 # Fixed: GHSA-xgm2-5f3f-mvvc, GHSA-hvrm-45r6-mjfj, GHSA-w62v-xxxg-mg59, and GHSA-8j4g-w8fx-2239 moderate vulnerabilities
   js-yaml: ^4.3.2 # Fixed: GHSA-52cp-r559-cp3m, CVE-2026-59870 high (!!omap quadratic CPU), and GHSA-2883-xcg3-v3hh high (maxTotalMergeKeys does not limit CPU use for empty merge sources)
   colord: ^2.9.4 # Fixed: GHSA-2wm5-q62r-hmrv moderate slow rejection of oversized malformed color strings
   nanoid: ^3.3.17 # Fixed: GHSA-2v37-7h3g-55p8 high severity DoS when custom generators run with size zero
   shell-quote: ^1.12.0 # Fixed: GHSA-395f-4hp3-45gv high severity DoS vulnerability, plus GHSA-pqg4-j6r4-53mv critical severity command injection in quote() via a line terminator after a `{ comment }` token
-  body-parser: ^2.3.0 # Fixed: GHSA-v422-hmwv-36x6 low severity DoS vulnerability
-  qs: ^6.16.0 # Fixed: GHSA-x5fp-wj9c-mxmx and GHSA-4mjr-xmp4-gh2g moderate array-limit bypass and DoS vulnerabilities
+  body-parser: ^2.4.0 # Fixed: GHSA-v422-hmwv-36x6 low severity DoS vulnerability and GHSA-27r3-jxmh-p828 high severity DoS via trailing bytes after a compressed request body
+  qs: ^6.16.1 # Fixed: GHSA-x5fp-wj9c-mxmx and GHSA-4mjr-xmp4-gh2g moderate array-limit bypass and DoS vulnerabilities, plus GHSA-6pq8-jhm2-2vcw moderate uncaught TypeError (DoS) in stringify with arrayFormat 'comma'
   https-proxy-agent: ^7.0.6
-  undici: ^7.29.1 # Fixed: GHSA-rfgv-xxqx-mfg5 and GHSA-w293-vg96-wgc3 high (WebSocket subprotocol DoS, TLS certificate validation bypass), GHSA-2jfj-6hjv-fm6j, GHSA-3wwx-pv8p-q78v, GHSA-3xpg-4rpp-hhhm, GHSA-pmjh-fq2x-6v4x moderate, and GHSA-2gqq-gqf2-x968, GHSA-8436-99hf-9mmv, GHSA-r53p-7pc4-xj5r low vulnerabilities
-  ip-address: ^10.5.1 # Fixed: GHSA-rpw4-54j3-4h4q moderate (fe80::/64 instead of fe80::/10 link-local classification) and GHSA-2vr4-cq9g-pvrc moderate (NAT64 local-use range 64:ff9b:1::/48 unrecognized) SSRF/trust-boundary bypass vulnerabilities, on top of GHSA-mwp4-54f8-5fhr high, GHSA-4xrf-jv44-h6hh moderate, GHSA-22jq-vg5j-6vgg moderate
+  undici: ^7.30.1 # Fixed: GHSA-rfgv-xxqx-mfg5 and GHSA-w293-vg96-wgc3 high (WebSocket subprotocol DoS, TLS certificate validation bypass), GHSA-2jfj-6hjv-fm6j, GHSA-3wwx-pv8p-q78v, GHSA-3xpg-4rpp-hhhm, GHSA-pmjh-fq2x-6v4x moderate, GHSA-2gqq-gqf2-x968, GHSA-8436-99hf-9mmv, GHSA-r53p-7pc4-xj5r low vulnerabilities, plus GHSA-xjj6-f33q-929c high (unhandled error on excessive content-encodings), GHSA-4w7w-5xrc-9h26 high (cache poisoning / cross-user disclosure via cross-origin redirects), GHSA-2m5v-pch6-74hx high (TLS certificate validation bypass via dropped tls options in Agent), GHSA-qrxm-fqhp-jwvm high (DoS via TLS 1.2 certificate-changing renegotiation), and GHSA-4qv8-2p9j-2685, GHSA-f72v-6w45-q472, GHSA-9fm3-97px-rjf6, GHSA-55wc-3pg8-jfw6 moderate vulnerabilities
+  ip-address: ^10.7.4 # Fixed: GHSA-rpw4-54j3-4h4q moderate (fe80::/64 instead of fe80::/10 link-local classification), GHSA-2vr4-cq9g-pvrc moderate (NAT64 local-use range 64:ff9b:1::/48 unrecognized) SSRF/trust-boundary bypass vulnerabilities, and GHSA-rxp7-6hxx-x8q5 moderate quadratic-time zone-identifier matching (single long string stalls the process), on top of GHSA-mwp4-54f8-5fhr high, GHSA-4xrf-jv44-h6hh moderate, GHSA-22jq-vg5j-6vgg moderate
   postcss: ^8.5.18 # Fixed: GHSA-r28c-9q8g-f849 high severity path traversal vulnerability
   valibot: ^1.4.2 # Fixed: GHSA-5qjj-4xww-7phc moderate severity record() issue vulnerability
   deepmerge-ts: ^8.0.0 # Fixed: GHSA-ggr8-5vv4-36mx high severity stack exhaustion when merging recursive object graphs
@@ -77,6 +77,12 @@ overrides:
   proxy-addr: ^2.0.8 # Fixed: GHSA-jqcg-44mw-7w3h critical severity IP spoofing via IPv4-mapped IPv6 trust subnet; transitive runtime dep of express and express-rate-limit (Express pins ~2.0.7)
   source-map-js: ^1.2.2 # Fixed: GHSA-68fv-2mgg-jv7q high severity event-loop DoS via indexed source-map section offsets; transitive dep of postcss, css-tree, vite, and jsdom (build/test tooling only)
   postcss-selector-parser: ^7.1.6 # Fixed: GHSA-rj75-hqrm-r3gf moderate severity quadratic complexity in flat selector parsing (CPU exhaustion); transitive dep of stylelint (dev tooling only)
+  # minimatch is deliberately NOT overridden to >=11.0.1 (GHSA-g3hv-75wg-m249): the eslint and
+  # stylelint toolchain pins consumers to APIs that were removed upstream - eslint-plugin-import-x
+  # imports `makeRe` (gone in v11) and multimatch@5 (via doiuse) calls `minimatch.match` (gone in
+  # v10) - so a forced major override breaks `pnpm lint` and `pnpm lint:css` outright. The advisory
+  # is suppressed in `auditConfig.ignoreGhsas` below with its reachability analysis instead.
+  zod: ^4.6.6 # Fixed: GHSA-mrhx-c7xc-m3w5 high severity memory exhaustion while validating oversized constrained collections; covers the backend runtime dep and the eslint-plugin-react-hooks tooling copy
 
 # Peer dependency rules (migrated from package.json)
 peerDependencyRules:
@@ -123,3 +129,17 @@ auditConfig:
     # Remove this entry once a fixed `braces` release is published and adopted - upstream is
     # tracked at https://github.com/micromatch/braces/issues/70
     - GHSA-vfj7-8cjw-p6xm
+
+    # minimatch < 11.0.1 DoS via globparts amplification (CWE-407/1333, moderate). The copies pulled
+    # by glob 14.x are already on 11.0.4, but the remaining instances are held on 3.1.5 and 10.2.6 by
+    # consumers that use APIs removed upstream: eslint-plugin-import-x imports `makeRe` (removed in
+    # v11) and multimatch@5 (via stylelint-no-unsupported-browser-features -> doiuse) calls
+    # `minimatch.match` (removed in v10). Forcing a major override makes `pnpm lint` /
+    # `pnpm lint:css` fail at module load, and no fixed release exists on the 3.x/10.x lines, so the
+    # finding cannot be cleared from this repository. Both paths only compile repository-declared
+    # glob patterns (eslint config patterns, browserslist ignoreFiles) against repository file paths;
+    # neither is reachable from a request, an upload, or any user-supplied value, and neither ships
+    # in the backend runtime tree or the frontend bundle.
+    # Remove this entry once eslint-plugin-import-x and doiuse (or multimatch >= 6) ship against
+    # minimatch >= 11.
+    - GHSA-g3hv-75wg-m249
