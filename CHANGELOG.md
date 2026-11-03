@@ -5,6 +5,127 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Security
+
+- Remediate dependency vulnerabilities across the runtime and tooling trees
+  (36 findings: 10 high, 20 moderate, 6 low → 35 resolved, 1 suppressed with a documented rationale
+  so `pnpm audit` reports it as ignored instead of blocking the `security-audit` CI job):
+  - `follow-redirects` 1.16.0 → 1.16.2 — **transitive production dependency**, pulled by `axios`
+    (the frontend HTTP client). Fixes three **high** severity issues: cross-origin credential
+    headers are not stripped when the request carries array-form headers
+    ([GHSA-q3jh-wrc6-jgq8](https://github.com/advisories/GHSA-q3jh-wrc6-jgq8)), a `sensitiveHeaders`
+    entry treated as a regular expression can be widened so credential headers leak to another
+    origin ([GHSA-8r9p-f939-6h3c](https://github.com/advisories/GHSA-8r9p-f939-6h3c)), and
+    `sensitiveHeaders` arrays created in another realm are discarded, letting custom credentials
+    follow redirects ([GHSA-mrwp-f3q8-3g9p](https://github.com/advisories/GHSA-mrwp-f3q8-3g9p))
+  - `body-parser` 2.3.0 → 2.4.0 — **transitive production dependency**, pulled by `express` and
+    `express-rate-limit`. Express pins the vulnerable minor, so the fix is applied through the
+    existing `body-parser` override in `pnpm-workspace.yaml`. Fixes a **high** severity denial of
+    service via trailing bytes after a compressed request body
+    ([GHSA-27r3-jxmh-p828](https://github.com/advisories/GHSA-27r3-jxmh-p828))
+  - `qs` 6.16.0 → 6.17.1 — **transitive production dependency**, pulled by `express` and
+    `body-parser`. Fixes a **moderate** severity denial of service where `qs.stringify()` with
+    `arrayFormat: 'comma'` throws an uncaught `TypeError` on an array element whose own `toString`
+    is not callable ([GHSA-6pq8-jhm2-2vcw](https://github.com/advisories/GHSA-6pq8-jhm2-2vcw))
+  - `ip-address` 10.7.3 → 10.7.5 — **transitive production dependency**, pulled by
+    `express-rate-limit`. Fixes **moderate** severity quadratic-time zone-identifier matching in
+    `Address6`, where a single long string stalls the process
+    ([GHSA-rxp7-6hxx-x8q5](https://github.com/advisories/GHSA-rxp7-6hxx-x8q5))
+  - `undici` 7.30.0 → 7.30.1 — **transitive development dependency**, pulled by `jsdom` through the
+    Vitest toolchain. Fixes four **high** severity issues: denial of service via an unhandled error
+    on excessive `content-encoding` values
+    ([GHSA-xjj6-f33q-929c](https://github.com/advisories/GHSA-xjj6-f33q-929c)), cache poisoning and
+    cross-user disclosure through cross-origin redirects
+    ([GHSA-4w7w-5xrc-9h26](https://github.com/advisories/GHSA-4w7w-5xrc-9h26)), TLS certificate
+    validation bypass via `tls` options dropped in `Agent`
+    ([GHSA-2m5v-pch6-74hx](https://github.com/advisories/GHSA-2m5v-pch6-74hx)), and denial of service
+    via TLS 1.2 certificate-changing renegotiation
+    ([GHSA-qrxm-fqhp-jwvm](https://github.com/advisories/GHSA-qrxm-fqhp-jwvm)); plus four
+    **moderate** issues: unbounded memory in the `EventSource` parser
+    ([GHSA-4qv8-2p9j-2685](https://github.com/advisories/GHSA-4qv8-2p9j-2685)), Subresource Integrity
+    bypass via non-lowercase algorithm tokens
+    ([GHSA-f72v-6w45-q472](https://github.com/advisories/GHSA-f72v-6w45-q472)), unbounded automatic
+    PONG buffering in the WebSocket client
+    ([GHSA-9fm3-97px-rjf6](https://github.com/advisories/GHSA-9fm3-97px-rjf6)), and an unhandled
+    exception in the decompress interceptor
+    ([GHSA-55wc-3pg8-jfw6](https://github.com/advisories/GHSA-55wc-3pg8-jfw6))
+  - `fast-uri` 3.1.8 → 3.1.9 — **transitive tooling dependency**, pulled by `ajv` (through
+    `commitlint` and `stylelint`). Fixes two **moderate** issues, URI scheme spoofing via
+    percent-encoded scheme decoding
+    ([GHSA-w74x-v6f9-j3xg](https://github.com/advisories/GHSA-w74x-v6f9-j3xg)) and host confusion via
+    unchecked WHATWG host canonicalization
+    ([GHSA-wjr9-j795-jxcr](https://github.com/advisories/GHSA-wjr9-j795-jxcr)), plus two **low**
+    issues, improper path equivalence in relative reference normalization
+    ([GHSA-xhq7-xmqj-769h](https://github.com/advisories/GHSA-xhq7-xmqj-769h)) and scheme injection
+    via an unescaped first-segment colon in suffix references
+    ([GHSA-333x-w4r6-6crp](https://github.com/advisories/GHSA-333x-w4r6-6crp))
+  - `glob` 11.1.0 → 14.0.3 — **transitive development dependency**, pulled by `rimraf` and
+    `i18next-cli`. Fixes **moderate** severity AbortSignal cancellation bypass that allows
+    filesystem traversal to continue after a timeout
+    ([GHSA-3g3m-2fjr-6pw4](https://github.com/advisories/GHSA-3g3m-2fjr-6pw4)). The override moves
+    from 11.x to 14.x because no fixed release exists on the 11.x/13.x lines; `pnpm clean`,
+    `pnpm build`, and `i18n:extract:ast` were re-run against 14.x to confirm both consumers still work
+  - `vite` 8.3.2 → 8.3.5 — **direct development dependency** of the frontend, also resolved as the
+    Vitest peer. Fixes a **high** severity `launch-editor` `fs.existsSync()` check that can be
+    bypassed on Windows ([GHSA-587h-7wmj-h5pm](https://github.com/advisories/GHSA-587h-7wmj-h5pm));
+    two **moderate** `launch-editor` issues, missing `%` escaping in `escapeCmdArgs()`
+    ([GHSA-698v-4r3x-3vcv](https://github.com/advisories/GHSA-698v-4r3x-3vcv)) and editor CLI flag
+    misinterpretation allowing arbitrary command execution
+    ([GHSA-r825-w8mm-5pxw](https://github.com/advisories/GHSA-r825-w8mm-5pxw)); two **moderate**
+    `server.fs` issues, files outside `server.fs.allow` being served when project paths match system
+    paths ([GHSA-rq7h-c2jc-7f22](https://github.com/advisories/GHSA-rq7h-c2jc-7f22)) and the first four
+    bytes of files outside `server.fs` being exposed through `?vite-wasm-instance`
+    ([GHSA-vfpm-58rq-9qcg](https://github.com/advisories/GHSA-vfpm-58rq-9qcg)); and a **low** severity
+    cross-origin script execution through Vite custom middleware
+    ([GHSA-9jrq-w75r-8gcw](https://github.com/advisories/GHSA-9jrq-w75r-8gcw))
+  - `vitest` 4.1.11 → 4.1.12 — **development dependency** of every workspace package. The catalog
+    bump moves `vitest`, `@vitest/coverage-v8`, and `@vitest/ui` together. Fixes **moderate**
+    severity code injection via unauthenticated manual mock registration
+    ([GHSA-qxg6-89mg-rqv8](https://github.com/advisories/GHSA-qxg6-89mg-rqv8)) and a Windows backslash
+    traversal that bypasses the `@vitest/mocker` redirect allowlist
+    ([GHSA-xp26-3454-mjgp](https://github.com/advisories/GHSA-xp26-3454-mjgp))
+  - `zod` 4.6.5 → 4.6.7 — **direct production dependency** of the backend. Fixes **high** severity
+    memory exhaustion while validating oversized constrained collections
+    ([GHSA-mrhx-c7xc-m3w5](https://github.com/advisories/GHSA-mrhx-c7xc-m3w5)). A `zod` override
+    (`^4.6.6`) also covers the stale 4.4.3 copy that `eslint-plugin-react-hooks` pulls in through
+    `zod-validation-error`, so the tooling tree cannot reach the same code path
+  - `sanitize-html` 2.18.0 → 2.18.1 — **direct production dependency** of the backend. Fixes
+    **moderate** severity unbounded recursion when re-sanitizing the fallback of a discarded
+    `iframe`, where `nestingLimit` is not enforced
+    ([GHSA-c9rx-x947-fp3h](https://github.com/advisories/GHSA-c9rx-x947-fp3h)). 2.18.1 also replaces
+    its `deepmerge` dependency with `launder`, which clears the **low** severity `deepmerge`
+    prototype-poisoning finding ([GHSA-gcqx-w48m-w2h4](https://github.com/advisories/GHSA-gcqx-w48m-w2h4))
+    without needing an override
+  - `nodemailer` 10.0.14 → 10.3.1 — **direct production dependency** of the backend. Fixes three
+    **moderate** severity `addressparser` issues where a malformed recipient header is split early
+    and the remaining text is delivered as an extra recipient: a nested comment ending early
+    ([GHSA-8c8m-p3m8-cjg8](https://github.com/advisories/GHSA-8c8m-p3m8-cjg8)), a `;` inside a quoted
+    string or comment ending an address group early
+    ([GHSA-m943-m63m-w62w](https://github.com/advisories/GHSA-m943-m63m-w62w)), and a `>` inside a
+    quoted local part ending an angle-addr early
+    ([GHSA-85x2-q946-cp5h](https://github.com/advisories/GHSA-85x2-q946-cp5h))
+  - `i18next-http-backend` 4.0.2 → 4.0.9 — **direct production dependency** of the frontend. Fixes
+    two **low** severity issues: query-parameter injection through `&` and `=` in `lng` when
+    `loadPath` places `{{lng}}` in the query string
+    ([GHSA-3cmx-xjww-583x](https://github.com/advisories/GHSA-3cmx-xjww-583x)), and a namespace value
+    starting with `/` forming a protocol-relative URL
+    ([GHSA-9jhj-wvmw-cfx5](https://github.com/advisories/GHSA-9jhj-wvmw-cfx5))
+- Suppress the remaining `minimatch` globparts-amplification denial of service in the audit
+  configuration (`auditConfig.ignoreGhsas` in `pnpm-workspace.yaml`), so the `security-audit` CI job
+  reports it as ignored instead of blocking on an item that cannot be remediated here
+  ([GHSA-g3hv-75wg-m249](https://github.com/advisories/GHSA-g3hv-75wg-m249), **moderate**, CWE-407).
+  The copies under `glob` 14.x are already on 11.0.4; the instances that stay behind are pinned by
+  consumers using APIs removed upstream — `eslint-plugin-import-x` imports
+  `makeRe` (removed in v11) and `multimatch@5`, pulled by `stylelint-no-unsupported-browser-features`
+  → `doiuse`, calls `minimatch.match` (removed in v10). Forcing the override makes `pnpm lint` and
+  `pnpm lint:css` fail at module load, and no fixed release exists on the 3.x/10.x lines. Both paths
+  only compile repository-declared glob patterns against repository file paths, are unreachable from
+  a request or any user-supplied value, and are absent from the backend runtime tree and the
+  frontend bundle. Re-check once `eslint-plugin-import-x` and `doiuse` (or `multimatch` ≥ 6) ship
+  against `minimatch` 11
+
 ## [3.1.2] - 2026-10-08
 
 ### Security
