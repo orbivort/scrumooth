@@ -2,14 +2,48 @@ import '@testing-library/jest-dom';
 import 'vi-axe/extend-expect';
 import { vi, afterEach, afterAll, beforeAll } from 'vitest';
 import { cleanup } from '@testing-library/react';
+import axios from 'axios';
 
-import { MOCK_TEST_ON_UNHANDLED_REQUEST } from './mocks/config';
+import { MOCK_TEST_ON_UNHANDLED_FRAME } from './mocks/config';
 import { server } from './mocks/server';
 import { resetMockState } from './mocks/store';
 
 // Extend Vitest expect with vi-axe matchers
 
 // i18n is initialized globally in src/globalSetup.ts before all tests run
+
+const fetchAdapter = axios.getAdapter('fetch');
+const testOrigin = globalThis.location?.origin ?? 'http://localhost';
+
+/**
+ * Answer the API client's requests with axios' fetch adapter.
+ *
+ * MSW 3 intercepts jsdom's `XMLHttpRequest` through the ClientRequest it opens
+ * internally, and in this environment the mocked response never makes it back to
+ * the XHR: every request through `CoreApiService` (whose axios default is the XHR
+ * adapter) would wait for its timeout instead of being answered. `fetch` is
+ * intercepted directly and answers normally.
+ *
+ * The base URL is resolved to an absolute one on the way in, because the client
+ * configures a same-origin path (`/api/v1`) that a browser resolves against the
+ * document but Node's fetch refuses. `mocks/support/http.ts` resolves the same
+ * base against the same origin, so handler patterns still match.
+ *
+ * This is a gap in the Node test environment, not in the product: the service
+ * worker MSW registers in a browser intercepts XHR at the network layer, so
+ * `pnpm dev`, the demo build and the E2E suite are unaffected. Setting the global
+ * default here (rather than an `adapter` option in `api.core.ts`) keeps the
+ * shipped client on the transport it uses everywhere else, and every application
+ * instance is created after this module has run.
+ *
+ * Remove this once MSW routes jsdom XHR responses again — re-run
+ * `src/mocks/handlers/*.handlers.test.ts` with this block deleted to check.
+ */
+axios.defaults.adapter = (config) =>
+  fetchAdapter({
+    ...config,
+    baseURL: new URL(config.baseURL ?? '/', testOrigin).href,
+  });
 
 /**
  * The mock backend answers the HTTP layer for every test.
@@ -24,7 +58,7 @@ import { resetMockState } from './mocks/store';
  * backend running.
  */
 beforeAll(() => {
-  server.listen({ onUnhandledRequest: MOCK_TEST_ON_UNHANDLED_REQUEST });
+  server.listen({ onUnhandledFrame: MOCK_TEST_ON_UNHANDLED_FRAME });
 });
 
 afterEach(() => {

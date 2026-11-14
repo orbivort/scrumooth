@@ -37,6 +37,11 @@ out/
 # -----------------------------------------------------------------------------
 coverage/
 .nyc_output/
+# Vitest 5 consolidated every artifact (blob reports, json/junit/html reporter
+# output, failure screenshots, attachments) under a single `.vitest/` root at the
+# project root, replacing the scattered `.vitest-reports/`, `html/` and
+# `__screenshots__/` defaults. Ignore the root and per-package copies.
+.vitest/
 
 # -----------------------------------------------------------------------------
 # Environment Files

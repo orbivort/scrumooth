@@ -17,7 +17,9 @@ export default defineConfig({
       provider: 'v8',
       reporter: ['text', 'json', 'html', 'lcov'],
       reportsDirectory: './coverage',
-      exclude: ['node_modules/', 'src/__tests__/', 'dist/'],
+      // Vitest 5 matches exclude entries against project-root-relative paths, so a
+      // directory must be written as a glob — the old trailing-slash form matched nothing.
+      exclude: ['**/node_modules/**', '**/dist/**', 'src/__tests__/**', '**/*.d.ts'],
       thresholds: {
         lines: 80,
         functions: 80,

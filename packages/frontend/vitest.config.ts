@@ -65,7 +65,10 @@ export default defineConfig({
         'node_modules/',
         'src/setupTests.ts',
         'src/test-utils.tsx',
-        'src/__mocks__/',
+        // Vitest 5 matches these against project-root-relative paths without
+        // picomatch's `contains`, so a directory must be named as a glob: the
+        // trailing-slash form stopped excluding the fixtures it was written for.
+        'src/__mocks__/**',
         // The mock backend is a development and test fixture, not product code:
         // it ships in no production bundle and its fidelity is asserted by its own
         // contract tests rather than by the product's coverage number.
