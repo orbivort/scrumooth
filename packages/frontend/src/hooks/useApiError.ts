@@ -221,7 +221,10 @@ function isPermissionTransitionError(error: unknown): boolean {
 function getHttpErrorMessage(status: number): string {
   const key = `common:error.http.${status}`;
   const fallback = getHttpErrorMessageFallback(status);
-  return i18nInstance.t(key, fallback);
+  // `t()` answers an empty string on an instance that has not been `init()`-ed yet (i18next 26.7
+  // changed this from `undefined`); the status-based fallback is always preferable to a blank
+  // message, so it also covers a missing or empty translation.
+  return i18nInstance.t(key, fallback) || fallback;
 }
 
 function getHttpErrorMessageFallback(status: number): string {
