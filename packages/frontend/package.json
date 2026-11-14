@@ -108,7 +108,7 @@
     "globals": "catalog:",
     "i18next-cli": "^1.87.0",
     "jsdom": "^30.1.3",
-    "msw": "^2.15.0",
+    "msw": "^3.0.3",
     "prettier": "catalog:",
     "rimraf": "catalog:",
     "rollup-plugin-visualizer": "^7.1.2",
