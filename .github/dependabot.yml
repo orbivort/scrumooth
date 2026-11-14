@@ -1,200 +1,259 @@
-# Dependabot configuration
-# https://docs.github.com/en/code-security/dependabot/working-with-dependabot/dependabot-options-reference
+# Dependabot: automated dependency updates.
+#
+# Grouping policy — enforced by the `groups` rules below; do not weaken without
+# review:
+#
+#   1. Non-major updates are consolidated into ONE pull request per ecosystem.
+#      A group matches every dependency of its ecosystem (`patterns: ['*']`) and
+#      keeps only `update-types: [minor, patch]`. Groups are never split by
+#      dependency type, so a production bump and a development bump that resolve
+#      through the same root lockfile are reviewed — and reverted — as one unit
+#      instead of as one PR each.
+#
+#   2. Every major update keeps its own pull request. A major matches no group
+#      (all groups are capped at minor/patch) and Dependabot raises anything that
+#      matches no group individually. The split exists because a major is the one
+#      class of change that may break consumers at the API level: it deserves an
+#      isolated diff, an isolated CI run and a one-click revert. Two invariants
+#      keep the guarantee true:
+#        - never add `major` to a group's `update-types`;
+#        - never delete a group's `update-types` key — an absent key means "all
+#          SemVer levels", which would silently pull majors into the batch.
+#
+#   3. Grouping keys off the SemVer level, not off release notes. Dependabot
+#      cannot read changelogs, so "introduces no breaking change" stays a
+#      review-time judgement: the grouped PR still needs a green `pnpm ci` and a
+#      skim of the releases it lists before merge. A `0.x` minor is grouped by
+#      the same rule even though its author may treat it as breaking — the
+#      reviewer, not the bot, is the gate.
+#
+#   4. Security updates are deliberately NOT grouped. `applies-to` defaults to
+#      `version-updates`, and it is stated explicitly on every group so a later
+#      edit cannot pull advisories into a routine batch: a fix then arrives as
+#      its own PR, with its advisory link, without waiting for the weekly slot.
+#
+#   5. `cooldown` withholds new releases for a while before they are proposed,
+#      mirroring the `minimumReleaseAge` supply-chain gate in
+#      pnpm-workspace.yaml. Cooldown is a version-update feature; security
+#      updates ignore it, which is intended — an advisory fix must not wait.
+#
+# Ignored on purpose — version updates only:
+#
+#   The Node.js runtime is bumped as one deliberate, hand-made change. Its major
+#   version is asserted in several places that must agree: `engines.node`/
+#   `engines.pnpm` and `packageManager` in package.json, the
+#   `node:<version>-alpine` base image in both Dockerfiles, and the
+#   `node-version` default in .github/actions/setup. A bot PR that moves only one
+#   of them leaves the repo inconsistent (a newer base image would fail
+#   `engine-strict`, a newer runtime would contradict `engines.node`). The
+#   `node` container image is therefore not updated at all, and the Node.js type
+#   definitions are held inside the pinned major: `@types/node` 24.x minor and
+#   patch releases are allowed (they describe the same runtime, so they join the
+#   grouped non-major PR), while its 25.0.0+ majors are ignored because they
+#   describe APIs Node 24 does not provide.
+#
+#   The compiler and the package manager are pinned for the same reason:
+#   `typescript` because the compiler version is part of the build contract (emit
+#   target, lib definitions, lint rules), and `npm` because pnpm is pinned through
+#   `packageManager`/`engines.pnpm`.
+#
+#   Rules that ignore every version level list all three SemVer levels instead of
+#   omitting `update-types`. That is not redundant: `update-types` filters version
+#   updates only, so these rules still let GitHub raise security-update PRs for
+#   the same packages. A bare `dependency-name` rule would match by name and
+#   suppress their advisories too, quietly hiding a patched TypeScript or
+#   @types/node. `node.js` has no manifest entry of its own — the runtime is the
+#   `node` image plus `@types/node`, both covered here.
+#
+# Ecosystems:
+#   npm            — ONE entry at the workspace root. It covers the root manifest
+#                    and every package under packages/*, which is not a style
+#                    choice but the only mode that works: pnpm keeps a single
+#                    shared pnpm-lock.yaml at the root and resolves "catalog:"
+#                    specifiers through pnpm-workspace.yaml, and Dependabot only
+#                    performs that workspace-aware step when the update starts
+#                    at the root. A per-directory npm entry (e.g.
+#                    /packages/frontend) resolves the subpackage in isolation,
+#                    fails before it can write the lockfile, and still opens a
+#                    manifest-only PR — which CI rejects under
+#                    `pnpm install --frozen-lockfile` with
+#                    ERR_PNPM_OUTDATED_LOCKFILE. Do not reintroduce
+#                    /packages/* npm entries.
+#   docker         — backend/frontend Dockerfiles. Base images are pinned to
+#                    literal tags, so every one of them is machine-trackable; the
+#                    Node tag is the exception and is ignored (see above), which
+#                    leaves nginx as the only image Dependabot may move in the
+#                    frontend file.
+#   docker-compose — the root compose stack (postgres).
+#   github-actions — workflows in .github/workflows and the composite actions in
+#                    .github/actions.
+#
+# `engines`, `packageManager` and the Node base images are maintained manually
+# and are either not tracked at all or ignored below, so they need no allow
+# entry. Shared versions live in the pnpm catalog (pnpm-workspace.yaml); keep it
+# the single source of truth for everything referenced via "catalog:".
 version: 2
 
 updates:
-  # Keep GitHub Actions used across all workflows up to date
-  - package-ecosystem: "github-actions"
-    directory: "/"
+  - package-ecosystem: npm
+    directory: '/'
     schedule:
-      interval: "weekly"
-      day: "monday"
-      time: "06:00"
-      timezone: "Etc/UTC"
-    # Group all minor and patch updates into a single PR;
-    # major updates stay separate so breaking changes are easy to review.
+      interval: weekly
+      day: monday
+      # Off-peak and after the Monday 03:00 security scan.
+      time: '04:00'
+      timezone: Etc/UTC
+    # Caps version-update PRs only: the single grouped PR plus one PR per major
+    # update. Security-update PRs are not counted here (GitHub applies a separate
+    # fixed limit to them).
+    open-pull-requests-limit: 10
+    commit-message:
+      prefix: chore
+      include: scope
+    cooldown:
+      default-days: 7
+      semver-major-days: 14
+    groups:
+      # One PR for every minor and patch bump in the workspace — production and
+      # development alike. Majors match nothing here and open individually.
+      workspace-non-major:
+        applies-to: version-updates
+        patterns:
+          - '*'
+        update-types:
+          - minor
+          - patch
+    ignore:
+      # Neither is declared as a dependency today; the rules exist so that adding
+      # one cannot drift from the pinned `packageManager`/`engines` values.
+      - dependency-name: 'node'
+        update-types:
+          - version-update:semver-major
+          - version-update:semver-minor
+          - version-update:semver-patch
+      - dependency-name: 'npm'
+        update-types:
+          - version-update:semver-major
+          - version-update:semver-minor
+          - version-update:semver-patch
+      # @types/node tracks the runtime pinned in engines.node (^24): 24.x minor
+      # and patch releases stay in `workspace-non-major` above, while 25.0.0+ is
+      # ignored because it documents APIs Node 24 does not provide. Filtering by
+      # update type (not by `versions: ['>=25']`) also keeps security updates
+      # flowing, since `update-types` never applies to security updates.
+      - dependency-name: '@types/node'
+        update-types:
+          - version-update:semver-major
+      # TypeScript is pinned in the pnpm catalog because the compiler version is
+      # part of the build contract (emit target, lib definitions, lint rules).
+      - dependency-name: 'typescript'
+        update-types:
+          - version-update:semver-major
+          - version-update:semver-minor
+          - version-update:semver-patch
+
+  - package-ecosystem: docker
+    directory: '/packages/backend'
+    schedule:
+      interval: weekly
+      day: monday
+      time: '04:00'
+      timezone: Etc/UTC
+    open-pull-requests-limit: 10
+    commit-message:
+      prefix: chore
+      include: scope
+    cooldown:
+      default-days: 7
+    groups:
+      backend-base-image:
+        applies-to: version-updates
+        patterns:
+          - '*'
+        update-types:
+          - minor
+          - patch
+    ignore:
+      # node:<version>-alpine is the only image in this Dockerfile and is kept in
+      # lockstep with engines.node and the CI setup action; see "Ignored on
+      # purpose" above. The entry stays in place so that any base image added
+      # later is tracked here without a config change.
+      - dependency-name: 'node'
+        update-types:
+          - version-update:semver-major
+          - version-update:semver-minor
+          - version-update:semver-patch
+
+  - package-ecosystem: docker
+    directory: '/packages/frontend'
+    schedule:
+      interval: weekly
+      day: monday
+      time: '04:00'
+      timezone: Etc/UTC
+    open-pull-requests-limit: 10
+    commit-message:
+      prefix: chore
+      include: scope
+    cooldown:
+      default-days: 7
+    groups:
+      frontend-base-image:
+        applies-to: version-updates
+        patterns:
+          - '*'
+        update-types:
+          - minor
+          - patch
+    ignore:
+      # node:<version>-alpine is pinned to engines.node, as above; nginx stays
+      # tracked through the group.
+      - dependency-name: 'node'
+        update-types:
+          - version-update:semver-major
+          - version-update:semver-minor
+          - version-update:semver-patch
+
+  - package-ecosystem: docker-compose
+    directory: '/'
+    schedule:
+      interval: weekly
+      day: monday
+      time: '04:00'
+      timezone: Etc/UTC
+    open-pull-requests-limit: 10
+    commit-message:
+      prefix: chore
+      include: scope
+    cooldown:
+      default-days: 7
+    groups:
+      compose-images:
+        applies-to: version-updates
+        patterns:
+          - '*'
+        update-types:
+          - minor
+          - patch
+
+  - package-ecosystem: github-actions
+    directory: '/'
+    schedule:
+      interval: weekly
+      day: monday
+      time: '04:00'
+      timezone: Etc/UTC
+    open-pull-requests-limit: 10
+    commit-message:
+      prefix: chore
+      include: scope
+    cooldown:
+      default-days: 7
     groups:
       github-actions:
         applies-to: version-updates
+        patterns:
+          - '*'
         update-types:
-          - "minor"
-          - "patch"
-    open-pull-requests-limit: 5
-    labels:
-      - "dependencies"
-      - "ci"
-    commit-message:
-      prefix: "chore"
-      include: "scope"
-
-  # npm ecosystem (also handles pnpm workspaces)
-  # Root manifest + workspace packages get explicit entries so every
-  # package's dependencies are covered.
-  - package-ecosystem: "npm"
-    directory: "/"
-    schedule:
-      interval: "weekly"
-      day: "monday"
-      time: "06:00"
-      timezone: "Etc/UTC"
-    groups:
-      npm-minor-and-patch:
-        applies-to: version-updates
-        update-types:
-          - "minor"
-          - "patch"
-    versioning-strategy: increase
-    open-pull-requests-limit: 10
-    labels:
-      - "dependencies"
-    commit-message:
-      prefix: "chore"
-      include: "scope"
-
-  - package-ecosystem: "npm"
-    directory: "/packages/backend"
-    schedule:
-      interval: "weekly"
-      day: "monday"
-      time: "06:00"
-      timezone: "Etc/UTC"
-    groups:
-      npm-minor-and-patch:
-        applies-to: version-updates
-        update-types:
-          - "minor"
-          - "patch"
-    versioning-strategy: increase
-    open-pull-requests-limit: 10
-    labels:
-      - "dependencies"
-      - "backend"
-    commit-message:
-      prefix: "chore"
-      include: "scope"
-
-  - package-ecosystem: "npm"
-    directory: "/packages/frontend"
-    schedule:
-      interval: "weekly"
-      day: "monday"
-      time: "06:00"
-      timezone: "Etc/UTC"
-    groups:
-      npm-minor-and-patch:
-        applies-to: version-updates
-        update-types:
-          - "minor"
-          - "patch"
-    versioning-strategy: increase
-    open-pull-requests-limit: 10
-    labels:
-      - "dependencies"
-      - "frontend"
-    commit-message:
-      prefix: "chore"
-      include: "scope"
-
-  - package-ecosystem: "npm"
-    directory: "/packages/shared"
-    schedule:
-      interval: "weekly"
-      day: "monday"
-      time: "06:00"
-      timezone: "Etc/UTC"
-    groups:
-      npm-minor-and-patch:
-        applies-to: version-updates
-        update-types:
-          - "minor"
-          - "patch"
-    versioning-strategy: increase
-    open-pull-requests-limit: 10
-    labels:
-      - "dependencies"
-      - "shared"
-    commit-message:
-      prefix: "chore"
-      include: "scope"
-
-  # Docker images in root docker-compose files
-  - package-ecosystem: "docker"
-    directory: "/"
-    schedule:
-      interval: "weekly"
-      day: "monday"
-      time: "06:00"
-      timezone: "Etc/UTC"
-    groups:
-      docker-compose:
-        applies-to: version-updates
-        update-types:
-          - "minor"
-          - "patch"
-    open-pull-requests-limit: 5
-    labels:
-      - "dependencies"
-      - "docker"
-    commit-message:
-      prefix: "chore"
-      include: "scope"
-
-  # Docker base images (Dockerfiles are picked up per-directory)
-  - package-ecosystem: "docker"
-    directory: "/packages/backend"
-    schedule:
-      interval: "weekly"
-      day: "monday"
-      time: "06:00"
-      timezone: "Etc/UTC"
-    groups:
-      docker-minor-and-patch:
-        applies-to: version-updates
-        update-types:
-          - "minor"
-          - "patch"
-    open-pull-requests-limit: 5
-    labels:
-      - "dependencies"
-      - "docker"
-      - "backend"
-    commit-message:
-      prefix: "chore"
-      include: "scope"
-
-  - package-ecosystem: "docker"
-    directory: "/packages/frontend"
-    schedule:
-      interval: "weekly"
-      day: "monday"
-      time: "06:00"
-      timezone: "Etc/UTC"
-    groups:
-      docker-minor-and-patch:
-        applies-to: version-updates
-        update-types:
-          - "minor"
-          - "patch"
-    open-pull-requests-limit: 5
-    labels:
-      - "dependencies"
-      - "docker"
-      - "frontend"
-    commit-message:
-      prefix: "chore"
-      include: "scope"
-
-  - package-ecosystem: "docker"
-    directory: "/scripts/maintenance/database"
-    schedule:
-      interval: "weekly"
-      day: "monday"
-      time: "06:00"
-      timezone: "Etc/UTC"
-    open-pull-requests-limit: 5
-    labels:
-      - "dependencies"
-      - "docker"
-    commit-message:
-      prefix: "chore"
-      include: "scope"
+          - minor
+          - patch
