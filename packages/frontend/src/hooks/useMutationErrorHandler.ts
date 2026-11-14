@@ -56,6 +56,19 @@ function isPermissionTransitionError(error: unknown): boolean {
 }
 
 /**
+ * Resolves a translated message, keeping the literal fallback when i18next has nothing to say.
+ *
+ * `t()` answers an empty string on an instance that has not been `init()`-ed yet (i18next 26.7
+ * changed this from `undefined`), and an empty message would otherwise be shown to the user as a
+ * blank toast or a blank dialog field. Callers here always have a human-readable fallback, so the
+ * fallback wins whenever the translation is empty.
+ */
+function translateMessage(key: string, fallback: string): string {
+  const translated = i18nInstance.t(key, fallback);
+  return translated || fallback;
+}
+
+/**
  * Centralized hook for handling mutation errors consistently
  *
  * @example
@@ -108,14 +121,14 @@ export const useMutationErrorHandler = (): UseMutationErrorHandlerResult => {
 
       // Get translated error message for this operation
       const operationErrorKey = getOperationErrorKey(operationName);
-      const translatedMessage = i18nInstance.t(operationErrorKey, `Failed to ${operationName}`);
+      const translatedMessage = translateMessage(operationErrorKey, `Failed to ${operationName}`);
 
       // Extract user-friendly message
       let userMessage = handleError(error, translatedMessage);
 
       // For permission transition errors, show a cleaner message
       if (isPermissionError) {
-        userMessage = i18nInstance.t(
+        userMessage = translateMessage(
           'common:permission.transitionError',
           'You do not have permission to perform this transition.'
         );
@@ -172,7 +185,7 @@ export const useMutationErrorHandler = (): UseMutationErrorHandlerResult => {
           if (isPermissionMessage) {
             // Use translated message instead of backend message
             setWorkflowError(
-              i18nInstance.t(
+              translateMessage(
                 'common:permission.transitionError',
                 'You do not have permission to perform this transition.'
               )
@@ -180,7 +193,7 @@ export const useMutationErrorHandler = (): UseMutationErrorHandlerResult => {
           } else {
             setWorkflowError(
               errorMessage ??
-                i18nInstance.t(
+                translateMessage(
                   'common:permission.actionError',
                   'You do not have permission to perform this action.'
                 )

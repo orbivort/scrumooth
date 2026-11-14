@@ -22,10 +22,15 @@ vi.mock('../utils/logger', () => ({
   setStoreProvider: vi.fn(),
 }));
 
-// Mock i18n config - i18nInstance.t returns fallback messages
+// Mock i18n config - i18nInstance.t returns fallback messages. Controllable so a test can
+// reproduce an instance that answers '' (i18next does that while it is not yet initialised).
+const { mockTranslate } = vi.hoisted(() => ({
+  mockTranslate: vi.fn((_key: string, fallback: string) => fallback),
+}));
+
 vi.mock('../i18n/config', () => ({
   i18nInstance: {
-    t: (key: string, fallback: string) => fallback,
+    t: mockTranslate,
   },
 }));
 
@@ -38,6 +43,7 @@ describe('useMutationErrorHandler', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mockTranslate.mockImplementation((_key: string, fallback: string) => fallback);
     vi.stubEnv('DEV', 'true');
   });
 
@@ -51,6 +57,19 @@ describe('useMutationErrorHandler', () => {
 
       const error = new Error('Something went wrong');
       const message = result.current.handleMutationError(error, {
+        operationName: 'create item',
+      });
+
+      expect(message).toBe('Failed to create item');
+    });
+
+    it('should fall back to the literal message when the translation is empty', () => {
+      // An i18next instance answers '' for every key until it is init()-ed; the user must still
+      // see the operation's message instead of a blank toast.
+      mockTranslate.mockReturnValue('');
+      const { result } = renderHook(() => useMutationErrorHandler());
+
+      const message = result.current.handleMutationError(new Error('boom'), {
         operationName: 'create item',
       });
 

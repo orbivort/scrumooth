@@ -19,10 +19,15 @@ vi.mock('../utils/logger', () => ({
   setStoreProvider: vi.fn(),
 }));
 
-// Mock i18n config - i18nInstance.t returns fallback messages
+// Mock i18n config - i18nInstance.t returns fallback messages. Controllable so a test can
+// reproduce an instance that answers '' (i18next does that while it is not yet initialised).
+const { mockTranslate } = vi.hoisted(() => ({
+  mockTranslate: vi.fn((_key: string, fallback: string) => fallback),
+}));
+
 vi.mock('../i18n/config', () => ({
   i18nInstance: {
-    t: (key: string, fallback: string) => fallback,
+    t: mockTranslate,
   },
 }));
 
@@ -32,6 +37,7 @@ describe('useApiError', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mockTranslate.mockImplementation((_key: string, fallback: string) => fallback);
     vi.mocked(useAuthStore).mockReturnValue({
       error: null,
       setError: mockSetError,
@@ -125,6 +131,23 @@ describe('useApiError', () => {
       expect(extracted.code).toBe('HTTP_500');
       expect(extracted.message).toBe('Server error. Please try again later.');
       expect(extracted.status).toBe(500);
+    });
+
+    it('should fall back to the status-based message when the translation is empty', () => {
+      mockTranslate.mockReturnValue('');
+      const { result } = renderHook(() => useApiError());
+
+      const axiosError = {
+        isAxiosError: true,
+        response: {
+          status: 503,
+          data: {},
+        },
+      } as AxiosError;
+
+      const extracted = result.current.extractError(axiosError);
+
+      expect(extracted.message).toBe('Service unavailable. Please try again later.');
     });
 
     it('should handle various HTTP status codes', () => {
