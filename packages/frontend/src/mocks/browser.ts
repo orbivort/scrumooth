@@ -2,7 +2,7 @@ import { setupWorker } from 'msw/browser';
 
 import { logger } from '../utils/logger';
 
-import { MOCK_BROWSER_ON_UNHANDLED_REQUEST, MOCK_LATENCY_MS } from './config';
+import { MOCK_BROWSER_ON_UNHANDLED_FRAME, MOCK_LATENCY_MS } from './config';
 import { handlers } from './handlers';
 
 /**
@@ -29,7 +29,7 @@ export function startMockWorker(): Promise<void> {
         // `/` in development and `/scrumooth/` on GitHub Pages.
         url: `${import.meta.env.BASE_URL}mockServiceWorker.js`,
       },
-      onUnhandledRequest: MOCK_BROWSER_ON_UNHANDLED_REQUEST,
+      onUnhandledFrame: MOCK_BROWSER_ON_UNHANDLED_FRAME,
     })
     .then(() => {
       // A stable marker E2E fixtures can wait for: once it is set, the worker is

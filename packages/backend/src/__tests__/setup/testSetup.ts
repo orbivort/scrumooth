@@ -566,9 +566,14 @@ export function createTestRefreshToken(overrides: Record<string, unknown> = {}) 
 }
 
 declare module 'vitest' {
-  interface Assertion<T = any> {
-    toBeValidUUID(): T;
-    toBeUUIDv7(): T;
-    toBeWithinRange(floor: number, ceiling: number): T;
+  interface Assertion<R extends void | Promise<void> = void> {
+    toBeValidUUID(): R;
+    toBeUUIDv7(): R;
+    toBeWithinRange(floor: number, ceiling: number): R;
+  }
+  interface AsymmetricMatchersContaining {
+    toBeValidUUID(): void;
+    toBeUUIDv7(): void;
+    toBeWithinRange(floor: number, ceiling: number): void;
   }
 }
