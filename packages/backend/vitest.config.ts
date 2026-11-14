@@ -25,21 +25,29 @@ export default defineConfig({
       provider: 'v8',
       reporter: ['text', 'json', 'html', 'lcov'],
       reportsDirectory: './coverage',
+      // Vitest 5 matches these against project-root-relative paths without picomatch's
+      // `contains`, so a directory has to be spelled as a glob: the trailing-slash form
+      // (`'src/__tests__/'`) silently matches nothing and the test helpers were being
+      // gated as if they were product code.
       exclude: [
-        'node_modules/',
-        'src/__tests__/',
-        'src/types/',
-        'src/*.d.ts',
-        'prisma/',
-        'src/generated/',
+        '**/node_modules/**',
+        '**/dist/**',
+        'src/__tests__/**',
+        'src/types/**',
+        'src/**/*.d.ts',
+        'prisma/**',
+        'src/generated/**',
         // Barrel files without a runtime statement and type-only declaration files are not
         // instrumentable: V8 reports them as 0 % on every metric, which is never actionable.
         // `src/services/email/templates/index.ts` is intentionally NOT excluded — it declares
         // the runtime `TEMPLATE_PATHS` constant and is fully covered.
         'src/services/email/index.ts',
         'src/services/email/providers/index.ts',
-        'src/services/email/types/',
+        'src/services/email/types/**',
       ],
+      // `coverage.include` is what makes never-imported modules show up with 0 %; the
+      // former `all: true` flag was removed in Vitest 4 and no longer did anything.
+      include: ['src/**/*.ts'],
       thresholds: {
         lines: 80,
         functions: 80,
@@ -49,8 +57,6 @@ export default defineConfig({
         // below the floor while the rest of the package keeps the average high.
         perFile: true,
       },
-      all: true,
-      include: ['src/**/*.ts'],
     },
     testTimeout: 30000,
     hookTimeout: 30000,
