@@ -111,7 +111,7 @@
     "msw": "^3.0.3",
     "prettier": "catalog:",
     "rimraf": "catalog:",
-    "rollup-plugin-visualizer": "^7.1.2",
+    "rollup-plugin-visualizer": "^7.1.3",
     "stylelint": "catalog:",
     "stylelint-config-standard": "catalog:",
     "tsx": "catalog:",
