@@ -121,7 +121,7 @@
     "eslint-plugin-unicorn": "^79.0.0",
     "globals": "catalog:",
     "husky": "^9.1.7",
-    "lint-staged": "^17.6.0",
+    "lint-staged": "^17.6.1",
     "prettier": "catalog:",
     "rimraf": "catalog:",
     "stylelint": "catalog:",
