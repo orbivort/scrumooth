@@ -21,7 +21,7 @@ catalog:
   eslint-plugin-react-hooks: ^7.1.1
   eslint-plugin-react-refresh: ^0.5.7
   globals: ^17.14.0
-  i18next: ^26.7.2
+  i18next: ^27.0.1
   intl-pluralrules: ^2.0.1
   prettier: ^3.10.1
   rimraf: ^6.1.4
