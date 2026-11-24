@@ -735,7 +735,14 @@ User requests deletion
 #### Dependency Management
 
 - Dependencies locked via `pnpm-lock.yaml` for reproducible builds.
-- `pnpm audit --audit-level=high` runs on every CI push/PR.
+- `pnpm audit --audit-level=high` runs on every CI push/PR, and on a weekly
+  scheduled sweep (Mondays 03:00 UTC) so an advisory published against code that
+  is already on `main` is still caught in a week with no merges.
+- On Dependabot pull requests the audit is report-only. It scans the whole
+  resolved tree, so the finding it reports is usually not caused by the bump
+  under review; `dependency-review` is the blocking PR gate because it evaluates
+  only the diff. The audit stays blocking on pushes to `main`/`develop` and on
+  the scheduled sweep, where the state of the tree is the thing being judged.
 - GitHub Dependabot configured for automated security updates.
 - Dependency Review action runs on every PR to catch newly introduced vulnerabilities.
 

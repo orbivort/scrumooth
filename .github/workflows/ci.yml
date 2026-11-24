@@ -13,6 +13,14 @@ on:
     branches: [main, develop]
     paths-ignore: *paths-ignore
   workflow_dispatch:
+  # Weekly dependency sweep. The audit has to be evaluated on a clock rather than
+  # only when a diff touches the lockfile: advisories are published against
+  # releases that are already on main, and a week with no merges would otherwise
+  # go unchecked. 03:00 UTC Monday, i.e. before the Dependabot window in
+  # dependabot.yml. Only the jobs whose `if` accepts a `schedule` event run;
+  # every path-filtered job is skipped, because the filter step is skipped too.
+  schedule:
+    - cron: '0 3 * * 1'
 
 env:
   NODE_VERSION: '24.19.0'
@@ -39,8 +47,13 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v5
 
+      # A scheduled run has no base commit to diff against, so the filter is
+      # skipped rather than left to compare against a ref it does not have. Its
+      # outputs then stay empty, which reads as "no path changed" and skips every
+      # job that gates on them; `security-audit` opts back in on `schedule`.
       - name: Detect changed paths
         id: filter
+        if: github.event_name != 'schedule'
         uses: dorny/paths-filter@v4
         with:
           filters: |
@@ -135,6 +148,19 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v5
 
+      # Inputs are deliberately left at their defaults.
+      #
+      # `fail-on-severity` defaults to `low`, the strictest setting: anything the
+      # diff introduces blocks. Do not raise it to `high` "to match the audit" -
+      # that loosens this gate, and this is the only place where an advisory is
+      # attributable to the change under review. The audit's `--audit-level=high`
+      # threshold answers a different question (is the tree clean right now) and
+      # is relaxed for bot PRs for that reason, not this one.
+      #
+      # `comment-summary-in-pr` is not set: it needs `pull-requests: write`, and
+      # a run triggered by Dependabot receives a read-only token whatever the
+      # permissions block says, so the comment step would fail on exactly the
+      # PRs this job is meant to clear.
       - name: Dependency Review
         uses: actions/dependency-review-action@v5
 
@@ -515,10 +541,24 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     needs: [detect-changes]
+    # A scheduled run skips the path filter, so its outputs are empty; the
+    # schedule branch below is what keeps the sweep alive. On every other event
+    # the job runs when a dependency-relevant path changed.
     if: >-
+      github.event_name == 'schedule' ||
       needs.detect-changes.outputs.backend == 'true' ||
       needs.detect-changes.outputs.frontend == 'true' ||
       needs.detect-changes.outputs.shared == 'true'
+    # `pnpm audit` scans the whole resolved tree against the live advisory
+    # database, so a finding it reports is rarely caused by the diff under
+    # review: a pre-existing transitive advisory, or one published after the
+    # bump, fails an otherwise correct Dependabot PR that cannot fix it.
+    # `dependency-review` is the authoritative pull-request gate because it
+    # evaluates only the delta. The audit keeps blocking where the tree's actual
+    # state is what matters: pushes to main/develop and the weekly sweep.
+    continue-on-error: >-
+      ${{ github.event_name == 'pull_request' &&
+          github.event.pull_request.user.login == 'dependabot[bot]' }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5

@@ -52,6 +52,7 @@ strictPeerDependencies: false
 overrides:
   brace-expansion: ^5.0.12 # Fixed: GHSA-3jxr-9vmj-r5cp and GHSA-rgw5-rvv9-x895 high severity DoS vulnerabilities, plus the quadratic-time {a},b} rewrite stall (CWE-407); dev tooling only (eslint, stylelint, rimraf, glob/minimatch), not in the app's runtime tree
   esbuild: ^0.28.1 # Fixed: GHSA-gv7w-rqvm-qjhr high severity vulnerability
+  effect: ^3.22.1 # Fixed: GHSA-7589-6fvf-x4pw high severity ReDoS in Schema.TemplateLiteral compiled regex; @prisma/config pins effect to exactly 3.20.0, so only an override can lift the transitive copy - reachable solely through the Prisma CLI config loader (prisma.config.ts, parsed at generate/migrate time), never from request input and absent from the backend runtime bundle
   glob: ^14.0.2 # Fixed: GHSA-5j98-mcp5-4vw2 command injection vulnerability and GHSA-3g3m-2fjr-6pw4 moderate AbortSignal cancellation bypass that allows post-timeout filesystem traversal (CWE-400); dev tooling only (rimraf, i18next-cli), not in the app's runtime tree
   ini: ^4.1.3 # Fixed: GHSA-qqgx-2p2h-9c37 prototype pollution vulnerability
   follow-redirects: ^1.16.2 # Fixed: GHSA-q3jh-wrc6-jgq8 high (array-form headers bypass cross-origin credential stripping), GHSA-8r9p-f939-6h3c high (sensitiveHeaders regex escaping exposes credential headers), and GHSA-mrwp-f3q8-3g9p high (cross-realm sensitiveHeaders arrays discarded on redirect); transitive dep of axios (frontend HTTP client)
