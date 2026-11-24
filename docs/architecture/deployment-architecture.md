@@ -290,22 +290,22 @@ Scrumooth uses GitHub Actions for continuous integration and delivery. Two prima
 
 **Job details:**
 
-| Job                        | Runtime | Conditions                                              |
-| -------------------------- | ------- | ------------------------------------------------------- |
-| `detect-changes`           | ubuntu  | Always                                                  |
-| `lint-and-typecheck`       | ubuntu  | On detected changes                                     |
-| `dependency-review`        | ubuntu  | PR only (on detected changes)                           |
-| `test-frontend`            | ubuntu  | On frontend/shared changes                              |
-| `test-frontend-e2e`        | ubuntu  | On frontend/shared changes, main/develop only (sharded) |
-| `test-frontend-e2e-smoke`  | ubuntu  | On frontend/shared changes, PR only (chromium, @smoke)  |
-| `test-backend`             | ubuntu  | On backend/shared changes                               |
-| `test-backend-integration` | ubuntu  | On backend/shared changes (PostgreSQL service)          |
-| `test-backend-e2e`         | ubuntu  | On backend/shared changes (PostgreSQL service)          |
-| `security-audit`           | ubuntu  | On detected changes (`pnpm audit --audit-level=high`)   |
-| `codeql`                   | ubuntu  | On detected changes (TypeScript, security-and-quality)  |
-| `build`                    | ubuntu  | After all tests pass (including skipped)                |
-| `bundle-size`              | ubuntu  | After build, on frontend/shared changes                 |
-| `performance`              | ubuntu  | After build, on backend/shared changes                  |
+| Job                        | Runtime | Conditions                                                         |
+| -------------------------- | ------- | ------------------------------------------------------------------ |
+| `detect-changes`           | ubuntu  | Always                                                             |
+| `lint-and-typecheck`       | ubuntu  | On detected changes                                                |
+| `dependency-review`        | ubuntu  | PR only (on detected changes)                                      |
+| `test-frontend`            | ubuntu  | On frontend/shared changes                                         |
+| `test-frontend-e2e`        | ubuntu  | On frontend/shared changes, main/develop only (sharded)            |
+| `test-frontend-e2e-smoke`  | ubuntu  | On frontend/shared changes, PR only (chromium, @smoke)             |
+| `test-backend`             | ubuntu  | On backend/shared changes                                          |
+| `test-backend-integration` | ubuntu  | On backend/shared changes (PostgreSQL service)                     |
+| `test-backend-e2e`         | ubuntu  | On backend/shared changes (PostgreSQL service)                     |
+| `security-audit`           | ubuntu  | Detected changes + weekly Mon 03:00; report-only on Dependabot PRs |
+| `codeql`                   | ubuntu  | On detected changes (TypeScript, security-and-quality)             |
+| `build`                    | ubuntu  | After all tests pass (including skipped)                           |
+| `bundle-size`              | ubuntu  | After build, on frontend/shared changes                            |
+| `performance`              | ubuntu  | After build, on backend/shared changes                             |
 
 **Environment**: Node.js 24.19.0, pnpm 11.21.0. E2E tests use Playwright across Chromium, Firefox, and WebKit (full suite) or Chromium-only (smoke tests).
 

@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Security
+
+- `effect` 3.20.0 → 3.22.5 — **transitive tooling dependency**, pulled by `@prisma/config` through the
+  Prisma CLI (`generate`, `migrate`, `studio`). Fixes a **high** severity denial of service in the
+  regular expression compiled for `Schema.TemplateLiteral` patterns, where a catastrophic-backtracking
+  pattern stalls the process ([GHSA-7589-6fvf-x4pw](https://github.com/advisories/GHSA-7589-6fvf-x4pw)).
+
 ## [3.1.3] - 2026-11-03
 
 ### Security
